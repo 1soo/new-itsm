@@ -10,6 +10,7 @@ export const ROLE_PROBLEM_MANAGER = "PROBLEM_MANAGER";
 export const ROLE_CHANGE_MANAGER = "CHANGE_MANAGER";
 export const ROLE_KNOWLEDGE_CONTRIBUTOR = "KNOWLEDGE_CONTRIBUTOR";
 export const ROLE_KNOWLEDGE_GATEKEEPER = "KNOWLEDGE_GATEKEEPER";
+export const ROLE_ASSET_MANAGER = "ASSET_MANAGER";
 
 export function isSystemAdmin(roles: string[] | undefined): boolean {
   return !!roles?.includes(ROLE_SYSTEM_ADMIN);

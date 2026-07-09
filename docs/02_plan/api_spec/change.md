@@ -67,7 +67,7 @@
     "approvalRoute": "AUTO|PEER_REVIEW|CAB", "implementationPlan": "string", "rollbackPlan": "string",
     "result": { "outcome": "SUCCESS|FAILURE|null", "rolledBack": "boolean", "note": "string" },
     "approvals": [ { "approver": "string", "decision": "APPROVED|REJECTED", "opinion": "string", "at": "ISO-8601" } ],
-    "links": [ { "type": "INCIDENT|PROBLEM", "targetKey": "string" } ]
+    "links": [ { "type": "INCIDENT|PROBLEM|ASSET", "targetKey": "string" } ]
   }
   ```
 - **Response Code**: 200 / 401 / 404

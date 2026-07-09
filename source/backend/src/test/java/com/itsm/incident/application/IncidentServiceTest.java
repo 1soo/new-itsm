@@ -1,5 +1,6 @@
 package com.itsm.incident.application;
 
+import com.itsm.asset.application.AssetService;
 import com.itsm.auth.domain.AppUser;
 import com.itsm.auth.domain.repository.AppUserRepository;
 import com.itsm.common.exception.BusinessException;
@@ -64,6 +65,7 @@ class IncidentServiceTest {
     @Mock AppUserRepository appUserRepository;
     @Mock com.itsm.problem.application.ProblemService problemService;
     @Mock com.itsm.change.application.ChangeService changeService;
+    @Mock AssetService assetService;
 
     IncidentService service;
 
@@ -71,7 +73,7 @@ class IncidentServiceTest {
     void setUp() {
         service = new IncidentService(incidentRepository, responderRepository, severityHistoryRepository,
                 postmortemRepository, fiveWhyRepository, actionItemRepository, timelineRepository,
-                ticketLinkRepository, appUserRepository, problemService, changeService);
+                ticketLinkRepository, appUserRepository, problemService, changeService, assetService);
         when(incidentRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(responderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(severityHistoryRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));

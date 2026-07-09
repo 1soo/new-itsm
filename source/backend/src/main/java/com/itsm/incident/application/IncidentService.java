@@ -1,5 +1,6 @@
 package com.itsm.incident.application;
 
+import com.itsm.asset.application.AssetService;
 import com.itsm.auth.application.dto.PageResponse;
 import com.itsm.auth.domain.AppUser;
 import com.itsm.auth.domain.repository.AppUserRepository;
@@ -87,6 +88,7 @@ public class IncidentService {
     private final AppUserRepository appUserRepository;
     private final ProblemService problemService;
     private final ChangeService changeService;
+    private final AssetService assetService;
 
     public IncidentService(IncidentRepository incidentRepository,
                            IncidentResponderRepository responderRepository,
@@ -98,7 +100,8 @@ public class IncidentService {
                            TicketLinkRepository ticketLinkRepository,
                            AppUserRepository appUserRepository,
                            ProblemService problemService,
-                           ChangeService changeService) {
+                           ChangeService changeService,
+                           AssetService assetService) {
         this.incidentRepository = incidentRepository;
         this.responderRepository = responderRepository;
         this.severityHistoryRepository = severityHistoryRepository;
@@ -110,6 +113,7 @@ public class IncidentService {
         this.appUserRepository = appUserRepository;
         this.problemService = problemService;
         this.changeService = changeService;
+        this.assetService = assetService;
     }
 
     // ---------- create (API-INC-002) ----------
@@ -438,13 +442,16 @@ public class IncidentService {
     }
 
     /** 연계 대상 ticketKey 조회(API-INC-003 links). PROBLEM은 INC-012로 직접 연계, CHANGE는 API-CHG-009(change→incident)
-     * 양방향 링크로 인해 인시던트 상세에도 노출된다. */
+     * 양방향 링크로 인해 인시던트 상세에도 노출된다. ASSET은 API-ITAM-007(자산→인시던트) 양방향 링크로 노출된다(REQ-ITAM-006). */
     private String linkedTicketKey(TicketType targetType, Long targetId) {
         if (targetType == TicketType.PROBLEM) {
             return problemService.ticketKeyOf(targetId);
         }
         if (targetType == TicketType.CHANGE) {
             return changeService.ticketKeyOf(targetId);
+        }
+        if (targetType == TicketType.ASSET) {
+            return assetService.assetKeyOf(targetId);
         }
         return null;
     }

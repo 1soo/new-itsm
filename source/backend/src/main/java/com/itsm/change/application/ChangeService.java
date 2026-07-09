@@ -1,5 +1,6 @@
 package com.itsm.change.application;
 
+import com.itsm.asset.application.AssetService;
 import com.itsm.auth.application.dto.PageResponse;
 import com.itsm.auth.domain.AppUser;
 import com.itsm.auth.domain.repository.AppUserRepository;
@@ -80,6 +81,7 @@ public class ChangeService {
     private final IncidentRepository incidentRepository;
     private final ProblemRepository problemRepository;
     private final AppUserRepository appUserRepository;
+    private final AssetService assetService;
 
     public ChangeService(ChangeRequestRepository changeRequestRepository,
                          ChangeTemplateRepository templateRepository,
@@ -89,7 +91,8 @@ public class ChangeService {
                          TimelineEventRepository timelineRepository,
                          IncidentRepository incidentRepository,
                          ProblemRepository problemRepository,
-                         AppUserRepository appUserRepository) {
+                         AppUserRepository appUserRepository,
+                         AssetService assetService) {
         this.changeRequestRepository = changeRequestRepository;
         this.templateRepository = templateRepository;
         this.affectedSystemRepository = affectedSystemRepository;
@@ -99,6 +102,7 @@ public class ChangeService {
         this.incidentRepository = incidentRepository;
         this.problemRepository = problemRepository;
         this.appUserRepository = appUserRepository;
+        this.assetService = assetService;
     }
 
     // ---------- create (API-CHG-002) ----------
@@ -414,7 +418,8 @@ public class ChangeService {
                 .orElse(List.of());
 
         List<ChangeDetailResponse.LinkRef> links = ticketLinkRepository.findBySourceTypeAndSourceId(TT, id).stream()
-                .filter(l -> l.getTargetType() == TicketType.INCIDENT || l.getTargetType() == TicketType.PROBLEM)
+                .filter(l -> l.getTargetType() == TicketType.INCIDENT || l.getTargetType() == TicketType.PROBLEM
+                        || l.getTargetType() == TicketType.ASSET)
                 .map(l -> new ChangeDetailResponse.LinkRef(l.getTargetType().name(), linkedTicketKey(l.getTargetType(), l.getTargetId())))
                 .toList();
 
@@ -430,6 +435,9 @@ public class ChangeService {
     private String linkedTicketKey(TicketType type, Long targetId) {
         if (type == TicketType.INCIDENT) {
             return incidentRepository.findById(targetId).map(Incident::getTicketKey).orElse(null);
+        }
+        if (type == TicketType.ASSET) {
+            return assetService.assetKeyOf(targetId);
         }
         return problemRepository.findById(targetId).map(Problem::getTicketKey).orElse(null);
     }

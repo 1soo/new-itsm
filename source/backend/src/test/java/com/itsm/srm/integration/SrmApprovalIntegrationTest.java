@@ -1,8 +1,13 @@
 package com.itsm.srm.integration;
 
+import com.itsm.asset.application.AssetService;
+import com.itsm.asset.application.dto.CreateAssetRequest;
+import com.itsm.asset.application.dto.LinkAssetRequest;
+import com.itsm.asset.domain.AssetType;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.common.security.AuthPrincipal;
+import com.itsm.common.ticket.TicketType;
 import com.itsm.srm.application.ServiceCatalogService;
 import com.itsm.srm.application.ServiceRequestService;
 import com.itsm.srm.application.dto.ApprovalDecision;
@@ -60,7 +65,9 @@ class SrmApprovalIntegrationTest {
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/10_change_schema.sql").toAbsolutePath()),
                     "/docker-entrypoint-initdb.d/10_change_schema.sql")
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/12_knowledge_schema.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/12_knowledge_schema.sql");
+                    "/docker-entrypoint-initdb.d/12_knowledge_schema.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/14_asset_schema.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/14_asset_schema.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {
@@ -73,6 +80,7 @@ class SrmApprovalIntegrationTest {
 
     @Autowired ServiceCatalogService catalogService;
     @Autowired ServiceRequestService requestService;
+    @Autowired AssetService assetService;
     @Autowired JdbcTemplate jdbc;
 
     @AfterEach
@@ -132,5 +140,29 @@ class SrmApprovalIntegrationTest {
                 "select status from approval where ticket_type='SERVICE_REQUEST' and ticket_id = ?", String.class, rid);
         assertThat(status).isEqualTo("IN_FULFILLMENT"); // 되돌려지지 않음
         assertThat(approvalStatus).isEqualTo("APPROVED"); // 뒤집히지 않음
+    }
+
+    @Test
+    void detailLinksExposeAssetKeyViaAssetSideLink() {
+        // REQ-ITAM-006(TC-REG-002): API-ITAM-007(자산→요청 연계)로 생성된 양방향 ticket_link가
+        // 요청 상세(linkedAssets)에도 노출되는지 검증.
+        long ts = System.nanoTime();
+        Long requesterId = insertUser("req" + ts + "@itsm.local");
+
+        as(1L, "PROCESS_OWNER");
+        CatalogItemDetailResponse item = catalogService.create(new CreateCatalogItemRequest(
+                "AssetLinkItem" + ts, "d", false, null, null, null, null, List.of()));
+
+        as(requesterId, "END_USER");
+        RequestCreatedResponse created = requestService.create(new CreateRequestRequest(item.id(), Map.of()));
+        Long rid = created.id();
+
+        as(insertUser("am" + ts + "@itsm.local"), "ASSET_MANAGER");
+        var asset = assetService.create(new CreateAssetRequest("요청연계확인자산" + ts, AssetType.HARDWARE,
+                null, null, null, null, null, null, null, null));
+        assetService.linkAsset(asset.id(), new LinkAssetRequest(TicketType.SERVICE_REQUEST, rid));
+
+        as(requesterId, "END_USER");
+        assertThat(requestService.detail(rid).linkedAssets()).extracting("assetKey").containsExactly(asset.assetKey());
     }
 }

@@ -239,6 +239,21 @@ export function RequestDetailPage() {
               </div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">연결 자산</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1.5 text-sm">
+              {detail.linkedAssets.length === 0 ? (
+                <p className="text-muted-foreground">연결 없음</p>
+              ) : (
+                detail.linkedAssets.map((a) => (
+                  <span key={a.id} className="block text-foreground">{a.assetKey}</span>
+                ))
+              )}
+            </CardContent>
+          </Card>
         </>
       }
     >

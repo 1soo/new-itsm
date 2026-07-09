@@ -1,8 +1,13 @@
 package com.itsm.problem.integration;
 
+import com.itsm.asset.application.AssetService;
+import com.itsm.asset.application.dto.CreateAssetRequest;
+import com.itsm.asset.application.dto.LinkAssetRequest;
+import com.itsm.asset.domain.AssetType;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.common.security.AuthPrincipal;
+import com.itsm.common.ticket.TicketType;
 import com.itsm.incident.application.dto.LinkProblemRequest;
 import com.itsm.incident.application.IncidentService;
 import com.itsm.problem.application.ProblemService;
@@ -70,7 +75,9 @@ class ProblemIntegrationTest {
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/10_change_schema.sql").toAbsolutePath()),
                     "/docker-entrypoint-initdb.d/10_change_schema.sql")
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/12_knowledge_schema.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/12_knowledge_schema.sql");
+                    "/docker-entrypoint-initdb.d/12_knowledge_schema.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/14_asset_schema.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/14_asset_schema.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {
@@ -83,6 +90,7 @@ class ProblemIntegrationTest {
 
     @Autowired ProblemService problemService;
     @Autowired IncidentService incidentService;
+    @Autowired AssetService assetService;
     @Autowired JdbcTemplate jdbc;
 
     @AfterEach
@@ -202,6 +210,24 @@ class ProblemIntegrationTest {
         var closed = problemService.close(id, new CloseRequest(false));
         assertThat(closed.status()).isEqualTo("RESOLVED_CLOSED");
         assertThat(closed.warning()).isNull();
+    }
+
+    @Test
+    void detailLinksExposeAssetKeyViaAssetSideLink() {
+        // REQ-ITAM-006(TC-REG-002): API-ITAM-007(자산→문제 연계)로 생성된 양방향 ticket_link가
+        // 문제 상세(linkedAssets)에도 노출되는지 검증.
+        as("PROBLEM_MANAGER");
+        var created = problemService.create(new CreateProblemRequest(
+                "자산 연계 확인용 문제", null, ProblemOrigin.REACTIVE, null, Level.LOW, Level.LOW, null));
+        Long id = created.id();
+
+        as("ASSET_MANAGER");
+        var asset = assetService.create(new CreateAssetRequest("문제연계확인자산" + System.nanoTime(), AssetType.SOFTWARE,
+                null, null, null, null, null, null, null, null));
+        assetService.linkAsset(asset.id(), new LinkAssetRequest(TicketType.PROBLEM, id));
+
+        as("PROBLEM_MANAGER");
+        assertThat(problemService.detail(id).linkedAssets()).extracting("ticketKey").containsExactly(asset.assetKey());
     }
 
     @Test

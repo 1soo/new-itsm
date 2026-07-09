@@ -1,5 +1,6 @@
 package com.itsm.change.application;
 
+import com.itsm.asset.application.AssetService;
 import com.itsm.auth.domain.AppUser;
 import com.itsm.auth.domain.repository.AppUserRepository;
 import com.itsm.change.application.dto.ChangeApprovalDecision;
@@ -70,6 +71,7 @@ class ChangeServiceTest {
     @Mock IncidentRepository incidentRepository;
     @Mock ProblemRepository problemRepository;
     @Mock AppUserRepository appUserRepository;
+    @Mock AssetService assetService;
 
     ChangeService service;
 
@@ -77,7 +79,7 @@ class ChangeServiceTest {
     void setUp() {
         service = new ChangeService(changeRequestRepository, templateRepository, affectedSystemRepository,
                 approvalRepository, ticketLinkRepository, timelineRepository, incidentRepository,
-                problemRepository, appUserRepository);
+                problemRepository, appUserRepository, assetService);
         when(changeRequestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(timelineRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(approvalRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));

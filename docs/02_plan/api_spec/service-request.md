@@ -128,6 +128,7 @@
     "approval": { "required": "boolean", "status": "PENDING|APPROVED|REJECTED", "reason": "string" },
     "sla": { "responseStatus": "string", "resolveStatus": "string" },
     "linkedArticles": [ { "articleId": "number", "title": "string" } ],
+    "linkedAssets": [ { "id": "number", "assetKey": "string" } ],
     "comments": [ { "id": "number", "author": "string", "body": "string", "createdAt": "ISO-8601" } ],
     "timeline": [ { "type": "string", "message": "string", "at": "ISO-8601" } ]
   }

@@ -18,6 +18,7 @@ public record ProblemDetailResponse(
         String workaround,
         List<LinkRef> linkedIncidents,
         List<LinkRef> linkedChanges,
+        List<LinkRef> linkedAssets,
         List<ActionDto> actions,
         @Schema(description = "현재 상태에서 허용되는 다음 상태 목록") List<String> allowedTransitions
 ) {
@@ -26,7 +27,7 @@ public record ProblemDetailResponse(
     public record Rca(String rootCause, List<String> fiveWhys, String category) {
     }
 
-    @Schema(description = "연계 티켓 참조")
+    @Schema(description = "연계 티켓/자산 참조")
     public record LinkRef(Long id, String ticketKey) {
     }
 

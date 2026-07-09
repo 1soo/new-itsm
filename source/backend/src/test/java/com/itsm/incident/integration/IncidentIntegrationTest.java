@@ -1,5 +1,9 @@
 package com.itsm.incident.integration;
 
+import com.itsm.asset.application.AssetService;
+import com.itsm.asset.application.dto.CreateAssetRequest;
+import com.itsm.asset.application.dto.LinkAssetRequest;
+import com.itsm.asset.domain.AssetType;
 import com.itsm.change.application.ChangeService;
 import com.itsm.change.application.dto.CreateChangeRequest;
 import com.itsm.change.application.dto.LinkRequest;
@@ -9,6 +13,7 @@ import com.itsm.change.domain.LinkTargetType;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.common.security.AuthPrincipal;
+import com.itsm.common.ticket.TicketType;
 import com.itsm.incident.application.IncidentService;
 import com.itsm.incident.application.dto.AssignRoleRequest;
 import com.itsm.incident.application.dto.CreateIncidentRequest;
@@ -73,7 +78,9 @@ class IncidentIntegrationTest {
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/10_change_schema.sql").toAbsolutePath()),
                     "/docker-entrypoint-initdb.d/10_change_schema.sql")
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/12_knowledge_schema.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/12_knowledge_schema.sql");
+                    "/docker-entrypoint-initdb.d/12_knowledge_schema.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/14_asset_schema.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/14_asset_schema.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {
@@ -86,6 +93,7 @@ class IncidentIntegrationTest {
 
     @Autowired IncidentService incidentService;
     @Autowired ChangeService changeService;
+    @Autowired AssetService assetService;
     @Autowired JdbcTemplate jdbc;
 
     @AfterEach
@@ -223,6 +231,28 @@ class IncidentIntegrationTest {
         assertThat(detail.links()).hasSize(1);
         assertThat(detail.links().get(0).type()).isEqualTo("CHANGE");
         assertThat(detail.links().get(0).targetKey()).isEqualTo(change.ticketKey());
+    }
+
+    @Test
+    void detailLinksExposeAssetKeyViaAssetSideLink() {
+        // REQ-ITAM-006(TC-REG-002): API-ITAM-007(자산→인시던트 연계)로 생성된 양방향 ticket_link가
+        // 인시던트 상세(API-INC-003 links)에도 ASSET으로 노출되는지 검증.
+        long ts = System.nanoTime();
+        as(insertUser("im" + ts + "@itsm.local"), "INCIDENT_MANAGER");
+        IncidentCreatedResponse created = incidentService.create(
+                new CreateIncidentRequest("자산 연계 확인용 인시던트", null, Severity.SEV3, null, null));
+        Long incidentId = created.id();
+
+        as(insertUser("am" + ts + "@itsm.local"), "ASSET_MANAGER");
+        var asset = assetService.create(new CreateAssetRequest("연계확인자산" + ts, AssetType.HARDWARE,
+                null, null, null, null, null, null, null, null));
+        assetService.linkAsset(asset.id(), new LinkAssetRequest(TicketType.INCIDENT, incidentId));
+
+        as(insertUser("im2" + ts + "@itsm.local"), "INCIDENT_MANAGER");
+        var detail = incidentService.detail(incidentId);
+        assertThat(detail.links()).hasSize(1);
+        assertThat(detail.links().get(0).type()).isEqualTo("ASSET");
+        assertThat(detail.links().get(0).targetKey()).isEqualTo(asset.assetKey());
     }
 
     @Test

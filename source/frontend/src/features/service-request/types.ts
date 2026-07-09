@@ -110,6 +110,11 @@ export interface LinkedArticle {
   title: string;
 }
 
+export interface LinkedAsset {
+  id: number;
+  assetKey: string;
+}
+
 export interface RequestDetail {
   id: number;
   ticketKey: string;
@@ -122,6 +127,7 @@ export interface RequestDetail {
   approval: RequestApproval;
   sla: RequestSla;
   linkedArticles: LinkedArticle[];
+  linkedAssets: LinkedAsset[];
   comments: RequestComment[];
   timeline: RequestTimelineEvent[];
   /** BE가 제공하면 이 목록만 전이 버튼으로 노출(허용 전이). 없으면 FE가 status/approval로 유추. */

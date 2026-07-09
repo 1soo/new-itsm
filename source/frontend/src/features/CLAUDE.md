@@ -10,3 +10,4 @@
 - `problem/` — 문제(PRB). 목록·등록·상세·KEDB 검색.
 - `change/` — 변경(CHG). 목록·RFC 생성·상세·CAB 승인 대기함·일정 캘린더·지표.
 - `knowledge/` — 지식(KM). 검색/목록·열람·작성/편집·검토 승인함·지표.
+- `asset/` — 자산/CMDB(ITAM). 목록·등록/수정·상세·CI·CMDB 관계 뷰·지표.

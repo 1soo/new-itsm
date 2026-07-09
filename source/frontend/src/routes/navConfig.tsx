@@ -3,6 +3,7 @@ import {
   Activity,
   AlertTriangle,
   BookOpen,
+  Boxes,
   CalendarDays,
   ClipboardList,
   FileText,
@@ -11,6 +12,7 @@ import {
   LayoutDashboard,
   LayoutGrid,
   ListChecks,
+  Network,
   ScrollText,
   SearchCode,
   Settings2,
@@ -22,6 +24,7 @@ import {
 
 import {
   ROLE_APPROVER,
+  ROLE_ASSET_MANAGER,
   ROLE_CHANGE_MANAGER,
   ROLE_END_USER,
   ROLE_INCIDENT_MANAGER,
@@ -202,6 +205,33 @@ export const navConfig: NavGroupDef[] = [
         path: "/knowledge/metrics",
         icon: <Activity />,
         roles: [ROLE_KNOWLEDGE_GATEKEEPER],
+      },
+    ],
+  },
+  {
+    key: "itam",
+    label: "자산",
+    items: [
+      {
+        key: "itam-list",
+        label: "자산",
+        path: "/assets",
+        icon: <Boxes />,
+        roles: [ROLE_ASSET_MANAGER],
+      },
+      {
+        key: "itam-ci",
+        label: "CI·CMDB 관계",
+        path: "/assets/cis",
+        icon: <Network />,
+        roles: [ROLE_ASSET_MANAGER],
+      },
+      {
+        key: "itam-metrics",
+        label: "자산 지표",
+        path: "/assets/metrics",
+        icon: <Activity />,
+        roles: [ROLE_ASSET_MANAGER],
       },
     ],
   },

@@ -186,6 +186,25 @@ export function ProblemDetailPage() {
                 )}
               </CardContent>
             </Card>
+
+            <Card>
+              <CardHeader><CardTitle className="text-base">연결 자산</CardTitle></CardHeader>
+              <CardContent className="space-y-1.5 text-sm">
+                {detail.linkedAssets.length === 0 ? (
+                  <p className="text-muted-foreground">연결 없음</p>
+                ) : (
+                  detail.linkedAssets.map((l) => (
+                    <button
+                      key={l.id}
+                      className="block text-left text-info hover:underline"
+                      onClick={() => navigate(`/assets/${l.id}`)}
+                    >
+                      {l.ticketKey}
+                    </button>
+                  ))
+                )}
+              </CardContent>
+            </Card>
           </>
         }
       >

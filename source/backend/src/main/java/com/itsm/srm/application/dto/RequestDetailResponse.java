@@ -19,6 +19,7 @@ public record RequestDetailResponse(
         ApprovalInfo approval,
         SlaInfo sla,
         List<LinkedArticle> linkedArticles,
+        List<LinkedAsset> linkedAssets,
         List<CommentResponse> comments,
         List<TimelineEntry> timeline,
         @Schema(description = "현재 상태·역할·승인 기준 수행 가능한 상태 전이 target 목록") List<String> allowedTransitions
@@ -33,6 +34,10 @@ public record RequestDetailResponse(
 
     @Schema(description = "연결 지식 기사")
     public record LinkedArticle(Long articleId, String title) {
+    }
+
+    @Schema(description = "연결 자산(REQ-ITAM-006)")
+    public record LinkedAsset(Long id, String assetKey) {
     }
 
     @Schema(description = "타임라인 항목")

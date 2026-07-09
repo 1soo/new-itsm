@@ -9,6 +9,7 @@ import { ForbiddenPage } from "@/routes/ForbiddenPage";
 import { NotFoundPage } from "@/routes/NotFoundPage";
 import {
   ROLE_APPROVER,
+  ROLE_ASSET_MANAGER,
   ROLE_CHANGE_MANAGER,
   ROLE_END_USER,
   ROLE_INCIDENT_MANAGER,
@@ -54,6 +55,11 @@ import { ArticleViewPage } from "@/features/knowledge/ArticleViewPage";
 import { ArticleEditPage } from "@/features/knowledge/ArticleEditPage";
 import { ReviewInboxPage } from "@/features/knowledge/ReviewInboxPage";
 import { KnowledgeMetricsPage } from "@/features/knowledge/KnowledgeMetricsPage";
+import { AssetListPage } from "@/features/asset/AssetListPage";
+import { AssetFormPage } from "@/features/asset/AssetFormPage";
+import { AssetDetailPage } from "@/features/asset/AssetDetailPage";
+import { CiRelationPage } from "@/features/asset/CiRelationPage";
+import { AssetMetricsPage } from "@/features/asset/AssetMetricsPage";
 
 /*
  * 라우팅 — 화면 ID(SCR-*)와 경로 매핑. screen 테이블 seed 경로와 정합.
@@ -209,6 +215,19 @@ export const router = createBrowserRouter([
             children: [
               { path: "/knowledge/reviews", element: <ReviewInboxPage /> }, // SCR-KM-004
               { path: "/knowledge/metrics", element: <KnowledgeMetricsPage /> }, // SCR-KM-005
+            ],
+          },
+
+          // 자산(ITAM) — ASSET_MANAGER
+          {
+            element: <RequireRoles roles={[ROLE_ASSET_MANAGER]} />,
+            children: [
+              { path: "/assets", element: <AssetListPage /> }, // SCR-ITAM-001
+              { path: "/assets/new", element: <AssetFormPage /> }, // SCR-ITAM-002
+              { path: "/assets/:id/edit", element: <AssetFormPage /> }, // SCR-ITAM-002
+              { path: "/assets/:id", element: <AssetDetailPage /> }, // SCR-ITAM-003
+              { path: "/assets/cis", element: <CiRelationPage /> }, // SCR-ITAM-004
+              { path: "/assets/metrics", element: <AssetMetricsPage /> }, // SCR-ITAM-005
             ],
           },
 

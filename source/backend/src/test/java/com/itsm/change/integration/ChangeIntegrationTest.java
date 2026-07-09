@@ -1,5 +1,9 @@
 package com.itsm.change.integration;
 
+import com.itsm.asset.application.AssetService;
+import com.itsm.asset.application.dto.CreateAssetRequest;
+import com.itsm.asset.application.dto.LinkAssetRequest;
+import com.itsm.asset.domain.AssetType;
 import com.itsm.change.application.ChangeService;
 import com.itsm.change.application.dto.ChangeApprovalDecision;
 import com.itsm.change.application.dto.ChangeApprovalRequest;
@@ -16,6 +20,7 @@ import com.itsm.change.domain.Outcome;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.common.security.AuthPrincipal;
+import com.itsm.common.ticket.TicketType;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -65,7 +70,9 @@ class ChangeIntegrationTest {
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/10_change_schema.sql").toAbsolutePath()),
                     "/docker-entrypoint-initdb.d/10_change_schema.sql")
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/12_knowledge_schema.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/12_knowledge_schema.sql");
+                    "/docker-entrypoint-initdb.d/12_knowledge_schema.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/14_asset_schema.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/14_asset_schema.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {
@@ -77,6 +84,7 @@ class ChangeIntegrationTest {
     }
 
     @Autowired ChangeService changeService;
+    @Autowired AssetService assetService;
     @Autowired JdbcTemplate jdbc;
 
     @AfterEach
@@ -271,6 +279,28 @@ class ChangeIntegrationTest {
 
         var detail = changeService.detail(id);
         assertThat(detail.links()).hasSize(2);
+    }
+
+    @Test
+    void detailLinksExposeAssetKeyViaAssetSideLink() {
+        // REQ-ITAM-006(TC-REG-002): API-ITAM-007(자산→변경 연계)로 생성된 양방향 ticket_link가
+        // 변경 상세(links)에도 ASSET으로 노출되는지 검증.
+        long ts = System.nanoTime();
+        as(insertUser("cm" + ts + "@itsm.local"), "CHANGE_MANAGER");
+        var created = changeService.create(new CreateChangeRequest("자산 연계 확인용 변경", null,
+                ChangeType.NORMAL, ChangeRisk.LOW, null, null, null, null, null));
+        Long id = created.id();
+
+        as(insertUser("am" + ts + "@itsm.local"), "ASSET_MANAGER");
+        var asset = assetService.create(new CreateAssetRequest("변경연계확인자산" + ts, AssetType.CLOUD,
+                null, null, null, null, null, null, null, null));
+        assetService.linkAsset(asset.id(), new LinkAssetRequest(TicketType.CHANGE, id));
+
+        as(insertUser("cm2" + ts + "@itsm.local"), "CHANGE_MANAGER");
+        var detailWithAsset = changeService.detail(id);
+        assertThat(detailWithAsset.links()).hasSize(1);
+        assertThat(detailWithAsset.links().get(0).type()).isEqualTo("ASSET");
+        assertThat(detailWithAsset.links().get(0).targetKey()).isEqualTo(asset.assetKey());
     }
 
     @Test

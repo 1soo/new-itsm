@@ -1,5 +1,6 @@
 package com.itsm.problem.application;
 
+import com.itsm.asset.application.AssetService;
 import com.itsm.auth.application.dto.PageResponse;
 import com.itsm.change.application.ChangeService;
 import com.itsm.common.exception.BusinessException;
@@ -77,6 +78,7 @@ public class ProblemService {
     private final IncidentRepository incidentRepository;
     private final ChangeService changeService;
     private final KnowledgeArticleRepository knowledgeArticleRepository;
+    private final AssetService assetService;
 
     public ProblemService(ProblemRepository problemRepository,
                           ProblemFiveWhyRepository fiveWhyRepository,
@@ -86,7 +88,8 @@ public class ProblemService {
                           TicketLinkRepository ticketLinkRepository,
                           IncidentRepository incidentRepository,
                           ChangeService changeService,
-                          KnowledgeArticleRepository knowledgeArticleRepository) {
+                          KnowledgeArticleRepository knowledgeArticleRepository,
+                          AssetService assetService) {
         this.problemRepository = problemRepository;
         this.fiveWhyRepository = fiveWhyRepository;
         this.knownErrorRepository = knownErrorRepository;
@@ -96,6 +99,7 @@ public class ProblemService {
         this.incidentRepository = incidentRepository;
         this.changeService = changeService;
         this.knowledgeArticleRepository = knowledgeArticleRepository;
+        this.assetService = assetService;
     }
 
     // ---------- create (API-PRB-002) ----------
@@ -358,6 +362,11 @@ public class ProblemService {
                 .filter(l -> l.getTargetType() == TicketType.CHANGE)
                 .map(l -> new ProblemDetailResponse.LinkRef(l.getTargetId(), changeService.ticketKeyOf(l.getTargetId())))
                 .toList();
+        List<ProblemDetailResponse.LinkRef> linkedAssets = ticketLinkRepository
+                .findBySourceTypeAndSourceId(TT, id).stream()
+                .filter(l -> l.getTargetType() == TicketType.ASSET)
+                .map(l -> new ProblemDetailResponse.LinkRef(l.getTargetId(), assetService.assetKeyOf(l.getTargetId())))
+                .toList();
         List<ProblemDetailResponse.ActionDto> actions = actionRepository.findByProblemId(id).stream()
                 .map(a -> new ProblemDetailResponse.ActionDto(a.getId(), a.getDescription(), a.getStatus().name()))
                 .toList();
@@ -368,7 +377,7 @@ public class ProblemService {
                 p.getStatus().name(), p.getPriority() != null ? p.getPriority().name() : null,
                 p.getImpact() != null ? p.getImpact().name() : null,
                 p.getUrgency() != null ? p.getUrgency().name() : null,
-                rca, p.getWorkaround(), linkedIncidents, linkedChanges, actions, allowed);
+                rca, p.getWorkaround(), linkedIncidents, linkedChanges, linkedAssets, actions, allowed);
     }
 
     private KnownErrorSearchResponse toKnownErrorSearch(KnownError k) {

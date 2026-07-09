@@ -64,6 +64,7 @@
     "workaround": "string",
     "linkedIncidents": [ { "id": "number", "ticketKey": "string" } ],
     "linkedChanges": [ { "id": "number", "ticketKey": "string" } ],
+    "linkedAssets": [ { "id": "number", "ticketKey": "string · assetKey" } ],
     "actions": [ { "id": "number", "description": "string", "status": "IN_PROGRESS|DONE" } ]
   }
   ```

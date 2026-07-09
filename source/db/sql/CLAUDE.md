@@ -16,3 +16,5 @@
 - `11_change_seed.sql` — change 시드: 표준 변경 템플릿 1건, 화면(SCR-CHG-001~006)·역할-화면 매핑 증분(CHANGE_MANAGER/APPROVER, 둘 다 auth 단계 기존 역할 재사용), 테스트 계정(cm@/cab@itsm.local). 트랜잭션 데이터는 seed 안 함.
 - `12_knowledge_schema.sql` — knowledge 스키마: `knowledge_category`/`knowledge_label`(분류), `knowledge_article`(기사, DRAFT/IN_REVIEW/PUBLISHED, 유용성·조회 집계), `article_label`(매핑), `knowledge_feedback`(유용성 평가), `knowledge_review`(검토 이력), `search_log`(무결과 검색 로그, append-only). KCS 연계는 `ticket_link` 재사용.
 - `13_knowledge_seed.sql` — knowledge 시드: 카테고리 3건(네트워크/계정·권한/결제), 화면(SCR-KM-001~005)·역할-화면 매핑 증분(KNOWLEDGE_CONTRIBUTOR/KNOWLEDGE_GATEKEEPER, 둘 다 auth 단계 기존 역할 재사용), 테스트 계정(kc@/kg@itsm.local). 트랜잭션 데이터는 seed 안 함.
+- `14_asset_schema.sql` — asset 스키마(7/7 마지막 도메인): `asset`(asset_key AST-####, 생애주기 5단계, 만료일 3종), `asset_attribute`(EAV), `asset_lifecycle_history`(append-only), `expiry_alert`, `configuration_item`(CI), `ci_relation`(CI 자기참조 의존관계, 자기참조 금지 CHECK). 티켓 연계는 `ticket_link`(source_type='ASSET'/'CI') 재사용.
+- `15_asset_seed.sql` — asset 시드: 화면(SCR-ITAM-001~005)·역할-화면 매핑 증분(ASSET_MANAGER, auth 단계 기존 역할 재사용), 테스트 계정(am@itsm.local). 트랜잭션 데이터(asset 등)는 seed 안 함.

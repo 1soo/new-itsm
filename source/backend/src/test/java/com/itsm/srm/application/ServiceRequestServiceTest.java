@@ -1,5 +1,6 @@
 package com.itsm.srm.application;
 
+import com.itsm.asset.application.AssetService;
 import com.itsm.auth.domain.repository.AppUserRepository;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
@@ -8,6 +9,7 @@ import com.itsm.common.ticket.Approval;
 import com.itsm.common.ticket.TicketType;
 import com.itsm.common.ticket.repository.ApprovalRepository;
 import com.itsm.common.ticket.repository.CommentRepository;
+import com.itsm.common.ticket.repository.TicketLinkRepository;
 import com.itsm.common.ticket.repository.TimelineEventRepository;
 import com.itsm.srm.application.dto.ApprovalDecision;
 import com.itsm.srm.application.dto.ApprovalDecisionRequest;
@@ -61,6 +63,8 @@ class ServiceRequestServiceTest {
     @Mock CommentRepository commentRepository;
     @Mock TimelineEventRepository timelineRepository;
     @Mock AppUserRepository appUserRepository;
+    @Mock TicketLinkRepository ticketLinkRepository;
+    @Mock AssetService assetService;
 
     ServiceRequestService service;
 
@@ -68,7 +72,7 @@ class ServiceRequestServiceTest {
     void setUp() {
         service = new ServiceRequestService(requestRepository, formValueRepository, catalogItemRepository,
                 formFieldRepository, queueRepository, csatRepository, approvalRepository, commentRepository,
-                timelineRepository, appUserRepository);
+                timelineRepository, appUserRepository, ticketLinkRepository, assetService);
         when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(approvalRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(csatRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));

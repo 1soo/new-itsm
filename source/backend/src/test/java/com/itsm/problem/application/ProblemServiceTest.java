@@ -1,5 +1,6 @@
 package com.itsm.problem.application;
 
+import com.itsm.asset.application.AssetService;
 import com.itsm.change.application.ChangeService;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
@@ -65,6 +66,7 @@ class ProblemServiceTest {
     @Mock IncidentRepository incidentRepository;
     @Mock ChangeService changeService;
     @Mock com.itsm.knowledge.domain.repository.KnowledgeArticleRepository knowledgeArticleRepository;
+    @Mock AssetService assetService;
 
     ProblemService service;
 
@@ -72,7 +74,7 @@ class ProblemServiceTest {
     void setUp() {
         service = new ProblemService(problemRepository, fiveWhyRepository, knownErrorRepository,
                 actionRepository, timelineRepository, ticketLinkRepository, incidentRepository, changeService,
-                knowledgeArticleRepository);
+                knowledgeArticleRepository, assetService);
         when(problemRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(fiveWhyRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(knownErrorRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));

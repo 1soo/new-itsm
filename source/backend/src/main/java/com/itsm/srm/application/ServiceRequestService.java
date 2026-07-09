@@ -1,5 +1,6 @@
 package com.itsm.srm.application;
 
+import com.itsm.asset.application.AssetService;
 import com.itsm.auth.domain.AppUser;
 import com.itsm.auth.domain.repository.AppUserRepository;
 import com.itsm.common.exception.BusinessException;
@@ -13,6 +14,7 @@ import com.itsm.common.ticket.TicketType;
 import com.itsm.common.ticket.TimelineEvent;
 import com.itsm.common.ticket.repository.ApprovalRepository;
 import com.itsm.common.ticket.repository.CommentRepository;
+import com.itsm.common.ticket.repository.TicketLinkRepository;
 import com.itsm.common.ticket.repository.TimelineEventRepository;
 import com.itsm.auth.application.dto.PageResponse;
 import com.itsm.srm.application.dto.ApprovalDecision;
@@ -76,6 +78,8 @@ public class ServiceRequestService {
     private final CommentRepository commentRepository;
     private final TimelineEventRepository timelineRepository;
     private final AppUserRepository appUserRepository;
+    private final TicketLinkRepository ticketLinkRepository;
+    private final AssetService assetService;
 
     public ServiceRequestService(ServiceRequestRepository requestRepository,
                                  ServiceRequestFormValueRepository formValueRepository,
@@ -86,7 +90,9 @@ public class ServiceRequestService {
                                  ApprovalRepository approvalRepository,
                                  CommentRepository commentRepository,
                                  TimelineEventRepository timelineRepository,
-                                 AppUserRepository appUserRepository) {
+                                 AppUserRepository appUserRepository,
+                                 TicketLinkRepository ticketLinkRepository,
+                                 AssetService assetService) {
         this.requestRepository = requestRepository;
         this.formValueRepository = formValueRepository;
         this.catalogItemRepository = catalogItemRepository;
@@ -97,6 +103,8 @@ public class ServiceRequestService {
         this.commentRepository = commentRepository;
         this.timelineRepository = timelineRepository;
         this.appUserRepository = appUserRepository;
+        this.ticketLinkRepository = ticketLinkRepository;
+        this.assetService = assetService;
     }
 
     // ---------- create ----------
@@ -185,12 +193,17 @@ public class ServiceRequestService {
                 timelineRepository.findByTicketTypeAndTicketIdOrderByOccurredAtAsc(TT, id).stream()
                         .map(t -> new RequestDetailResponse.TimelineEntry(t.getEventType(), t.getMessage(), t.getOccurredAt()))
                         .toList();
+        List<RequestDetailResponse.LinkedAsset> linkedAssets = ticketLinkRepository
+                .findBySourceTypeAndSourceId(TT, id).stream()
+                .filter(l -> l.getTargetType() == TicketType.ASSET)
+                .map(l -> new RequestDetailResponse.LinkedAsset(l.getTargetId(), assetService.assetKeyOf(l.getTargetId())))
+                .toList();
 
         return new RequestDetailResponse(
                 request.getId(), request.getTicketKey(), item != null ? item.getName() : null,
                 request.getStatus().name(), formValues,
                 userName(request.getRequesterId()), userName(request.getAssigneeId()), queueName(request.getQueueId()),
-                approvalInfo, slaInfo, List.of(), comments, timeline,
+                approvalInfo, slaInfo, List.of(), linkedAssets, comments, timeline,
                 allowedTransitions(principal, request, approvalRequired, approvalApproved));
     }
 

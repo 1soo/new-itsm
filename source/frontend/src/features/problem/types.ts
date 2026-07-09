@@ -68,6 +68,7 @@ export interface ProblemDetail {
   workaround: string | null;
   linkedIncidents: LinkedTicket[];
   linkedChanges: LinkedTicket[];
+  linkedAssets: LinkedTicket[];
   actions: ProblemAction[];
   /** BE 제공 시 이 목록만 전이 버튼으로 노출. */
   allowedTransitions?: ProblemTargetStatus[];
