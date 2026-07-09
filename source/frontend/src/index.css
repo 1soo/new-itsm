@@ -1,0 +1,148 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/*
+ * 디자인 토큰 — docs/02_plan/screen/common.md 2절 공통 팔레트 준수.
+ * 원자 색상(raw palette)만 정의하고, 시맨틱 토큰은 이를 참조한다.
+ * 컴포넌트는 시맨틱 토큰(@theme 매핑)만 사용하고 색상을 하드코딩하지 않는다.
+ */
+
+@theme inline {
+  /* 시맨틱 색상 → CSS 변수 매핑 (shadcn 규약) */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* 상태 시맨틱 색상 (배지·토스트·알림 공용) — common.md 2.1절 */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-neutral: var(--neutral);
+  --color-neutral-foreground: var(--neutral-foreground);
+
+  /* 사이드바 셸 */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+
+  /* Radius 스케일 */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  /* --- Raw palette (common.md 2절) --- */
+  --base: #2563eb; /* Base — Primary */
+  --base-dark: #1e40af; /* Variation 1 — Hover/Active */
+  --base-light: #60a5fa; /* Variation 2 — 보조 강조·포커스 링 */
+  --neutral-dark: #1f2937; /* 본문 텍스트·사이드바 배경 */
+  --neutral-light: #f9fafb; /* 페이지·카드 배경 */
+  --palette-border: #e5e7eb; /* 구분선·입력 테두리 */
+
+  /* 상태 시맨틱 (common.md 2.1절) */
+  --status-success: #16a34a;
+  --status-warning: #d97706;
+  --status-danger: #dc2626;
+  --status-info: #60a5fa;
+  --status-muted: #9ca3af;
+
+  --radius: 0.5rem;
+
+  /* --- Semantic 매핑 --- */
+  --background: var(--neutral-light);
+  --foreground: var(--neutral-dark);
+  --card: var(--neutral-light);
+  --card-foreground: var(--neutral-dark);
+  --popover: var(--neutral-light);
+  --popover-foreground: var(--neutral-dark);
+
+  --primary: var(--base);
+  --primary-foreground: var(--neutral-light);
+  --primary-hover: var(--base-dark);
+
+  --secondary: var(--palette-border);
+  --secondary-foreground: var(--neutral-dark);
+
+  --muted: var(--palette-border);
+  --muted-foreground: var(--status-muted);
+
+  --accent: var(--palette-border);
+  --accent-foreground: var(--neutral-dark);
+
+  --destructive: var(--status-danger);
+  --destructive-foreground: var(--neutral-light);
+
+  --border: var(--palette-border);
+  --input: var(--palette-border);
+  --ring: var(--base-light);
+
+  /* 상태 시맨틱 on-color */
+  --success: var(--status-success);
+  --success-foreground: var(--neutral-light);
+  --warning: var(--status-warning);
+  --warning-foreground: var(--neutral-light);
+  --danger: var(--status-danger);
+  --danger-foreground: var(--neutral-light);
+  --info: var(--status-info);
+  --info-foreground: var(--neutral-dark);
+  --neutral: var(--status-muted);
+  --neutral-foreground: var(--neutral-light);
+
+  /* 사이드바 (Neutral Dark 배경 · 활성 Base) */
+  --sidebar: var(--neutral-dark);
+  --sidebar-foreground: var(--neutral-light);
+  --sidebar-primary: var(--base);
+  --sidebar-primary-foreground: var(--neutral-light);
+  --sidebar-accent: var(--base-dark);
+  --sidebar-accent-foreground: var(--neutral-light);
+  --sidebar-border: color-mix(in srgb, var(--neutral-light) 12%, transparent);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family:
+      "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      "Helvetica Neue", Arial, "Noto Sans KR", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* 키보드 포커스 가시화 (a11y) */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+}
