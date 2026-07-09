@@ -8,6 +8,8 @@ export const ROLE_PROCESS_OWNER = "PROCESS_OWNER";
 export const ROLE_INCIDENT_MANAGER = "INCIDENT_MANAGER";
 export const ROLE_PROBLEM_MANAGER = "PROBLEM_MANAGER";
 export const ROLE_CHANGE_MANAGER = "CHANGE_MANAGER";
+export const ROLE_KNOWLEDGE_CONTRIBUTOR = "KNOWLEDGE_CONTRIBUTOR";
+export const ROLE_KNOWLEDGE_GATEKEEPER = "KNOWLEDGE_GATEKEEPER";
 
 export function isSystemAdmin(roles: string[] | undefined): boolean {
   return !!roles?.includes(ROLE_SYSTEM_ADMIN);

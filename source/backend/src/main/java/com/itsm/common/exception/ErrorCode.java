@@ -60,6 +60,10 @@ public enum ErrorCode {
     CHANGE_NOT_FOUND(HttpStatus.NOT_FOUND, "변경 요청을 찾을 수 없습니다."),
     CHANGE_NOT_APPROVED(HttpStatus.BAD_REQUEST, "승인되지 않은 변경입니다."),
 
+    // --- Knowledge (KM) ---
+    ARTICLE_NOT_FOUND(HttpStatus.NOT_FOUND, "기사를 찾을 수 없습니다."),
+    ARTICLE_NOT_PUBLISHED(HttpStatus.BAD_REQUEST, "게시되지 않은 기사입니다."),
+
     // 409
     EMAIL_DUPLICATE(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),
     ROLE_NAME_DUPLICATE(HttpStatus.CONFLICT, "이미 존재하는 역할 코드 또는 역할명입니다."),

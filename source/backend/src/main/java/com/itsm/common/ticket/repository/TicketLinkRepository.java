@@ -16,4 +16,6 @@ public interface TicketLinkRepository {
 
     boolean existsBySourceTypeAndSourceIdAndTargetTypeAndTargetId(
             TicketType sourceType, Long sourceId, TicketType targetType, Long targetId);
+
+    boolean existsByTargetTypeAndTargetId(TicketType targetType, Long targetId);
 }

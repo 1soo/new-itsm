@@ -14,3 +14,5 @@
 - `09_problem_seed.sql` — problem 시드: 화면(SCR-PRB-001~004)·역할-화면 매핑 증분, 테스트 계정(pm@itsm.local, PROBLEM_MANAGER). 트랜잭션 데이터는 seed 안 함.
 - `10_change_schema.sql` — change 스키마: `change_template`(표준 변경 사전승인 템플릿), `change_request`(RFC, 6단계 상태·승인경로·구현결과), `change_affected_system`(영향 시스템). 승인·연계는 `approval`/`ticket_link` 재사용.
 - `11_change_seed.sql` — change 시드: 표준 변경 템플릿 1건, 화면(SCR-CHG-001~006)·역할-화면 매핑 증분(CHANGE_MANAGER/APPROVER, 둘 다 auth 단계 기존 역할 재사용), 테스트 계정(cm@/cab@itsm.local). 트랜잭션 데이터는 seed 안 함.
+- `12_knowledge_schema.sql` — knowledge 스키마: `knowledge_category`/`knowledge_label`(분류), `knowledge_article`(기사, DRAFT/IN_REVIEW/PUBLISHED, 유용성·조회 집계), `article_label`(매핑), `knowledge_feedback`(유용성 평가), `knowledge_review`(검토 이력), `search_log`(무결과 검색 로그, append-only). KCS 연계는 `ticket_link` 재사용.
+- `13_knowledge_seed.sql` — knowledge 시드: 카테고리 3건(네트워크/계정·권한/결제), 화면(SCR-KM-001~005)·역할-화면 매핑 증분(KNOWLEDGE_CONTRIBUTOR/KNOWLEDGE_GATEKEEPER, 둘 다 auth 단계 기존 역할 재사용), 테스트 계정(kc@/kg@itsm.local). 트랜잭션 데이터는 seed 안 함.

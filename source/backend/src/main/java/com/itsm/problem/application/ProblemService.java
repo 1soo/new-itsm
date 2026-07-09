@@ -13,6 +13,7 @@ import com.itsm.common.ticket.repository.TicketLinkRepository;
 import com.itsm.common.ticket.repository.TimelineEventRepository;
 import com.itsm.incident.domain.Incident;
 import com.itsm.incident.domain.repository.IncidentRepository;
+import com.itsm.knowledge.domain.repository.KnowledgeArticleRepository;
 import com.itsm.problem.application.dto.ActionCreateRequest;
 import com.itsm.problem.application.dto.ActionResponse;
 import com.itsm.problem.application.dto.ActionStatusRequest;
@@ -75,6 +76,7 @@ public class ProblemService {
     private final TicketLinkRepository ticketLinkRepository;
     private final IncidentRepository incidentRepository;
     private final ChangeService changeService;
+    private final KnowledgeArticleRepository knowledgeArticleRepository;
 
     public ProblemService(ProblemRepository problemRepository,
                           ProblemFiveWhyRepository fiveWhyRepository,
@@ -83,7 +85,8 @@ public class ProblemService {
                           TimelineEventRepository timelineRepository,
                           TicketLinkRepository ticketLinkRepository,
                           IncidentRepository incidentRepository,
-                          ChangeService changeService) {
+                          ChangeService changeService,
+                          KnowledgeArticleRepository knowledgeArticleRepository) {
         this.problemRepository = problemRepository;
         this.fiveWhyRepository = fiveWhyRepository;
         this.knownErrorRepository = knownErrorRepository;
@@ -92,6 +95,7 @@ public class ProblemService {
         this.ticketLinkRepository = ticketLinkRepository;
         this.incidentRepository = incidentRepository;
         this.changeService = changeService;
+        this.knowledgeArticleRepository = knowledgeArticleRepository;
     }
 
     // ---------- create (API-PRB-002) ----------
@@ -182,6 +186,11 @@ public class ProblemService {
         problem.updateWorkaround(request.content());
         problemRepository.save(problem);
         if (request.linkedArticleId() != null) {
+            boolean exists = knowledgeArticleRepository.findById(request.linkedArticleId())
+                    .filter(a -> !a.isDeleted()).isPresent();
+            if (!exists) {
+                throw new BusinessException(ErrorCode.LINK_TARGET_NOT_FOUND);
+            }
             saveLinkOnce(TT, id, TicketType.KNOWLEDGE, request.linkedArticleId(), "WORKAROUND");
         }
         timelineRepository.save(TimelineEvent.of(TT, id, "WORKAROUND", "워크어라운드가 등록되었습니다."));

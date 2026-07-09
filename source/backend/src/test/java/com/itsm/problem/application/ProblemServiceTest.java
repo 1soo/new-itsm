@@ -64,13 +64,15 @@ class ProblemServiceTest {
     @Mock TicketLinkRepository ticketLinkRepository;
     @Mock IncidentRepository incidentRepository;
     @Mock ChangeService changeService;
+    @Mock com.itsm.knowledge.domain.repository.KnowledgeArticleRepository knowledgeArticleRepository;
 
     ProblemService service;
 
     @BeforeEach
     void setUp() {
         service = new ProblemService(problemRepository, fiveWhyRepository, knownErrorRepository,
-                actionRepository, timelineRepository, ticketLinkRepository, incidentRepository, changeService);
+                actionRepository, timelineRepository, ticketLinkRepository, incidentRepository, changeService,
+                knowledgeArticleRepository);
         when(problemRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(fiveWhyRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(knownErrorRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -193,10 +195,22 @@ class ProblemServiceTest {
     void workaroundWithArticleCreatesKnowledgeLink() {
         login("PROBLEM_MANAGER");
         when(problemRepository.findById(1L)).thenReturn(Optional.of(problem(ProblemStatus.WORKAROUND)));
+        when(knowledgeArticleRepository.findById(7L)).thenReturn(Optional.of(
+                new com.itsm.knowledge.domain.KnowledgeArticle("제목", "본문", null, 1L)));
         when(ticketLinkRepository.existsBySourceTypeAndSourceIdAndTargetTypeAndTargetId(any(), any(), any(), any()))
                 .thenReturn(false);
         service.addWorkaround(1L, new WorkaroundRequest("재시작", 7L));
         verify(ticketLinkRepository).save(any());
+    }
+
+    @Test
+    void workaroundWithNonExistentArticleRejected() {
+        login("PROBLEM_MANAGER");
+        when(problemRepository.findById(1L)).thenReturn(Optional.of(problem(ProblemStatus.WORKAROUND)));
+        when(knowledgeArticleRepository.findById(7L)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.addWorkaround(1L, new WorkaroundRequest("재시작", 7L)))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.LINK_TARGET_NOT_FOUND));
     }
 
     // ---------- known error ----------

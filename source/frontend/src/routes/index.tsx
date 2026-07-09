@@ -12,6 +12,8 @@ import {
   ROLE_CHANGE_MANAGER,
   ROLE_END_USER,
   ROLE_INCIDENT_MANAGER,
+  ROLE_KNOWLEDGE_CONTRIBUTOR,
+  ROLE_KNOWLEDGE_GATEKEEPER,
   ROLE_PROBLEM_MANAGER,
   ROLE_PROCESS_OWNER,
   ROLE_SERVICE_DESK_AGENT,
@@ -47,6 +49,11 @@ import { ChangeDetailPage } from "@/features/change/ChangeDetailPage";
 import { ChangeApprovalInboxPage } from "@/features/change/ChangeApprovalInboxPage";
 import { ChangeSchedulePage } from "@/features/change/ChangeSchedulePage";
 import { ChangeMetricsPage } from "@/features/change/ChangeMetricsPage";
+import { KnowledgeListPage } from "@/features/knowledge/KnowledgeListPage";
+import { ArticleViewPage } from "@/features/knowledge/ArticleViewPage";
+import { ArticleEditPage } from "@/features/knowledge/ArticleEditPage";
+import { ReviewInboxPage } from "@/features/knowledge/ReviewInboxPage";
+import { KnowledgeMetricsPage } from "@/features/knowledge/KnowledgeMetricsPage";
 
 /*
  * 라우팅 — 화면 ID(SCR-*)와 경로 매핑. screen 테이블 seed 경로와 정합.
@@ -170,6 +177,38 @@ export const router = createBrowserRouter([
             element: <RequireRoles roles={[ROLE_CHANGE_MANAGER, ROLE_APPROVER]} />,
             children: [
               { path: "/changes/:id", element: <ChangeDetailPage /> }, // SCR-CHG-003
+            ],
+          },
+
+          // 지식 관리(KM) — KNOWLEDGE_CONTRIBUTOR/KNOWLEDGE_GATEKEEPER(검색·열람은 END_USER/SERVICE_DESK_AGENT도 포함)
+          {
+            element: (
+              <RequireRoles
+                roles={[
+                  ROLE_END_USER,
+                  ROLE_SERVICE_DESK_AGENT,
+                  ROLE_KNOWLEDGE_CONTRIBUTOR,
+                  ROLE_KNOWLEDGE_GATEKEEPER,
+                ]}
+              />
+            ),
+            children: [
+              { path: "/knowledge", element: <KnowledgeListPage /> }, // SCR-KM-001
+              { path: "/knowledge/:id", element: <ArticleViewPage /> }, // SCR-KM-002
+            ],
+          },
+          {
+            element: <RequireRoles roles={[ROLE_KNOWLEDGE_CONTRIBUTOR]} />,
+            children: [
+              { path: "/knowledge/new", element: <ArticleEditPage /> }, // SCR-KM-003
+              { path: "/knowledge/:id/edit", element: <ArticleEditPage /> }, // SCR-KM-003
+            ],
+          },
+          {
+            element: <RequireRoles roles={[ROLE_KNOWLEDGE_GATEKEEPER]} />,
+            children: [
+              { path: "/knowledge/reviews", element: <ReviewInboxPage /> }, // SCR-KM-004
+              { path: "/knowledge/metrics", element: <KnowledgeMetricsPage /> }, // SCR-KM-005
             ],
           },
 
