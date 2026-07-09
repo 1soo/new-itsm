@@ -41,9 +41,16 @@ class AuthAdminIntegrationTest {
             .withDatabaseName("itsm")
             .withUsername("itsm")
             .withPassword("itsm")
+            // dev-database의 실제 DDL(스키마만; 시드는 테스트가 자체 생성하므로 제외)
             .withCopyFileToContainer(
                     MountableFile.forHostPath(Paths.get("../db/sql/01_schema.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/01_schema.sql");
+                    "/docker-entrypoint-initdb.d/01_schema.sql")
+            .withCopyFileToContainer(
+                    MountableFile.forHostPath(Paths.get("../db/sql/03_common_schema.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/03_common_schema.sql")
+            .withCopyFileToContainer(
+                    MountableFile.forHostPath(Paths.get("../db/sql/04_srm_schema.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/04_srm_schema.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {

@@ -1,0 +1,7 @@
+package com.itsm.srm.application.dto;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+
+@Schema(description = "상태 전이 응답")
+public record StatusResponse(Long id, String status) {
+}

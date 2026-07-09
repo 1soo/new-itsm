@@ -96,20 +96,20 @@
 ### API-CHG-006 · 승인/반려
 
 - **Endpoint**: `POST /api/v1/changes/{id}/approval`
-- **인증**: 필요(Approver/CAB)
+- **인증**: 필요(approval.approver_role 보유자, CAB=APPROVER)
 - **Request Body**: `{ "decision": "APPROVE|REJECT", "opinion": "string" }`
 - **Response Body** (200): `{ "id": "number", "status": "string" }`
-- **Response Code**: 200 / 403 승인 권한 없음 / 404
+- **Response Code**: 200 / 403 approver_role 미보유 / 404 / 409 이미 결정됨. **역할 기반 승인**(SRM과 동일): 승인 경로로 결정된 approver_role(CAB/동료검토→APPROVER)을 가진 사용자가 처리, 먼저 처리한 사용자가 결정자로 기록.
 
 ### API-CHG-007 · 승인 대기 목록
 
 - **Endpoint**: `GET /api/v1/approvals?scope=mine&type=change`
-- **인증**: 필요(Approver/CAB)
+- **인증**: 필요(Approver 계열 역할)
 - **Response Body** (200):
   ```json
   [ { "changeId": "number", "ticketKey": "string", "type": "string", "risk": "string", "requester": "string" } ]
   ```
-- **Response Code**: 200 / 401 / 403
+- **Response Code**: 200 / 401 / 403. `scope=mine` = role claim에 approval.approver_role이 포함된 PENDING 승인 공유 목록(역할 기반 공유함).
 
 ### API-CHG-008 · 구현 결과 기록
 

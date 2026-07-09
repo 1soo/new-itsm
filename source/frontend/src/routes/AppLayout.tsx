@@ -1,24 +1,18 @@
 import { useMemo, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import {
-  LayoutDashboard,
-  ScrollText,
-  ShieldCheck,
-  User,
-  Users,
-} from "lucide-react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import type { NavGroup } from "@/components/layout/sidebar";
 import { ConfirmDialog } from "@/components/common";
-import { isSystemAdmin } from "@/features/auth/roles";
+import { hasAnyRole } from "@/features/auth/roles";
+import { navConfig } from "@/routes/navConfig";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { logout } from "@/store/authSlice";
 
 /*
- * 앱 레이아웃 — dev-ui의 AppShell(프레젠테이션)에 RBAC 메뉴 데이터·헤더 동작을 주입한다.
- * (SCR-COM-001~004) 메뉴는 역할에 따라 필터링하며(권한 없는 항목 제외), 라우팅/인증은 FE가 담당한다.
- * auth 단계 메뉴: 대시보드·내 프로필 + 관리자 그룹(SYSTEM_ADMIN 전용). 타 도메인 메뉴는 이후 단계에서 추가.
+ * 앱 레이아웃 — dev-ui의 AppShell(프레젠테이션)에 RBAC 필터된 메뉴·헤더 동작을 주입한다.
+ * (SCR-COM-001~004) 메뉴 정의는 navConfig(중앙 관리)에서 가져와 역할로 필터링하고,
+ * active 계산·navigate 주입·로그아웃 확인은 FE가 담당한다.
  */
 export function AppLayout() {
   const navigate = useNavigate();
@@ -31,64 +25,26 @@ export function AppLayout() {
 
   const pathname = location.pathname;
   const isActive = (path: string) =>
-    path === "/" ? pathname === "/" : pathname.startsWith(path);
+    path === "/" ? pathname === "/" : pathname === path || pathname.startsWith(`${path}/`);
 
+  const roles = user?.roles;
   const groups = useMemo<NavGroup[]>(() => {
-    const result: NavGroup[] = [
-      {
-        key: "main",
-        items: [
-          {
-            key: "dashboard",
-            label: "대시보드",
-            icon: <LayoutDashboard />,
-            active: isActive("/"),
-            onSelect: () => navigate("/"),
-          },
-          {
-            key: "profile",
-            label: "내 프로필",
-            icon: <User />,
-            active: isActive("/profile"),
-            onSelect: () => navigate("/profile"),
-          },
-        ],
-      },
-    ];
-
-    if (isSystemAdmin(user?.roles)) {
-      result.push({
-        key: "admin",
-        label: "관리자",
-        items: [
-          {
-            key: "admin-users",
-            label: "계정 관리",
-            icon: <Users />,
-            active: isActive("/admin/users"),
-            onSelect: () => navigate("/admin/users"),
-          },
-          {
-            key: "admin-roles",
-            label: "역할 관리",
-            icon: <ShieldCheck />,
-            active: isActive("/admin/roles"),
-            onSelect: () => navigate("/admin/roles"),
-          },
-          {
-            key: "admin-audit",
-            label: "감사 로그",
-            icon: <ScrollText />,
-            active: isActive("/admin/audit-logs"),
-            onSelect: () => navigate("/admin/audit-logs"),
-          },
-        ],
-      });
-    }
-
-    return result;
+    return navConfig
+      .map((group) => {
+        const items = group.items
+          .filter((item) => !item.roles || hasAnyRole(roles, item.roles))
+          .map((item) => ({
+            key: item.key,
+            label: item.label,
+            icon: item.icon,
+            active: isActive(item.path),
+            onSelect: () => navigate(item.path),
+          }));
+        return { key: group.key, label: group.label, items };
+      })
+      .filter((group) => group.items.length > 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.roles, pathname, navigate]);
+  }, [roles, pathname, navigate]);
 
   const handleLogout = async () => {
     setLoggingOut(true);

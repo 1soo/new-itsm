@@ -29,6 +29,20 @@ public enum ErrorCode {
     // 415
     UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "지원하지 않는 Content-Type입니다."),
 
+    // --- Service Request (SRM) ---
+    CATALOG_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "카탈로그 항목을 찾을 수 없습니다."),
+    REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "서비스 요청을 찾을 수 없습니다."),
+    APPROVAL_NOT_FOUND(HttpStatus.NOT_FOUND, "승인 정보를 찾을 수 없습니다."),
+    ASSIGNEE_NOT_FOUND(HttpStatus.NOT_FOUND, "배정 대상 사용자를 찾을 수 없습니다."),
+    INVALID_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "허용되지 않은 상태 전이입니다."),
+    REQUEST_ALREADY_CLOSED(HttpStatus.BAD_REQUEST, "이미 종료된 요청입니다."),
+    REJECT_REASON_REQUIRED(HttpStatus.BAD_REQUEST, "반려 사유는 필수입니다."),
+    REQUIRED_FIELD_MISSING(HttpStatus.BAD_REQUEST, "필수 양식 필드가 누락되었습니다."),
+    CSAT_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "종료된 요청에만 CSAT를 제출할 수 있습니다."),
+    CSAT_ALREADY_SUBMITTED(HttpStatus.CONFLICT, "이미 CSAT가 제출되었습니다."),
+    APPROVAL_PENDING(HttpStatus.CONFLICT, "승인 대기 중에는 이행할 수 없습니다."),
+    APPROVAL_ALREADY_DECIDED(HttpStatus.CONFLICT, "이미 결정된 승인입니다."),
+
     // 409
     EMAIL_DUPLICATE(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),
     ROLE_NAME_DUPLICATE(HttpStatus.CONFLICT, "이미 존재하는 역할 코드 또는 역할명입니다."),

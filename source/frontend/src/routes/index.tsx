@@ -3,9 +3,16 @@ import { createBrowserRouter } from "react-router-dom";
 import { SessionBridge } from "@/routes/SessionBridge";
 import { AuthGuard } from "@/routes/AuthGuard";
 import { RequireAdmin } from "@/routes/RequireAdmin";
+import { RequireRoles } from "@/routes/RequireRoles";
 import { DashboardPage } from "@/routes/DashboardPage";
 import { ForbiddenPage } from "@/routes/ForbiddenPage";
 import { NotFoundPage } from "@/routes/NotFoundPage";
+import {
+  ROLE_APPROVER,
+  ROLE_END_USER,
+  ROLE_PROCESS_OWNER,
+  ROLE_SERVICE_DESK_AGENT,
+} from "@/features/auth/roles";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { ProfilePage } from "@/features/auth/ProfilePage";
 import { ChangePasswordPage } from "@/features/auth/ChangePasswordPage";
@@ -14,6 +21,14 @@ import { UserCreatePage } from "@/features/admin/UserCreatePage";
 import { UserDetailPage } from "@/features/admin/UserDetailPage";
 import { RoleManagementPage } from "@/features/admin/RoleManagementPage";
 import { AuditLogPage } from "@/features/admin/AuditLogPage";
+import { PortalPage } from "@/features/service-request/PortalPage";
+import { RequestSubmitPage } from "@/features/service-request/RequestSubmitPage";
+import { RequestListPage } from "@/features/service-request/RequestListPage";
+import { RequestQueuePage } from "@/features/service-request/RequestQueuePage";
+import { RequestDetailPage } from "@/features/service-request/RequestDetailPage";
+import { ApprovalInboxPage } from "@/features/service-request/ApprovalInboxPage";
+import { CatalogManagePage } from "@/features/service-request/CatalogManagePage";
+import { MetricsPage } from "@/features/service-request/MetricsPage";
 
 /*
  * 라우팅 — 화면 ID(SCR-*)와 경로 매핑. screen 테이블 seed 경로와 정합.
@@ -44,6 +59,48 @@ export const router = createBrowserRouter([
               { path: "/admin/users/:id", element: <UserDetailPage /> }, // SCR-ADMIN-003
               { path: "/admin/roles", element: <RoleManagementPage /> }, // SCR-ADMIN-004
               { path: "/admin/audit-logs", element: <AuditLogPage /> }, // SCR-ADMIN-005
+            ],
+          },
+
+          // 서비스 요청(SRM) — 역할별 RBAC
+          {
+            element: <RequireRoles roles={[ROLE_END_USER]} />,
+            children: [
+              { path: "/portal", element: <PortalPage /> }, // SCR-SRM-001
+              { path: "/portal/requests/new", element: <RequestSubmitPage /> }, // SCR-SRM-002
+            ],
+          },
+          {
+            element: <RequireRoles roles={[ROLE_END_USER, ROLE_SERVICE_DESK_AGENT]} />,
+            children: [
+              { path: "/service-requests", element: <RequestListPage /> }, // SCR-SRM-003
+            ],
+          },
+          {
+            element: <RequireRoles roles={[ROLE_SERVICE_DESK_AGENT]} />,
+            children: [
+              { path: "/service-requests/queue", element: <RequestQueuePage /> }, // SCR-SRM-004
+            ],
+          },
+          {
+            element: <RequireRoles roles={[ROLE_PROCESS_OWNER]} />,
+            children: [
+              { path: "/admin/service-catalog", element: <CatalogManagePage /> }, // SCR-SRM-007
+              { path: "/service-requests/metrics", element: <MetricsPage /> }, // SCR-SRM-008
+            ],
+          },
+          {
+            element: <RequireRoles roles={[ROLE_APPROVER]} />,
+            children: [
+              { path: "/approvals/service-requests", element: <ApprovalInboxPage /> }, // SCR-SRM-006
+            ],
+          },
+          {
+            element: (
+              <RequireRoles roles={[ROLE_END_USER, ROLE_SERVICE_DESK_AGENT, ROLE_APPROVER]} />
+            ),
+            children: [
+              { path: "/service-requests/:id", element: <RequestDetailPage /> }, // SCR-SRM-005
             ],
           },
 

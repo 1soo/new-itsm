@@ -70,15 +70,16 @@
 
 ### approval
 
-서비스요청·변경 승인 공용. 지정 승인자 검증(403)에 사용.
+서비스요청·변경 승인 공용. **역할 기반 승인** 모델: 승인 담당 역할(`approver_role`)을 보유한 사용자라면 공유 대기함에서 처리하며, 먼저 처리한 사용자가 결정한다(`decided_by_id`에 기록). 인가 검증(403)은 요청 사용자의 role claim에 `approver_role` 포함 여부로 판정.
 
 | 컬럼 | 타입 | 제약 | 설명 |
 |------|------|------|------|
 | id | BIGINT | PK | |
 | ticket_type | VARCHAR(20) | NOT NULL | SERVICE_REQUEST / CHANGE |
 | ticket_id | BIGINT | NOT NULL | 대상 티켓 id |
-| approver_id | BIGINT | FK → app_user.id, NOT NULL | 지정 승인자 |
+| approver_role | VARCHAR(50) | NOT NULL | 승인 담당 역할(role.role_code). SRM=요청 유형의 approver_role(기본 APPROVER), CHANGE=승인 경로(CAB/동료검토→APPROVER) |
 | status | VARCHAR(20) | NOT NULL, DEFAULT 'PENDING' | PENDING/APPROVED/REJECTED |
+| decided_by_id | BIGINT | FK → app_user.id, NULL | 실제 결정한 사용자(먼저 처리) |
 | decision_reason | VARCHAR(500) | NULL | 승인/반려 의견·사유 |
 | decided_at | TIMESTAMPTZ | NULL | 결정 시각 |
 | ...공통 컬럼... | | | |
@@ -89,6 +90,7 @@ RBAC/화면 매핑 테이블(`screen`, `user_role`, `screen_role`)은 [auth.md](
 
 ## 6. 관계 · 제약조건 요약
 
-- comment.author_id → app_user.id (FK), approval.approver_id → app_user.id (FK)
+- comment.author_id → app_user.id (FK), approval.decided_by_id → app_user.id (FK, nullable)
+- approval.approver_role → role.role_code (논리 참조, 인가 판정에 사용)
 - ticket_link: 다형 참조라 DB FK 대신 애플리케이션 레벨에서 대상 존재 검증. UNIQUE(source_type, source_id, target_type, target_id)
 - (ticket_type, ticket_id) 조합에 조회 인덱스 권장: comment, timeline_event, approval

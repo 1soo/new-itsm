@@ -26,6 +26,7 @@
 | API-SRM-013 | 요청 코멘트 등록 | POST | /api/v1/service-requests/{id}/comments | 필요 |
 | API-SRM-014 | CSAT 제출 | POST | /api/v1/service-requests/{id}/csat | 필요(요청자) |
 | API-SRM-015 | 요청 지표 조회 | GET | /api/v1/service-requests/metrics | 필요 |
+| API-SRM-016 | 큐 목록·건수 조회 | GET | /api/v1/queues | 필요(Agent) |
 
 ## 2. API 상세
 
@@ -62,6 +63,7 @@
   ```json
   {
     "name": "string · 필수", "description": "string", "approvalRequired": "boolean",
+    "approverRole": "string · 승인 담당 역할코드(기본 APPROVER), approvalRequired=true 시 사용",
     "queueId": "number", "slaResponseMinutes": "number", "slaResolveMinutes": "number",
     "formSchema": [ { "key": "string", "label": "string", "type": "string", "required": "boolean", "options": ["string"] } ]
   }
@@ -159,20 +161,20 @@
 ### API-SRM-011 · 요청 승인/반려
 
 - **Endpoint**: `POST /api/v1/service-requests/{id}/approval`
-- **인증**: 필요(지정 Approver)
+- **인증**: 필요(approval.approver_role 보유자)
 - **Request Body**: `{ "decision": "APPROVE|REJECT", "reason": "string · 반려 시 필수" }`
 - **Response Body** (200): `{ "id": "number", "approvalStatus": "string" }`
-- **Response Code**: 200 / 400 반려 사유 누락 / 403 지정 승인자 아님 / 404
+- **Response Code**: 200 / 400 반려 사유 누락 / 403 approver_role 미보유 / 404 / 409 이미 결정됨. **역할 기반 승인**: approver_role을 가진 사용자면 처리 가능하며, 먼저 처리한 사용자가 결정자로 기록(decided_by_id). role claim에 approver_role 미포함 시 403.
 
 ### API-SRM-012 · 승인 대기 목록
 
 - **Endpoint**: `GET /api/v1/approvals?scope=mine&type=service-request`
-- **인증**: 필요(Approver)
+- **인증**: 필요(Approver 계열 역할)
 - **Response Body** (200):
   ```json
   [ { "requestId": "number", "ticketKey": "string", "requester": "string", "requestedAt": "ISO-8601" } ]
   ```
-- **Response Code**: 200 / 401 / 403
+- **Response Code**: 200 / 401 / 403. `scope=mine` = 현재 사용자의 role claim에 approval.approver_role이 포함된 **PENDING 승인 공유 목록**(특정 개인 배정이 아닌 역할 기반 공유함).
 
 ### API-SRM-013 · 요청 코멘트 등록
 
@@ -193,9 +195,20 @@
 ### API-SRM-015 · 요청 지표 조회
 
 - **Endpoint**: `GET /api/v1/service-requests/metrics?from=&to=`
-- **인증**: 필요(Agent 이상)
+- **인증**: 필요(PROCESS_OWNER) — RBAC 단일 원천 security/authorization/process_owner.md 기준. SCR-SRM-008도 PROCESS_OWNER 전용.
 - **Response Body** (200):
   ```json
   { "csatAvg": "number", "avgResponseMinutes": "number", "avgResolveMinutes": "number", "slaComplianceRate": "number" }
   ```
 - **Response Code**: 200(데이터 없으면 0값) / 401 / 403
+
+### API-SRM-016 · 큐 목록·건수 조회
+
+- **Endpoint**: `GET /api/v1/queues`
+- **인증**: 필요(Agent 이상) — SCR-SRM-004 좌측 큐 목록 렌더용.
+- **Request Body**: 없음
+- **Response Body** (200):
+  ```json
+  [ { "id": "number", "name": "string", "isDefault": "boolean · 미분류 기본 큐", "openCount": "number · 미종료 요청 건수" } ]
+  ```
+- **Response Code**: 200 / 401 / 403

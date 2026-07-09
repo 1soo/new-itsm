@@ -48,6 +48,7 @@
 | description | VARCHAR(500) | NULL | 설명 |
 | category | VARCHAR(100) | NULL | 카탈로그 그룹 |
 | approval_required | BOOLEAN | NOT NULL, DEFAULT false | 승인 필요 여부 |
+| approver_role | VARCHAR(50) | NULL | 승인 담당 역할(role.role_code, 기본 'APPROVER'). approval_required=true일 때 승인 라우팅에 사용 |
 | queue_id | BIGINT | FK → queue.id, NULL | 담당 큐 |
 | sla_response_minutes | INT | NULL | 응답 SLA(분) |
 | sla_resolve_minutes | INT | NULL | 해결 SLA(분) |
