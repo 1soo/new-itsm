@@ -3,6 +3,7 @@ package com.itsm.incident.application;
 import com.itsm.auth.application.dto.PageResponse;
 import com.itsm.auth.domain.AppUser;
 import com.itsm.auth.domain.repository.AppUserRepository;
+import com.itsm.change.application.ChangeService;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.common.security.AuthPrincipal;
@@ -85,6 +86,7 @@ public class IncidentService {
     private final TicketLinkRepository ticketLinkRepository;
     private final AppUserRepository appUserRepository;
     private final ProblemService problemService;
+    private final ChangeService changeService;
 
     public IncidentService(IncidentRepository incidentRepository,
                            IncidentResponderRepository responderRepository,
@@ -95,7 +97,8 @@ public class IncidentService {
                            TimelineEventRepository timelineRepository,
                            TicketLinkRepository ticketLinkRepository,
                            AppUserRepository appUserRepository,
-                           ProblemService problemService) {
+                           ProblemService problemService,
+                           ChangeService changeService) {
         this.incidentRepository = incidentRepository;
         this.responderRepository = responderRepository;
         this.severityHistoryRepository = severityHistoryRepository;
@@ -106,6 +109,7 @@ public class IncidentService {
         this.ticketLinkRepository = ticketLinkRepository;
         this.appUserRepository = appUserRepository;
         this.problemService = problemService;
+        this.changeService = changeService;
     }
 
     // ---------- create (API-INC-002) ----------
@@ -146,7 +150,7 @@ public class IncidentService {
                 .map(r -> new ResponderDto(r.getUserId(), userName(r.getUserId()), r.getResponseRole().name()))
                 .toList();
         List<IncidentDetailResponse.LinkDto> links = ticketLinkRepository.findBySourceTypeAndSourceId(TT, id).stream()
-                .map(l -> new IncidentDetailResponse.LinkDto(l.getTargetType().name(), String.valueOf(l.getTargetId())))
+                .map(l -> new IncidentDetailResponse.LinkDto(l.getTargetType().name(), linkedTicketKey(l.getTargetType(), l.getTargetId())))
                 .toList();
         List<IncidentDetailResponse.TimelineEntry> timeline =
                 timelineRepository.findByTicketTypeAndTicketIdOrderByOccurredAtAsc(TT, id).stream()
@@ -431,6 +435,18 @@ public class IncidentService {
 
     private String userName(Long id) {
         return id == null ? null : appUserRepository.findById(id).map(AppUser::getName).orElse(null);
+    }
+
+    /** 연계 대상 ticketKey 조회(API-INC-003 links). PROBLEM은 INC-012로 직접 연계, CHANGE는 API-CHG-009(change→incident)
+     * 양방향 링크로 인해 인시던트 상세에도 노출된다. */
+    private String linkedTicketKey(TicketType targetType, Long targetId) {
+        if (targetType == TicketType.PROBLEM) {
+            return problemService.ticketKeyOf(targetId);
+        }
+        if (targetType == TicketType.CHANGE) {
+            return changeService.ticketKeyOf(targetId);
+        }
+        return null;
     }
 
     private Incident findIncident(Long id) {

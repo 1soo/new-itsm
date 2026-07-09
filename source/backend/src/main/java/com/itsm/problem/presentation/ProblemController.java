@@ -149,10 +149,10 @@ public class ProblemController {
         return ResponseEntity.status(HttpStatus.CREATED).body(problemService.createKnownError(id, request));
     }
 
-    @Operation(summary = "인시던트/변경 연계", description = "API-PRB-009 · INCIDENT 연계(양방향). CHANGE는 변경 도메인 미구축(400)")
+    @Operation(summary = "인시던트/변경 연계", description = "API-PRB-009 · INCIDENT/CHANGE 연계(양방향). CHANGE는 기존 연계 또는 createNewChange=true로 신규 생성")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "연계"),
-            @ApiResponse(responseCode = "400", description = "존재하지 않는 대상/변경 미구축", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "400", description = "존재하지 않는 대상", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "403", description = "권한 부족", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "404", description = "문제 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })

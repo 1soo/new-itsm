@@ -66,7 +66,9 @@ class ProblemIntegrationTest {
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/06_incident_schema.sql").toAbsolutePath()),
                     "/docker-entrypoint-initdb.d/06_incident_schema.sql")
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/08_problem_schema.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/08_problem_schema.sql");
+                    "/docker-entrypoint-initdb.d/08_problem_schema.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/10_change_schema.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/10_change_schema.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {
@@ -168,11 +170,21 @@ class ProblemIntegrationTest {
                 .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                         .isEqualTo(ErrorCode.LINK_TARGET_NOT_FOUND));
 
-        // CHANGE 연계 → 미구축 400
-        assertThatThrownBy(() -> problemService.link(id, new LinkRequest(LinkTargetType.CHANGE, null, true)))
+        // CHANGE 연계 — 신규 생성(양방향 ticket_link)
+        var changeLink = problemService.link(id, new LinkRequest(LinkTargetType.CHANGE, null, true));
+        assertThat(changeLink.targetType()).isEqualTo("CHANGE");
+        Long changeLinkCount = jdbc.queryForObject(
+                "select count(*) from ticket_link where (source_type='PROBLEM' and source_id=? and target_type='CHANGE') "
+                        + "or (source_type='CHANGE' and target_type='PROBLEM' and target_id=?)", Long.class, id, id);
+        assertThat(changeLinkCount).isEqualTo(2);
+        assertThat(problemService.detail(id).linkedChanges()).extracting("ticketKey")
+                .anyMatch(key -> key != null && key.toString().startsWith("CHG-"));
+
+        // 존재하지 않는 변경 연계 → 400
+        assertThatThrownBy(() -> problemService.link(id, new LinkRequest(LinkTargetType.CHANGE, 999999L, false)))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                        .isEqualTo(ErrorCode.CHANGE_LINK_UNAVAILABLE));
+                        .isEqualTo(ErrorCode.LINK_TARGET_NOT_FOUND));
 
         // 후속 조치 등록
         var action = problemService.addAction(id, new ActionCreateRequest("풀 모니터링 알람 추가", "sre", null));

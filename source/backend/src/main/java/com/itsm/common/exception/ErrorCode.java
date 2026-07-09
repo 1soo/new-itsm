@@ -55,7 +55,10 @@ public enum ErrorCode {
     WORKAROUND_CONTENT_REQUIRED(HttpStatus.BAD_REQUEST, "워크어라운드 내용은 필수입니다."),
     LINK_TARGET_NOT_FOUND(HttpStatus.BAD_REQUEST, "연계 대상을 찾을 수 없습니다."),
     LINK_TARGET_REQUIRED(HttpStatus.BAD_REQUEST, "연계할 대상 id 또는 신규 생성 지정이 필요합니다."),
-    CHANGE_LINK_UNAVAILABLE(HttpStatus.BAD_REQUEST, "변경(Change) 도메인이 아직 구축되지 않아 변경 연계를 사용할 수 없습니다."),
+
+    // --- Change (CHG) ---
+    CHANGE_NOT_FOUND(HttpStatus.NOT_FOUND, "변경 요청을 찾을 수 없습니다."),
+    CHANGE_NOT_APPROVED(HttpStatus.BAD_REQUEST, "승인되지 않은 변경입니다."),
 
     // 409
     EMAIL_DUPLICATE(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),

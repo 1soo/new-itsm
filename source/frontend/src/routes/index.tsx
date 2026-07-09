@@ -9,6 +9,7 @@ import { ForbiddenPage } from "@/routes/ForbiddenPage";
 import { NotFoundPage } from "@/routes/NotFoundPage";
 import {
   ROLE_APPROVER,
+  ROLE_CHANGE_MANAGER,
   ROLE_END_USER,
   ROLE_INCIDENT_MANAGER,
   ROLE_PROBLEM_MANAGER,
@@ -40,6 +41,12 @@ import { ProblemListPage } from "@/features/problem/ProblemListPage";
 import { ProblemCreatePage } from "@/features/problem/ProblemCreatePage";
 import { ProblemDetailPage } from "@/features/problem/ProblemDetailPage";
 import { KnownErrorSearchPage } from "@/features/problem/KnownErrorSearchPage";
+import { ChangeListPage } from "@/features/change/ChangeListPage";
+import { ChangeCreatePage } from "@/features/change/ChangeCreatePage";
+import { ChangeDetailPage } from "@/features/change/ChangeDetailPage";
+import { ChangeApprovalInboxPage } from "@/features/change/ChangeApprovalInboxPage";
+import { ChangeSchedulePage } from "@/features/change/ChangeSchedulePage";
+import { ChangeMetricsPage } from "@/features/change/ChangeMetricsPage";
 
 /*
  * 라우팅 — 화면 ID(SCR-*)와 경로 매핑. screen 테이블 seed 경로와 정합.
@@ -140,6 +147,29 @@ export const router = createBrowserRouter([
               { path: "/problems/new", element: <ProblemCreatePage /> }, // SCR-PRB-002
               { path: "/problems/:id", element: <ProblemDetailPage /> }, // SCR-PRB-003
               { path: "/known-errors", element: <KnownErrorSearchPage /> }, // SCR-PRB-004
+            ],
+          },
+
+          // 변경(CHG) — CHANGE_MANAGER/APPROVER
+          {
+            element: <RequireRoles roles={[ROLE_CHANGE_MANAGER]} />,
+            children: [
+              { path: "/changes", element: <ChangeListPage /> }, // SCR-CHG-001
+              { path: "/changes/new", element: <ChangeCreatePage /> }, // SCR-CHG-002
+              { path: "/changes/schedule", element: <ChangeSchedulePage /> }, // SCR-CHG-005
+              { path: "/changes/metrics", element: <ChangeMetricsPage /> }, // SCR-CHG-006
+            ],
+          },
+          {
+            element: <RequireRoles roles={[ROLE_APPROVER]} />,
+            children: [
+              { path: "/approvals/changes", element: <ChangeApprovalInboxPage /> }, // SCR-CHG-004
+            ],
+          },
+          {
+            element: <RequireRoles roles={[ROLE_CHANGE_MANAGER, ROLE_APPROVER]} />,
+            children: [
+              { path: "/changes/:id", element: <ChangeDetailPage /> }, // SCR-CHG-003
             ],
           },
 

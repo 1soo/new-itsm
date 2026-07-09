@@ -1,6 +1,7 @@
 package com.itsm.problem.application;
 
 import com.itsm.auth.application.dto.PageResponse;
+import com.itsm.change.application.ChangeService;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.common.security.AuthPrincipal;
@@ -57,8 +58,8 @@ import java.util.List;
 
 /**
  * 문제 유스케이스: 등록·조회·상태전이(6단계)·RCA·워크어라운드·알려진오류(KEDB)·연계·후속조치·종료.
- * RBAC(problem_manager.md): 모든 문제 API는 PROBLEM_MANAGER 전용. 인시던트 연계 시 대상 존재를 검증한다.
- * 인시던트→문제 연계(API-INC-012)에서 재사용되는 내부 메서드(createReactiveProblem/assertExists)는 역할 검사를 하지 않는다.
+ * RBAC(problem_manager.md): 모든 문제 API는 PROBLEM_MANAGER 전용. 인시던트/변경 연계 시 대상 존재를 검증한다.
+ * 인시던트→문제 연계(API-INC-012)에서 재사용되는 내부 메서드(createReactiveProblem/existsProblem)는 역할 검사를 하지 않는다.
  */
 @Service
 public class ProblemService {
@@ -73,6 +74,7 @@ public class ProblemService {
     private final TimelineEventRepository timelineRepository;
     private final TicketLinkRepository ticketLinkRepository;
     private final IncidentRepository incidentRepository;
+    private final ChangeService changeService;
 
     public ProblemService(ProblemRepository problemRepository,
                           ProblemFiveWhyRepository fiveWhyRepository,
@@ -80,7 +82,8 @@ public class ProblemService {
                           ProblemActionRepository actionRepository,
                           TimelineEventRepository timelineRepository,
                           TicketLinkRepository ticketLinkRepository,
-                          IncidentRepository incidentRepository) {
+                          IncidentRepository incidentRepository,
+                          ChangeService changeService) {
         this.problemRepository = problemRepository;
         this.fiveWhyRepository = fiveWhyRepository;
         this.knownErrorRepository = knownErrorRepository;
@@ -88,6 +91,7 @@ public class ProblemService {
         this.timelineRepository = timelineRepository;
         this.ticketLinkRepository = ticketLinkRepository;
         this.incidentRepository = incidentRepository;
+        this.changeService = changeService;
     }
 
     // ---------- create (API-PRB-002) ----------
@@ -214,8 +218,22 @@ public class ProblemService {
         Problem problem = findProblem(id);
 
         if (request.targetType() == LinkTargetType.CHANGE) {
-            // TODO(change 도메인): createNewChange 생성 또는 기존 변경 연계 후 ticket_link(PROBLEM↔CHANGE) 저장.
-            throw new BusinessException(ErrorCode.CHANGE_LINK_UNAVAILABLE);
+            Long changeId;
+            if (request.createNewChange()) {
+                changeId = changeService.createLinkedChange(problem.getSummary(), problem.getDescription());
+            } else if (request.targetId() != null) {
+                if (!changeService.existsChange(request.targetId())) {
+                    throw new BusinessException(ErrorCode.LINK_TARGET_NOT_FOUND);
+                }
+                changeId = request.targetId();
+            } else {
+                throw new BusinessException(ErrorCode.LINK_TARGET_REQUIRED);
+            }
+            saveLinkOnce(TT, problem.getId(), TicketType.CHANGE, changeId, "RELATED");
+            saveLinkOnce(TicketType.CHANGE, changeId, TT, problem.getId(), "RELATED");
+            timelineRepository.save(TimelineEvent.of(TT, id, "LINK",
+                    "변경 " + changeService.ticketKeyOf(changeId) + " 와 연계되었습니다."));
+            return new LinkResponse(problem.getId(), TicketType.CHANGE.name(), changeId);
         }
 
         // INCIDENT 연계: 기존 인시던트 존재 검증 후 양방향 링크.
@@ -301,6 +319,12 @@ public class ProblemService {
                 .filter(p -> !p.isDeleted()).isPresent();
     }
 
+    /** 문제 ticketKey 조회(없으면 null). 인시던트 상세(links)에서 연계 대상 표시에 사용. */
+    @Transactional(readOnly = true)
+    public String ticketKeyOf(Long problemId) {
+        return problemRepository.findById(problemId).map(Problem::getTicketKey).orElse(null);
+    }
+
     // ---------- helpers ----------
 
     private ProblemSummaryResponse toSummary(Problem p) {
@@ -323,7 +347,7 @@ public class ProblemService {
         List<ProblemDetailResponse.LinkRef> linkedChanges = ticketLinkRepository
                 .findBySourceTypeAndSourceId(TT, id).stream()
                 .filter(l -> l.getTargetType() == TicketType.CHANGE)
-                .map(l -> new ProblemDetailResponse.LinkRef(l.getTargetId(), null))
+                .map(l -> new ProblemDetailResponse.LinkRef(l.getTargetId(), changeService.ticketKeyOf(l.getTargetId())))
                 .toList();
         List<ProblemDetailResponse.ActionDto> actions = actionRepository.findByProblemId(id).stream()
                 .map(a -> new ProblemDetailResponse.ActionDto(a.getId(), a.getDescription(), a.getStatus().name()))

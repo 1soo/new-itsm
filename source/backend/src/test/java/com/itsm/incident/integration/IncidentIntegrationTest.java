@@ -1,5 +1,11 @@
 package com.itsm.incident.integration;
 
+import com.itsm.change.application.ChangeService;
+import com.itsm.change.application.dto.CreateChangeRequest;
+import com.itsm.change.application.dto.LinkRequest;
+import com.itsm.change.domain.ChangeRisk;
+import com.itsm.change.domain.ChangeType;
+import com.itsm.change.domain.LinkTargetType;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.common.security.AuthPrincipal;
@@ -63,7 +69,9 @@ class IncidentIntegrationTest {
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/06_incident_schema.sql").toAbsolutePath()),
                     "/docker-entrypoint-initdb.d/06_incident_schema.sql")
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/08_problem_schema.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/08_problem_schema.sql");
+                    "/docker-entrypoint-initdb.d/08_problem_schema.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/10_change_schema.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/10_change_schema.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {
@@ -75,6 +83,7 @@ class IncidentIntegrationTest {
     }
 
     @Autowired IncidentService incidentService;
+    @Autowired ChangeService changeService;
     @Autowired JdbcTemplate jdbc;
 
     @AfterEach
@@ -170,6 +179,48 @@ class IncidentIntegrationTest {
         assertThat(metrics.count()).isGreaterThanOrEqualTo(1);
         assertThat(metrics.severityDistribution().SEV2()).isGreaterThanOrEqualTo(1);
         assertThat(metrics.avgMttrMinutes()).isGreaterThan(0.0);
+    }
+
+    @Test
+    void detailLinksExposeProblemTicketKey() {
+        long ts = System.nanoTime();
+        as(insertUser("im" + ts + "@itsm.local"), "INCIDENT_MANAGER");
+        IncidentCreatedResponse created = incidentService.create(
+                new CreateIncidentRequest("결제 반복 실패", "다건 발생", Severity.SEV1, "payment", "checkout"));
+        Long id = created.id();
+
+        var link = incidentService.linkProblem(id, new com.itsm.incident.application.dto.LinkProblemRequest(null, true));
+        assertThat(link.problemId()).isNotNull();
+
+        var linkedProblemKey = jdbc.queryForObject(
+                "select ticket_key from problem where id = ?", String.class, link.problemId());
+
+        var detail = incidentService.detail(id);
+        assertThat(detail.links()).hasSize(1);
+        assertThat(detail.links().get(0).type()).isEqualTo("PROBLEM");
+        assertThat(detail.links().get(0).targetKey()).isEqualTo(linkedProblemKey);
+    }
+
+    @Test
+    void detailLinksExposeChangeTicketKeyViaChangeSideLink() {
+        // API-CHG-009(change→incident 연계)로 생성된 양방향 ticket_link가
+        // 인시던트 상세(API-INC-003 links)에도 CHANGE로 노출되는지 검증.
+        long ts = System.nanoTime();
+        as(insertUser("im" + ts + "@itsm.local"), "INCIDENT_MANAGER");
+        IncidentCreatedResponse created = incidentService.create(
+                new CreateIncidentRequest("연계 확인용 인시던트", null, Severity.SEV2, null, null));
+        Long incidentId = created.id();
+
+        as(insertUser("cm" + ts + "@itsm.local"), "CHANGE_MANAGER");
+        var change = changeService.create(new CreateChangeRequest("연계 확인용 변경", null,
+                ChangeType.NORMAL, ChangeRisk.MEDIUM, null, null, null, null, null));
+        changeService.link(change.id(), new LinkRequest(LinkTargetType.INCIDENT, incidentId));
+
+        as(insertUser("im2" + ts + "@itsm.local"), "INCIDENT_MANAGER");
+        var detail = incidentService.detail(incidentId);
+        assertThat(detail.links()).hasSize(1);
+        assertThat(detail.links().get(0).type()).isEqualTo("CHANGE");
+        assertThat(detail.links().get(0).targetKey()).isEqualTo(change.ticketKey());
     }
 
     @Test

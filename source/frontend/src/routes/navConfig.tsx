@@ -3,7 +3,9 @@ import {
   Activity,
   AlertTriangle,
   BookOpen,
+  CalendarDays,
   ClipboardList,
+  GitPullRequest,
   Inbox,
   LayoutDashboard,
   LayoutGrid,
@@ -19,6 +21,7 @@ import {
 
 import {
   ROLE_APPROVER,
+  ROLE_CHANGE_MANAGER,
   ROLE_END_USER,
   ROLE_INCIDENT_MANAGER,
   ROLE_PROBLEM_MANAGER,
@@ -128,6 +131,40 @@ export const navConfig: NavGroupDef[] = [
         path: "/known-errors",
         icon: <SearchCode />,
         roles: [ROLE_PROBLEM_MANAGER],
+      },
+    ],
+  },
+  {
+    key: "chg",
+    label: "변경",
+    items: [
+      {
+        key: "chg-list",
+        label: "변경",
+        path: "/changes",
+        icon: <GitPullRequest />,
+        roles: [ROLE_CHANGE_MANAGER],
+      },
+      {
+        key: "chg-approvals",
+        label: "CAB 승인 대기함",
+        path: "/approvals/changes",
+        icon: <Stamp />,
+        roles: [ROLE_APPROVER],
+      },
+      {
+        key: "chg-schedule",
+        label: "변경 일정",
+        path: "/changes/schedule",
+        icon: <CalendarDays />,
+        roles: [ROLE_CHANGE_MANAGER],
+      },
+      {
+        key: "chg-metrics",
+        label: "변경 지표",
+        path: "/changes/metrics",
+        icon: <Activity />,
+        roles: [ROLE_CHANGE_MANAGER],
       },
     ],
   },

@@ -225,6 +225,19 @@ export function IncidentDetailPage() {
               </CardContent>
             </Card>
           ) : null}
+
+          <Card>
+            <CardHeader><CardTitle className="text-base">연결 문제/자산</CardTitle></CardHeader>
+            <CardContent className="space-y-1.5 text-sm">
+              {detail.links.length === 0 ? (
+                <p className="text-muted-foreground">연결 없음</p>
+              ) : (
+                detail.links.map((l, i) => (
+                  <span key={i} className="block text-foreground">{l.type} · {l.targetKey}</span>
+                ))
+              )}
+            </CardContent>
+          </Card>
         </>
       }
     >
@@ -340,14 +353,13 @@ export function IncidentDetailPage() {
         </Card>
       ) : null}
 
-      {/* 문제 연계 — problem 도메인 도입 후 제공 */}
-      <Card>
-        <CardHeader><CardTitle className="text-base">문제 연계</CardTitle></CardHeader>
-        <CardContent className="flex items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground">문제 관리 도메인 도입 후 제공됩니다.</p>
-          <Button variant="outline" disabled title="문제 관리 도입 후 제공">문제 연계</Button>
-        </CardContent>
-      </Card>
+      {/* 문제 연계 */}
+      <LinkProblemCard
+        busy={busy === "link"}
+        onLink={(problemId, createNew) =>
+          run("link", () => incidentApi.linkProblem(id, problemId, createNew), "문제가 연계되었습니다")
+        }
+      />
 
       {/* 상태 업데이트 + 타임라인 */}
       <Card>
@@ -426,5 +438,39 @@ function ResolveForm({ busy, onSubmit }: { busy: boolean; onSubmit: (v: { impact
         <Button type="submit" loading={busy}>해결 처리</Button>
       </div>
     </form>
+  );
+}
+
+function LinkProblemCard({
+  busy,
+  onLink,
+}: {
+  busy: boolean;
+  onLink: (problemId: number | undefined, createNew: boolean) => void;
+}) {
+  const [problemId, setProblemId] = useState("");
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-base">문제 연계</CardTitle></CardHeader>
+      <CardContent>
+        <form
+          className="flex flex-wrap items-end gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!problemId) return;
+            onLink(Number(problemId), false);
+            setProblemId("");
+          }}
+        >
+          <div className="space-y-1.5">
+            <Label htmlFor="prbId">문제 ID</Label>
+            <Input id="prbId" type="number" className="w-40" value={problemId} onChange={(e) => setProblemId(e.target.value)} />
+          </div>
+          <Button type="submit" loading={busy} disabled={!problemId}>기존 문제 연계</Button>
+          <Button type="button" variant="outline" loading={busy} onClick={() => onLink(undefined, true)}>신규 문제 생성·연계</Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 }

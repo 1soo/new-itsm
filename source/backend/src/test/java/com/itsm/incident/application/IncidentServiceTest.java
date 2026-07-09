@@ -63,6 +63,7 @@ class IncidentServiceTest {
     @Mock TicketLinkRepository ticketLinkRepository;
     @Mock AppUserRepository appUserRepository;
     @Mock com.itsm.problem.application.ProblemService problemService;
+    @Mock com.itsm.change.application.ChangeService changeService;
 
     IncidentService service;
 
@@ -70,7 +71,7 @@ class IncidentServiceTest {
     void setUp() {
         service = new IncidentService(incidentRepository, responderRepository, severityHistoryRepository,
                 postmortemRepository, fiveWhyRepository, actionItemRepository, timelineRepository,
-                ticketLinkRepository, appUserRepository, problemService);
+                ticketLinkRepository, appUserRepository, problemService, changeService);
         when(incidentRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(responderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(severityHistoryRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -143,6 +144,40 @@ class IncidentServiceTest {
         assertThat(response.status()).isEqualTo("NEW");
         assertThat(response.severity()).isEqualTo("SEV2");
         assertThat(response.allowedTransitions()).containsExactly("IN_PROGRESS");
+    }
+
+    @Test
+    void detailLinksExposeTargetTicketKeyNotRawId() {
+        login(1L, "INCIDENT_MANAGER");
+        when(incidentRepository.findById(1L)).thenReturn(Optional.of(incident(Severity.SEV2, IncidentStatus.NEW)));
+        var link = new com.itsm.common.ticket.TicketLink(
+                com.itsm.common.ticket.TicketType.INCIDENT, 1L, com.itsm.common.ticket.TicketType.PROBLEM, 23L, "RELATED");
+        when(ticketLinkRepository.findBySourceTypeAndSourceId(com.itsm.common.ticket.TicketType.INCIDENT, 1L))
+                .thenReturn(List.of(link));
+        when(problemService.ticketKeyOf(23L)).thenReturn("PRB-2026-0023");
+
+        var response = service.detail(1L);
+
+        assertThat(response.links()).hasSize(1);
+        assertThat(response.links().get(0).type()).isEqualTo("PROBLEM");
+        assertThat(response.links().get(0).targetKey()).isEqualTo("PRB-2026-0023");
+    }
+
+    @Test
+    void detailLinksExposeChangeTargetTicketKey() {
+        login(1L, "INCIDENT_MANAGER");
+        when(incidentRepository.findById(1L)).thenReturn(Optional.of(incident(Severity.SEV2, IncidentStatus.NEW)));
+        var link = new com.itsm.common.ticket.TicketLink(
+                com.itsm.common.ticket.TicketType.INCIDENT, 1L, com.itsm.common.ticket.TicketType.CHANGE, 7L, "RELATED");
+        when(ticketLinkRepository.findBySourceTypeAndSourceId(com.itsm.common.ticket.TicketType.INCIDENT, 1L))
+                .thenReturn(List.of(link));
+        when(changeService.ticketKeyOf(7L)).thenReturn("CHG-2026-0007");
+
+        var response = service.detail(1L);
+
+        assertThat(response.links()).hasSize(1);
+        assertThat(response.links().get(0).type()).isEqualTo("CHANGE");
+        assertThat(response.links().get(0).targetKey()).isEqualTo("CHG-2026-0007");
     }
 
     // ---------- severity ----------

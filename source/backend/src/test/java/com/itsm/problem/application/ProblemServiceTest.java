@@ -1,5 +1,6 @@
 package com.itsm.problem.application;
 
+import com.itsm.change.application.ChangeService;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.common.security.AuthPrincipal;
@@ -62,13 +63,14 @@ class ProblemServiceTest {
     @Mock TimelineEventRepository timelineRepository;
     @Mock TicketLinkRepository ticketLinkRepository;
     @Mock IncidentRepository incidentRepository;
+    @Mock ChangeService changeService;
 
     ProblemService service;
 
     @BeforeEach
     void setUp() {
         service = new ProblemService(problemRepository, fiveWhyRepository, knownErrorRepository,
-                actionRepository, timelineRepository, ticketLinkRepository, incidentRepository);
+                actionRepository, timelineRepository, ticketLinkRepository, incidentRepository, changeService);
         when(problemRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(fiveWhyRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(knownErrorRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -243,12 +245,41 @@ class ProblemServiceTest {
     }
 
     @Test
-    void linkChangeUnavailable() {
+    void linkExistingChangeSuccess() {
         login("PROBLEM_MANAGER");
         when(problemRepository.findById(1L)).thenReturn(Optional.of(problem(ProblemStatus.INVESTIGATION)));
-        assertThatThrownBy(() -> service.link(1L, new LinkRequest(LinkTargetType.CHANGE, null, true)))
+        when(changeService.existsChange(9L)).thenReturn(true);
+        when(changeService.ticketKeyOf(9L)).thenReturn("CHG-2026-0001");
+        when(ticketLinkRepository.existsBySourceTypeAndSourceIdAndTargetTypeAndTargetId(any(), any(), any(), any()))
+                .thenReturn(false);
+
+        var response = service.link(1L, new LinkRequest(LinkTargetType.CHANGE, 9L, false));
+        assertThat(response.targetType()).isEqualTo("CHANGE");
+        assertThat(response.targetId()).isEqualTo(9L);
+        verify(ticketLinkRepository, times(2)).save(any()); // 양방향
+    }
+
+    @Test
+    void linkNewChangeCreatesRfc() {
+        login("PROBLEM_MANAGER");
+        when(problemRepository.findById(1L)).thenReturn(Optional.of(problem(ProblemStatus.INVESTIGATION)));
+        when(changeService.createLinkedChange(any(), any())).thenReturn(42L);
+        when(changeService.ticketKeyOf(42L)).thenReturn("CHG-2026-0042");
+        when(ticketLinkRepository.existsBySourceTypeAndSourceIdAndTargetTypeAndTargetId(any(), any(), any(), any()))
+                .thenReturn(false);
+
+        var response = service.link(1L, new LinkRequest(LinkTargetType.CHANGE, null, true));
+        assertThat(response.targetId()).isEqualTo(42L);
+    }
+
+    @Test
+    void linkChangeNotFound() {
+        login("PROBLEM_MANAGER");
+        when(problemRepository.findById(1L)).thenReturn(Optional.of(problem(ProblemStatus.INVESTIGATION)));
+        when(changeService.existsChange(9L)).thenReturn(false);
+        assertThatThrownBy(() -> service.link(1L, new LinkRequest(LinkTargetType.CHANGE, 9L, false)))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.CHANGE_LINK_UNAVAILABLE));
+                .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.LINK_TARGET_NOT_FOUND));
     }
 
     // ---------- action ----------

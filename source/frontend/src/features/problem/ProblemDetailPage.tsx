@@ -216,6 +216,9 @@ export function ProblemDetailPage() {
           onLinkIncident={(targetId) =>
             run("link", () => problemApi.link(id, { targetType: "INCIDENT", targetId }), "인시던트가 연계되었습니다")
           }
+          onLinkChange={(targetId) =>
+            run("link", () => problemApi.link(id, { targetType: "CHANGE", targetId }), "변경이 연계되었습니다")
+          }
         />
 
         <ActionsCard
@@ -404,12 +407,15 @@ function KnownErrorCard({
 function LinkCard({
   busy,
   onLinkIncident,
+  onLinkChange,
 }: {
   detail: ProblemDetail;
   busy: boolean;
   onLinkIncident: (targetId: number) => void;
+  onLinkChange: (targetId: number) => void;
 }) {
   const [incidentId, setIncidentId] = useState("");
+  const [changeId, setChangeId] = useState("");
 
   return (
     <Card>
@@ -430,10 +436,21 @@ function LinkCard({
           </div>
           <Button type="submit" loading={busy} disabled={!incidentId}>인시던트 연계</Button>
         </form>
-        <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
-          <p className="text-sm text-muted-foreground">변경 연계는 변경 관리 도메인 도입 후 제공됩니다.</p>
-          <Button variant="outline" disabled title="변경 관리 도입 후 제공">변경 연계</Button>
-        </div>
+        <form
+          className="flex items-end gap-2 border-t border-border pt-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!changeId) return;
+            onLinkChange(Number(changeId));
+            setChangeId("");
+          }}
+        >
+          <div className="space-y-1.5">
+            <Label htmlFor="chgId">변경 ID</Label>
+            <Input id="chgId" type="number" className="w-40" value={changeId} onChange={(e) => setChangeId(e.target.value)} />
+          </div>
+          <Button type="submit" loading={busy} disabled={!changeId}>변경 연계</Button>
+        </form>
       </CardContent>
     </Card>
   );
