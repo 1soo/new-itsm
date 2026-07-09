@@ -1,6 +1,6 @@
 ---
 name: spring-boot-development
-description: Spring / Spring Boot 백엔드 개발 표준. DDD·SOLID, 모든 예외에 대한 JUnit 테스트 필수, 공통 예외처리 모듈, Spring Security 기반 인증·인가. 개발 후 빌드 테스트와 playwright E2E 테스트를 수행한다.
+description: Spring / Spring Boot 백엔드 개발 표준. DDD·SOLID, 모든 예외에 대한 JUnit 테스트 필수, 공통 예외처리 모듈, Spring Security 기반 인증·인가, springdoc 기반 Swagger-UI(OpenAPI) 문서화. 개발 후 빌드 테스트와 playwright E2E 테스트를 수행한다.
 ---
 
 # Spring / Spring Boot 개발
@@ -18,6 +18,7 @@ API 명세서·테이블 정의서·인증/인가 설계를 기반으로 Backend
 - **모든 예외에 대해 JUnit 테스트를 필수**로 작성한다.
 - **공통 예외처리 모듈**을 둔다. (`@RestControllerAdvice` + 표준 에러 응답)
 - **Spring Security로 인증·인가**를 구현한다. (인증/인가 설계 준수)
+- **Swagger-UI(OpenAPI) 문서를 작성**한다. `springdoc-openapi`(springdoc-openapi-starter-webmvc-ui)를 추가하고, 모든 API에 어노테이션(`@Tag`, `@Operation`, `@ApiResponse`, `@Schema`)으로 요청/응답·에러 코드를 명세한다. (API 명세서 `docs/02_plan` 기준)
 - Backend는 `source/backend/` 디렉토리에서 개발하고 자체 `.env`를 둔다.
 
 ## 개발 후 검증

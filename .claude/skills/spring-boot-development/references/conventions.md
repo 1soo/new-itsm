@@ -30,8 +30,18 @@
 - 인가 설계 준수: 요청/화면 권한을 role 기반으로 검증, 권한 부족 시 403.
 - 로그아웃 시 저장된 jti 제거(또는 null 처리).
 
-## 5. 검증
+## 5. API 문서화 (Swagger-UI / OpenAPI)
+
+- **`springdoc-openapi-starter-webmvc-ui`** 의존성을 추가하여 Swagger-UI를 제공한다. (`/swagger-ui.html`, OpenAPI 스펙 `/v3/api-docs`)
+- 모든 Controller/엔드포인트를 어노테이션으로 명세한다.
+  - `@Tag` (도메인/컨트롤러 단위 그룹), `@Operation`(summary·description), `@Parameter`, `@Schema`(DTO 필드), `@ApiResponse`(성공/에러 코드).
+  - 문서 내용은 **API 명세서(`docs/02_plan`)와 일치**시킨다(엔드포인트·메서드·요청/응답·응답 코드·토큰 필요 여부).
+- **인증이 필요한 API는 JWT Bearer 스킴**을 등록한다. (`@SecurityScheme(type = HTTP, scheme = "bearer", bearerFormat = "JWT")`) → Swagger-UI에서 Authorize로 토큰 주입 가능.
+- **Spring Security 설정**에서 Swagger 경로(`/swagger-ui/**`, `/v3/api-docs/**`)를 인증 예외로 허용한다. (운영환경 노출 정책은 인프라/보안 설계를 따른다.)
+
+## 6. 검증
 
 - gradle/maven 빌드 테스트 통과 필수.
 - JUnit 테스트(예외 포함) 통과 필수.
 - playwright로 실행 중인 엔드포인트/화면 E2E 검증.
+- **Swagger-UI(`/swagger-ui.html`) 정상 렌더링 및 주요 API 노출 확인.**
