@@ -204,10 +204,10 @@ public class IncidentController {
         return ResponseEntity.ok(incidentService.savePostmortem(id, request));
     }
 
-    @Operation(summary = "문제 연계(링크)", description = "API-INC-012 · problem 도메인 미구축으로 현재 비활성(400)")
+    @Operation(summary = "문제 연계(링크)", description = "API-INC-012 · 기존 문제 연계 또는 신규 문제 생성(양방향 ticket_link)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "연계"),
-            @ApiResponse(responseCode = "400", description = "문제 도메인 미구축", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "400", description = "연계 대상 미지정/문제 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "403", description = "권한 부족", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "404", description = "인시던트 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })

@@ -6,6 +6,7 @@ export const ROLE_SERVICE_DESK_AGENT = "SERVICE_DESK_AGENT";
 export const ROLE_APPROVER = "APPROVER";
 export const ROLE_PROCESS_OWNER = "PROCESS_OWNER";
 export const ROLE_INCIDENT_MANAGER = "INCIDENT_MANAGER";
+export const ROLE_PROBLEM_MANAGER = "PROBLEM_MANAGER";
 
 export function isSystemAdmin(roles: string[] | undefined): boolean {
   return !!roles?.includes(ROLE_SYSTEM_ADMIN);

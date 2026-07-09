@@ -7,10 +7,12 @@ import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.common.security.AuthPrincipal;
 import com.itsm.common.security.SecurityUtils;
+import com.itsm.common.ticket.TicketLink;
 import com.itsm.common.ticket.TicketType;
 import com.itsm.common.ticket.TimelineEvent;
 import com.itsm.common.ticket.repository.TicketLinkRepository;
 import com.itsm.common.ticket.repository.TimelineEventRepository;
+import com.itsm.problem.application.ProblemService;
 import com.itsm.incident.application.dto.ActionItemDto;
 import com.itsm.incident.application.dto.AssignRoleRequest;
 import com.itsm.incident.application.dto.CreateIncidentRequest;
@@ -82,6 +84,7 @@ public class IncidentService {
     private final TimelineEventRepository timelineRepository;
     private final TicketLinkRepository ticketLinkRepository;
     private final AppUserRepository appUserRepository;
+    private final ProblemService problemService;
 
     public IncidentService(IncidentRepository incidentRepository,
                            IncidentResponderRepository responderRepository,
@@ -91,7 +94,8 @@ public class IncidentService {
                            PostmortemActionItemRepository actionItemRepository,
                            TimelineEventRepository timelineRepository,
                            TicketLinkRepository ticketLinkRepository,
-                           AppUserRepository appUserRepository) {
+                           AppUserRepository appUserRepository,
+                           ProblemService problemService) {
         this.incidentRepository = incidentRepository;
         this.responderRepository = responderRepository;
         this.severityHistoryRepository = severityHistoryRepository;
@@ -101,6 +105,7 @@ public class IncidentService {
         this.timelineRepository = timelineRepository;
         this.ticketLinkRepository = ticketLinkRepository;
         this.appUserRepository = appUserRepository;
+        this.problemService = problemService;
     }
 
     // ---------- create (API-INC-002) ----------
@@ -311,14 +316,34 @@ public class IncidentService {
         return toPostmortemResponse(pm);
     }
 
-    // ---------- link (API-INC-012) — problem 도메인 미구축, 범위 제외 스텁 ----------
+    // ---------- link (API-INC-012) — 기존 문제 연계 또는 신규 문제 생성 후 양방향 링크 ----------
 
     @Transactional
     public LinkResponse linkProblem(Long id, LinkProblemRequest request) {
         requireAnyRole(IM);
-        findIncident(id);
-        // TODO(problem 도메인): 기존 problemId 검증 + createNewProblem 생성 후 ticket_link(INCIDENT→PROBLEM) 저장.
-        throw new BusinessException(ErrorCode.PROBLEM_LINK_UNAVAILABLE);
+        Incident inc = findIncident(id);
+        Long problemId;
+        if (request.createNewProblem()) {
+            problemId = problemService.createReactiveProblem(inc.getSummary(), inc.getDescription());
+        } else if (request.problemId() != null) {
+            if (!problemService.existsProblem(request.problemId())) {
+                throw new BusinessException(ErrorCode.LINK_TARGET_NOT_FOUND);
+            }
+            problemId = request.problemId();
+        } else {
+            throw new BusinessException(ErrorCode.LINK_TARGET_REQUIRED);
+        }
+        saveLinkOnce(TicketType.INCIDENT, id, TicketType.PROBLEM, problemId);
+        saveLinkOnce(TicketType.PROBLEM, problemId, TicketType.INCIDENT, id);
+        timelineRepository.save(TimelineEvent.of(TT, id, "LINK", "문제 연계가 생성되었습니다."));
+        return new LinkResponse(id, problemId);
+    }
+
+    private void saveLinkOnce(TicketType sourceType, Long sourceId, TicketType targetType, Long targetId) {
+        if (!ticketLinkRepository.existsBySourceTypeAndSourceIdAndTargetTypeAndTargetId(
+                sourceType, sourceId, targetType, targetId)) {
+            ticketLinkRepository.save(new TicketLink(sourceType, sourceId, targetType, targetId, "RELATED"));
+        }
     }
 
     // ---------- metrics (API-INC-013) ----------

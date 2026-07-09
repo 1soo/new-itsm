@@ -25,6 +25,9 @@ target/
 .eslintcache
 *.tsbuildinfo
 
+# ── Playwright MCP 임시 산출물 ──
+.playwright-mcp/
+
 # ── 로그 ──
 *.log
 npm-debug.log*

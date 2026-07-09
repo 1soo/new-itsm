@@ -62,6 +62,7 @@ class IncidentServiceTest {
     @Mock TimelineEventRepository timelineRepository;
     @Mock TicketLinkRepository ticketLinkRepository;
     @Mock AppUserRepository appUserRepository;
+    @Mock com.itsm.problem.application.ProblemService problemService;
 
     IncidentService service;
 
@@ -69,7 +70,7 @@ class IncidentServiceTest {
     void setUp() {
         service = new IncidentService(incidentRepository, responderRepository, severityHistoryRepository,
                 postmortemRepository, fiveWhyRepository, actionItemRepository, timelineRepository,
-                ticketLinkRepository, appUserRepository);
+                ticketLinkRepository, appUserRepository, problemService);
         when(incidentRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(responderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(severityHistoryRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -433,16 +434,57 @@ class IncidentServiceTest {
         assertThat(response.rootCause()).isEqualTo("설정 오류");
     }
 
-    // ---------- link (stub) ----------
+    // ---------- link (problem 도메인 연계) ----------
 
     @Test
-    void linkProblemUnavailable() {
+    void linkExistingProblem() {
+        login(1L, "INCIDENT_MANAGER");
+        when(incidentRepository.findById(1L)).thenReturn(Optional.of(incident(Severity.SEV2, IncidentStatus.NEW)));
+        when(problemService.existsProblem(5L)).thenReturn(true);
+        when(ticketLinkRepository.existsBySourceTypeAndSourceIdAndTargetTypeAndTargetId(any(), any(), any(), any()))
+                .thenReturn(false);
+
+        var response = service.linkProblem(1L, new com.itsm.incident.application.dto.LinkProblemRequest(5L, false));
+
+        assertThat(response.incidentId()).isEqualTo(1L);
+        assertThat(response.problemId()).isEqualTo(5L);
+        org.mockito.Mockito.verify(problemService).existsProblem(5L);
+        // 양방향 링크(INCIDENT→PROBLEM, PROBLEM→INCIDENT) 2건 저장
+        org.mockito.Mockito.verify(ticketLinkRepository, org.mockito.Mockito.times(2)).save(any());
+    }
+
+    @Test
+    void linkNonExistentProblemFails() {
+        login(1L, "INCIDENT_MANAGER");
+        when(incidentRepository.findById(1L)).thenReturn(Optional.of(incident(Severity.SEV2, IncidentStatus.NEW)));
+        when(problemService.existsProblem(999L)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.linkProblem(1L, new com.itsm.incident.application.dto.LinkProblemRequest(999L, false)))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.LINK_TARGET_NOT_FOUND));
+    }
+
+    @Test
+    void linkNewProblemCreatesReactiveProblem() {
+        login(1L, "INCIDENT_MANAGER");
+        when(incidentRepository.findById(1L)).thenReturn(Optional.of(incident(Severity.SEV2, IncidentStatus.NEW)));
+        when(problemService.createReactiveProblem(any(), any())).thenReturn(99L);
+        when(ticketLinkRepository.existsBySourceTypeAndSourceIdAndTargetTypeAndTargetId(any(), any(), any(), any()))
+                .thenReturn(false);
+
+        var response = service.linkProblem(1L, new com.itsm.incident.application.dto.LinkProblemRequest(null, true));
+
+        assertThat(response.problemId()).isEqualTo(99L);
+    }
+
+    @Test
+    void linkProblemWithoutTargetFails() {
         login(1L, "INCIDENT_MANAGER");
         when(incidentRepository.findById(1L)).thenReturn(Optional.of(incident(Severity.SEV2, IncidentStatus.NEW)));
 
-        assertThatThrownBy(() -> service.linkProblem(1L, new com.itsm.incident.application.dto.LinkProblemRequest(5L, false)))
+        assertThatThrownBy(() -> service.linkProblem(1L, new com.itsm.incident.application.dto.LinkProblemRequest(null, false)))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.PROBLEM_LINK_UNAVAILABLE));
+                .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.LINK_TARGET_REQUIRED));
     }
 
     @Test

@@ -1,0 +1,13 @@
+# CLAUDE.md
+
+ITSM 백엔드의 루트 패키지(`com.itsm`). Spring Boot 진입점과 도메인 패키지들을 담는다. 각 도메인은 DDD 4계층(application/domain/infrastructure/presentation)으로 구성된다.
+
+## 파일
+- `ItsmApplication.java` — Spring Boot 애플리케이션 진입점(@SpringBootApplication)
+
+## 하위 디렉토리
+- `common/` — 전 도메인 공통 모듈(설정·예외·보안·티켓 공통)
+- `auth/` — 인증/계정/권한(RBAC) 도메인
+- `incident/` — 인시던트 관리 도메인
+- `problem/` — 문제 관리 도메인
+- `srm/` — 서비스 요청 관리 도메인

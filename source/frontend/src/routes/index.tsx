@@ -11,6 +11,7 @@ import {
   ROLE_APPROVER,
   ROLE_END_USER,
   ROLE_INCIDENT_MANAGER,
+  ROLE_PROBLEM_MANAGER,
   ROLE_PROCESS_OWNER,
   ROLE_SERVICE_DESK_AGENT,
 } from "@/features/auth/roles";
@@ -35,6 +36,10 @@ import { IncidentCreatePage } from "@/features/incident/IncidentCreatePage";
 import { IncidentDetailPage } from "@/features/incident/IncidentDetailPage";
 import { PostmortemPage } from "@/features/incident/PostmortemPage";
 import { IncidentMetricsPage } from "@/features/incident/IncidentMetricsPage";
+import { ProblemListPage } from "@/features/problem/ProblemListPage";
+import { ProblemCreatePage } from "@/features/problem/ProblemCreatePage";
+import { ProblemDetailPage } from "@/features/problem/ProblemDetailPage";
+import { KnownErrorSearchPage } from "@/features/problem/KnownErrorSearchPage";
 
 /*
  * 라우팅 — 화면 ID(SCR-*)와 경로 매핑. screen 테이블 seed 경로와 정합.
@@ -124,6 +129,17 @@ export const router = createBrowserRouter([
             children: [
               { path: "/incidents/:id/postmortem", element: <PostmortemPage /> }, // SCR-INC-004
               { path: "/incidents/metrics", element: <IncidentMetricsPage /> }, // SCR-INC-005
+            ],
+          },
+
+          // 문제(PRB) — PROBLEM_MANAGER
+          {
+            element: <RequireRoles roles={[ROLE_PROBLEM_MANAGER]} />,
+            children: [
+              { path: "/problems", element: <ProblemListPage /> }, // SCR-PRB-001
+              { path: "/problems/new", element: <ProblemCreatePage /> }, // SCR-PRB-002
+              { path: "/problems/:id", element: <ProblemDetailPage /> }, // SCR-PRB-003
+              { path: "/known-errors", element: <KnownErrorSearchPage /> }, // SCR-PRB-004
             ],
           },
 
