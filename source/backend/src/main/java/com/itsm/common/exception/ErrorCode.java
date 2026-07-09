@@ -43,6 +43,13 @@ public enum ErrorCode {
     APPROVAL_PENDING(HttpStatus.CONFLICT, "승인 대기 중에는 이행할 수 없습니다."),
     APPROVAL_ALREADY_DECIDED(HttpStatus.CONFLICT, "이미 결정된 승인입니다."),
 
+    // --- Incident (INC) ---
+    INCIDENT_NOT_FOUND(HttpStatus.NOT_FOUND, "인시던트를 찾을 수 없습니다."),
+    POSTMORTEM_NOT_FOUND(HttpStatus.NOT_FOUND, "포스트모템이 아직 작성되지 않았습니다."),
+    ROOT_CAUSE_REQUIRED(HttpStatus.BAD_REQUEST, "근본원인(rootCause)은 필수입니다."),
+    ESCALATION_TARGET_NOT_FOUND(HttpStatus.BAD_REQUEST, "에스컬레이션 대상 사용자를 찾을 수 없습니다."),
+    PROBLEM_LINK_UNAVAILABLE(HttpStatus.BAD_REQUEST, "문제 도메인이 아직 구축되지 않아 문제 연계를 사용할 수 없습니다."),
+
     // 409
     EMAIL_DUPLICATE(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),
     ROLE_NAME_DUPLICATE(HttpStatus.CONFLICT, "이미 존재하는 역할 코드 또는 역할명입니다."),

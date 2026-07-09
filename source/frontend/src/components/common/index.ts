@@ -15,6 +15,7 @@ export { TicketDetailLayout } from "./ticket-detail-layout";
 export { Timeline, type TimelineItem } from "./timeline";
 export { KpiCard } from "./kpi-card";
 export { TrendChart, type TrendPoint } from "./trend-chart";
+export { DistributionChart, type DistributionDatum } from "./distribution-chart";
 export { Rating } from "./rating";
 export { DynamicForm } from "./dynamic-form";
 export { FieldBuilder } from "./field-builder";

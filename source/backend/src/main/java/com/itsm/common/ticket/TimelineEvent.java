@@ -60,4 +60,10 @@ public class TimelineEvent extends BaseEntity {
     public static TimelineEvent of(TicketType ticketType, Long ticketId, String eventType, String message) {
         return new TimelineEvent(ticketType, ticketId, eventType, message, Visibility.INTERNAL);
     }
+
+    public static TimelineEvent of(TicketType ticketType, Long ticketId, String eventType, String message,
+                                   Visibility visibility) {
+        return new TimelineEvent(ticketType, ticketId, eventType, message,
+                visibility == null ? Visibility.INTERNAL : visibility);
+    }
 }

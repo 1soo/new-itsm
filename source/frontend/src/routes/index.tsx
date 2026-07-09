@@ -10,6 +10,7 @@ import { NotFoundPage } from "@/routes/NotFoundPage";
 import {
   ROLE_APPROVER,
   ROLE_END_USER,
+  ROLE_INCIDENT_MANAGER,
   ROLE_PROCESS_OWNER,
   ROLE_SERVICE_DESK_AGENT,
 } from "@/features/auth/roles";
@@ -29,6 +30,11 @@ import { RequestDetailPage } from "@/features/service-request/RequestDetailPage"
 import { ApprovalInboxPage } from "@/features/service-request/ApprovalInboxPage";
 import { CatalogManagePage } from "@/features/service-request/CatalogManagePage";
 import { MetricsPage } from "@/features/service-request/MetricsPage";
+import { IncidentListPage } from "@/features/incident/IncidentListPage";
+import { IncidentCreatePage } from "@/features/incident/IncidentCreatePage";
+import { IncidentDetailPage } from "@/features/incident/IncidentDetailPage";
+import { PostmortemPage } from "@/features/incident/PostmortemPage";
+import { IncidentMetricsPage } from "@/features/incident/IncidentMetricsPage";
 
 /*
  * 라우팅 — 화면 ID(SCR-*)와 경로 매핑. screen 테이블 seed 경로와 정합.
@@ -101,6 +107,23 @@ export const router = createBrowserRouter([
             ),
             children: [
               { path: "/service-requests/:id", element: <RequestDetailPage /> }, // SCR-SRM-005
+            ],
+          },
+
+          // 인시던트(INC) — SERVICE_DESK_AGENT/INCIDENT_MANAGER
+          {
+            element: <RequireRoles roles={[ROLE_SERVICE_DESK_AGENT, ROLE_INCIDENT_MANAGER]} />,
+            children: [
+              { path: "/incidents", element: <IncidentListPage /> }, // SCR-INC-001
+              { path: "/incidents/new", element: <IncidentCreatePage /> }, // SCR-INC-002
+              { path: "/incidents/:id", element: <IncidentDetailPage /> }, // SCR-INC-003
+            ],
+          },
+          {
+            element: <RequireRoles roles={[ROLE_INCIDENT_MANAGER]} />,
+            children: [
+              { path: "/incidents/:id/postmortem", element: <PostmortemPage /> }, // SCR-INC-004
+              { path: "/incidents/metrics", element: <IncidentMetricsPage /> }, // SCR-INC-005
             ],
           },
 

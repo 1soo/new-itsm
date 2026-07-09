@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import {
+  Activity,
+  AlertTriangle,
   ClipboardList,
   Inbox,
   LayoutDashboard,
@@ -16,6 +18,7 @@ import {
 import {
   ROLE_APPROVER,
   ROLE_END_USER,
+  ROLE_INCIDENT_MANAGER,
   ROLE_PROCESS_OWNER,
   ROLE_SERVICE_DESK_AGENT,
   ROLE_SYSTEM_ADMIN,
@@ -82,6 +85,26 @@ export const navConfig: NavGroupDef[] = [
         path: "/service-requests/metrics",
         icon: <ListChecks />,
         roles: [ROLE_PROCESS_OWNER],
+      },
+    ],
+  },
+  {
+    key: "inc",
+    label: "인시던트",
+    items: [
+      {
+        key: "inc-list",
+        label: "인시던트",
+        path: "/incidents",
+        icon: <AlertTriangle />,
+        roles: [ROLE_SERVICE_DESK_AGENT, ROLE_INCIDENT_MANAGER],
+      },
+      {
+        key: "inc-metrics",
+        label: "인시던트 지표",
+        path: "/incidents/metrics",
+        icon: <Activity />,
+        roles: [ROLE_INCIDENT_MANAGER],
       },
     ],
   },
