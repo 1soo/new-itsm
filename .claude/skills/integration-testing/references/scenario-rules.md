@@ -8,7 +8,7 @@
 - 격리: playwright는 매 항목마다 새 창(새 context)에서 수행, storage 초기화.
 - 시나리오에 없는 내용은 수행하지 않는다.
 
-## 시나리오 양식 — `docs/04_test/{yyyyMMdd-HHmmss}/scenario/{domain}.md`
+## 시나리오 양식 — `docs/04_test/{domain}/{yyyyMMdd-HHmmss}/scenario/{domain}.md`
 
 ```markdown
 # 통합 테스트 시나리오 — {도메인명}
@@ -28,7 +28,7 @@
 - 기대 결과: {EARS 인수 기준에 대응하는 기대 동작}
 ```
 
-## 결과 양식 — `docs/04_test/{yyyyMMdd-HHmmss}/result/{domain}.md`
+## 결과 양식 — `docs/04_test/{domain}/{yyyyMMdd-HHmmss}/result/{domain}.md`
 
 ```markdown
 # 통합 테스트 결과 — {도메인명} ({yyyyMMdd-HHmmss})

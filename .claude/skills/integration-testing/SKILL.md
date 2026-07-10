@@ -22,10 +22,10 @@ description: 도메인별 통합 테스트 시나리오 작성과 수행 규칙.
 
 ## 산출물
 
-**한 번의 테스트 실행마다 실행 시작 시각 폴더 `docs/04_test/{yyyyMMdd-HHmmss}/` 를 만들고**, 그 안에 시나리오를 먼저 작성한 뒤 테스트를 수행하고 결과를 기록한다. (`{yyyyMMdd-HHmmss}` = 테스트 수행 시작 시각)
+**한 번의 테스트 실행마다 도메인 폴더 하위에 실행 시작 시각 폴더 `docs/04_test/{domain}/{yyyyMMdd-HHmmss}/` 를 만들고**, 그 안에 시나리오를 먼저 작성한 뒤 테스트를 수행하고 결과를 기록한다. (`{yyyyMMdd-HHmmss}` = 테스트 수행 시작 시각)
 
-- 시나리오: `docs/04_test/{yyyyMMdd-HHmmss}/scenario/{domain}.md`
-- 결과: `docs/04_test/{yyyyMMdd-HHmmss}/result/{domain}.md`
+- 시나리오: `docs/04_test/{domain}/{yyyyMMdd-HHmmss}/scenario/{domain}.md`
+- 결과: `docs/04_test/{domain}/{yyyyMMdd-HHmmss}/result/{domain}.md`
 
 ## docs
 
