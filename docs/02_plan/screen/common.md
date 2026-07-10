@@ -1,6 +1,6 @@
 # 화면 설계서 — 공통 (Common)
 
-> 도메인: common · 버전: 0.2 · 작성일: 2026-07-10 · UI/UX 개편(ADS 기반, REQ-UIX-001~013) 반영
+> 도메인: common · 버전: 0.3 · 작성일: 2026-07-11 · 알림 드롭다운(REQ-COM-001/FEAT-COM-001) 반영, UI/UX 개편(ADS 기반, REQ-UIX-001~013) 반영
 
 ## 1. 개요
 
@@ -128,7 +128,7 @@ lucide-react를 유지하며 기본 크기를 16px로 통일한다(좁은 공간
 | 화면 ID | 화면명 | 관련 요구사항/기능 | 설명 |
 |---------|--------|--------------------|------|
 | SCR-COM-001 | 앱 셸(App Shell) 레이아웃 | 전 도메인 | 헤더 + 사이드바 + 콘텐츠 + 푸터 골격 |
-| SCR-COM-002 | 글로벌 헤더 | REQ-AUTH-004/005 | 로고·통합검색·알림·사용자 메뉴 |
+| SCR-COM-002 | 글로벌 헤더 | REQ-AUTH-004/005, REQ-COM-001 | 로고·통합검색·알림(드롭다운)·사용자 메뉴 |
 | SCR-COM-003 | 사이드바 내비게이션 | REQ-AUTH-005 | 역할별 메뉴 노출(RBAC) |
 | SCR-COM-004 | 푸터 | 전 도메인 | 버전·저작권 |
 | SCR-COM-005 | 인증 가드 / 401 리다이렉트 | REQ-AUTH-005 | 미인증 시 로그인으로 이동 |
@@ -164,10 +164,23 @@ lucide-react를 유지하며 기본 크기를 16px로 통일한다(좁은 공간
   | 통합 검색바 | 입력 | 지식/서비스요청/인시던트/문제/변경 키워드 검색 진입(역할별 접근 가능 도메인만 노출) | `--border`/`--ring`(포커스) |
   | 검색 미리보기 드롭다운 | 오버레이 리스트 | 도메인 아이콘·제목·상태 배지 상위 5~8건 미리보기 | Overlay elevation(2.5절) |
   | 테마 토글 | 아이콘 버튼 | 라이트/다크 전환(SCR-COM-010) | `--foreground`, `aria-label` 필수 |
-  | 알림 벨 | 버튼+뱃지 | 만료·승인 대기 등 알림 카운트 | `--warning`(뱃지) |
+  | 알림 벨 | 버튼+뱃지 | 만료·승인 대기 등 알림 카운트(전체 건수 합계), 클릭 시 알림 드롭다운 오픈 | `--warning`(뱃지) |
+  | 알림 드롭다운 | 오버레이 리스트 | 역할별 승인 대기(서비스요청·변경)·자산 만료 임박 알림 상위 8건. 각 라인 = 도메인 라벨(Lozenge)+내용(1줄, truncate)+"상세 보기" 버튼(REQ-COM-001/FEAT-COM-001) | Overlay elevation(2.5절) |
   | 사용자 메뉴 | 드롭다운 | 내 프로필·비밀번호 변경·로그아웃 | `--primary` |
-- **상태 · 인터랙션**: 검색어 입력(디바운스) 시 미리보기 드롭다운 갱신, 결과 항목 클릭 시 해당 상세 화면으로 이동. Enter 또는 "전체 결과 보기" 클릭 시 SCR-COM-011로 이동. 결과 0건이면 "검색 결과가 없습니다" 안내. 사용자 메뉴 > 로그아웃 클릭 시 확인 후 토큰 무효화. 알림 없으면 뱃지 숨김. 테마 토글 클릭 시 SCR-COM-010 동작 수행.
-- **연관 API**: `GET /api/v1/search?keyword=&size=`(미리보기), `POST /api/v1/auth/logout`
+- **알림 드롭다운 항목 매핑(REQ-COM-001/FEAT-COM-001, 신규 API 없이 기존 대기함 API 조합)**:
+  | 알림 유형 | 데이터 출처 | 도메인 라벨 | 내용 라인(40자 초과 시 말줄임) | 상세 보기 이동 경로 |
+  |-----------|-------------|-------------|-------------------------------|----------------------|
+  | 서비스요청 승인 대기 | API-SRM-012 `GET /api/v1/approvals?scope=mine&type=service-request` (`requestId`/`ticketKey`/`requester`) | 서비스요청 승인 | `{ticketKey} · {requester} 승인 요청` | `/service-requests/{requestId}` |
+  | 변경 승인 대기(CAB) | API-CHG-007 `GET /api/v1/approvals?scope=mine&type=change` (`changeId`/`ticketKey`/`type`/`risk`/`requester`) | 변경 승인 | `{ticketKey} · {type}/{risk} · {requester} 승인 요청` | `/changes/{changeId}` |
+  | 자산 만료 임박 | API-ITAM-001 `GET /api/v1/assets?expiringWithinDays=30&size=8` (`id`/`assetKey`/`name`/`expiryDate`) | 자산 만료 | `{assetKey} · {name} · {expiryDate} 만료 예정` | `/assets/{id}` |
+- **상태 · 인터랙션**:
+  - 검색어 입력(디바운스) 시 미리보기 드롭다운 갱신, 결과 항목 클릭 시 해당 상세 화면으로 이동. Enter 또는 "전체 결과 보기" 클릭 시 SCR-COM-011로 이동. 결과 0건이면 "검색 결과가 없습니다" 안내.
+  - 알림 벨 클릭 시 벨 버튼 하단 우측 정렬(`align="end"`)로 알림 드롭다운을 오픈(검색 미리보기와 동일한 Popover 패턴 재사용, 외부 클릭/Esc로 닫힘). 폭 320px 고정(검색 드롭다운과 달리 트리거 폭에 종속되지 않음), 목록 높이 320px 초과 시 세로 스크롤.
+  - 드롭다운 목록은 서비스요청 승인 대기 → 변경 승인 대기(CAB) → 자산 만료 임박 순으로 이어붙여 상위 8건만 노출. 알림 벨 뱃지 카운트는 이 8건 상한과 무관하게 역할별 전체 대기 건수 합계(승인 대기 전체 + 자산 만료 임박 전체 `totalElements`)를 그대로 표시하며, 알림이 0건이면 뱃지를 숨긴다.
+  - 각 알림 라인의 "상세 보기" 버튼(또는 라인 클릭)을 클릭하면 위 매핑 표의 이동 경로로 이동하고 드롭다운을 닫는다.
+  - 알림이 0건이면 드롭다운 내부에 "새로운 알림이 없습니다" 안내를 표시한다.
+  - 사용자 메뉴 > 로그아웃 클릭 시 확인 후 토큰 무효화. 테마 토글 클릭 시 SCR-COM-010 동작 수행.
+- **연관 API**: `GET /api/v1/search?keyword=&size=`(미리보기), `POST /api/v1/auth/logout`, API-SRM-012 `GET /api/v1/approvals?scope=mine&type=service-request`, API-CHG-007 `GET /api/v1/approvals?scope=mine&type=change`, API-ITAM-001 `GET /api/v1/assets?expiringWithinDays=&size=`
 
 ### SCR-COM-003 · 사이드바 내비게이션
 

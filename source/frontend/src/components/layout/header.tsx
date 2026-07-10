@@ -12,8 +12,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { StatusBadge } from "@/components/common";
 import { cn } from "@/lib/utils";
 
 /**
@@ -33,6 +34,14 @@ export interface HeaderSearchResult {
   subtitle?: string;
 }
 
+/** 알림 팝오버 항목 — 도메인 무관 프레젠테이션 형태(FE가 40자 truncate 처리 완료한 텍스트를 전달). */
+export interface HeaderNotificationItem {
+  key: string;
+  /** "서비스요청 승인" | "변경 승인" | "자산 만료" */
+  domainLabel: string;
+  text: string;
+}
+
 export interface HeaderProps {
   title?: string;
   user?: HeaderUser;
@@ -46,7 +55,10 @@ export interface HeaderProps {
   onSearchInputChange?: (query: string) => void;
   /** 미리보기 결과 항목 클릭 시 해당 상세로 이동. */
   onSelectSearchResult?: (result: HeaderSearchResult) => void;
-  onNotifications?: () => void;
+  /** 알림 팝오버 항목(undefined면 로딩 전 상태로 팝오버 미표시, 빈 배열이면 "새로운 알림이 없습니다" 표시). FE가 상위 8건을 조립해 주입. */
+  notifications?: HeaderNotificationItem[];
+  /** 알림 항목의 "상세 보기" 클릭 시 개별 상세로 이동. */
+  onSelectNotification?: (item: HeaderNotificationItem) => void;
   onProfile?: () => void;
   onChangePassword?: () => void;
   onLogout?: () => void;
@@ -66,7 +78,8 @@ export function Header({
   onSearch,
   onSearchInputChange,
   onSelectSearchResult,
-  onNotifications,
+  notifications,
+  onSelectNotification,
   onProfile,
   onChangePassword,
   onLogout,
@@ -74,6 +87,7 @@ export function Header({
 }: HeaderProps) {
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
 
   const submitSearch = (e: FormEvent) => {
     e.preventDefault();
@@ -90,6 +104,11 @@ export function Header({
   const handleSelectResult = (result: HeaderSearchResult) => {
     setSearchOpen(false);
     onSelectSearchResult?.(result);
+  };
+
+  const handleSelectNotification = (item: HeaderNotificationItem) => {
+    setNotificationOpen(false);
+    onSelectNotification?.(item);
   };
 
   return (
@@ -160,20 +179,52 @@ export function Header({
 
       <div className="ml-auto flex items-center gap-1">
         <ThemeToggle />
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onNotifications}
-          aria-label={`알림${notificationCount > 0 ? ` ${notificationCount}건` : ""}`}
-          className="relative"
-        >
-          <Bell />
-          {notificationCount > 0 ? (
-            <span className="absolute right-1 top-1 flex min-w-4 items-center justify-center rounded-full bg-warning px-1 text-[10px] font-bold leading-4 text-warning-foreground">
-              {notificationCount > 99 ? "99+" : notificationCount}
-            </span>
-          ) : null}
-        </Button>
+        <Popover open={notificationOpen} onOpenChange={setNotificationOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`알림${notificationCount > 0 ? ` ${notificationCount}건` : ""}`}
+              className="relative"
+            >
+              <Bell />
+              {notificationCount > 0 ? (
+                <span className="absolute right-1 top-1 flex min-w-4 items-center justify-center rounded-full bg-warning px-1 text-[10px] font-bold leading-4 text-warning-foreground">
+                  {notificationCount > 99 ? "99+" : notificationCount}
+                </span>
+              ) : null}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80 p-1" align="end">
+            <ul className="max-h-80 overflow-auto">
+              {notifications && notifications.length === 0 ? (
+                <li className="px-2 py-1.5 text-sm text-muted-foreground">
+                  새로운 알림이 없습니다
+                </li>
+              ) : (
+                notifications?.map((n) => (
+                  <li
+                    key={n.key}
+                    onClick={() => handleSelectNotification(n)}
+                    className="flex cursor-pointer items-start gap-2 rounded-sm px-2 py-1.5 hover:bg-accent"
+                  >
+                    <StatusBadge tone="info" label={n.domainLabel} className="mt-0.5 shrink-0" />
+                    <span className="flex-1 truncate text-sm text-foreground">{n.text}</span>
+                    <Button
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      className="h-auto shrink-0 p-0 text-xs"
+                      onClick={() => handleSelectNotification(n)}
+                    >
+                      상세 보기
+                    </Button>
+                  </li>
+                ))
+              )}
+            </ul>
+          </PopoverContent>
+        </Popover>
 
         {user ? (
           <DropdownMenu>
