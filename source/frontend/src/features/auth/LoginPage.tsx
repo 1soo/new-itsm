@@ -44,6 +44,7 @@ const TEST_ACCOUNTS = [
   { email: "it-coord@itsm.local", role: "IT 처리 담당자 (DEPT_COORDINATOR)" },
   { email: "vm@itsm.local", role: "취약점 관리 담당자 (VULNERABILITY_MANAGER)" },
   { email: "co@itsm.local", role: "컴플라이언스 담당자 (COMPLIANCE_OFFICER)" },
+  { email: "io@itsm.local", role: "인프라 운영 담당자 (INFRA_OPERATOR)" },
 ] as const;
 const TEST_ACCOUNT_PASSWORD = "Admin@1234";
 

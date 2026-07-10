@@ -14,3 +14,4 @@
 - `search/` — search 도메인 테스트
 - `esm/` — esm 도메인 테스트
 - `vulnerability/` — vulnerability 도메인 테스트
+- `infra/` — infra(인프라 모니터링, IOM) 도메인 테스트

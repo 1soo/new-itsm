@@ -15,6 +15,7 @@ export const ROLE_HR_CASE_MANAGER = "HR_CASE_MANAGER";
 export const ROLE_DEPT_COORDINATOR = "DEPT_COORDINATOR";
 export const ROLE_VULNERABILITY_MANAGER = "VULNERABILITY_MANAGER";
 export const ROLE_COMPLIANCE_OFFICER = "COMPLIANCE_OFFICER";
+export const ROLE_INFRA_OPERATOR = "INFRA_OPERATOR";
 
 export function isSystemAdmin(roles: string[] | undefined): boolean {
   return !!roles?.includes(ROLE_SYSTEM_ADMIN);

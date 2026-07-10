@@ -16,6 +16,7 @@ import {
   ROLE_END_USER,
   ROLE_HR_CASE_MANAGER,
   ROLE_INCIDENT_MANAGER,
+  ROLE_INFRA_OPERATOR,
   ROLE_KNOWLEDGE_CONTRIBUTOR,
   ROLE_KNOWLEDGE_GATEKEEPER,
   ROLE_PROBLEM_MANAGER,
@@ -84,6 +85,11 @@ import { ComplianceListPage } from "@/features/compliance/ComplianceListPage";
 import { ComplianceCreatePage } from "@/features/compliance/ComplianceCreatePage";
 import { ComplianceDetailPage } from "@/features/compliance/ComplianceDetailPage";
 import { ComplianceMetricsPage } from "@/features/compliance/ComplianceMetricsPage";
+import { InfraMetricRegisterPage } from "@/features/infra-monitoring/InfraMetricRegisterPage";
+import { InfraMetricDashboardPage } from "@/features/infra-monitoring/InfraMetricDashboardPage";
+import { InfraThresholdAlertPage } from "@/features/infra-monitoring/InfraThresholdAlertPage";
+import { InfraCapacityPlanPage } from "@/features/infra-monitoring/InfraCapacityPlanPage";
+import { InfraReportPage } from "@/features/infra-monitoring/InfraReportPage";
 
 /*
  * 라우팅 — 화면 ID(SCR-*)와 경로 매핑. screen 테이블 seed 경로와 정합.
@@ -315,6 +321,18 @@ export const router = createBrowserRouter([
               { path: "/compliance/requirements/new", element: <ComplianceCreatePage /> }, // SCR-COMP-002
               { path: "/compliance/requirements/:id", element: <ComplianceDetailPage /> }, // SCR-COMP-003
               { path: "/compliance/metrics", element: <ComplianceMetricsPage /> }, // SCR-COMP-004
+            ],
+          },
+
+          // 인프라 모니터링(IOM) — INFRA_OPERATOR
+          {
+            element: <RequireRoles roles={[ROLE_INFRA_OPERATOR]} />,
+            children: [
+              { path: "/infra/metrics/new", element: <InfraMetricRegisterPage /> }, // SCR-IOM-001
+              { path: "/infra/metrics", element: <InfraMetricDashboardPage /> }, // SCR-IOM-002
+              { path: "/infra/thresholds", element: <InfraThresholdAlertPage /> }, // SCR-IOM-003
+              { path: "/infra/capacity-plans", element: <InfraCapacityPlanPage /> }, // SCR-IOM-004
+              { path: "/infra/metrics/report", element: <InfraReportPage /> }, // SCR-IOM-005
             ],
           },
 
