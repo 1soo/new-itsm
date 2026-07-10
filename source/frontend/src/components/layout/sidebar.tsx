@@ -1,4 +1,5 @@
-import { type ReactNode, Fragment } from "react";
+import { type ReactNode, Fragment, useState } from "react";
+import { ChevronDown } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -29,6 +30,17 @@ export interface SidebarProps {
 }
 
 export function Sidebar({ groups, collapsed = false, className }: SidebarProps) {
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set());
+
+  function toggleGroup(key: string) {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
   return (
     <aside
       className={cn(
@@ -39,17 +51,27 @@ export function Sidebar({ groups, collapsed = false, className }: SidebarProps) 
       aria-label="주요 내비게이션"
     >
       <nav className="flex flex-col gap-1 p-2">
-        {groups.map((group, gi) => (
+        {groups.map((group, gi) => {
+          const groupCollapsed = !collapsed && group.label ? collapsedGroups.has(group.key) : false;
+          return (
           <Fragment key={group.key}>
             {gi > 0 && (
               <div className="my-2 border-t border-sidebar-border" role="separator" />
             )}
             {group.label && !collapsed ? (
-              <p className="px-3 py-1 text-xs font-semibold uppercase tracking-wide text-sidebar-foreground/60">
+              <button
+                type="button"
+                onClick={() => toggleGroup(group.key)}
+                aria-expanded={!groupCollapsed}
+                className="flex items-center justify-between rounded-md px-3 py-1 text-xs font-semibold uppercase tracking-wide text-sidebar-foreground/60 outline-none hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring"
+              >
                 {group.label}
-              </p>
+                <ChevronDown
+                  className={cn("size-3.5 shrink-0 transition-transform", groupCollapsed && "-rotate-90")}
+                />
+              </button>
             ) : null}
-            {group.items.map((item) => (
+            {groupCollapsed ? null : group.items.map((item) => (
               <button
                 key={item.key}
                 type="button"
@@ -84,7 +106,8 @@ export function Sidebar({ groups, collapsed = false, className }: SidebarProps) 
               </button>
             ))}
           </Fragment>
-        ))}
+          );
+        })}
       </nav>
     </aside>
   );
