@@ -79,12 +79,12 @@ class EsmHrCaseServiceTest {
     }
 
     @Test
-    void createForbiddenForSystemAdmin() {
+    void createAllowedForSystemAdmin() {
         login(1L, "SYSTEM_ADMIN");
 
-        assertThatThrownBy(() -> service.create(new CreateHrCaseRequest("대상자", "제목", "설명")))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.ACCESS_DENIED));
+        var response = service.create(new CreateHrCaseRequest("대상자", "제목", "설명"));
+
+        assertThat(response.status()).isEqualTo("INTAKE");
     }
 
     @Test

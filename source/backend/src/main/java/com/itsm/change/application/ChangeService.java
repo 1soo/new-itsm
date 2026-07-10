@@ -204,7 +204,7 @@ public class ChangeService {
         ChangeRequest change = findChange(id);
         Approval approval = approvalRepository.findByTicketTypeAndTicketId(TT, id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.APPROVAL_NOT_FOUND));
-        if (!principal.roles().contains(approval.getApproverRole())) {
+        if (!SecurityUtils.hasRole(approval.getApproverRole())) {
             throw new BusinessException(ErrorCode.ACCESS_DENIED); // 승인 담당 역할 미보유
         }
         if (!approval.isPending()) {
@@ -365,13 +365,9 @@ public class ChangeService {
     }
 
     private void requireRole(String... roles) {
-        AuthPrincipal principal = SecurityUtils.currentPrincipal();
-        for (String role : roles) {
-            if (principal.roles().contains(role)) {
-                return;
-            }
+        if (!SecurityUtils.hasAnyRole(roles)) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
-        throw new BusinessException(ErrorCode.ACCESS_DENIED);
     }
 
     private ApprovalRoute computeApprovalRoute(ChangeType type, ChangeRisk risk, Long templateId) {

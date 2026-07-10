@@ -343,13 +343,9 @@ public class AssetService {
     }
 
     private void requireRole(String... roles) {
-        var principal = SecurityUtils.currentPrincipal();
-        for (String role : roles) {
-            if (principal.roles().contains(role)) {
-                return;
-            }
+        if (!SecurityUtils.hasAnyRole(roles)) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
-        throw new BusinessException(ErrorCode.ACCESS_DENIED);
     }
 
     private void applyAttributes(Long assetId, Map<String, String> attributes) {

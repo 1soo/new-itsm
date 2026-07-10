@@ -238,8 +238,7 @@ public class ComplianceService {
     // ---------- helpers ----------
 
     private void requireRole() {
-        AuthPrincipal principal = SecurityUtils.currentPrincipal();
-        if (!principal.roles().contains(CO)) {
+        if (!SecurityUtils.hasRole(CO)) {
             throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
     }

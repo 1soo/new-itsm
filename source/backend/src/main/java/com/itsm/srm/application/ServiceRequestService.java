@@ -147,7 +147,7 @@ public class ServiceRequestService {
         if (scope == null || scope.equalsIgnoreCase("mine")) {
             requesterFilter = principal.userId();
         } else {
-            if (!hasAny(principal, AGENT, PROCESS_OWNER)) {
+            if (!SecurityUtils.hasAnyRole(AGENT, PROCESS_OWNER)) {
                 throw new BusinessException(ErrorCode.ACCESS_DENIED);
             }
             requesterFilter = null;
@@ -217,8 +217,8 @@ public class ServiceRequestService {
         List<String> result = new java.util.ArrayList<>();
         for (RequestStatus target : RequestStateMachine.allowedTargets(sr.getStatus())) {
             boolean roleOk = (target == RequestStatus.CLOSED)
-                    ? (isRequester || hasAny(principal, AGENT))
-                    : hasAny(principal, AGENT);
+                    ? (isRequester || SecurityUtils.hasAnyRole(AGENT))
+                    : SecurityUtils.hasAnyRole(AGENT);
             if (!roleOk) {
                 continue;
             }
@@ -297,7 +297,7 @@ public class ServiceRequestService {
         ServiceRequest sr = findRequest(id);
         Approval approval = approvalRepository.findByTicketTypeAndTicketId(TT, id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.APPROVAL_NOT_FOUND));
-        if (!principal.roles().contains(approval.getApproverRole())) {
+        if (!SecurityUtils.hasRole(approval.getApproverRole())) {
             throw new BusinessException(ErrorCode.ACCESS_DENIED); // 승인 담당 역할 미보유
         }
         if (!approval.isPending()) {
@@ -392,10 +392,10 @@ public class ServiceRequestService {
     private void assertTransitionRole(AuthPrincipal principal, ServiceRequest sr, RequestStatus target) {
         boolean isRequester = sr.getRequesterId().equals(principal.userId());
         if (target == RequestStatus.CLOSED) {
-            if (!(isRequester || hasAny(principal, AGENT))) {
+            if (!(isRequester || SecurityUtils.hasAnyRole(AGENT))) {
                 throw new BusinessException(ErrorCode.ACCESS_DENIED);
             }
-        } else if (!hasAny(principal, AGENT)) {
+        } else if (!SecurityUtils.hasAnyRole(AGENT)) {
             throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
     }
@@ -404,18 +404,9 @@ public class ServiceRequestService {
         if (sr.getRequesterId().equals(principal.userId())) {
             return;
         }
-        if (!hasAny(principal, AGENT, PROCESS_OWNER, APPROVER)) {
+        if (!SecurityUtils.hasAnyRole(AGENT, PROCESS_OWNER, APPROVER)) {
             throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
-    }
-
-    private boolean hasAny(AuthPrincipal principal, String... roles) {
-        for (String r : roles) {
-            if (principal.roles().contains(r)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private boolean isResolved(RequestStatus status) {

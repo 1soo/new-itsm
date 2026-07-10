@@ -184,12 +184,12 @@ public class EsmRequestService {
         Long requesterFilter;
         Department departmentFilter;
         if (scope != null && scope.equalsIgnoreCase("all")) {
-            if (!principal.roles().contains(DEPT_COORDINATOR)) {
+            if (!SecurityUtils.hasRole(DEPT_COORDINATOR)) {
                 throw new BusinessException(ErrorCode.ACCESS_DENIED);
             }
             requesterFilter = null;
             departmentFilter = myDepartment(principal);
-            if (departmentFilter == null) {
+            if (departmentFilter == null && !SecurityUtils.isSystemAdmin()) {
                 throw new BusinessException(ErrorCode.ACCESS_DENIED);
             }
         } else {
@@ -274,10 +274,10 @@ public class EsmRequestService {
     // ---------- helpers ----------
 
     private void assertCanView(AuthPrincipal principal, EsmRequest request) {
-        if (request.getRequesterId().equals(principal.userId())) {
+        if (SecurityUtils.isSystemAdmin() || request.getRequesterId().equals(principal.userId())) {
             return;
         }
-        if (principal.roles().contains(DEPT_COORDINATOR)) {
+        if (SecurityUtils.hasRole(DEPT_COORDINATOR)) {
             Department myDept = myDepartment(principal);
             if (myDept != null && myDept == request.getDepartment()) {
                 return;
@@ -287,7 +287,10 @@ public class EsmRequestService {
     }
 
     private void assertCanProcess(AuthPrincipal principal, EsmRequest request) {
-        if (!principal.roles().contains(DEPT_COORDINATOR)) {
+        if (SecurityUtils.isSystemAdmin()) {
+            return;
+        }
+        if (!SecurityUtils.hasRole(DEPT_COORDINATOR)) {
             throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
         Department myDept = myDepartment(principal);

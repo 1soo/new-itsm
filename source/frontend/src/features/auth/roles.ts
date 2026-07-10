@@ -21,8 +21,12 @@ export function isSystemAdmin(roles: string[] | undefined): boolean {
   return !!roles?.includes(ROLE_SYSTEM_ADMIN);
 }
 
-/** 사용자 역할이 허용 역할 중 하나라도 포함하면 true. RBAC 라우트 가드·메뉴 노출에 사용. */
+/**
+ * 사용자 역할이 허용 역할 중 하나라도 포함하면 true. RBAC 라우트 가드·메뉴 노출에 사용.
+ * SYSTEM_ADMIN은 역할 검증에서 예외 처리되어 항상 true(2절 전체 접근 원칙, security/authorization/system_admin.md).
+ */
 export function hasAnyRole(roles: string[] | undefined, allowed: string[]): boolean {
+  if (isSystemAdmin(roles)) return true;
   return !!roles?.some((r) => allowed.includes(r));
 }
 

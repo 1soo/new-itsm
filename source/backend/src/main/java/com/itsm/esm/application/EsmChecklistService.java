@@ -72,12 +72,15 @@ public class EsmChecklistService {
     }
 
     private void assertCanView(AuthPrincipal principal, EsmChecklist checklist, List<EsmChecklistTask> tasks) {
+        if (SecurityUtils.isSystemAdmin()) {
+            return;
+        }
         EsmRequest linkedRequest = requestRepository.findByChecklistId(checklist.getId()).orElse(null);
         if (linkedRequest != null) {
             if (linkedRequest.getRequesterId().equals(principal.userId())) {
                 return;
             }
-            if (principal.roles().contains(DEPT_COORDINATOR)) {
+            if (SecurityUtils.hasRole(DEPT_COORDINATOR)) {
                 Department myDept = myDepartment(principal);
                 if (myDept != null && myDept == linkedRequest.getDepartment()) {
                     return;
@@ -98,7 +101,7 @@ public class EsmChecklistService {
         AuthPrincipal principal = SecurityUtils.currentPrincipal();
         requireDeptCoordinator(principal);
         Department myDept = myDepartment(principal);
-        if (myDept == null) {
+        if (myDept == null && !SecurityUtils.isSystemAdmin()) {
             return new PageResponse<>(List.of(), pageable.getPageNumber(), pageable.getPageSize(), 0);
         }
         return PageResponse.from(checklistTaskRepository.search(myDept, status, pageable), this::toMyTask);
@@ -112,7 +115,7 @@ public class EsmChecklistService {
         requireDeptCoordinator(principal);
         EsmChecklistTask task = findTask(taskId);
         Department myDept = myDepartment(principal);
-        if (myDept == null || myDept != task.getDepartment()) {
+        if (!SecurityUtils.isSystemAdmin() && (myDept == null || myDept != task.getDepartment())) {
             throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
         task.markDone();
@@ -131,7 +134,7 @@ public class EsmChecklistService {
     // ---------- helpers ----------
 
     private void requireDeptCoordinator(AuthPrincipal principal) {
-        if (!principal.roles().contains(DEPT_COORDINATOR)) {
+        if (!SecurityUtils.hasRole(DEPT_COORDINATOR)) {
             throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
     }

@@ -130,8 +130,7 @@ public class EsmCatalogService {
     }
 
     private void requireProcessOwner() {
-        AuthPrincipal principal = SecurityUtils.currentPrincipal();
-        if (!principal.roles().contains(PROCESS_OWNER)) {
+        if (!SecurityUtils.hasRole(PROCESS_OWNER)) {
             throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
     }

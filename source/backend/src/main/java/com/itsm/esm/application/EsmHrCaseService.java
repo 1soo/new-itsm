@@ -94,7 +94,7 @@ public class EsmHrCaseService {
     }
 
     private void requireHrCaseManager(AuthPrincipal principal) {
-        if (!principal.roles().contains(HR_CASE_MANAGER)) {
+        if (!SecurityUtils.hasRole(HR_CASE_MANAGER)) {
             throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
     }

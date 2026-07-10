@@ -73,30 +73,29 @@ public class SearchService {
     @Transactional(readOnly = true)
     public PageResponse<SearchResultResponse> search(String keyword, Pageable pageable) {
         AuthPrincipal principal = SecurityUtils.currentPrincipal();
-        List<String> roles = principal.roles();
         String kw = StringUtils.hasText(keyword) ? keyword.trim() : null;
         Pageable domainPage = PageRequest.of(0, DOMAIN_FETCH_LIMIT, Sort.by(Sort.Direction.DESC, "updatedAt"));
 
         List<SearchResultResponse> merged = new ArrayList<>();
 
-        if (hasAny(roles, END_USER, AGENT, KC, KG)) {
-            boolean isGatekeeper = roles.contains(KG);
+        if (SecurityUtils.hasAnyRole(END_USER, AGENT, KC, KG)) {
+            boolean isGatekeeper = SecurityUtils.hasRole(KG);
             articleRepository.search(kw, null, null, null, principal.userId(), isGatekeeper, domainPage)
                     .forEach(a -> merged.add(fromArticle(a)));
         }
-        if (hasAny(roles, END_USER, AGENT)) {
-            Long requesterFilter = roles.contains(AGENT) ? null : principal.userId();
+        if (SecurityUtils.hasAnyRole(END_USER, AGENT)) {
+            Long requesterFilter = SecurityUtils.hasRole(AGENT) ? null : principal.userId();
             serviceRequestRepository.searchByKeyword(requesterFilter, kw, domainPage)
                     .forEach(r -> merged.add(fromServiceRequest(r)));
         }
-        if (hasAny(roles, AGENT, IM)) {
+        if (SecurityUtils.hasAnyRole(AGENT, IM)) {
             incidentRepository.search(null, null, null, kw, EPOCH, farFuture(), domainPage)
                     .forEach(i -> merged.add(fromIncident(i)));
         }
-        if (hasAny(roles, PM)) {
+        if (SecurityUtils.hasAnyRole(PM)) {
             problemRepository.searchByKeyword(kw, domainPage).forEach(p -> merged.add(fromProblem(p)));
         }
-        if (hasAny(roles, CM)) {
+        if (SecurityUtils.hasAnyRole(CM)) {
             changeRequestRepository.searchByKeyword(kw, domainPage).forEach(c -> merged.add(fromChange(c)));
         }
 
@@ -106,15 +105,6 @@ public class SearchService {
         int from = Math.min((int) pageable.getOffset(), merged.size());
         int to = Math.min(from + pageable.getPageSize(), merged.size());
         return new PageResponse<>(merged.subList(from, to), pageable.getPageNumber(), pageable.getPageSize(), merged.size());
-    }
-
-    private boolean hasAny(List<String> roles, String... candidates) {
-        for (String candidate : candidates) {
-            if (roles.contains(candidate)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private OffsetDateTime farFuture() {

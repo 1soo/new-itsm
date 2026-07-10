@@ -4,7 +4,7 @@
 
 ## 공통 기본 접근 (전 역할 공통)
 
-앱 셸/공통 컴포넌트(SCR-COM-*), 로그인·프로필·비밀번호(SCR-AUTH-001~003), 404, 자기 인증 API(API-AUTH-003/004/005), 통합 검색 API(API-SEARCH-001, 접근 가능 도메인만 결과 포함). 이하 역할 고유 접근만 기술한다.
+앱 셸/공통 컴포넌트(SCR-COM-*), 로그인·프로필·비밀번호(SCR-AUTH-001~003), 404, 자기 인증 API(API-AUTH-003/004/005), 통합 검색 API(API-SEARCH-001, 접근 가능 도메인만 결과 포함). SYSTEM_ADMIN은 모든 역할의 화면·API에 예외적으로 접근 가능하다(system_admin.md 2절 참조). 이하 역할 고유 접근만 기술한다.
 
 ## 1. 페르소나
 
@@ -32,6 +32,6 @@
 
 - 로그인 필요 화면/요청 접근 시 Access Token의 `role`을 검증한다.
 - 이 역할(HR_CASE_MANAGER)에 없는 화면/요청 → **403**, 있는 경우 → 정상 수행.
-- **HR 케이스 API(API-ESM-010~013)는 HR_CASE_MANAGER 전용**이며, 그 외 역할(SYSTEM_ADMIN 포함)이 접근하면 403이다(REQ-ESM-004, 민감 정보 보호가 시스템 관리 권한보다 우선).
+- **HR 케이스 API(API-ESM-010~013)는 HR_CASE_MANAGER 전용**이며, 그 외 역할이 접근하면 403이다. 단, SYSTEM_ADMIN은 전체 접근 원칙(system_admin.md 2절)에 따라 예외적으로 접근 가능하다(REQ-ESM-004 개정 반영, HR_CASE_MANAGER 및 SYSTEM_ADMIN 외 역할만 403).
 - 상태 전이는 정의된 순서(접수→기록→조사→해결)만 허용하며, 순서를 벗어난 요청은 400.
 - 화면 이동마다 Backend에 권한 확인 API를 호출한다.

@@ -9,7 +9,11 @@ import com.itsm.common.security.RestAuthenticationEntryPoint;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.access.expression.method.DefaultMethodSecurityExpressionHandler;
+import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
+import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.access.expression.method.MethodSecurityExpressionHandler;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -86,5 +90,26 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    /**
+     * SYSTEM_ADMIN이 @PreAuthorize(hasRole/hasAnyRole) 기반 체크에서도 항상 통과하도록 하는 단일 지점.
+     * (SecurityUtils.hasRole()/hasAnyRole() 기반 서비스 계층 체크는 SecurityUtils 자체에서 동일 원칙 적용)
+     * 신규 @PreAuthorize에 역할이 추가되면 이 계층에도 한 줄만 추가하면 된다(각 애노테이션 수정 불필요).
+     */
+    @Bean
+    public RoleHierarchy roleHierarchy() {
+        return RoleHierarchyImpl.fromHierarchy("""
+                ROLE_SYSTEM_ADMIN > ROLE_APPROVER
+                ROLE_SYSTEM_ADMIN > ROLE_PROCESS_OWNER
+                ROLE_SYSTEM_ADMIN > ROLE_SERVICE_DESK_AGENT
+                """);
+    }
+
+    @Bean
+    static MethodSecurityExpressionHandler methodSecurityExpressionHandler(RoleHierarchy roleHierarchy) {
+        DefaultMethodSecurityExpressionHandler handler = new DefaultMethodSecurityExpressionHandler();
+        handler.setRoleHierarchy(roleHierarchy);
+        return handler;
     }
 }

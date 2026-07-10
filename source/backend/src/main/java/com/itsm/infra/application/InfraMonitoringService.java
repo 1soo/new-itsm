@@ -229,8 +229,7 @@ public class InfraMonitoringService {
     // ---------- helpers ----------
 
     private void requireRole() {
-        AuthPrincipal principal = SecurityUtils.currentPrincipal();
-        if (!principal.roles().contains(IO)) {
+        if (!SecurityUtils.hasRole(IO)) {
             throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
     }

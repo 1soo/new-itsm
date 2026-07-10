@@ -117,7 +117,7 @@ public class KnowledgeService {
     public ArticleListResponse search(String keyword, Long categoryId, String label, ArticleStatus status,
                                       Pageable pageable) {
         AuthPrincipal principal = SecurityUtils.currentPrincipal();
-        boolean isGatekeeper = principal.roles().contains(KG);
+        boolean isGatekeeper = SecurityUtils.hasRole(KG);
         String kw = StringUtils.hasText(keyword) ? keyword.trim() : null;
 
         Page<KnowledgeArticle> page = articleRepository.search(kw, categoryId, label, status,
@@ -138,7 +138,7 @@ public class KnowledgeService {
     public ArticleDetailResponse detail(Long id) {
         AuthPrincipal principal = SecurityUtils.currentPrincipal();
         KnowledgeArticle article = findArticle(id);
-        boolean isGatekeeper = principal.roles().contains(KG);
+        boolean isGatekeeper = SecurityUtils.hasRole(KG);
         boolean isOwner = article.getAuthorId().equals(principal.userId());
         if (!article.isPublished() && !isGatekeeper && !isOwner) {
             throw new BusinessException(ErrorCode.ACCESS_DENIED);
@@ -354,13 +354,9 @@ public class KnowledgeService {
     }
 
     private void requireRole(String... roles) {
-        AuthPrincipal principal = SecurityUtils.currentPrincipal();
-        for (String role : roles) {
-            if (principal.roles().contains(role)) {
-                return;
-            }
+        if (!SecurityUtils.hasAnyRole(roles)) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
-        throw new BusinessException(ErrorCode.ACCESS_DENIED);
     }
 
     private void validCategoryOrThrow(Long categoryId) {

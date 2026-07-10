@@ -170,7 +170,7 @@ public class IncidentService {
     }
 
     private List<String> allowedTransitions(AuthPrincipal principal, Incident inc) {
-        if (!hasAny(principal, AGENT, IM)) {
+        if (!SecurityUtils.hasAnyRole(AGENT, IM)) {
             return List.of();
         }
         return IncidentStateMachine.allowedTargets(inc.getStatus()).stream()
@@ -463,17 +463,8 @@ public class IncidentService {
     }
 
     private void requireAnyRole(String... roles) {
-        if (!hasAny(SecurityUtils.currentPrincipal(), roles)) {
+        if (!SecurityUtils.hasAnyRole(roles)) {
             throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
-    }
-
-    private boolean hasAny(AuthPrincipal principal, String... roles) {
-        for (String r : roles) {
-            if (principal.roles().contains(r)) {
-                return true;
-            }
-        }
-        return false;
     }
 }

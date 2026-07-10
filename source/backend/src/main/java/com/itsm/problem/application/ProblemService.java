@@ -417,12 +417,8 @@ public class ProblemService {
     }
 
     private void requireRole(String... roles) {
-        AuthPrincipal principal = SecurityUtils.currentPrincipal();
-        for (String role : roles) {
-            if (principal.roles().contains(role)) {
-                return;
-            }
+        if (!SecurityUtils.hasAnyRole(roles)) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
-        throw new BusinessException(ErrorCode.ACCESS_DENIED);
     }
 }
