@@ -18,6 +18,8 @@ Agent Teams는 실험적 기능이라 `.claude/settings.json`(또는 `settings.l
 
 모든 에이전트는 **`model: sonnet`(Sonnet 5) + `effort: high`** 로 동작한다(Sonnet 5 사용이 불가능한 경우 `model: opus` + `effort: high`로 대체한다). **소집(spawn)은 Main만 가능**하며, 에이전트끼리는 `SendMessage`와 공유 task list로 협업한다(중첩 불가, flat peer).
 
+**Main은 요구사항에 맞는 에이전트만 소집한다.** 아래 로스터는 전체 후보 목록이며, 항상 전부를 소집하지 않는다. 요청 범위를 먼저 파악해 실제로 필요한 역할만 소집한다. (예: 화면 변경이 없으면 UI/FE 생략, 스키마 변경이 없으면 DB 생략, 이미 정의된 요구사항의 단순 수정이면 `analyzer` 생략)
+
 | 역할 | 소집 기준 | 비고 |
 |------|-----------|------|
 | 분석 | `analyzer` | 요구사항 분석·산출물 작성 |
@@ -25,12 +27,12 @@ Agent Teams는 실험적 기능이라 `.claude/settings.json`(또는 `settings.l
 | 개발 팀장 | `dev-lead` | 계획·조율 (코드 미구현) |
 | 개발-UI | `developer` (역할: UI) | `ui-ux-development` skill만 사용 |
 | 개발-FE | `developer` (역할: FE) | `react-development` 또는 `next-development` skill만 사용 |
-| 개발-BE | `developer` (역할: BE) | `spring-boot-development` skill만 사용 |
+| 개발-BE | `developer` (역할: BE) | `spring-boot-development` skill만 사용. DB 접근 방식(JPA/MyBatis 등)은 임의로 정하지 않고 설계자 결정(`docs/02_plan/database`)을 따른다 |
 | 개발-DB | `developer` (역할: DB) | `database-development` skill만 사용 |
 | 테스트 | `tester` | 도메인별 통합 테스트 |
 
 > 개발 구현 4종은 모두 `developer` 정의를 재사용하되, 소집 시 **역할 지시로 담당 skill을 한정**한다.
-> **CSR** 구조면 개발 단계에 `dev-lead` + UI + FE + BE + DB = **5개 에이전트**를 소집한다.
+> **CSR** 구조에서 풀 스코프 개발이면 `dev-lead` + UI + FE + BE + DB = **최대 5개 에이전트**가 후보이며, 실제 소집은 해당 도메인 변경이 걸치는 영역만으로 한정한다.
 > **SSR**에서 Next 풀스택(별도 백엔드 없음)이면 BE를 FE(Next)에 흡수해 축소할 수 있다. 실제 구성은 `docs/01_analyze/tech.md`를 따른다.
 
 ## 컨텍스트 유지 정책

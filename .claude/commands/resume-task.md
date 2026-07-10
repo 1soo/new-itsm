@@ -1,11 +1,17 @@
 ---
 description: 토큰 소진 등으로 세션이 끊겨 작업이 중단됐을 때, 전체 Agent를 Teammate로 다시 소집하고 디스크 상태를 근거로 중단된 지점부터 개발을 재개한다.
+argument-hint: <추가 요구사항>
+arguments: [additional_requirements]
 disable-model-invocation: true
 ---
 
 # /resume-task — Agent Teams 작업 재개
 
 이전 세션의 teammate는 모두 사라진 상태다(이 세션은 완전히 새로 시작됨). 재소집되는 에이전트에게는 이전 대화에 대한 기억이 전혀 없으므로, **디스크에 남은 산출물이 유일한 진실**이다.
+
+## 입력
+
+- 추가 요구사항: $additional_requirements
 
 ## 0. 중단 지점 파악 (Main이 먼저 직접 조사)
 
@@ -47,8 +53,9 @@ disable-model-invocation: true
 - **분석 미완료**면 `analyzer`에게: 어디까지 분석됐는지, 남은 도메인/미확정 사항.
 - **설계 미완료**면 `designer`에게: 완료된 분석 산출물 위치, 남은 설계 산출물.
 - **개발/테스트 단계**면 `dev-lead`에게: 마지막으로 커밋 완료된 도메인, 현재 진행 중이던 도메인과 그 상태(개발 중/테스트 대기/재테스트 대기/실패 항목), 참고할 파일 위치(`source/`, `docs/03_develop/plan/`, `docs/04_test/` 최신 결과).
+- 추가 요구사항($additional_requirements)이 있으면 위 전달 내용에 함께 포함한다.
 
-전달받은 에이전트는 `CLAUDE.md` 워크플로우에 따라 필요한 동료 에이전트에게 **직접 SendMessage로** 후속 지시를 이어간다.
+전달받은 에이전트는 `CLAUDE.md` 워크플로우에 따라 필요한 동료 에이전트에게 **직접 SendMessage로** 후속 지시를 이어간다. 추가 요구사항이 있으면 함께 전달한다.
 
 ## 3. Main의 역할 제한 (반드시 준수)
 

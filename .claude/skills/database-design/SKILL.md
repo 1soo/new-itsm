@@ -17,6 +17,7 @@ description: 테이블 정의서를 직관적이고 간결한 markdown으로 작
   - `updated_by`, `updated_at` (수정자 / 수정일)
   - `is_deleted` (soft delete 여부, 기본값 false)
 - **관계 · 제약조건**: 테이블 간 relation을 고려하여 FK·UNIQUE·NOT NULL 등 제약조건을 명시한다.
+- **DB 접근 방식**: 사용할 ORM/쿼리 매퍼(JPA, MyBatis 등)를 설계자가 결정하여 문서 상단에 명시한다. Backend 개발 에이전트는 이 결정을 그대로 따르며 임의로 선택하지 않는다.
 
 ## RBAC · 화면 관리 테이블 (필수)
 

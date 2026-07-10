@@ -1,7 +1,7 @@
 ---
 description: Agent Teams로 신규 서비스 구축에 착수한다. Main이 전체 에이전트를 Teammate로 소집한 뒤 analyzer부터 시작해, 이후 각 에이전트가 SendMessage로 직접 소통하며 분석→설계→개발→테스트를 진행한다.
-argument-hint: <구축 서비스명> <참조파일 위치>
-arguments: [service_name, reference_path]
+argument-hint: <구축 서비스명> <참조파일 위치> <추가 요구사항>
+arguments: [service_name, reference_path, additional_requirements]
 disable-model-invocation: true
 ---
 
@@ -13,6 +13,7 @@ disable-model-invocation: true
 
 - 구축 서비스명: $service_name
 - 참조파일(가이드/요구사항/설계 문서 등) 위치: $reference_path
+- 추가 요구사항: $additional_requirements
 
 ## 0. 사전 확인
 
@@ -43,7 +44,8 @@ disable-model-invocation: true
 
 - 구축 서비스명: $service_name
 - 참조파일 위치: $reference_path
-- `CLAUDE.md`의 워크플로우(분석 → 설계 → 개발 → 테스트)를 따르고, 각 단계 산출물이 나오면 다음 에이전트에게 **직접 SendMessage로** 전달할 것.
+- 추가 요구사항: $additional_requirements
+- `CLAUDE.md`의 워크플로우(분석 → 설계 → 개발 → 테스트)를 따르고, 각 단계 산출물이 나오면 다음 에이전트에게 **직접 SendMessage로** 전달할 것. 추가 요구사항이 있으면 분석 산출물에 반영하고, 이후 단계로 전달할 때도 함께 전달할 것.
 - 단계별로 생각할 것.
 
 ## 3. Main의 역할 제한 (반드시 준수)
