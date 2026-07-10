@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
-import { StatusBadge, UserGuideModal } from "@/components/common";
+import { StatusBadge } from "@/components/common";
 import { cn } from "@/lib/utils";
 
 /**
@@ -67,8 +67,8 @@ export interface HeaderProps {
   onProfile?: () => void;
   onChangePassword?: () => void;
   onLogout?: () => void;
-  /** 로그인 사용자의 보유 역할 코드. 사용자 가이드 모달의 "역할별 수행 내용과 방법" 탭에서 "내 역할" 표시에 사용. */
-  myRoles?: string[];
+  /** "?" 사용자 가이드 아이콘 클릭 시 호출(FE가 `/guide`로 이동). */
+  onOpenGuide?: () => void;
   className?: string;
 }
 
@@ -91,13 +91,12 @@ export function Header({
   onProfile,
   onChangePassword,
   onLogout,
-  myRoles,
+  onOpenGuide,
   className,
 }: HeaderProps) {
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
-  const [guideOpen, setGuideOpen] = useState(false);
 
   const submitSearch = (e: FormEvent) => {
     e.preventDefault();
@@ -127,65 +126,126 @@ export function Header({
   };
 
   return (
-    <>
-      <header
-        className={cn(
-          "flex h-14 shrink-0 items-center gap-4 border-b border-border bg-background px-4",
-          className,
-        )}
-      >
-        {onToggleSidebar ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onToggleSidebar}
-            aria-label="사이드바 토글"
-          >
-            <Menu />
-          </Button>
-        ) : null}
+    <header
+      className={cn(
+        "flex h-14 shrink-0 items-center gap-4 border-b border-border bg-background px-4",
+        className,
+      )}
+    >
+      {onToggleSidebar ? (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onToggleSidebar}
+          aria-label="사이드바 토글"
+        >
+          <Menu />
+        </Button>
+      ) : null}
 
-        <div className="flex items-center gap-2">
-          <span className="flex size-7 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
-            IT
-          </span>
-          <span className="text-base font-semibold text-foreground">{title}</span>
-        </div>
+      <div className="flex items-center gap-2">
+        <span className="flex size-7 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
+          IT
+        </span>
+        <span className="text-base font-semibold text-foreground">{title}</span>
+      </div>
 
-        <Popover open={searchOpen && searchResults !== undefined} onOpenChange={setSearchOpen}>
-          <PopoverAnchor asChild>
-            <form onSubmit={submitSearch} className="relative mx-auto hidden w-full max-w-md md:block">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="search"
-                value={query}
-                onChange={(e) => handleQueryChange(e.target.value)}
-                onFocus={() => setSearchOpen(query.trim().length > 0)}
-                placeholder="지식·티켓 검색"
-                className="pl-9"
-                aria-label="통합 검색"
-              />
-            </form>
-          </PopoverAnchor>
-          <PopoverContent
-            className="w-[var(--radix-popover-trigger-width)] p-1"
-            align="start"
-            onOpenAutoFocus={(e) => e.preventDefault()}
-          >
-            <ul className="max-h-72 overflow-auto">
-              {searchResults && searchResults.length === 0 ? (
-                <li className="px-2 py-1.5 text-sm text-muted-foreground">검색 결과가 없습니다</li>
+      <Popover open={searchOpen && searchResults !== undefined} onOpenChange={setSearchOpen}>
+        <PopoverAnchor asChild>
+          <form onSubmit={submitSearch} className="relative mx-auto hidden w-full max-w-md md:block">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              value={query}
+              onChange={(e) => handleQueryChange(e.target.value)}
+              onFocus={() => setSearchOpen(query.trim().length > 0)}
+              placeholder="지식·티켓 검색"
+              className="pl-9"
+              aria-label="통합 검색"
+            />
+          </form>
+        </PopoverAnchor>
+        <PopoverContent
+          className="w-[var(--radix-popover-trigger-width)] p-1"
+          align="start"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          <ul className="max-h-72 overflow-auto">
+            {searchResults && searchResults.length === 0 ? (
+              <li className="px-2 py-1.5 text-sm text-muted-foreground">검색 결과가 없습니다</li>
+            ) : (
+              searchResults?.map((r) => (
+                <li key={r.key}>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectResult(r)}
+                    className="flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-1.5 text-left text-sm outline-none hover:bg-accent focus-visible:bg-accent"
+                  >
+                    <span className="text-foreground">{r.title}</span>
+                    {r.subtitle ? <span className="text-xs text-muted-foreground">{r.subtitle}</span> : null}
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        </PopoverContent>
+      </Popover>
+
+      <div className="ml-auto flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onOpenGuide}
+          aria-label="사용자 가이드"
+        >
+          <HelpCircle />
+        </Button>
+        <ThemeToggle />
+        <Popover open={notificationOpen} onOpenChange={handleNotificationOpenChange}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`알림${notificationCount > 0 ? ` ${notificationCount}건` : ""}`}
+              className="relative"
+            >
+              <Bell />
+              {notificationCount > 0 ? (
+                <span className="absolute right-1 top-1 flex min-w-4 items-center justify-center rounded-full bg-warning px-1 text-[10px] font-bold leading-4 text-warning-foreground">
+                  {notificationCount > 99 ? "99+" : notificationCount}
+                </span>
+              ) : null}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80 p-1" align="end">
+            <ul className="max-h-80 overflow-auto">
+              {notifications && notifications.length === 0 ? (
+                <li className="px-2 py-1.5 text-sm text-muted-foreground">
+                  새로운 알림이 없습니다
+                </li>
               ) : (
-                searchResults?.map((r) => (
-                  <li key={r.key}>
-                    <button
-                      type="button"
-                      onClick={() => handleSelectResult(r)}
-                      className="flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-1.5 text-left text-sm outline-none hover:bg-accent focus-visible:bg-accent"
-                    >
-                      <span className="text-foreground">{r.title}</span>
-                      {r.subtitle ? <span className="text-xs text-muted-foreground">{r.subtitle}</span> : null}
-                    </button>
+                notifications?.map((n) => (
+                  <li
+                    key={n.key}
+                    onClick={() => handleSelectNotification(n)}
+                    className="flex cursor-pointer flex-col gap-1 rounded-sm px-2 py-1.5 hover:bg-accent"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <StatusBadge tone="info" label={n.domainLabel} className="shrink-0" />
+                      <span className="shrink-0 text-xs text-muted-foreground">{n.timeLabel}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="flex-1 truncate text-sm text-foreground">{n.text}</span>
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        className="h-auto shrink-0 p-0 text-xs"
+                        onClick={() => handleSelectNotification(n)}
+                      >
+                        상세 보기
+                      </Button>
+                    </div>
                   </li>
                 ))
               )}
@@ -193,106 +253,42 @@ export function Header({
           </PopoverContent>
         </Popover>
 
-        <div className="ml-auto flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setGuideOpen(true)}
-            aria-label="사용자 가이드"
-          >
-            <HelpCircle />
-          </Button>
-          <ThemeToggle />
-          <Popover open={notificationOpen} onOpenChange={handleNotificationOpenChange}>
-            <PopoverTrigger asChild>
+        {user ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                aria-label={`알림${notificationCount > 0 ? ` ${notificationCount}건` : ""}`}
-                className="relative"
+                className="rounded-full"
+                aria-label="사용자 메뉴"
               >
-                <Bell />
-                {notificationCount > 0 ? (
-                  <span className="absolute right-1 top-1 flex min-w-4 items-center justify-center rounded-full bg-warning px-1 text-[10px] font-bold leading-4 text-warning-foreground">
-                    {notificationCount > 99 ? "99+" : notificationCount}
-                  </span>
-                ) : null}
+                <Avatar className="size-8">
+                  <AvatarFallback>{initials(user.name)}</AvatarFallback>
+                </Avatar>
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-1" align="end">
-              <ul className="max-h-80 overflow-auto">
-                {notifications && notifications.length === 0 ? (
-                  <li className="px-2 py-1.5 text-sm text-muted-foreground">
-                    새로운 알림이 없습니다
-                  </li>
-                ) : (
-                  notifications?.map((n) => (
-                    <li
-                      key={n.key}
-                      onClick={() => handleSelectNotification(n)}
-                      className="flex cursor-pointer flex-col gap-1 rounded-sm px-2 py-1.5 hover:bg-accent"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <StatusBadge tone="info" label={n.domainLabel} className="shrink-0" />
-                        <span className="shrink-0 text-xs text-muted-foreground">{n.timeLabel}</span>
-                      </div>
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="flex-1 truncate text-sm text-foreground">{n.text}</span>
-                        <Button
-                          type="button"
-                          variant="link"
-                          size="sm"
-                          className="h-auto shrink-0 p-0 text-xs"
-                          onClick={() => handleSelectNotification(n)}
-                        >
-                          상세 보기
-                        </Button>
-                      </div>
-                    </li>
-                  ))
-                )}
-              </ul>
-            </PopoverContent>
-          </Popover>
-
-          {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-full"
-                  aria-label="사용자 메뉴"
-                >
-                  <Avatar className="size-8">
-                    <AvatarFallback>{initials(user.name)}</AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>
-                  <div className="flex flex-col">
-                    <span className="truncate text-sm font-medium">{user.name}</span>
-                    <span className="truncate text-xs font-normal text-muted-foreground">
-                      {user.email}
-                    </span>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={onProfile}>내 프로필</DropdownMenuItem>
-                <DropdownMenuItem onSelect={onChangePassword}>
-                  비밀번호 변경
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={onLogout} className="text-destructive">
-                  로그아웃
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : null}
-        </div>
-      </header>
-      <UserGuideModal open={guideOpen} onOpenChange={setGuideOpen} myRoles={myRoles} />
-    </>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>
+                <div className="flex flex-col">
+                  <span className="truncate text-sm font-medium">{user.name}</span>
+                  <span className="truncate text-xs font-normal text-muted-foreground">
+                    {user.email}
+                  </span>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={onProfile}>내 프로필</DropdownMenuItem>
+              <DropdownMenuItem onSelect={onChangePassword}>
+                비밀번호 변경
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={onLogout} className="text-destructive">
+                로그아웃
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
+      </div>
+    </header>
   );
 }

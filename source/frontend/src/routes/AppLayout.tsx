@@ -282,7 +282,6 @@ export function AppLayout() {
         header={{
           title: "ITSM",
           user: user ? { name: user.name, email: user.email } : undefined,
-          myRoles: user?.roles,
           notificationCount,
           notifications: notificationItems,
           onSelectNotification: handleSelectNotification,
@@ -293,6 +292,7 @@ export function AppLayout() {
           },
           onSearchInputChange: handleSearchInputChange,
           onSelectSearchResult: handleSelectSearchResult,
+          onOpenGuide: () => navigate("/guide"),
           onProfile: () => navigate("/profile"),
           onChangePassword: () => navigate("/profile/password"),
           onLogout: () => setLogoutOpen(true),

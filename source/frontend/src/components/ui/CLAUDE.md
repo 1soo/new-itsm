@@ -19,5 +19,4 @@ shadcn/ui(new-york 스타일) 기반 공통 UI 프리미티브. Radix 위에 디
 - `skeleton.tsx` — 로딩 스켈레톤(pulse 애니메이션).
 - `sonner.tsx` — 토스트 컨테이너(sonner Toaster). 우상단 배치, `main.tsx`에서 마운트.
 - `table.tsx` — 표 프리미티브. Table/Header/Body/Row/Head/Cell/Caption.
-- `tabs.tsx` — 탭(Radix Tabs). List/Trigger(활성 시 하단 보더 강조)/Content.
 - `textarea.tsx` — 여러 줄 입력. `aria-invalid` 시 오류 스타일.

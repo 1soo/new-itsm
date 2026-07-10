@@ -66,6 +66,7 @@ import { AssetDetailPage } from "@/features/asset/AssetDetailPage";
 import { CiRelationPage } from "@/features/asset/CiRelationPage";
 import { AssetMetricsPage } from "@/features/asset/AssetMetricsPage";
 import { SearchResultsPage } from "@/features/search/SearchResultsPage";
+import { GuidePage } from "@/features/guide/GuidePage";
 import { DeptPortalPage } from "@/features/esm/DeptPortalPage";
 import { DeptRequestSubmitPage } from "@/features/esm/DeptRequestSubmitPage";
 import { MyEsmRequestsPage } from "@/features/esm/MyEsmRequestsPage";
@@ -111,6 +112,7 @@ export const router = createBrowserRouter([
           { path: "/profile/password", element: <ChangePasswordPage /> }, // SCR-AUTH-003
           { path: "/403", element: <ForbiddenPage /> }, // SCR-COM-006
           { path: "/search", element: <SearchResultsPage /> }, // SCR-COM-011
+          { path: "/guide", element: <GuidePage /> }, // SCR-COM-012
 
           // 관리자 라우트 — SYSTEM_ADMIN 전용
           {

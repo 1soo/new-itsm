@@ -9,7 +9,7 @@
 - `toast.ts` — 토스트 helper(success/error/info). 시맨틱 색상 지정. sonner 래핑.
 - `confirm-dialog.tsx` — 파괴적/비가역 동작 확인 다이얼로그. 확인 시에만 `onConfirm` 호출.
 - `modal.tsx` — 범용 모달(폼/상세 등 비파괴 콘텐츠). 파괴적 확인은 ConfirmDialog 사용.
-- `user-guide-modal.tsx` — 사용자 가이드 모달(SCR-COM-012). 개요/도메인 및 원칙(11개, 아코디언)/역할별 수행 내용과 방법(16개, 아코디언) 3탭. 콘텐츠는 정적 데이터 하드코딩(`docs/01_analyze/feature/user-guide-content.md` 근거). `myRoles?: string[]`로 로그인 사용자 보유 역할을 전달받아 "역할별 수행 내용과 방법" 탭에서 상단 고정+"내 역할" 배지+기본 펼침 처리.
+- `user-guide-content.tsx` — 사용자 가이드 전용 화면(`/guide`, SCR-COM-012)의 섹션 콘텐츠. `UserGuideOverview`(개요 1절, Markdown 순차 렌더링)·`UserGuideDomainSection`(11개 도메인 아코디언)·`UserGuideRoleSection`(16개 역할 아코디언, `myRoles?: string[]`로 "내 역할" 상단 고정+기본 펼침) 3개를 개별 export. 콘텐츠는 `docs/01_analyze/feature/user-guide-content.md` 원문을 가공 없이 이관한 정적 데이터(`react-markdown`으로 굵게 등 인라인 서식 렌더링). 페이지 레이아웃(문서 헤더·TOC)은 담당하지 않음 — FE(`features/guide/GuidePage.tsx`)가 조립.
 - `multi-select.tsx` — 다중 선택(Popover + 체크 리스트). 필터바용. `MultiSelectOption` 타입 제공.
 - `pagination.tsx` — 페이지네이션(0-based, 최대 5개 번호 창).
 - `data-table.tsx` — 제네릭 데이터 표. 로딩 스켈레톤·빈 상태·행 클릭 지원. `Column<T>` 타입 제공.

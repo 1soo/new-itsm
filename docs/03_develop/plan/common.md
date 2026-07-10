@@ -151,3 +151,48 @@
 - "역할별 수행 내용과 방법" 탭: 로그인 사용자 보유 역할이 상단에 "내 역할" 배지+기본 펼침으로 고정 노출, 나머지 역할은 접힌 상태로 하단 나열 및 개별 펼침 가능(역할이 여러 개인 계정, 1개인 계정 각각 확인).
 - 배경 클릭/Esc/닫기 버튼으로 모달 닫힘.
 - 탭 전환 시 네트워크 요청 없음(정적 콘텐츠).
+
+---
+
+## 사용자 가이드: 모달 → 전용 화면 전환 (SCR-COM-012 v0.8)
+
+> 위 "사용자 가이드 모달" 섹션(모달 방식)은 폐기되고 전용 화면(`/guide`)으로 대체된다. 기존 `UserGuideModal`/헤더 `myRoles` 연동을 아래 내용으로 교체한다.
+
+### 설계 근거
+
+- `docs/02_plan/screen/common.md` SCR-COM-012 v0.8(REQ-COM-002/FEAT-COM-002). designer 확정 사항:
+  1. "개요"(1절)만 아코디언 없이 원문 그대로 순차 Markdown 렌더링. "도메인 및 원칙"(2절)·"역할별 수행 내용과 방법"(3절)은 기존 모달과 동일하게 구조화된 아코디언 리스트(항목 내부 텍스트만 Markdown 인라인 서식).
+  2. `docs/01_analyze/feature/user-guide-content.md`(v0.2, 서술형) 내용을 가공 없이 그대로 frontend 소스로 이관(빌드 스크립트로 docs 복사하는 방식 아님).
+  3. 좌측 TOC는 3개 링크(개요/도메인 및 원칙/역할별 수행 내용과 방법)만 존재, 도메인/역할 개별 하위 링크 없음.
+- Confluence 문서 페이지 스타일: 상단 문서 헤더(제목, `heading.large`) + 좌측 sticky TOC + 우측 본문(최대 폭 제한, `heading.medium`/`heading.small` 계층). 본문은 카드가 아닌 페이지 배경 위 텍스트(`--card` 미사용, `--foreground`만).
+- 신규 API 없음.
+
+### 담당 범위
+
+#### dev-ui — `source/frontend/src/components/common/`(신규/리팩터), `source/frontend/src/components/layout/header.tsx`
+
+1. 기존 `user-guide-modal.tsx`(`UserGuideModal`)를 모달이 아닌 페이지 임베드용 프레젠테이션 컴포넌트로 리팩터(파일명 변경 가능, 예: `user-guide-content.tsx`). 다음 3개를 개별 export하는 구조를 제안(재량껏 조정 가능):
+   - `UserGuideOverview` — `user-guide-content.md` 1절(개요) 원문을 Markdown 렌더링(H2/문단/굵게). **2·3절 텍스트는 포함하지 않음.**
+   - `UserGuideDomainSection` — 11개 도메인 아코디언(기존 로직 재사용, 콘텐츠는 v0.2 서술형 문구로 갱신 — 표 형식이 아니라 문단+**핵심 원칙** 굵게 포함).
+   - `UserGuideRoleSection` — 16개 역할 아코디언(`myRoles?: string[]` prop, "내 역할" 상단 고정+기본 펼침 로직은 기존과 동일 유지). 콘텐츠는 v0.2의 페르소나+구체적 메뉴/버튼 서술형으로 전면 갱신(`docs/01_analyze/feature/user-guide-content.md` 3절 그대로 옮김, 임의 축약 금지).
+   - 항목 내부 텍스트에 포함된 `**굵게**` 등 인라인 서식은 Markdown 렌더링 필요(개요와 동일한 렌더러 재사용 권장).
+2. Markdown 렌더링 라이브러리 신규 도입 필요(예: `react-markdown`, 라이브러리 선택은 재량).
+3. `components/ui/tabs.tsx`(Radix 신규 설치분)는 이전 모달의 탭 UI 전용이었고 신규 화면(TOC+아코디언)에서는 탭이 없어 더 이상 필요 없을 가능성이 높음 — 다른 곳에서 쓰이지 않는다면(grep으로 확인) 제거해 오브젼(orphan) 코드로 남기지 않는다. `accordion.tsx`는 계속 재사용.
+4. `header.tsx`: "?" 버튼의 `onClick={() => setGuideOpen(true)}` 및 `UserGuideModal` 렌더링(L295), `guideOpen` state, `myRoles` prop을 전부 제거. 대신 `onOpenGuide?: () => void` 콜백 prop을 추가해 "?" 클릭 시 호출(다른 헤더 아이콘의 navigate 콜백 패턴과 동일, 예: `onProfile`).
+
+#### dev_fe — 신규 `source/frontend/src/features/guide/`, `source/frontend/src/routes/index.tsx`, `source/frontend/src/routes/AppLayout.tsx`
+
+1. 신규 라우트 `/guide` 등록(`routes/index.tsx`, 인증 필요 영역 — 다른 보호 라우트와 동일하게 `AppLayout` 하위 children에 추가) 및 신규 페이지 컴포넌트 `features/guide/GuidePage.tsx`(신규 디렉토리라 `CLAUDE.md` 함께 생성).
+2. `GuidePage.tsx` 구성: 상단 문서 헤더("사용자 가이드" 타이틀) / 좌측 sticky TOC(3개 링크, `IntersectionObserver` 등으로 스크롤 위치에 따라 활성 링크 강조, 클릭 시 해당 섹션으로 스크롤) / 우측 본문(`UserGuideOverview` → `UserGuideDomainSection` → `UserGuideRoleSection myRoles={user?.roles}` 순서로 배치, 최대 폭 제한 컨테이너).
+3. `AppLayout.tsx`: `header` prop에서 `myRoles` 제거, `onOpenGuide: () => navigate("/guide")` 추가(다른 `onProfile` 등과 동일 패턴).
+4. `user.roles`는 `GuidePage.tsx`에서 직접 `useAppSelector`로 조회해 `UserGuideRoleSection`에 전달(더 이상 header를 경유하지 않음).
+
+### 테스트 관점 (참고, tester 담당)
+
+- 헤더 "?" 클릭 시 `/guide`로 라우팅 이동(모달 아님), 뒤로가기로 이전 화면 복귀.
+- 상단 문서 헤더("사용자 가이드") 노출, 진입 시 최상단(개요)부터 표시.
+- 좌측 TOC 3개 링크 클릭 시 해당 섹션 스크롤 이동, 스크롤에 따라 활성 링크 강조.
+- "개요" 섹션: 원문(1절) 그대로 Markdown 렌더링(굵게 등 서식 적용) 확인.
+- "도메인 및 원칙" 섹션: 11개 아코디언 전체 노출(역할 무관), 기본 전부 접힘, 개별 펼침, v0.2 서술형 문구로 갱신 확인.
+- "역할별 수행 내용과 방법" 섹션: 로그인 역할이 상단 "내 역할" 배지+기본 펼침 고정, 나머지 접힘, v0.2 페르소나/구체 메뉴·버튼 서술형 문구 확인.
+- 사용자 가이드 진입 시 네트워크 요청 없음(정적 콘텐츠) 확인.

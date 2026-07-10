@@ -4,7 +4,7 @@ export { PriorityBadge, type Priority } from "./priority-badge";
 export { toast } from "./toast";
 export { ConfirmDialog } from "./confirm-dialog";
 export { Modal } from "./modal";
-export { UserGuideModal } from "./user-guide-modal";
+export { UserGuideOverview, UserGuideDomainSection, UserGuideRoleSection } from "./user-guide-content";
 export { MultiSelect, type MultiSelectOption } from "./multi-select";
 export { Pagination } from "./pagination";
 export { DataTable, type Column } from "./data-table";
