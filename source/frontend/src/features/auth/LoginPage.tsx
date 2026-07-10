@@ -6,6 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import type { LoginError } from "@/store/authSlice";
 import { login } from "@/store/authSlice";
 import { roleHome } from "@/features/auth/roles";
@@ -16,6 +24,22 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
  * 계정 열거 방지를 위해 401(불일치)·403(비활성)은 동일 메시지로 통일 표기한다.
  */
 const AUTH_FAIL_MESSAGE = "이메일 또는 비밀번호가 올바르지 않습니다.";
+
+// POC 데모용 안내 — 역할별 테스트 계정. 실서비스 전환 시 이 표는 제거한다.
+const TEST_ACCOUNTS = [
+  { email: "admin@itsm.local", role: "시스템 관리자 (SYSTEM_ADMIN)" },
+  { email: "user@itsm.local", role: "최종 사용자 (END_USER)" },
+  { email: "agent@itsm.local", role: "서비스 데스크 상담원 (SERVICE_DESK_AGENT)" },
+  { email: "cab@itsm.local", role: "승인자 (APPROVER)" },
+  { email: "im@itsm.local", role: "인시던트 관리자 (INCIDENT_MANAGER)" },
+  { email: "pm@itsm.local", role: "문제 관리자 (PROBLEM_MANAGER)" },
+  { email: "cm@itsm.local", role: "변경 관리자 (CHANGE_MANAGER)" },
+  { email: "kc@itsm.local", role: "지식 기여자 (KNOWLEDGE_CONTRIBUTOR)" },
+  { email: "kg@itsm.local", role: "지식 게이트키퍼 (KNOWLEDGE_GATEKEEPER)" },
+  { email: "am@itsm.local", role: "자산 관리자 (ASSET_MANAGER)" },
+  { email: "po@itsm.local", role: "프로세스 오너 (PROCESS_OWNER)" },
+] as const;
+const TEST_ACCOUNT_PASSWORD = "Admin@1234";
 
 export function LoginPage() {
   const dispatch = useAppDispatch();
@@ -54,7 +78,7 @@ export function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="items-center text-center">
           <span className="mb-2 flex size-10 items-center justify-center rounded-md bg-primary text-base font-bold text-primary-foreground">
@@ -111,6 +135,34 @@ export function LoginPage() {
               로그인
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      <Card className="w-full max-w-2xl">
+        <CardHeader>
+          <CardTitle className="text-sm text-muted-foreground">
+            POC 테스트 계정 (역할별 데모용 — 실서비스 전환 시 제거)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>이메일</TableHead>
+                <TableHead>비밀번호</TableHead>
+                <TableHead>역할</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {TEST_ACCOUNTS.map((account) => (
+                <TableRow key={account.email}>
+                  <TableCell className="font-mono text-xs">{account.email}</TableCell>
+                  <TableCell className="font-mono text-xs">{TEST_ACCOUNT_PASSWORD}</TableCell>
+                  <TableCell>{account.role}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     </div>

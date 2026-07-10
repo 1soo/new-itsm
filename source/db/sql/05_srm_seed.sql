@@ -71,3 +71,24 @@ FROM (VALUES
 ) AS m(role_code, screen_code)
 JOIN role r   ON r.role_code   = m.role_code
 JOIN screen s ON s.screen_code = m.screen_code;
+
+-- ── srm RBAC 테스트 유저 (로컬 테스트 재현성) ─────────────────────
+--   password : Admin@1234  (02_seed 의 admin 과 동일한 BCrypt 해시 재사용)
+--   SERVICE_DESK_AGENT/APPROVER 계정은 07/11_*_seed 에서 이미 생성됨.
+--   END_USER / PROCESS_OWNER 는 테스트 계정이 없어 여기서 생성.
+INSERT INTO app_user (email, password_hash, name, status, created_by) VALUES
+  ('user@itsm.local',
+   '$2b$10$o2LkO9LEJIwkldKs7q0UW.R0.Ji3I3u2w5sVL8R.z2ZtiKENVMbiy',
+   '최종 사용자', 'ACTIVE', 'SYSTEM'),
+  ('po@itsm.local',
+   '$2b$10$o2LkO9LEJIwkldKs7q0UW.R0.Ji3I3u2w5sVL8R.z2ZtiKENVMbiy',
+   '프로세스 오너', 'ACTIVE', 'SYSTEM');
+
+INSERT INTO user_role (user_id, role_id, created_by)
+SELECT u.id, r.id, 'SYSTEM'
+FROM (VALUES
+  ('user@itsm.local', 'END_USER'),
+  ('po@itsm.local',   'PROCESS_OWNER')
+) AS m(email, role_code)
+JOIN app_user u ON u.email     = m.email
+JOIN role r     ON r.role_code = m.role_code;
