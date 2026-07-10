@@ -14,6 +14,8 @@ public interface TicketLinkRepository {
 
     List<TicketLink> findBySourceTypeAndSourceId(TicketType sourceType, Long sourceId);
 
+    List<TicketLink> findByTargetTypeAndTargetId(TicketType targetType, Long targetId);
+
     boolean existsBySourceTypeAndSourceIdAndTargetTypeAndTargetId(
             TicketType sourceType, Long sourceId, TicketType targetType, Long targetId);
 

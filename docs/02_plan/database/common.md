@@ -29,14 +29,14 @@
 
 ### ticket_link
 
-두 엔티티 간 다형 링크. `*_type`은 SERVICE_REQUEST/INCIDENT/PROBLEM/CHANGE/ASSET/CI/KNOWLEDGE.
+두 엔티티 간 다형 링크. `*_type`은 SERVICE_REQUEST/INCIDENT/PROBLEM/CHANGE/ASSET/CI/KNOWLEDGE/VULNERABILITY/COMPLIANCE_REQUIREMENT.
 
 | 컬럼 | 타입 | 제약 | 설명 |
 |------|------|------|------|
 | id | BIGINT | PK | |
-| source_type | VARCHAR(20) | NOT NULL | 출발 엔티티 유형 |
+| source_type | VARCHAR(25) | NOT NULL | 출발 엔티티 유형 |
 | source_id | BIGINT | NOT NULL | 출발 엔티티 id |
-| target_type | VARCHAR(20) | NOT NULL | 대상 엔티티 유형 |
+| target_type | VARCHAR(25) | NOT NULL | 대상 엔티티 유형 |
 | target_id | BIGINT | NOT NULL | 대상 엔티티 id |
 | link_type | VARCHAR(30) | NULL | 관계 유형(RELATED/CAUSED_BY 등) |
 | | | UNIQUE(source_type, source_id, target_type, target_id) | 중복 링크 방지 |

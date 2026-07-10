@@ -13,5 +13,6 @@ public enum TicketType {
     KNOWLEDGE,
     ESM_REQUEST,
     HR_CASE,
-    VULNERABILITY
+    VULNERABILITY,
+    COMPLIANCE_REQUIREMENT
 }

@@ -17,7 +17,7 @@ export type ApprovalRoute = "AUTO" | "PEER_REVIEW" | "CAB";
 export type Outcome = "SUCCESS" | "FAILURE";
 export type Decision = "APPROVE" | "REJECT";
 export type LinkTargetType = "INCIDENT" | "PROBLEM";
-export type LinkedItemType = "INCIDENT" | "PROBLEM" | "ASSET";
+export type LinkedItemType = "INCIDENT" | "PROBLEM" | "ASSET" | "COMPLIANCE_REQUIREMENT";
 
 export interface PageResponse<T> {
   content: T[];

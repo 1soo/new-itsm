@@ -81,6 +81,10 @@ public enum ErrorCode {
     // --- Vulnerability (VULN) ---
     VULNERABILITY_NOT_FOUND(HttpStatus.NOT_FOUND, "취약점을 찾을 수 없습니다."),
 
+    // --- Compliance (COMP) ---
+    COMPLIANCE_REQUIREMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "컴플라이언스 요구사항을 찾을 수 없습니다."),
+    CORRECTIVE_ACTION_NOT_FOUND(HttpStatus.NOT_FOUND, "시정조치를 찾을 수 없습니다."),
+
     // 409
     EMAIL_DUPLICATE(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),
     ROLE_NAME_DUPLICATE(HttpStatus.CONFLICT, "이미 존재하는 역할 코드 또는 역할명입니다."),

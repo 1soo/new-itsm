@@ -12,6 +12,8 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.Collection;
+import java.util.List;
 
 /**
  * 감사 로그 기록·조회.
@@ -45,6 +47,14 @@ public class AuditLogService {
 
     private void save(EventType eventType, Long actorId, String actorEmail, String target, AuditResult result) {
         auditLogRepository.save(AuditLog.of(eventType, actorId, actorEmail, target, result));
+    }
+
+    /**
+     * 다중 이벤트 타입 조회(예: 컴플라이언스 전용 감사 로그, API-COMP-009). 기존 단일 EventType search()는 변경하지 않는다.
+     */
+    @Transactional(readOnly = true)
+    public List<AuditLog> findByEventTypes(Collection<EventType> eventTypes, OffsetDateTime from, OffsetDateTime to) {
+        return auditLogRepository.findByEventTypeInAndOccurredAtBetweenOrderByOccurredAtDesc(eventTypes, from, to);
     }
 
     private static final OffsetDateTime MIN_TIME = OffsetDateTime.parse("1970-01-01T00:00:00Z");

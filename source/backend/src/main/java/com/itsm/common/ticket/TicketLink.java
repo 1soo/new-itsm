@@ -29,7 +29,7 @@ public class TicketLink extends BaseEntity {
     private Long id;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "source_type", nullable = false, length = 20)
+    @Column(name = "source_type", nullable = false, length = 25)
     private TicketType sourceType;
 
     @Column(name = "source_id", nullable = false)

@@ -11,6 +11,7 @@ import {
   ROLE_APPROVER,
   ROLE_ASSET_MANAGER,
   ROLE_CHANGE_MANAGER,
+  ROLE_COMPLIANCE_OFFICER,
   ROLE_DEPT_COORDINATOR,
   ROLE_END_USER,
   ROLE_HR_CASE_MANAGER,
@@ -79,6 +80,10 @@ import { VulnerabilityListPage } from "@/features/vulnerability/VulnerabilityLis
 import { VulnerabilityCreatePage } from "@/features/vulnerability/VulnerabilityCreatePage";
 import { VulnerabilityDetailPage } from "@/features/vulnerability/VulnerabilityDetailPage";
 import { VulnerabilityMetricsPage } from "@/features/vulnerability/VulnerabilityMetricsPage";
+import { ComplianceListPage } from "@/features/compliance/ComplianceListPage";
+import { ComplianceCreatePage } from "@/features/compliance/ComplianceCreatePage";
+import { ComplianceDetailPage } from "@/features/compliance/ComplianceDetailPage";
+import { ComplianceMetricsPage } from "@/features/compliance/ComplianceMetricsPage";
 
 /*
  * 라우팅 — 화면 ID(SCR-*)와 경로 매핑. screen 테이블 seed 경로와 정합.
@@ -299,6 +304,17 @@ export const router = createBrowserRouter([
               { path: "/vulnerabilities/new", element: <VulnerabilityCreatePage /> }, // SCR-VULN-002
               { path: "/vulnerabilities/:id", element: <VulnerabilityDetailPage /> }, // SCR-VULN-003
               { path: "/vulnerabilities/metrics", element: <VulnerabilityMetricsPage /> }, // SCR-VULN-004
+            ],
+          },
+
+          // 컴플라이언스(COMP) — COMPLIANCE_OFFICER
+          {
+            element: <RequireRoles roles={[ROLE_COMPLIANCE_OFFICER]} />,
+            children: [
+              { path: "/compliance/requirements", element: <ComplianceListPage /> }, // SCR-COMP-001
+              { path: "/compliance/requirements/new", element: <ComplianceCreatePage /> }, // SCR-COMP-002
+              { path: "/compliance/requirements/:id", element: <ComplianceDetailPage /> }, // SCR-COMP-003
+              { path: "/compliance/metrics", element: <ComplianceMetricsPage /> }, // SCR-COMP-004
             ],
           },
 

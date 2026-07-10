@@ -46,6 +46,8 @@ import com.itsm.common.ticket.TimelineEvent;
 import com.itsm.common.ticket.repository.ApprovalRepository;
 import com.itsm.common.ticket.repository.TicketLinkRepository;
 import com.itsm.common.ticket.repository.TimelineEventRepository;
+import com.itsm.compliance.domain.ComplianceRequirement;
+import com.itsm.compliance.domain.repository.ComplianceRequirementRepository;
 import com.itsm.incident.domain.Incident;
 import com.itsm.incident.domain.repository.IncidentRepository;
 import com.itsm.problem.domain.Problem;
@@ -57,6 +59,7 @@ import org.springframework.util.StringUtils;
 
 import java.time.OffsetDateTime;
 import java.time.Year;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -82,6 +85,7 @@ public class ChangeService {
     private final ProblemRepository problemRepository;
     private final AppUserRepository appUserRepository;
     private final AssetService assetService;
+    private final ComplianceRequirementRepository complianceRequirementRepository;
 
     public ChangeService(ChangeRequestRepository changeRequestRepository,
                          ChangeTemplateRepository templateRepository,
@@ -92,7 +96,8 @@ public class ChangeService {
                          IncidentRepository incidentRepository,
                          ProblemRepository problemRepository,
                          AppUserRepository appUserRepository,
-                         AssetService assetService) {
+                         AssetService assetService,
+                         ComplianceRequirementRepository complianceRequirementRepository) {
         this.changeRequestRepository = changeRequestRepository;
         this.templateRepository = templateRepository;
         this.affectedSystemRepository = affectedSystemRepository;
@@ -103,6 +108,7 @@ public class ChangeService {
         this.problemRepository = problemRepository;
         this.appUserRepository = appUserRepository;
         this.assetService = assetService;
+        this.complianceRequirementRepository = complianceRequirementRepository;
     }
 
     // ---------- create (API-CHG-002) ----------
@@ -417,11 +423,16 @@ public class ChangeService {
                 .map(List::of)
                 .orElse(List.of());
 
-        List<ChangeDetailResponse.LinkRef> links = ticketLinkRepository.findBySourceTypeAndSourceId(TT, id).stream()
-                .filter(l -> l.getTargetType() == TicketType.INCIDENT || l.getTargetType() == TicketType.PROBLEM
-                        || l.getTargetType() == TicketType.ASSET)
-                .map(l -> new ChangeDetailResponse.LinkRef(l.getTargetType().name(), linkedTicketKey(l.getTargetType(), l.getTargetId())))
-                .toList();
+        List<ChangeDetailResponse.LinkRef> links = new ArrayList<>(
+                ticketLinkRepository.findBySourceTypeAndSourceId(TT, id).stream()
+                        .filter(l -> l.getTargetType() == TicketType.INCIDENT || l.getTargetType() == TicketType.PROBLEM
+                                || l.getTargetType() == TicketType.ASSET)
+                        .map(l -> new ChangeDetailResponse.LinkRef(l.getTargetType().name(), linkedTicketKey(l.getTargetType(), l.getTargetId())))
+                        .toList());
+        ticketLinkRepository.findByTargetTypeAndTargetId(TT, id).stream()
+                .filter(l -> l.getSourceType() == TicketType.COMPLIANCE_REQUIREMENT)
+                .map(l -> new ChangeDetailResponse.LinkRef(TicketType.COMPLIANCE_REQUIREMENT.name(), complianceRequirementKeyOf(l.getSourceId())))
+                .forEach(links::add);
 
         List<String> allowed = ChangeStateMachine.allowedTargets(c.getStatus()).stream()
                 .map(ChangeStatus::name).sorted().toList();
@@ -440,6 +451,11 @@ public class ChangeService {
             return assetService.assetKeyOf(targetId);
         }
         return problemRepository.findById(targetId).map(Problem::getTicketKey).orElse(null);
+    }
+
+    private String complianceRequirementKeyOf(Long requirementId) {
+        return complianceRequirementRepository.findById(requirementId)
+                .map(ComplianceRequirement::getRequirementKey).orElse(null);
     }
 
     private String userName(Long id) {

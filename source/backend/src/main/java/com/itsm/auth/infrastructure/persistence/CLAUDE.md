@@ -7,4 +7,4 @@ auth 도메인 리포지토리 인터페이스의 Spring Data JPA 구현체. 각
 - `RoleJpaRepository.java` — RoleRepository 구현
 - `UserRoleJpaRepository.java` — UserRoleRepository 구현
 - `RefreshTokenJpaRepository.java` — RefreshTokenRepository 구현
-- `AuditLogJpaRepository.java` — AuditLogRepository 구현
+- `AuditLogJpaRepository.java` — AuditLogRepository 구현(다중 이벤트타입 조회 포함)

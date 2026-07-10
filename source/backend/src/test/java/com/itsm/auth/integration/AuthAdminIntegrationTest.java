@@ -71,7 +71,10 @@ class AuthAdminIntegrationTest {
                     "/docker-entrypoint-initdb.d/16_esm_schema.sql")
             .withCopyFileToContainer(
                     MountableFile.forHostPath(Paths.get("../db/sql/18_vulnerability_schema.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/18_vulnerability_schema.sql");
+                    "/docker-entrypoint-initdb.d/18_vulnerability_schema.sql")
+            .withCopyFileToContainer(
+                    MountableFile.forHostPath(Paths.get("../db/sql/20_compliance_schema.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/20_compliance_schema.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {

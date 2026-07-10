@@ -33,7 +33,7 @@ public class AuditLog {
     private Long id;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "event_type", nullable = false, length = 30)
+    @Column(name = "event_type", nullable = false, length = 35)
     private EventType eventType;
 
     @Column(name = "actor_id")

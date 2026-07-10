@@ -30,6 +30,7 @@ import com.itsm.common.ticket.TicketType;
 import com.itsm.common.ticket.repository.ApprovalRepository;
 import com.itsm.common.ticket.repository.TicketLinkRepository;
 import com.itsm.common.ticket.repository.TimelineEventRepository;
+import com.itsm.compliance.domain.repository.ComplianceRequirementRepository;
 import com.itsm.incident.domain.Incident;
 import com.itsm.incident.domain.Severity;
 import com.itsm.incident.domain.repository.IncidentRepository;
@@ -72,6 +73,7 @@ class ChangeServiceTest {
     @Mock ProblemRepository problemRepository;
     @Mock AppUserRepository appUserRepository;
     @Mock AssetService assetService;
+    @Mock ComplianceRequirementRepository complianceRequirementRepository;
 
     ChangeService service;
 
@@ -79,7 +81,7 @@ class ChangeServiceTest {
     void setUp() {
         service = new ChangeService(changeRequestRepository, templateRepository, affectedSystemRepository,
                 approvalRepository, ticketLinkRepository, timelineRepository, incidentRepository,
-                problemRepository, appUserRepository, assetService);
+                problemRepository, appUserRepository, assetService, complianceRequirementRepository);
         when(changeRequestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(timelineRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(approvalRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));

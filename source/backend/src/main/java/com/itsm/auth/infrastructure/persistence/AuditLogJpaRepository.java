@@ -10,11 +10,17 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.OffsetDateTime;
+import java.util.Collection;
+import java.util.List;
 
 /**
  * AuditLogRepository 포트의 Spring Data JPA 구현.
  */
 public interface AuditLogJpaRepository extends JpaRepository<AuditLog, Long>, AuditLogRepository {
+
+    @Override
+    List<AuditLog> findByEventTypeInAndOccurredAtBetweenOrderByOccurredAtDesc(
+            Collection<EventType> eventTypes, OffsetDateTime from, OffsetDateTime to);
 
     @Override
     @Query("""
