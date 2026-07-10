@@ -111,3 +111,43 @@
 - 2행: 제목이 카탈로그 항목명/summary/자산명으로 정확히 표시되는지, 40자 초과 시 truncate.
 - 자산 항목 우측 표시가 "{expiryDate} 만료" 형식인지(상대 시간 아님).
 - 기존 v1 통과 항목(정렬·8건 상한·뱃지·이동·빈 상태·크기·라인 클릭) 회귀 확인.
+
+---
+
+## 사용자 가이드 모달 (SCR-COM-012, 신규 화면)
+
+### 설계 근거
+
+- `docs/02_plan/screen/common.md` SCR-COM-012(2026-07-11, v0.5) — REQ-COM-002/FEAT-COM-002.
+- 콘텐츠 원문: `docs/01_analyze/feature/user-guide-content.md`(개요 1문단, 11개 업무 도메인 목적/원칙 표, 16개 역할 페르소나/수행 내용 표) — 그대로 옮겨 쓰면 됨.
+- 신규 API 없음. 전부 정적 콘텐츠(FE/UI 정적 데이터). 역할 판별만 로그인 사용자의 기존 역할 정보(`auth` 스토어의 `user.roles`, 이미 로드되어 있음) 사용.
+
+### 스펙
+
+1. **트리거**: 헤더 "?" 아이콘 버튼. 배치 순서: 통합검색 - "?" - 테마 토글 - 알림 벨 - 사용자 메뉴(테마 토글 왼쪽에 삽입).
+2. **구조**: 대형 모달(`components/common/modal.tsx` 재사용, Overlay elevation). 상단 타이틀 "사용자 가이드"+닫기(X) / 탭 3개("개요"/"도메인 및 원칙"/"역할별 수행 내용과 방법") / 탭별 콘텐츠(세로 스크롤).
+3. **개요 탭**: 콘텐츠 문서 1절 문단 그대로 표시.
+4. **도메인 및 원칙 탭**: 11개 도메인 아코디언(도메인명+목적+핵심 원칙), 역할 무관 항상 전체 노출, 기본 전부 접힘, 클릭 시 개별 펼침.
+5. **역할별 수행 내용과 방법 탭**: 16개 역할 아코디언(역할명+페르소나+수행 내용). 로그인 사용자가 보유한 역할은 최상단에 "내 역할"(Info tone) 배지와 함께 기본 펼쳐진 상태로 고정, 나머지는 그 아래 접힌 상태로 나열(클릭 시 펼침). 역할 미보유(이론상 없음)여도 16개 전체 접힌 상태로 노출.
+6. **동작**: "?" 클릭 시 모달 오픈(기본 탭="개요"). 배경 클릭/Esc/닫기 버튼으로 닫힘. 탭 전환 시 서버 재조회 없음(정적).
+
+### 담당 범위
+
+#### dev-ui — 신규 컴포넌트 `source/frontend/src/components/common/user-guide-modal.tsx` + `source/frontend/src/components/layout/header.tsx`
+
+- Tabs/Accordion용 Radix 프리미티브가 아직 없음(`@radix-ui/react-tabs`, `@radix-ui/react-accordion` 미설치, `components/ui/`에 `tabs.tsx`/`accordion.tsx` 없음) — 신규 설치 및 `components/ui/tabs.tsx`, `components/ui/accordion.tsx` 프리미티브 추가 필요(다른 shadcn류 프리미티브와 동일한 패턴).
+- `user-guide-modal.tsx`: `docs/01_analyze/feature/user-guide-content.md`의 개요 문단·11개 도메인 표·16개 역할 표를 정적 데이터(상수)로 옮겨 하드코딩. `myRoles?: string[]` prop을 받아 "역할별 수행 내용과 방법" 탭에서 보유 역할을 상단 고정 노출("내 역할" `StatusBadge` tone="info")·기본 펼침 처리.
+- `header.tsx`: 테마 토글 왼쪽에 "?" 아이콘 버튼(`aria-label`="사용자 가이드") 추가, 클릭 시 `user-guide-modal.tsx` 오픈. 모달 오픈 상태는 header 내부에서 자체 관리(알림 팝오버처럼 FE 콜백 불필요 — 정적 콘텐츠라 FE 개입 필요 없음).
+- `HeaderProps`에 `myRoles?: string[]` 추가(FE가 로그인 사용자 역할 배열을 그대로 전달).
+
+#### dev_fe — `source/frontend/src/routes/AppLayout.tsx`
+
+- `AppShell`의 `header` prop에 `myRoles: user?.roles` 한 줄 추가(이미 `useAppSelector((s) => s.auth.user)`로 로드된 값 재사용, 신규 조회 없음).
+
+### 테스트 관점 (참고, tester 담당)
+
+- "?" 클릭 시 모달 오픈, 기본 탭="개요".
+- "도메인 및 원칙" 탭: 11개 도메인 아코디언 전체 노출(역할 무관), 개별 펼침/접힘 동작.
+- "역할별 수행 내용과 방법" 탭: 로그인 사용자 보유 역할이 상단에 "내 역할" 배지+기본 펼침으로 고정 노출, 나머지 역할은 접힌 상태로 하단 나열 및 개별 펼침 가능(역할이 여러 개인 계정, 1개인 계정 각각 확인).
+- 배경 클릭/Esc/닫기 버튼으로 모달 닫힘.
+- 탭 전환 시 네트워크 요청 없음(정적 콘텐츠).

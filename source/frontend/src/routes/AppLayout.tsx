@@ -282,6 +282,7 @@ export function AppLayout() {
         header={{
           title: "ITSM",
           user: user ? { name: user.name, email: user.email } : undefined,
+          myRoles: user?.roles,
           notificationCount,
           notifications: notificationItems,
           onSelectNotification: handleSelectNotification,
