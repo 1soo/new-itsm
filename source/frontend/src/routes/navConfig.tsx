@@ -20,6 +20,7 @@ import {
   SearchCode,
   Settings2,
   ShieldCheck,
+  ShieldAlert,
   Stamp,
   User,
   Users,
@@ -39,6 +40,7 @@ import {
   ROLE_PROCESS_OWNER,
   ROLE_SERVICE_DESK_AGENT,
   ROLE_SYSTEM_ADMIN,
+  ROLE_VULNERABILITY_MANAGER,
 } from "@/features/auth/roles";
 
 /*
@@ -263,6 +265,26 @@ export const navConfig: NavGroupDef[] = [
     label: "HR 케이스",
     items: [
       { key: "hr-cases", label: "HR 케이스", path: "/esm/hr-cases", icon: <Lock />, roles: [ROLE_HR_CASE_MANAGER] },
+    ],
+  },
+  {
+    key: "vuln",
+    label: "취약점",
+    items: [
+      {
+        key: "vuln-list",
+        label: "취약점",
+        path: "/vulnerabilities",
+        icon: <ShieldAlert />,
+        roles: [ROLE_VULNERABILITY_MANAGER],
+      },
+      {
+        key: "vuln-metrics",
+        label: "취약점 지표",
+        path: "/vulnerabilities/metrics",
+        icon: <Activity />,
+        roles: [ROLE_VULNERABILITY_MANAGER],
+      },
     ],
   },
   {

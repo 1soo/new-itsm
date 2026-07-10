@@ -78,9 +78,13 @@ public enum ErrorCode {
     ESM_CHECKLIST_NOT_FOUND(HttpStatus.NOT_FOUND, "체크리스트를 찾을 수 없습니다."),
     ESM_CHECKLIST_TASK_NOT_FOUND(HttpStatus.NOT_FOUND, "하위 작업을 찾을 수 없습니다."),
 
+    // --- Vulnerability (VULN) ---
+    VULNERABILITY_NOT_FOUND(HttpStatus.NOT_FOUND, "취약점을 찾을 수 없습니다."),
+
     // 409
     EMAIL_DUPLICATE(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),
     ROLE_NAME_DUPLICATE(HttpStatus.CONFLICT, "이미 존재하는 역할 코드 또는 역할명입니다."),
+    ASSIGNEE_REQUIRED_FOR_REMEDIATION(HttpStatus.CONFLICT, "담당자가 배정되지 않아 개선(REMEDIATION) 단계로 전이할 수 없습니다."),
 
     // 500
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다.");

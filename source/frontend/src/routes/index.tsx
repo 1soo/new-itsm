@@ -20,6 +20,7 @@ import {
   ROLE_PROBLEM_MANAGER,
   ROLE_PROCESS_OWNER,
   ROLE_SERVICE_DESK_AGENT,
+  ROLE_VULNERABILITY_MANAGER,
 } from "@/features/auth/roles";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { ProfilePage } from "@/features/auth/ProfilePage";
@@ -74,6 +75,10 @@ import { HrCaseDetailPage } from "@/features/esm/HrCaseDetailPage";
 import { ChecklistDetailPage } from "@/features/esm/ChecklistDetailPage";
 import { MyChecklistTasksPage } from "@/features/esm/MyChecklistTasksPage";
 import { EsmMetricsPage } from "@/features/esm/EsmMetricsPage";
+import { VulnerabilityListPage } from "@/features/vulnerability/VulnerabilityListPage";
+import { VulnerabilityCreatePage } from "@/features/vulnerability/VulnerabilityCreatePage";
+import { VulnerabilityDetailPage } from "@/features/vulnerability/VulnerabilityDetailPage";
+import { VulnerabilityMetricsPage } from "@/features/vulnerability/VulnerabilityMetricsPage";
 
 /*
  * 라우팅 — 화면 ID(SCR-*)와 경로 매핑. screen 테이블 seed 경로와 정합.
@@ -283,6 +288,17 @@ export const router = createBrowserRouter([
             children: [
               { path: "/esm/hr-cases", element: <HrCaseListPage /> }, // SCR-ESM-007
               { path: "/esm/hr-cases/:id", element: <HrCaseDetailPage /> }, // SCR-ESM-008
+            ],
+          },
+
+          // 취약점(VULN) — VULNERABILITY_MANAGER
+          {
+            element: <RequireRoles roles={[ROLE_VULNERABILITY_MANAGER]} />,
+            children: [
+              { path: "/vulnerabilities", element: <VulnerabilityListPage /> }, // SCR-VULN-001
+              { path: "/vulnerabilities/new", element: <VulnerabilityCreatePage /> }, // SCR-VULN-002
+              { path: "/vulnerabilities/:id", element: <VulnerabilityDetailPage /> }, // SCR-VULN-003
+              { path: "/vulnerabilities/metrics", element: <VulnerabilityMetricsPage /> }, // SCR-VULN-004
             ],
           },
 
