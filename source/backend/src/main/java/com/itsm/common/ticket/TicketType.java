@@ -10,5 +10,7 @@ public enum TicketType {
     CHANGE,
     ASSET,
     CI,
-    KNOWLEDGE
+    KNOWLEDGE,
+    ESM_REQUEST,
+    HR_CASE
 }

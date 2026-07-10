@@ -7,7 +7,7 @@
 - `TimelineEvent.java` — 티켓 활동 타임라인 이벤트 엔티티
 - `Approval.java` — 승인 엔티티(승인 상태·결정자·사유)
 - `TicketLink.java` — 티켓 간 연계 엔티티(예: 인시던트↔문제)
-- `TicketType.java` — 티켓 유형 enum(SERVICE_REQUEST, INCIDENT, PROBLEM, CHANGE, ASSET, CI, KNOWLEDGE)
+- `TicketType.java` — 티켓 유형 enum(SERVICE_REQUEST, INCIDENT, PROBLEM, CHANGE, ASSET, CI, KNOWLEDGE, ESM_REQUEST, HR_CASE)
 - `ApprovalStatus.java` — 승인 상태 enum(PENDING, APPROVED, REJECTED)
 - `Visibility.java` — 공개 범위 enum(INTERNAL, EXTERNAL)
 

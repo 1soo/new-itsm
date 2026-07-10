@@ -16,6 +16,7 @@ dist/
 build/
 # Spring Boot / Gradle / Maven
 target/
+bin/
 .gradle/
 !gradle/wrapper/gradle-wrapper.jar
 

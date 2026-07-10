@@ -18,6 +18,8 @@
 |---------|--------|------|
 | SCR-SRM-007 | 서비스 카탈로그 관리 | 요청 유형·양식·SLA·승인 설정 |
 | SCR-SRM-008 | 요청 지표 대시보드 | CSAT·응답/해결·SLA |
+| SCR-ESM-006 | 부서별 카탈로그 관리 | 담당 부서·양식·체크리스트 템플릿 정의 |
+| SCR-ESM-011 | ESM 지표 대시보드 | 부서별 처리량·처리시간·완료율 |
 
 ## 3. 접근 가능 API
 
@@ -28,10 +30,15 @@
 | API-SRM-003 | /api/v1/service-catalog/items | POST | 항목 생성 |
 | API-SRM-004 | /api/v1/service-catalog/items/{id} | PATCH | 항목 수정 |
 | API-SRM-015 | /api/v1/service-requests/metrics | GET | 요청 지표 |
+| API-ESM-001 | /api/v1/esm/catalog-items | GET | 부서 카탈로그 목록 |
+| API-ESM-002 | /api/v1/esm/catalog-items/{id} | GET | 항목 상세(체크리스트 템플릿 포함) |
+| API-ESM-003 | /api/v1/esm/catalog-items | POST | 항목 생성 |
+| API-ESM-004 | /api/v1/esm/catalog-items/{id} | PATCH | 항목 수정 |
+| API-ESM-017 | /api/v1/esm/metrics | GET | ESM 지표 |
 
 ## 4. 접근 제어 규칙
 
 - 로그인 필요 화면/요청 접근 시 Access Token의 `role`을 검증한다.
 - 이 역할에 없는 화면/요청 → **403**, 있는 경우 → 정상 수행.
-- **카탈로그 항목 생성·수정(API-SRM-003/004)은 PROCESS_OWNER 전용**(그 외 → 403). 이름·양식 누락 시 400.
+- **카탈로그 항목 생성·수정(API-SRM-003/004, API-ESM-003/004)은 PROCESS_OWNER 전용**(그 외 → 403). 이름·양식·담당 부서 누락 시 400.
 - 화면 이동마다 Backend에 권한 확인 API를 호출한다.

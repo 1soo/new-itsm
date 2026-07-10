@@ -11,7 +11,9 @@ import {
   ROLE_APPROVER,
   ROLE_ASSET_MANAGER,
   ROLE_CHANGE_MANAGER,
+  ROLE_DEPT_COORDINATOR,
   ROLE_END_USER,
+  ROLE_HR_CASE_MANAGER,
   ROLE_INCIDENT_MANAGER,
   ROLE_KNOWLEDGE_CONTRIBUTOR,
   ROLE_KNOWLEDGE_GATEKEEPER,
@@ -61,6 +63,17 @@ import { AssetDetailPage } from "@/features/asset/AssetDetailPage";
 import { CiRelationPage } from "@/features/asset/CiRelationPage";
 import { AssetMetricsPage } from "@/features/asset/AssetMetricsPage";
 import { SearchResultsPage } from "@/features/search/SearchResultsPage";
+import { DeptPortalPage } from "@/features/esm/DeptPortalPage";
+import { DeptRequestSubmitPage } from "@/features/esm/DeptRequestSubmitPage";
+import { MyEsmRequestsPage } from "@/features/esm/MyEsmRequestsPage";
+import { EsmRequestQueuePage } from "@/features/esm/EsmRequestQueuePage";
+import { EsmRequestDetailPage } from "@/features/esm/EsmRequestDetailPage";
+import { EsmCatalogManagePage } from "@/features/esm/EsmCatalogManagePage";
+import { HrCaseListPage } from "@/features/esm/HrCaseListPage";
+import { HrCaseDetailPage } from "@/features/esm/HrCaseDetailPage";
+import { ChecklistDetailPage } from "@/features/esm/ChecklistDetailPage";
+import { MyChecklistTasksPage } from "@/features/esm/MyChecklistTasksPage";
+import { EsmMetricsPage } from "@/features/esm/EsmMetricsPage";
 
 /*
  * 라우팅 — 화면 ID(SCR-*)와 경로 매핑. screen 테이블 seed 경로와 정합.
@@ -230,6 +243,46 @@ export const router = createBrowserRouter([
               { path: "/assets/:id", element: <AssetDetailPage /> }, // SCR-ITAM-003
               { path: "/assets/cis", element: <CiRelationPage /> }, // SCR-ITAM-004
               { path: "/assets/metrics", element: <AssetMetricsPage /> }, // SCR-ITAM-005
+            ],
+          },
+
+          // 엔터프라이즈 서비스 관리(ESM) — END_USER(포털·제출·내 요청)/DEPT_COORDINATOR(처리 큐·내 하위 작업)/PROCESS_OWNER(카탈로그·지표)
+          {
+            element: <RequireRoles roles={[ROLE_END_USER]} />,
+            children: [
+              { path: "/esm/portal", element: <DeptPortalPage /> }, // SCR-ESM-001
+              { path: "/esm/portal/requests/new", element: <DeptRequestSubmitPage /> }, // SCR-ESM-002
+              { path: "/esm/requests", element: <MyEsmRequestsPage /> }, // SCR-ESM-003
+            ],
+          },
+          {
+            element: <RequireRoles roles={[ROLE_DEPT_COORDINATOR]} />,
+            children: [
+              { path: "/esm/requests/queue", element: <EsmRequestQueuePage /> }, // SCR-ESM-004
+              { path: "/esm/checklist-tasks", element: <MyChecklistTasksPage /> }, // SCR-ESM-010
+            ],
+          },
+          {
+            element: <RequireRoles roles={[ROLE_END_USER, ROLE_DEPT_COORDINATOR]} />,
+            children: [
+              { path: "/esm/requests/:id", element: <EsmRequestDetailPage /> }, // SCR-ESM-005
+              { path: "/esm/checklists/:id", element: <ChecklistDetailPage /> }, // SCR-ESM-009
+            ],
+          },
+          {
+            element: <RequireRoles roles={[ROLE_PROCESS_OWNER]} />,
+            children: [
+              { path: "/admin/esm-catalog", element: <EsmCatalogManagePage /> }, // SCR-ESM-006
+              { path: "/esm/metrics", element: <EsmMetricsPage /> }, // SCR-ESM-011
+            ],
+          },
+
+          // HR 케이스 — HR_CASE_MANAGER 전용(민감정보, 타 역할 403)
+          {
+            element: <RequireRoles roles={[ROLE_HR_CASE_MANAGER]} />,
+            children: [
+              { path: "/esm/hr-cases", element: <HrCaseListPage /> }, // SCR-ESM-007
+              { path: "/esm/hr-cases/:id", element: <HrCaseDetailPage /> }, // SCR-ESM-008
             ],
           },
 

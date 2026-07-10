@@ -77,7 +77,9 @@ class ProblemIntegrationTest {
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/12_knowledge_schema.sql").toAbsolutePath()),
                     "/docker-entrypoint-initdb.d/12_knowledge_schema.sql")
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/14_asset_schema.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/14_asset_schema.sql");
+                    "/docker-entrypoint-initdb.d/14_asset_schema.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/16_esm_schema.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/16_esm_schema.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {

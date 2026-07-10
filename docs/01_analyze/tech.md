@@ -36,7 +36,9 @@ source/
 └── db/         # PostgreSQL (sql/ 하위에 DDL/DML)
 ```
 
-## 5. 구축 범위 (코어 7개 도메인)
+## 5. 구축 범위 (총 11개 도메인)
+
+### 코어 7개 도메인
 
 | # | 도메인 | slug | 약어 |
 |---|--------|------|------|
@@ -48,5 +50,15 @@ source/
 | 6 | 지식 관리 | `knowledge` | KM |
 | 7 | IT 자산 관리 / CMDB | `asset` | ITAM |
 
-> 확장(ESM·ITOps/ITOM·컴플라이언스)은 이번 범위에서 제외한다.
-> `itil.md`, `it-management.md`의 상위 개념은 별도 도메인이 아니라 각 도메인의 프로세스·역할·지표에 녹여 반영한다.
+### 확장 4개 도메인 (2026-07-10 사용자 지시로 확대)
+
+| # | 도메인 | slug | 약어 | 근거 문서 |
+|---|--------|------|------|-----------|
+| 8 | 엔터프라이즈 서비스 관리 (ESM) | `esm` | ESM | `enterprise-service-management.md` |
+| 9 | 취약점 관리 (Vulnerability Management) | `vulnerability` | VULN | `it-operations.md` |
+| 10 | 컴플라이언스 관리 (Compliance Management) | `compliance` | COMP | `it-management.md`(컴플라이언스 섹션) |
+| 11 | IT 인프라 모니터링 & 용량관리 | `infra-monitoring` | IOM | `it-operations.md` + `it-operations-management.md` |
+
+> `itil.md`, `it-management.md`의 전략기획·예산관리·위험평가 등 총론 서술은 별도 도메인이 아니라 각 도메인의 프로세스·역할·지표에 녹여 반영한다(컴플라이언스 섹션만 예외적으로 `compliance` 도메인으로 분리).
+> ITOM의 서비스 매핑·애플리케이션 의존성 매핑(ADM)은 별도 도메인이 아니라 기존 `asset`(ITAM/CMDB) 도메인의 CI 관계·영향 범위 조회 기능으로 커버한다.
+> `infra-monitoring`은 실시간 에이전트/모니터링 도구 연동 없이 수동 입력·더미 데이터 기반 가동률/용량 대시보드로 축소한다.

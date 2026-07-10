@@ -44,6 +44,10 @@ public class AppUser extends BaseEntity {
     @Column(name = "access_token_jti")
     private UUID accessTokenJti;
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private Department department;
+
     public AppUser(String email, String passwordHash, String name, UserStatus status) {
         this.email = email;
         this.passwordHash = passwordHash;

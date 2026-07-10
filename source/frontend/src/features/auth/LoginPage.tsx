@@ -38,6 +38,10 @@ const TEST_ACCOUNTS = [
   { email: "kg@itsm.local", role: "지식 게이트키퍼 (KNOWLEDGE_GATEKEEPER)" },
   { email: "am@itsm.local", role: "자산 관리자 (ASSET_MANAGER)" },
   { email: "po@itsm.local", role: "프로세스 오너 (PROCESS_OWNER)" },
+  { email: "hr@itsm.local", role: "HR 케이스 담당자 (HR_CASE_MANAGER)" },
+  { email: "legal-coord@itsm.local", role: "법무 처리 담당자 (DEPT_COORDINATOR)" },
+  { email: "facilities-coord@itsm.local", role: "시설 처리 담당자 (DEPT_COORDINATOR)" },
+  { email: "it-coord@itsm.local", role: "IT 처리 담당자 (DEPT_COORDINATOR)" },
 ] as const;
 const TEST_ACCOUNT_PASSWORD = "Admin@1234";
 

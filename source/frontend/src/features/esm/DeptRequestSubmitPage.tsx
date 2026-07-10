@@ -1,0 +1,147 @@
+import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  DynamicForm,
+  type FormErrors,
+  type FormFieldSchema,
+  type FormValues,
+  toast,
+  validateForm,
+} from "@/components/common";
+import { FullscreenLoader } from "@/routes/FullscreenLoader";
+import { esmApi } from "@/features/esm/api";
+import type { CatalogItemDetail } from "@/features/esm/types";
+import { extractErrorMessage } from "@/lib/apiClient";
+
+/*
+ * 부서 요청 제출(SCR-ESM-002) — 카탈로그 항목의 동적 양식을 작성해 제출.
+ * 온보딩/오프보딩 유형은 대상자명(targetUserName) 입력을 추가로 요구하고,
+ * 제출 성공 시(checklistId 존재) 체크리스트 자동 생성 안내 토스트를 노출한다.
+ */
+export function DeptRequestSubmitPage() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const itemId = Number(searchParams.get("item"));
+
+  const [catalog, setCatalog] = useState<CatalogItemDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [values, setValues] = useState<FormValues>({});
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [targetUserName, setTargetUserName] = useState("");
+  const [targetUserNameError, setTargetUserNameError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const schema = useMemo<FormFieldSchema[]>(() => (catalog?.formSchema ?? []) as FormFieldSchema[], [catalog]);
+  const needsTargetUser = catalog?.checklistTemplateType === "ONBOARDING" || catalog?.checklistTemplateType === "OFFBOARDING";
+
+  useEffect(() => {
+    if (!itemId) {
+      navigate("/esm/portal", { replace: true });
+      return;
+    }
+    let active = true;
+    setLoading(true);
+    esmApi
+      .getCatalogItem(itemId)
+      .then((data) => active && setCatalog(data))
+      .catch((err) => {
+        if (active) {
+          toast.error(extractErrorMessage(err));
+          navigate("/esm/portal", { replace: true });
+        }
+      })
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, [itemId, navigate]);
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!catalog) return;
+    const validation = validateForm(schema, values);
+    setErrors(validation);
+    const targetUserNameInvalid = needsTargetUser && !targetUserName.trim();
+    setTargetUserNameError(targetUserNameInvalid ? "대상자명은 필수 항목입니다." : null);
+    if (Object.keys(validation).length > 0 || targetUserNameInvalid) return;
+
+    const formValues = Object.fromEntries(
+      Object.entries(values).map(([k, v]) => [k, v instanceof File ? v.name : v]),
+    );
+
+    setSubmitting(true);
+    try {
+      const created = await esmApi.createRequest({
+        catalogItemId: catalog.id,
+        formValues,
+        targetUserName: needsTargetUser ? targetUserName.trim() : undefined,
+      });
+      toast.success(
+        created.checklistId
+          ? `요청이 접수되었습니다 (${created.ticketKey}). 체크리스트가 자동 생성되었습니다.`
+          : `요청이 접수되었습니다 (${created.ticketKey})`,
+      );
+      navigate(`/esm/requests/${created.id}`);
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) return <FullscreenLoader />;
+  if (!catalog) return null;
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1">
+        <h1 className="text-xl font-semibold text-foreground">{catalog.name}</h1>
+        {catalog.description ? <p className="text-sm text-muted-foreground">{catalog.description}</p> : null}
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">요청 양식</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+            {needsTargetUser ? (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="targetUserName">
+                  대상자명
+                  <span className="ml-0.5 text-destructive" aria-hidden="true">*</span>
+                </Label>
+                <Input
+                  id="targetUserName"
+                  value={targetUserName}
+                  onChange={(e) => setTargetUserName(e.target.value)}
+                  aria-invalid={!!targetUserNameError}
+                  placeholder="온보딩/오프보딩 대상자 이름"
+                />
+                {targetUserNameError ? (
+                  <p className="text-xs text-destructive">{targetUserNameError}</p>
+                ) : null}
+              </div>
+            ) : null}
+
+            <DynamicForm schema={schema} values={values} onChange={setValues} errors={errors} />
+
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => navigate("/esm/portal")}>
+                취소
+              </Button>
+              <Button type="submit" loading={submitting}>
+                제출
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

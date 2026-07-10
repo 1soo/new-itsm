@@ -69,6 +69,15 @@ public enum ErrorCode {
     CI_NOT_FOUND(HttpStatus.NOT_FOUND, "구성 항목(CI)을 찾을 수 없습니다."),
     CI_SELF_RELATION_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "CI는 자기 자신과 관계를 맺을 수 없습니다."),
 
+    // --- Enterprise Service Management (ESM) ---
+    ESM_CATALOG_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "카탈로그 항목을 찾을 수 없습니다."),
+    ESM_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "부서 요청을 찾을 수 없습니다."),
+    ESM_CHECKLIST_TEMPLATE_REQUIRED(HttpStatus.BAD_REQUEST, "체크리스트 템플릿이 정의되지 않았습니다."),
+    TARGET_USER_NAME_REQUIRED(HttpStatus.BAD_REQUEST, "대상자명(targetUserName)은 필수입니다."),
+    ESM_HR_CASE_NOT_FOUND(HttpStatus.NOT_FOUND, "HR 케이스를 찾을 수 없습니다."),
+    ESM_CHECKLIST_NOT_FOUND(HttpStatus.NOT_FOUND, "체크리스트를 찾을 수 없습니다."),
+    ESM_CHECKLIST_TASK_NOT_FOUND(HttpStatus.NOT_FOUND, "하위 작업을 찾을 수 없습니다."),
+
     // 409
     EMAIL_DUPLICATE(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),
     ROLE_NAME_DUPLICATE(HttpStatus.CONFLICT, "이미 존재하는 역할 코드 또는 역할명입니다."),

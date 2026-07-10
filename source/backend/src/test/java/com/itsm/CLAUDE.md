@@ -12,3 +12,4 @@
 - `knowledge/` — knowledge 도메인 테스트
 - `asset/` — asset 도메인 테스트
 - `search/` — search 도메인 테스트
+- `esm/` — esm 도메인 테스트

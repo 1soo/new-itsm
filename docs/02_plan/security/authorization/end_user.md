@@ -22,6 +22,11 @@
 | SCR-SRM-005 | 요청 상세 | 본인 요청·코멘트·CSAT |
 | SCR-KM-001 | 지식베이스 검색/목록 | 게시 기사만 |
 | SCR-KM-002 | 기사 열람(셀프서비스) | 유용성 평가 |
+| SCR-ESM-001 | 부서 서비스 포털(카탈로그 브라우즈) | |
+| SCR-ESM-002 | 부서 요청 제출(동적 양식) | |
+| SCR-ESM-003 | 내 부서 요청 목록 | 본인 요청만 |
+| SCR-ESM-005 | 부서 요청 상세 | 본인 요청·코멘트·연계 체크리스트 조회 |
+| SCR-ESM-009 | 온보딩/오프보딩 체크리스트 상세 | 본인 요청에 연계된 체크리스트만 |
 
 ## 3. 접근 가능 API
 
@@ -40,11 +45,19 @@
 | API-KM-002 | /api/v1/knowledge/articles/{id} | GET | 게시 기사 열람 |
 | API-KM-009 | /api/v1/knowledge/articles/{id}/feedback | POST | 유용성 평가 |
 | API-KM-010 | /api/v1/knowledge/categories | GET | 카테고리 |
+| API-ESM-001 | /api/v1/esm/catalog-items | GET | 부서 카탈로그 목록 |
+| API-ESM-002 | /api/v1/esm/catalog-items/{id} | GET | 양식 스키마 |
+| API-ESM-005 | /api/v1/esm/requests | POST | 부서 요청 제출 |
+| API-ESM-006 | /api/v1/esm/requests?scope=mine | GET | 본인 요청 목록 |
+| API-ESM-007 | /api/v1/esm/requests/{id} | GET | 본인 요청 상세 |
+| API-ESM-009 | /api/v1/esm/requests/{id}/comments | POST | 본인 요청 코멘트 |
+| API-ESM-014 | /api/v1/esm/checklists/{id} | GET | 본인 요청에 연계된 체크리스트만 |
 
 ## 4. 접근 제어 규칙
 
 - 로그인 필요 화면/요청 접근 시 Access Token의 `role`을 검증한다.
 - 이 역할(END_USER)에 없는 화면/요청 → **403**, 있는 경우 → 정상 수행.
-- 요청 상세·코멘트·CSAT는 **본인 요청**에 한정(타인 요청 접근 시 403).
+- 요청 상세·코멘트·CSAT는 **본인 요청**에 한정(타인 요청 접근 시 403). ESM 부서 요청도 동일 기준.
 - 지식 API는 **게시(PUBLISHED)** 기사만 반환하며, 미게시 기사 접근 시 403.
+- ESM 체크리스트(API-ESM-014)는 **본인이 제출한 요청에 연계된 체크리스트**만 조회 가능(타인 요청의 체크리스트 접근 시 403).
 - 화면 이동마다 Backend에 권한 확인 API를 호출한다.

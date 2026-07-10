@@ -53,6 +53,7 @@
 | name | VARCHAR(100) | NOT NULL | 이름 |
 | status | VARCHAR(20) | NOT NULL, DEFAULT 'ACTIVE' | ACTIVE / INACTIVE |
 | access_token_jti | UUID | NULL | 현재 세션 Access Token JTI(로그아웃 시 NULL) — [security/authentication.md](../security/authentication.md) |
+| department | VARCHAR(20) | NULL | 소속 부서(HR/LEGAL/FACILITIES/FINANCE/IT). ESM 부서 요청·체크리스트 하위 작업의 담당 부서 판정에 사용([esm.md](esm.md)). IT 외 도메인과 무관한 사용자는 NULL. |
 | ...공통 컬럼... | | | |
 
 ### role
@@ -91,12 +92,12 @@ Refresh Token 세션 관리. 로그아웃/재발급 무효화 판정에 사용. 
 
 ### audit_log
 
-인증·인가·계정/역할 변경 이벤트 append-only 기록.
+인증·인가·계정/역할 변경 이벤트 append-only 기록. 컴플라이언스 도메인([compliance.md](compliance.md))도 감사 추적을 위해 이 테이블을 공유한다(REQ-COMP-004).
 
 | 컬럼 | 타입 | 제약 | 설명 |
 |------|------|------|------|
 | id | BIGINT | PK | |
-| event_type | VARCHAR(30) | NOT NULL | LOGIN/LOGOUT/REFRESH/USER_CHANGE/ROLE_CHANGE |
+| event_type | VARCHAR(30) | NOT NULL | LOGIN/LOGOUT/REFRESH/USER_CHANGE/ROLE_CHANGE/COMPLIANCE_REQ_CREATE/COMPLIANCE_REQ_UPDATE/COMPLIANCE_ACTION_STATUS_CHANGE |
 | actor_id | BIGINT | FK → app_user.id, NULL | 행위 주체(로그인 실패 시 NULL 가능) |
 | actor_email | VARCHAR(255) | NULL | 주체 식별(추적용 비정규 보관) |
 | target | VARCHAR(255) | NULL | 대상(계정/역할 식별) |
