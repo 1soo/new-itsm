@@ -11,3 +11,4 @@
 - `change/` — change 도메인 테스트
 - `knowledge/` — knowledge 도메인 테스트
 - `asset/` — asset 도메인 테스트
+- `search/` — search 도메인 테스트

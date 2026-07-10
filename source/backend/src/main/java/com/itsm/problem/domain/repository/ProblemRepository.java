@@ -22,5 +22,8 @@ public interface ProblemRepository {
     Page<Problem> search(ProblemStatus status, ProblemPriority priority, ProblemOrigin origin,
                          String assignee, OffsetDateTime from, OffsetDateTime to, Pageable pageable);
 
+    /** 통합 검색(API-SEARCH-001) 전용 키워드 검색. summary/description 매칭. */
+    Page<Problem> searchByKeyword(String keyword, Pageable pageable);
+
     long countByTicketKeyStartingWith(String prefix);
 }

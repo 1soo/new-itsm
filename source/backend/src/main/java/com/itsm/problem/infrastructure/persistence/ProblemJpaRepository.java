@@ -32,4 +32,14 @@ public interface ProblemJpaRepository extends JpaRepository<Problem, Long>, Prob
                          @Param("from") OffsetDateTime from,
                          @Param("to") OffsetDateTime to,
                          Pageable pageable);
+
+    @Override
+    @Query("""
+            select p from Problem p
+            where p.isDeleted = false
+              and (:keyword is null
+                   or lower(p.summary) like lower(concat('%', cast(:keyword as string), '%'))
+                   or lower(p.description) like lower(concat('%', cast(:keyword as string), '%')))
+            """)
+    Page<Problem> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
 }

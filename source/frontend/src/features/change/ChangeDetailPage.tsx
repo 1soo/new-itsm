@@ -175,6 +175,7 @@ export function ChangeDetailPage() {
 
       <ResultCard
         detail={detail}
+        approved={approved}
         busy={busy === "result"}
         onSubmit={(body) => run("result", () => changeApi.recordResult(id, body), "구현 결과가 기록되었습니다")}
       />
@@ -200,10 +201,12 @@ function MetaRow({ label, value }: { label: string; value: string }) {
 
 function ResultCard({
   detail,
+  approved,
   busy,
   onSubmit,
 }: {
   detail: ChangeDetail;
+  approved: boolean;
   busy: boolean;
   onSubmit: (body: { outcome: Outcome; rolledBack: boolean; note?: string }) => void;
 }) {
@@ -220,11 +223,14 @@ function ResultCard({
     <Card>
       <CardHeader><CardTitle className="text-base">구현 결과 기록</CardTitle></CardHeader>
       <CardContent>
+        {!approved ? (
+          <p className="mb-3 text-sm text-muted-foreground">승인 완료 전에는 구현 결과를 기록할 수 없습니다.</p>
+        ) : null}
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>결과</Label>
-              <Select value={outcome} onValueChange={(v) => setOutcome(v as Outcome)}>
+              <Select value={outcome} onValueChange={(v) => setOutcome(v as Outcome)} disabled={!approved}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="SUCCESS">성공</SelectItem>
@@ -233,16 +239,16 @@ function ResultCard({
               </Select>
             </div>
             <div className="flex items-end gap-2 pb-2">
-              <Checkbox id="rb" checked={rolledBack} onCheckedChange={(v) => setRolledBack(!!v)} />
+              <Checkbox id="rb" checked={rolledBack} onCheckedChange={(v) => setRolledBack(!!v)} disabled={!approved} />
               <Label htmlFor="rb">롤백 여부</Label>
             </div>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="rn">비고</Label>
-            <Textarea id="rn" value={note} onChange={(e) => setNote(e.target.value)} rows={2} />
+            <Textarea id="rn" value={note} onChange={(e) => setNote(e.target.value)} rows={2} disabled={!approved} />
           </div>
           <div className="flex justify-end">
-            <Button type="submit" loading={busy}>결과 저장</Button>
+            <Button type="submit" loading={busy} disabled={!approved}>결과 저장</Button>
           </div>
         </form>
       </CardContent>

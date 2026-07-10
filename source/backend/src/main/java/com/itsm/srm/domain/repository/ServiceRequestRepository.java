@@ -21,6 +21,9 @@ public interface ServiceRequestRepository {
     Page<ServiceRequest> search(Long requesterId, Long queueId, RequestStatus status,
                                 OffsetDateTime from, OffsetDateTime to, Pageable pageable);
 
+    /** 통합 검색(API-SEARCH-001) 전용 키워드 검색. ticketKey 또는 카탈로그 항목명 매칭. */
+    Page<ServiceRequest> searchByKeyword(Long requesterId, String keyword, Pageable pageable);
+
     long countByTicketKeyStartingWith(String prefix);
 
     List<ServiceRequest> findByCreatedAtBetween(OffsetDateTime from, OffsetDateTime to);

@@ -12,6 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { cn } from "@/lib/utils";
 
@@ -25,12 +26,26 @@ export interface HeaderUser {
   email: string;
 }
 
+/** 통합 검색 미리보기 드롭다운 항목 — 도메인 무관 프레젠테이션 형태(FE가 도메인 데이터를 매핑해 전달). */
+export interface HeaderSearchResult {
+  key: string;
+  title: string;
+  subtitle?: string;
+}
+
 export interface HeaderProps {
   title?: string;
   user?: HeaderUser;
   notificationCount?: number;
+  /** 입력 중 미리보기 대상 결과(undefined면 드롭다운 미표시, 빈 배열이면 "결과 없음" 표시). FE가 디바운스 검색 결과를 주입. */
+  searchResults?: HeaderSearchResult[];
   onToggleSidebar?: () => void;
+  /** Enter/검색 버튼 클릭 시 전체 검색 실행. */
   onSearch?: (query: string) => void;
+  /** 입력 중(디바운스는 FE 담당) 호출되어 미리보기 결과 조회를 트리거. */
+  onSearchInputChange?: (query: string) => void;
+  /** 미리보기 결과 항목 클릭 시 해당 상세로 이동. */
+  onSelectSearchResult?: (result: HeaderSearchResult) => void;
   onNotifications?: () => void;
   onProfile?: () => void;
   onChangePassword?: () => void;
@@ -46,8 +61,11 @@ export function Header({
   title = "ITSM",
   user,
   notificationCount = 0,
+  searchResults,
   onToggleSidebar,
   onSearch,
+  onSearchInputChange,
+  onSelectSearchResult,
   onNotifications,
   onProfile,
   onChangePassword,
@@ -55,10 +73,23 @@ export function Header({
   className,
 }: HeaderProps) {
   const [query, setQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const submitSearch = (e: FormEvent) => {
     e.preventDefault();
+    setSearchOpen(false);
     onSearch?.(query.trim());
+  };
+
+  const handleQueryChange = (value: string) => {
+    setQuery(value);
+    onSearchInputChange?.(value);
+    setSearchOpen(value.trim().length > 0);
+  };
+
+  const handleSelectResult = (result: HeaderSearchResult) => {
+    setSearchOpen(false);
+    onSelectSearchResult?.(result);
   };
 
   return (
@@ -86,17 +117,46 @@ export function Header({
         <span className="text-base font-semibold text-foreground">{title}</span>
       </div>
 
-      <form onSubmit={submitSearch} className="relative mx-auto hidden w-full max-w-md md:block">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="지식·티켓 검색"
-          className="pl-9"
-          aria-label="통합 검색"
-        />
-      </form>
+      <Popover open={searchOpen && searchResults !== undefined} onOpenChange={setSearchOpen}>
+        <PopoverAnchor asChild>
+          <form onSubmit={submitSearch} className="relative mx-auto hidden w-full max-w-md md:block">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              value={query}
+              onChange={(e) => handleQueryChange(e.target.value)}
+              onFocus={() => setSearchOpen(query.trim().length > 0)}
+              placeholder="지식·티켓 검색"
+              className="pl-9"
+              aria-label="통합 검색"
+            />
+          </form>
+        </PopoverAnchor>
+        <PopoverContent
+          className="w-[var(--radix-popover-trigger-width)] p-1"
+          align="start"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          <ul className="max-h-72 overflow-auto">
+            {searchResults && searchResults.length === 0 ? (
+              <li className="px-2 py-1.5 text-sm text-muted-foreground">검색 결과가 없습니다</li>
+            ) : (
+              searchResults?.map((r) => (
+                <li key={r.key}>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectResult(r)}
+                    className="flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-1.5 text-left text-sm outline-none hover:bg-accent focus-visible:bg-accent"
+                  >
+                    <span className="text-foreground">{r.title}</span>
+                    {r.subtitle ? <span className="text-xs text-muted-foreground">{r.subtitle}</span> : null}
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        </PopoverContent>
+      </Popover>
 
       <div className="ml-auto flex items-center gap-1">
         <ThemeToggle />

@@ -36,4 +36,19 @@ public interface ServiceRequestJpaRepository extends JpaRepository<ServiceReques
               and r.status not in (com.itsm.srm.domain.RequestStatus.CLOSED, com.itsm.srm.domain.RequestStatus.REJECTED)
             """)
     long countOpenByQueueId(@Param("queueId") Long queueId);
+
+    @Override
+    @Query("""
+            select r from ServiceRequest r
+            where r.isDeleted = false
+              and (:requesterId is null or r.requesterId = :requesterId)
+              and (:keyword is null
+                   or lower(r.ticketKey) like lower(concat('%', cast(:keyword as string), '%'))
+                   or exists (select 1 from ServiceCatalogItem c
+                              where c.id = r.catalogItemId
+                                and lower(c.name) like lower(concat('%', cast(:keyword as string), '%'))))
+            """)
+    Page<ServiceRequest> searchByKeyword(@Param("requesterId") Long requesterId,
+                                         @Param("keyword") String keyword,
+                                         Pageable pageable);
 }

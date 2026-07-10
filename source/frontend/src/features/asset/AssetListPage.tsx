@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -58,8 +58,11 @@ const EMPTY: Filters = { type: ALL, status: ALL, owner: "", expiringWithinDays: 
 
 export function AssetListPage() {
   const navigate = useNavigate();
-  const [inputs, setInputs] = useState<Filters>(EMPTY);
-  const [applied, setApplied] = useState<Filters>(EMPTY);
+  const [searchParams] = useSearchParams();
+  // 알림벨(만료 임박) 진입 시 URL 쿼리의 expiringWithinDays로 초기 필터를 세팅한다(최초 진입 1회만, 이후 동기화 없음).
+  const initialFilters: Filters = { ...EMPTY, expiringWithinDays: searchParams.get("expiringWithinDays") ?? "" };
+  const [inputs, setInputs] = useState<Filters>(initialFilters);
+  const [applied, setApplied] = useState<Filters>(initialFilters);
   const [page, setPage] = useState(0);
   const [data, setData] = useState<PageResponse<AssetSummary> | null>(null);
   const [loading, setLoading] = useState(true);

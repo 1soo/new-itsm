@@ -23,6 +23,9 @@ public interface ChangeRequestRepository {
     Page<ChangeRequest> search(ChangeType type, ChangeStatus status, ChangeRisk risk,
                                OffsetDateTime from, OffsetDateTime to, Pageable pageable);
 
+    /** 통합 검색(API-SEARCH-001) 전용 키워드 검색. summary/description 매칭. */
+    Page<ChangeRequest> searchByKeyword(String keyword, Pageable pageable);
+
     long countByTicketKeyStartingWith(String prefix);
 
     List<ChangeRequest> findByCreatedAtBetween(OffsetDateTime from, OffsetDateTime to);

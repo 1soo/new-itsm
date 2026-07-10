@@ -11,3 +11,4 @@
 - `change/` — 변경(CHG). 목록·RFC 생성·상세·CAB 승인 대기함·일정 캘린더·지표.
 - `knowledge/` — 지식(KM). 검색/목록·열람·작성/편집·검토 승인함·지표.
 - `asset/` — 자산/CMDB(ITAM). 목록·등록/수정·상세·CI·CMDB 관계 뷰·지표.
+- `search/` — 통합 검색(SEARCH). 헤더 검색·전체 결과 화면. 지식+티켓(SRM/INC/PRB/CHG) 교차 도메인 검색.

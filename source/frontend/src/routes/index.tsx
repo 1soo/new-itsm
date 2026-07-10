@@ -60,6 +60,7 @@ import { AssetFormPage } from "@/features/asset/AssetFormPage";
 import { AssetDetailPage } from "@/features/asset/AssetDetailPage";
 import { CiRelationPage } from "@/features/asset/CiRelationPage";
 import { AssetMetricsPage } from "@/features/asset/AssetMetricsPage";
+import { SearchResultsPage } from "@/features/search/SearchResultsPage";
 
 /*
  * 라우팅 — 화면 ID(SCR-*)와 경로 매핑. screen 테이블 seed 경로와 정합.
@@ -80,6 +81,7 @@ export const router = createBrowserRouter([
           { path: "/profile", element: <ProfilePage /> }, // SCR-AUTH-002
           { path: "/profile/password", element: <ChangePasswordPage /> }, // SCR-AUTH-003
           { path: "/403", element: <ForbiddenPage /> }, // SCR-COM-006
+          { path: "/search", element: <SearchResultsPage /> }, // SCR-COM-011
 
           // 관리자 라우트 — SYSTEM_ADMIN 전용
           {

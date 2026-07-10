@@ -44,4 +44,14 @@ public interface ChangeRequestJpaRepository extends JpaRepository<ChangeRequest,
     List<ChangeRequest> findSchedule(@Param("type") ChangeType type,
                                      @Param("from") OffsetDateTime from,
                                      @Param("to") OffsetDateTime to);
+
+    @Override
+    @Query("""
+            select c from ChangeRequest c
+            where c.isDeleted = false
+              and (:keyword is null
+                   or lower(c.summary) like lower(concat('%', cast(:keyword as string), '%'))
+                   or lower(c.description) like lower(concat('%', cast(:keyword as string), '%')))
+            """)
+    Page<ChangeRequest> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
 }
