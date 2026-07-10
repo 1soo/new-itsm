@@ -107,9 +107,9 @@
 - **인증**: 필요(Approver 계열 역할)
 - **Response Body** (200):
   ```json
-  [ { "changeId": "number", "ticketKey": "string", "type": "string", "risk": "string", "requester": "string" } ]
+  [ { "changeId": "number", "ticketKey": "string", "type": "string", "risk": "string", "requester": "string", "summary": "string", "createdAt": "ISO-8601" } ]
   ```
-- **Response Code**: 200 / 401 / 403. `scope=mine` = role claim에 approval.approver_role이 포함된 PENDING 승인 공유 목록(역할 기반 공유함).
+- **Response Code**: 200 / 401 / 403. `scope=mine` = role claim에 approval.approver_role이 포함된 PENDING 승인 공유 목록(역할 기반 공유함). `summary`/`createdAt`은 헤더 알림 드롭다운(common.md SCR-COM-002)의 제목·상대 시간 표시용으로, 각각 `ChangeRequest.summary`와 승인 레코드 생성 시각(`BaseEntity.createdAt`)을 그대로 노출한다.
 
 ### API-CHG-008 · 구현 결과 기록
 

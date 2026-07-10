@@ -173,9 +173,9 @@
 - **인증**: 필요(Approver 계열 역할)
 - **Response Body** (200):
   ```json
-  [ { "requestId": "number", "ticketKey": "string", "requester": "string", "requestedAt": "ISO-8601" } ]
+  [ { "requestId": "number", "ticketKey": "string", "catalogItemName": "string", "requester": "string", "requestedAt": "ISO-8601" } ]
   ```
-- **Response Code**: 200 / 401 / 403. `scope=mine` = 현재 사용자의 role claim에 approval.approver_role이 포함된 **PENDING 승인 공유 목록**(특정 개인 배정이 아닌 역할 기반 공유함).
+- **Response Code**: 200 / 401 / 403. `scope=mine` = 현재 사용자의 role claim에 approval.approver_role이 포함된 **PENDING 승인 공유 목록**(특정 개인 배정이 아닌 역할 기반 공유함). `catalogItemName`은 헤더 알림 드롭다운(common.md SCR-COM-002)의 제목 표시용으로, 요청의 카탈로그 항목명을 그대로 노출한다.
 
 ### API-SRM-013 · 요청 코멘트 등록
 

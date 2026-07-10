@@ -1,6 +1,6 @@
 # 화면 설계서 — 공통 (Common)
 
-> 도메인: common · 버전: 0.3 · 작성일: 2026-07-11 · 알림 드롭다운(REQ-COM-001/FEAT-COM-001) 반영, UI/UX 개편(ADS 기반, REQ-UIX-001~013) 반영
+> 도메인: common · 버전: 0.4 · 작성일: 2026-07-11 · 알림 드롭다운 2줄 레이아웃(도메인·상대시간/제목, REQ-COM-001/FEAT-COM-001) 반영, UI/UX 개편(ADS 기반, REQ-UIX-001~013) 반영
 
 ## 1. 개요
 
@@ -165,14 +165,22 @@ lucide-react를 유지하며 기본 크기를 16px로 통일한다(좁은 공간
   | 검색 미리보기 드롭다운 | 오버레이 리스트 | 도메인 아이콘·제목·상태 배지 상위 5~8건 미리보기 | Overlay elevation(2.5절) |
   | 테마 토글 | 아이콘 버튼 | 라이트/다크 전환(SCR-COM-010) | `--foreground`, `aria-label` 필수 |
   | 알림 벨 | 버튼+뱃지 | 만료·승인 대기 등 알림 카운트(전체 건수 합계), 클릭 시 알림 드롭다운 오픈 | `--warning`(뱃지) |
-  | 알림 드롭다운 | 오버레이 리스트 | 역할별 승인 대기(서비스요청·변경)·자산 만료 임박 알림 상위 8건. 각 라인 = 도메인 라벨(Lozenge)+내용(1줄, truncate)+"상세 보기" 버튼(REQ-COM-001/FEAT-COM-001) | Overlay elevation(2.5절) |
+  | 알림 드롭다운 | 오버레이 리스트 | 역할별 승인 대기(서비스요청·변경)·자산 만료 임박 알림 상위 8건. 각 라인 2줄(1행: 도메인 라벨(Lozenge)+우측 시간/만료 표시, 2행: 제목 truncate)+"상세 보기" 버튼(REQ-COM-001/FEAT-COM-001) | Overlay elevation(2.5절) |
   | 사용자 메뉴 | 드롭다운 | 내 프로필·비밀번호 변경·로그아웃 | `--primary` |
-- **알림 드롭다운 항목 매핑(REQ-COM-001/FEAT-COM-001, 신규 API 없이 기존 대기함 API 조합)**:
-  | 알림 유형 | 데이터 출처 | 도메인 라벨 | 내용 라인(40자 초과 시 말줄임) | 상세 보기 이동 경로 |
-  |-----------|-------------|-------------|-------------------------------|----------------------|
-  | 서비스요청 승인 대기 | API-SRM-012 `GET /api/v1/approvals?scope=mine&type=service-request` (`requestId`/`ticketKey`/`requester`) | 서비스요청 승인 | `{ticketKey} · {requester} 승인 요청` | `/service-requests/{requestId}` |
-  | 변경 승인 대기(CAB) | API-CHG-007 `GET /api/v1/approvals?scope=mine&type=change` (`changeId`/`ticketKey`/`type`/`risk`/`requester`) | 변경 승인 | `{ticketKey} · {type}/{risk} · {requester} 승인 요청` | `/changes/{changeId}` |
-  | 자산 만료 임박 | API-ITAM-001 `GET /api/v1/assets?expiringWithinDays=30&size=8` (`id`/`assetKey`/`name`/`expiryDate`) | 자산 만료 | `{assetKey} · {name} · {expiryDate} 만료 예정` | `/assets/{id}` |
+- **알림 드롭다운 항목 매핑(REQ-COM-001/FEAT-COM-001, 신규 API 없이 기존 대기함 API 응답에 제목·시간 필드만 추가)**:
+  | 알림 유형 | 데이터 출처 | 도메인 라벨(1행 좌) | 1행 우측 표시 | 2행 제목(40자 초과 시 말줄임) | 상세 보기 이동 경로 |
+  |-----------|-------------|----------------------|----------------|-------------------------------|----------------------|
+  | 서비스요청 승인 대기 | API-SRM-012 `GET /api/v1/approvals?scope=mine&type=service-request` (`requestId`/`ticketKey`/`catalogItemName`/`requester`/`requestedAt`) | 서비스요청 승인 | `requestedAt` 기준 상대 시간 | `catalogItemName`(카탈로그 항목명) | `/service-requests/{requestId}` |
+  | 변경 승인 대기(CAB) | API-CHG-007 `GET /api/v1/approvals?scope=mine&type=change` (`changeId`/`ticketKey`/`summary`/`requester`/`createdAt`) | 변경 승인 | `createdAt` 기준 상대 시간 | `summary`(변경 요청 요약) | `/changes/{changeId}` |
+  | 자산 만료 임박 | API-ITAM-001 `GET /api/v1/assets?expiringWithinDays=30&size=8` (`id`/`assetKey`/`name`/`expiryDate`) | 자산 만료 | `{expiryDate} 만료`(미래 날짜라 상대 시간 대신 만료일 그대로 표시, 목록 화면과 동일 포맷) | `name`(자산명) | `/assets/{id}` |
+- **상대 시간 표시 규칙(1행 우측, 팝오버를 연 시점 기준 1회 계산, 실시간 갱신 불필요)**:
+  | 경과 시간 | 표시 |
+  |-----------|------|
+  | 60초 미만 | 방금 전 |
+  | 60분 미만 | N분 전 |
+  | 24시간 미만 | N시간 전 |
+  | 7일 미만 | N일 전 |
+  | 7일 이상 | 절대 날짜(예: 2026-08-10, 목록 화면과 동일 날짜 포맷) |
 - **상태 · 인터랙션**:
   - 검색어 입력(디바운스) 시 미리보기 드롭다운 갱신, 결과 항목 클릭 시 해당 상세 화면으로 이동. Enter 또는 "전체 결과 보기" 클릭 시 SCR-COM-011로 이동. 결과 0건이면 "검색 결과가 없습니다" 안내.
   - 알림 벨 클릭 시 벨 버튼 하단 우측 정렬(`align="end"`)로 알림 드롭다운을 오픈(검색 미리보기와 동일한 Popover 패턴 재사용, 외부 클릭/Esc로 닫힘). 폭 320px 고정(검색 드롭다운과 달리 트리거 폭에 종속되지 않음), 목록 높이 320px 초과 시 세로 스크롤.

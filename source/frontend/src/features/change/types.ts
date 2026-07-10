@@ -131,6 +131,8 @@ export interface ApprovalQueueItem {
   type: ChangeType;
   risk: Risk | null;
   requester: string;
+  summary: string;
+  createdAt: string;
 }
 
 export interface ScheduleItem {

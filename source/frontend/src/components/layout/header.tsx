@@ -34,11 +34,14 @@ export interface HeaderSearchResult {
   subtitle?: string;
 }
 
-/** 알림 팝오버 항목 — 도메인 무관 프레젠테이션 형태(FE가 40자 truncate 처리 완료한 텍스트를 전달). */
+/** 알림 팝오버 항목 — 도메인 무관 프레젠테이션 형태(FE가 40자 truncate·시간 표시 계산 완료한 텍스트를 전달). */
 export interface HeaderNotificationItem {
   key: string;
   /** "서비스요청 승인" | "변경 승인" | "자산 만료" */
   domainLabel: string;
+  /** 1행 우측 시간/만료 표시(예: "N분 전", "2026-08-10", "2026-08-10 만료"). */
+  timeLabel: string;
+  /** 2행 제목(40자 초과 시 말줄임표). */
   text: string;
 }
 
@@ -59,6 +62,8 @@ export interface HeaderProps {
   notifications?: HeaderNotificationItem[];
   /** 알림 항목의 "상세 보기" 클릭 시 개별 상세로 이동. */
   onSelectNotification?: (item: HeaderNotificationItem) => void;
+  /** 알림 팝오버 열림/닫힘 상태 변경 시 호출(열릴 때 FE가 timeLabel을 현재 시각 기준으로 재계산). */
+  onNotificationsOpenChange?: (open: boolean) => void;
   onProfile?: () => void;
   onChangePassword?: () => void;
   onLogout?: () => void;
@@ -80,6 +85,7 @@ export function Header({
   onSelectSearchResult,
   notifications,
   onSelectNotification,
+  onNotificationsOpenChange,
   onProfile,
   onChangePassword,
   onLogout,
@@ -109,6 +115,11 @@ export function Header({
   const handleSelectNotification = (item: HeaderNotificationItem) => {
     setNotificationOpen(false);
     onSelectNotification?.(item);
+  };
+
+  const handleNotificationOpenChange = (open: boolean) => {
+    setNotificationOpen(open);
+    onNotificationsOpenChange?.(open);
   };
 
   return (
@@ -179,7 +190,7 @@ export function Header({
 
       <div className="ml-auto flex items-center gap-1">
         <ThemeToggle />
-        <Popover open={notificationOpen} onOpenChange={setNotificationOpen}>
+        <Popover open={notificationOpen} onOpenChange={handleNotificationOpenChange}>
           <PopoverTrigger asChild>
             <Button
               variant="ghost"
@@ -206,19 +217,24 @@ export function Header({
                   <li
                     key={n.key}
                     onClick={() => handleSelectNotification(n)}
-                    className="flex cursor-pointer items-start gap-2 rounded-sm px-2 py-1.5 hover:bg-accent"
+                    className="flex cursor-pointer flex-col gap-1 rounded-sm px-2 py-1.5 hover:bg-accent"
                   >
-                    <StatusBadge tone="info" label={n.domainLabel} className="mt-0.5 shrink-0" />
-                    <span className="flex-1 truncate text-sm text-foreground">{n.text}</span>
-                    <Button
-                      type="button"
-                      variant="link"
-                      size="sm"
-                      className="h-auto shrink-0 p-0 text-xs"
-                      onClick={() => handleSelectNotification(n)}
-                    >
-                      상세 보기
-                    </Button>
+                    <div className="flex items-center justify-between gap-2">
+                      <StatusBadge tone="info" label={n.domainLabel} className="shrink-0" />
+                      <span className="shrink-0 text-xs text-muted-foreground">{n.timeLabel}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="flex-1 truncate text-sm text-foreground">{n.text}</span>
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        className="h-auto shrink-0 p-0 text-xs"
+                        onClick={() => handleSelectNotification(n)}
+                      >
+                        상세 보기
+                      </Button>
+                    </div>
                   </li>
                 ))
               )}

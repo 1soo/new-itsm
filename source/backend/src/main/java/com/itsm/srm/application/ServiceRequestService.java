@@ -333,6 +333,7 @@ public class ServiceRequestService {
                     return new PendingApprovalResponse(
                             a.getTicketId(),
                             sr != null ? sr.getTicketKey() : null,
+                            sr != null ? catalogName(sr.getCatalogItemId()) : null,
                             sr != null ? userName(sr.getRequesterId()) : null,
                             a.getCreatedAt());
                 })

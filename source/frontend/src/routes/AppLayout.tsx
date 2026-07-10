@@ -8,7 +8,6 @@ import { ConfirmDialog } from "@/components/common";
 import { hasAnyRole, ROLE_APPROVER, ROLE_ASSET_MANAGER } from "@/features/auth/roles";
 import { srmApi } from "@/features/service-request/api";
 import { changeApi } from "@/features/change/api";
-import { riskLabel, typeLabel } from "@/features/change/status";
 import { assetApi } from "@/features/asset/api";
 import { formatDate } from "@/features/asset/format";
 import { searchApi } from "@/features/search/api";
@@ -29,6 +28,33 @@ function truncateNotificationText(text: string): string {
   return text.length > NOTIFICATION_TEXT_MAX_LENGTH
     ? `${text.slice(0, NOTIFICATION_TEXT_MAX_LENGTH)}…`
     : text;
+}
+
+const RELATIVE_TIME_MINUTE_MS = 60_000;
+const RELATIVE_TIME_HOUR_MS = 60 * RELATIVE_TIME_MINUTE_MS;
+const RELATIVE_TIME_DAY_MS = 24 * RELATIVE_TIME_HOUR_MS;
+const RELATIVE_TIME_WEEK_MS = 7 * RELATIVE_TIME_DAY_MS;
+
+/** 승인 대기 항목의 상대 시간 표시(common.md v2). 7일 이상은 절대 날짜로 대체. */
+function formatRelativeTime(iso: string, now: number): string {
+  const diff = now - new Date(iso).getTime();
+  if (diff < RELATIVE_TIME_MINUTE_MS) return "방금 전";
+  if (diff < RELATIVE_TIME_HOUR_MS) return `${Math.floor(diff / RELATIVE_TIME_MINUTE_MS)}분 전`;
+  if (diff < RELATIVE_TIME_DAY_MS) return `${Math.floor(diff / RELATIVE_TIME_HOUR_MS)}시간 전`;
+  if (diff < RELATIVE_TIME_WEEK_MS) return `${Math.floor(diff / RELATIVE_TIME_DAY_MS)}일 전`;
+  return formatDate(iso);
+}
+
+/** 알림 항목의 원본 데이터 — timeLabel을 팝오버 오픈 시점 기준으로 재계산하기 위해 raw 시각을 보관한다. */
+interface NotificationSource {
+  key: string;
+  domainLabel: string;
+  title: string;
+  /** 상대 시간 계산 기준 ISO 시각(자산 만료처럼 상대 시간이 아니면 null). */
+  atIso: string | null;
+  /** atIso가 null일 때 사용할 고정 시간/만료 텍스트. */
+  fixedTimeLabel?: string;
+  href: string;
 }
 
 /** 헤더 통합 검색 미리보기 결과 건수(공유 API-SEARCH-001, common.md SCR-COM-002 기준 5~8). */
@@ -92,18 +118,29 @@ export function AppLayout() {
   // 알림 벨: 역할별 승인 대기(서비스요청·CAB)와 자산 만료 임박 항목을 조합해 팝오버 리스트로 조립한다
   // (신규 API 없이 기존 대기함 API 조합, 서비스요청→변경→자산 순으로 이어붙여 상위 8건만 노출).
   // 뱃지 카운트는 상한과 무관한 전체 대기 건수 합계. 항목 클릭 시 이동할 상세 경로는 key로 조회한다.
+  // 원본 시각(atIso)을 보관해두고, 팝오버가 열릴 때마다 그 시점 기준으로 timeLabel을 재계산한다
+  // (자산 만료는 상대 시간이 아니라 고정 문자열이라 재계산 대상이 아님).
   const [notificationCount, setNotificationCount] = useState(0);
   const [notificationItems, setNotificationItems] = useState<HeaderNotificationItem[] | undefined>(
     undefined,
   );
+  const notificationSources = useRef<NotificationSource[]>([]);
   const notificationHrefByKey = useRef<Map<string, string>>(new Map());
+
+  const buildNotificationItems = (now: number): HeaderNotificationItem[] =>
+    notificationSources.current.map((s) => ({
+      key: s.key,
+      domainLabel: s.domainLabel,
+      text: truncateNotificationText(s.title),
+      timeLabel: s.atIso ? formatRelativeTime(s.atIso, now) : (s.fixedTimeLabel ?? ""),
+    }));
 
   useEffect(() => {
     let cancelled = false;
 
     const load = async () => {
       let count = 0;
-      const items: (HeaderNotificationItem & { href: string })[] = [];
+      const sources: NotificationSource[] = [];
 
       if (hasAnyRole(roles, [ROLE_APPROVER])) {
         const [srmApprovals, chgApprovals] = await Promise.all([
@@ -113,20 +150,20 @@ export function AppLayout() {
         count += srmApprovals.length + chgApprovals.length;
 
         for (const a of srmApprovals) {
-          items.push({
+          sources.push({
             key: `sr-${a.requestId}`,
             domainLabel: "서비스요청 승인",
-            text: truncateNotificationText(`${a.ticketKey} · ${a.requester} 승인 요청`),
+            title: a.catalogItemName,
+            atIso: a.requestedAt,
             href: `/service-requests/${a.requestId}`,
           });
         }
         for (const a of chgApprovals) {
-          items.push({
+          sources.push({
             key: `chg-${a.changeId}`,
             domainLabel: "변경 승인",
-            text: truncateNotificationText(
-              `${a.ticketKey} · ${typeLabel(a.type)}/${a.risk ? riskLabel(a.risk) : "-"} · ${a.requester} 승인 요청`,
-            ),
+            title: a.summary,
+            atIso: a.createdAt,
             href: `/changes/${a.changeId}`,
           });
         }
@@ -140,27 +177,30 @@ export function AppLayout() {
         count += assets.totalElements;
 
         for (const asset of assets.content) {
-          items.push({
+          sources.push({
             key: `asset-${asset.id}`,
             domainLabel: "자산 만료",
-            text: truncateNotificationText(
-              `${asset.assetKey} · ${asset.name} · ${formatDate(asset.expiryDate)} 만료 예정`,
-            ),
+            title: asset.name,
+            atIso: null,
+            fixedTimeLabel: `${formatDate(asset.expiryDate)} 만료`,
             href: `/assets/${asset.id}`,
           });
         }
       }
 
       if (!cancelled) {
-        const preview = items.slice(0, NOTIFICATION_PREVIEW_SIZE);
-        notificationHrefByKey.current = new Map(preview.map((item) => [item.key, item.href]));
+        notificationSources.current = sources.slice(0, NOTIFICATION_PREVIEW_SIZE);
+        notificationHrefByKey.current = new Map(
+          notificationSources.current.map((s) => [s.key, s.href]),
+        );
         setNotificationCount(count);
-        setNotificationItems(preview.map(({ key, domainLabel: label, text }) => ({ key, domainLabel: label, text })));
+        setNotificationItems(buildNotificationItems(Date.now()));
       }
     };
 
     load().catch(() => {
       if (!cancelled) {
+        notificationSources.current = [];
         notificationHrefByKey.current = new Map();
         setNotificationCount(0);
         setNotificationItems([]);
@@ -170,11 +210,18 @@ export function AppLayout() {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roles]);
 
   const handleSelectNotification = (item: HeaderNotificationItem) => {
     const href = notificationHrefByKey.current.get(item.key);
     if (href) navigate(href);
+  };
+
+  /** 팝오버가 열릴 때마다 그 시점 기준으로 timeLabel을 다시 계산(common.md v2 — 데이터 로딩 시점 고정 방지). */
+  const handleNotificationsOpenChange = (open: boolean) => {
+    if (!open) return;
+    setNotificationItems(buildNotificationItems(Date.now()));
   };
 
   // 헤더 통합 검색 미리보기: 입력 중 디바운스 후 API-SEARCH-001을 size=8로 호출해 드롭다운에 표시.
@@ -238,6 +285,7 @@ export function AppLayout() {
           notificationCount,
           notifications: notificationItems,
           onSelectNotification: handleSelectNotification,
+          onNotificationsOpenChange: handleNotificationsOpenChange,
           searchResults,
           onSearch: (query) => {
             if (query.trim()) navigate(`/search?keyword=${encodeURIComponent(query.trim())}`);

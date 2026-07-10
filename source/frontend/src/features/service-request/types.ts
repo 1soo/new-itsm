@@ -137,6 +137,7 @@ export interface RequestDetail {
 export interface ApprovalItem {
   requestId: number;
   ticketKey: string;
+  catalogItemName: string;
   requester: string;
   requestedAt: string;
 }

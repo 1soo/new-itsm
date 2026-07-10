@@ -242,7 +242,9 @@ public class ChangeService {
                             c != null ? c.getTicketKey() : null,
                             c != null && c.getType() != null ? c.getType().name() : null,
                             c != null && c.getRisk() != null ? c.getRisk().name() : null,
-                            c != null ? c.getCreatedBy() : null);
+                            c != null ? c.getCreatedBy() : null,
+                            c != null ? c.getSummary() : null,
+                            a.getCreatedAt());
                 })
                 .toList();
     }
