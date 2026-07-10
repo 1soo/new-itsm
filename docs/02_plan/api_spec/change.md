@@ -67,10 +67,10 @@
     "approvalRoute": "AUTO|PEER_REVIEW|CAB", "implementationPlan": "string", "rollbackPlan": "string",
     "result": { "outcome": "SUCCESS|FAILURE|null", "rolledBack": "boolean", "note": "string" },
     "approvals": [ { "approver": "string", "decision": "APPROVED|REJECTED", "opinion": "string", "at": "ISO-8601" } ],
-    "links": [ { "type": "INCIDENT|PROBLEM|ASSET", "targetKey": "string" } ]
+    "links": [ { "type": "INCIDENT|PROBLEM|ASSET|COMPLIANCE_REQUIREMENT", "targetKey": "string" } ]
   }
   ```
-- **Response Code**: 200 / 401 / 404
+- **Response Code**: 200 / 401 / 404. `COMPLIANCE_REQUIREMENT` 링크는 컴플라이언스 도메인에서 생성한다([compliance.md](compliance.md) API-COMP-005, REQ-COMP-005).
 
 ### API-CHG-004 · 상태(6단계) 전이
 
