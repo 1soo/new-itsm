@@ -32,7 +32,7 @@ export function Sidebar({ groups, collapsed = false, className }: SidebarProps) 
   return (
     <aside
       className={cn(
-        "flex h-full shrink-0 flex-col overflow-y-auto bg-sidebar text-sidebar-foreground transition-[width] duration-200",
+        "flex h-full shrink-0 flex-col overflow-y-auto bg-sidebar text-sidebar-foreground transition-[width] duration-200 ease-[var(--motion-sidebar-easing)]",
         collapsed ? "w-16" : "w-60",
         className,
       )}
@@ -57,12 +57,11 @@ export function Sidebar({ groups, collapsed = false, className }: SidebarProps) 
                 aria-current={item.active ? "page" : undefined}
                 title={collapsed ? item.label : undefined}
                 className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium outline-none transition-colors",
+                  "flex items-center gap-3 overflow-hidden rounded-md px-3 py-2 text-sm font-medium outline-none transition-colors",
                   "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-ring",
                   item.active
                     ? "bg-sidebar-primary text-sidebar-primary-foreground"
                     : "text-sidebar-foreground/90",
-                  collapsed && "justify-center px-0",
                 )}
               >
                 {item.icon ? (
@@ -70,7 +69,18 @@ export function Sidebar({ groups, collapsed = false, className }: SidebarProps) 
                     {item.icon}
                   </span>
                 ) : null}
-                {!collapsed && <span className="truncate">{item.label}</span>}
+                {/* 라벨은 별도 width 전환 없이 opacity만 애니메이션한다. 사이드바
+                    컨테이너의 폭 전환(승인된 예외)에 flex-1 min-w-0으로 자연히
+                    종속되어 축소되며, 아이콘은 shrink-0 고정폭이라 collapsed 시
+                    자연히 중앙 정렬된다. */}
+                <span
+                  className={cn(
+                    "min-w-0 flex-1 truncate transition-opacity",
+                    collapsed ? "opacity-0" : "opacity-100",
+                  )}
+                >
+                  {item.label}
+                </span>
               </button>
             ))}
           </Fragment>

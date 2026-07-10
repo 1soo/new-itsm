@@ -178,7 +178,7 @@ export function DistributionChart({
       {/* 툴팁 */}
       {hover != null && width > 0 ? (
         <div
-          className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-md border border-border bg-popover px-2 py-1 text-xs shadow-md"
+          className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-lg border border-border bg-popover px-2 py-1 text-xs shadow-overlay"
           style={{ left: xCenter(hover), top: yAt(data[hover].value) - 8 }}
         >
           <div className="font-medium text-foreground">

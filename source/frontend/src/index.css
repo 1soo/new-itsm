@@ -2,9 +2,10 @@
 @import "tw-animate-css";
 
 /*
- * 디자인 토큰 — docs/02_plan/screen/common.md 2절 공통 팔레트 준수.
- * 원자 색상(raw palette)만 정의하고, 시맨틱 토큰은 이를 참조한다.
- * 컴포넌트는 시맨틱 토큰(@theme 매핑)만 사용하고 색상을 하드코딩하지 않는다.
+ * 디자인 토큰 — docs/02_plan/screen/common.md v0.2 2절(ADS 기반 UI/UX 개편) 준수.
+ * 원자 색상(raw palette)은 :root/[data-theme="dark"]에 정의하고,
+ * 시맨틱 토큰(@theme inline)은 이를 참조한다. 컴포넌트는 시맨틱 토큰만 사용하고
+ * 색상을 하드코딩하지 않는다.
  */
 
 @theme inline {
@@ -30,17 +31,28 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  /* 상태 시맨틱 색상 (배지·토스트·알림 공용) — common.md 2.1절 */
+  /* 상태 시맨틱 색상 — common.md 2.2절. bold(기존 방식)는 토스트/차트 등 강조 표시,
+     subtle은 Lozenge(배지) 기본 스타일 */
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-success-subtle: var(--success-subtle);
+  --color-success-subtle-foreground: var(--success-subtle-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-warning-subtle-foreground: var(--warning-subtle-foreground);
   --color-danger: var(--danger);
   --color-danger-foreground: var(--danger-foreground);
+  --color-danger-subtle: var(--danger-subtle);
+  --color-danger-subtle-foreground: var(--danger-subtle-foreground);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
+  --color-info-subtle: var(--info-subtle);
+  --color-info-subtle-foreground: var(--info-subtle-foreground);
   --color-neutral: var(--neutral);
   --color-neutral-foreground: var(--neutral-foreground);
+  --color-neutral-subtle: var(--neutral-subtle);
+  --color-neutral-subtle-foreground: var(--neutral-subtle-foreground);
 
   /* 사이드바 셸 */
   --color-sidebar: var(--sidebar);
@@ -51,79 +63,187 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
 
-  /* Radius 스케일 */
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  /* Elevation(2.5절) — 서피스별 그림자. 같은 컴포넌트 내 레벨 혼용 금지 */
+  --shadow-raised: var(--elevation-raised);
+  --shadow-overlay: var(--elevation-overlay);
+
+  /* 전역 전환 기본값(2.6절 Hover 공통 — 50ms ease-out practical).
+     transition/transition-colors 등 duration·easing을 지정하지 않은 모든 유틸리티에 적용된다. */
+  --default-transition-duration: 50ms;
+  --default-transition-timing-function: var(--ease-practical);
+
+  /* Radius(2.4절) — 컴포넌트 유형별 차등 값(기존 단일 --radius 캐스케이드 제거) */
+  --radius-xs: 2px; /* radius.xsmall — 체크박스, 배지 내부 아이콘 */
+  --radius-sm: 4px; /* radius.small — Lozenge(배지), 태그, 타임스탬프 */
+  --radius-md: 6px; /* radius.medium — 버튼, 인풋, 셀렉트, 텍스트영역 */
+  --radius-lg: 8px; /* radius.large — 카드, 드롭다운 메뉴 */
+  --radius-xl: 12px; /* radius.xlarge — 모달 */
+  /* radius.full(아바타)은 Tailwind 기본 rounded-full(9999px) 사용 */
+
+  /* Typography(2.3절) — Pretendard 유지, Bold는 표준 700으로 대체 */
+  --text-heading-xxlarge: 2rem; /* 32px, 미사용(브랜드 전용) */
+  --text-heading-xxlarge--line-height: 2.25rem; /* 36px */
+  --text-heading-large: 1.5rem; /* 24px, 페이지 타이틀 */
+  --text-heading-large--line-height: 1.75rem; /* 28px */
+  --text-heading-medium: 1.25rem; /* 20px, 모달 등 큰 컴포넌트 헤더 */
+  --text-heading-medium--line-height: 1.5rem; /* 24px */
+  --text-heading-small: 1rem; /* 16px, 카드/섹션 헤더 */
+  --text-heading-small--line-height: 1.25rem; /* 20px */
+  --text-heading-xsmall: 0.875rem; /* 14px, 좁은 공간 헤더 */
+  --text-heading-xsmall--line-height: 1.25rem; /* 20px */
+  --text-body-large: 1rem; /* 16px, 긴 설명/본문 */
+  --text-body-large--line-height: 1.5rem; /* 24px */
+  --text-body: 0.875rem; /* 14px(기본), 본문·버튼/컴포넌트 라벨 */
+  --text-body--line-height: 1.25rem; /* 20px */
+  --text-body-small: 0.75rem; /* 12px, 보조 콘텐츠(최소 크기) */
+  --text-body-small--line-height: 1rem; /* 16px */
+  --text-metric-large: 1.75rem; /* 28px, 대시보드 KPI 숫자 */
+  --text-metric-large--line-height: 2rem; /* 32px */
+  --text-metric-medium: 1.5rem; /* 24px, 카드 내 KPI 숫자 */
+  --text-metric-medium--line-height: 1.75rem; /* 28px */
+  --text-metric-small: 1rem; /* 16px, 인라인 수치 강조 */
+  --text-metric-small--line-height: 1.25rem; /* 20px */
 }
 
 :root {
-  /* --- Raw palette (common.md 2절) --- */
-  --base: #2563eb; /* Base — Primary */
-  --base-dark: #1e40af; /* Variation 1 — Hover/Active */
-  --base-light: #60a5fa; /* Variation 2 — 보조 강조·포커스 링 */
-  --neutral-dark: #1f2937; /* 본문 텍스트·사이드바 배경 */
-  --neutral-light: #f9fafb; /* 페이지·카드 배경 */
-  --palette-border: #e5e7eb; /* 구분선·입력 테두리 */
+  color-scheme: light;
 
-  /* 상태 시맨틱 (common.md 2.1절) */
-  --status-success: #16a34a;
-  --status-warning: #d97706;
-  --status-danger: #dc2626;
-  --status-info: #60a5fa;
-  --status-muted: #9ca3af;
+  /* --- 색상 토큰 — common.md 2.1절(라이트) --- */
+  --primary: #2563eb;
+  --primary-hover: #1e40af;
+  --primary-foreground: #f9fafb;
+  --background: #f9fafb;
+  --card: #ffffff;
+  --popover: #ffffff;
+  --foreground: #1f2937;
+  --muted-foreground: #6b7280;
+  --border: #e5e7eb;
+  /* common.md 표기값(#60a5fa)은 라이트 배경 대비 3:1 미만(2.43:1)으로 실측되어
+     WCAG 2.2 AA 비텍스트 대비(2.8절)를 만족하는 값으로 조정했다(재검증 결과). */
+  --ring: #3b82f6;
+  --sidebar: #1f2937;
+  --sidebar-primary: #2563eb;
 
-  --radius: 0.5rem;
+  /* 파생 시맨틱(별도 라이트/다크 값이 없는 서피스는 위 원자 토큰을 참조) */
+  --card-foreground: var(--foreground);
+  --popover-foreground: var(--foreground);
+  --secondary: var(--card);
+  --secondary-foreground: var(--foreground);
+  --muted: var(--card);
+  --accent: var(--card);
+  --accent-foreground: var(--foreground);
+  --input: var(--border);
+  --destructive: var(--danger);
+  --destructive-foreground: var(--danger-foreground);
 
-  /* --- Semantic 매핑 --- */
-  --background: var(--neutral-light);
-  --foreground: var(--neutral-dark);
-  --card: var(--neutral-light);
-  --card-foreground: var(--neutral-dark);
-  --popover: var(--neutral-light);
-  --popover-foreground: var(--neutral-dark);
+  /* 사이드바는 라이트/다크 모두 어두운 서피스이므로 텍스트는 고정 라이트 톤 사용 */
+  --sidebar-foreground: #f9fafb;
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: color-mix(in srgb, var(--sidebar-primary) 16%, transparent);
+  --sidebar-accent-foreground: var(--sidebar-foreground);
+  --sidebar-border: color-mix(in srgb, var(--sidebar-foreground) 12%, transparent);
 
-  --primary: var(--base);
-  --primary-foreground: var(--neutral-light);
-  --primary-hover: var(--base-dark);
+  /* --- 상태 시맨틱 · Lozenge subtle(2.2절, 라이트) ---
+     bold 배경은 subtle 텍스트/테두리 색상과 동일 톤을 재사용해 라이트/다크 간
+     동일한 규칙(bold-bg = subtle-foreground)을 유지한다. */
+  --success: #15803d;
+  --success-foreground: #f9fafb;
+  --success-subtle: #dcfce7;
+  --success-subtle-foreground: #15803d;
 
-  --secondary: var(--palette-border);
-  --secondary-foreground: var(--neutral-dark);
+  --warning: #b45309;
+  --warning-foreground: #f9fafb;
+  --warning-subtle: #fef3c7;
+  --warning-subtle-foreground: #b45309;
 
-  --muted: var(--palette-border);
-  --muted-foreground: var(--status-muted);
+  --danger: #b91c1c;
+  --danger-foreground: #f9fafb;
+  --danger-subtle: #fee2e2;
+  --danger-subtle-foreground: #b91c1c;
 
-  --accent: var(--palette-border);
-  --accent-foreground: var(--neutral-dark);
+  --info: #1d4ed8;
+  --info-foreground: #f9fafb;
+  --info-subtle: #dbeafe;
+  --info-subtle-foreground: #1d4ed8;
 
-  --destructive: var(--status-danger);
-  --destructive-foreground: var(--neutral-light);
+  --neutral: #4b5563;
+  --neutral-foreground: #f9fafb;
+  --neutral-subtle: #f3f4f6;
+  --neutral-subtle-foreground: #4b5563;
 
-  --border: var(--palette-border);
-  --input: var(--palette-border);
-  --ring: var(--base-light);
+  /* --- Elevation(2.5절, 라이트) --- */
+  --elevation-raised: 0 1px 2px rgba(31, 41, 55, 0.08);
+  --elevation-overlay: 0 4px 12px rgba(31, 41, 55, 0.16);
 
-  /* 상태 시맨틱 on-color */
-  --success: var(--status-success);
-  --success-foreground: var(--neutral-light);
-  --warning: var(--status-warning);
-  --warning-foreground: var(--neutral-light);
-  --danger: var(--status-danger);
-  --danger-foreground: var(--neutral-light);
-  --info: var(--status-info);
-  --info-foreground: var(--neutral-dark);
-  --neutral: var(--status-muted);
-  --neutral-foreground: var(--neutral-light);
+  /* --- 모션(2.6절) — 라이트/다크 공통. 정확한 ADS 베지어 값은 미제공되어
+     practical(기능적)/bold(표현적) 성격에 맞는 근사 곡선을 사용한다 --- */
+  --ease-practical: cubic-bezier(0.2, 0, 0, 1);
+  --ease-bold: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-modal-enter-duration: 250ms;
+  --motion-modal-enter-easing: var(--ease-bold); /* ease-in-out bold */
+  --motion-modal-exit-duration: 200ms;
+  --motion-modal-exit-easing: cubic-bezier(0.4, 0, 1, 1); /* ease-in practical */
+  --motion-overlay-enter-duration: 150ms; /* 드롭다운/팝오버 */
+  --motion-overlay-enter-easing: var(--ease-practical); /* ease-out practical */
+  --motion-overlay-exit-duration: 100ms;
+  --motion-overlay-exit-easing: cubic-bezier(0.4, 0, 1, 1); /* ease-in practical */
+  --motion-toast-enter-duration: 200ms;
+  --motion-toast-enter-easing: var(--ease-bold); /* ease-out bold */
+  --motion-toast-exit-duration: 150ms;
+  --motion-toast-exit-easing: cubic-bezier(0.4, 0, 1, 1); /* ease-in practical */
+  --motion-hover-duration: 50ms;
+  --motion-hover-easing: var(--ease-practical); /* ease-out practical */
+  --motion-sidebar-duration: 200ms; /* 사이드바 폭 접기/펼치기 전용 */
+  --motion-sidebar-easing: var(--ease-bold); /* ease-in-out bold */
+}
 
-  /* 사이드바 (Neutral Dark 배경 · 활성 Base) */
-  --sidebar: var(--neutral-dark);
-  --sidebar-foreground: var(--neutral-light);
-  --sidebar-primary: var(--base);
-  --sidebar-primary-foreground: var(--neutral-light);
-  --sidebar-accent: var(--base-dark);
-  --sidebar-accent-foreground: var(--neutral-light);
-  --sidebar-border: color-mix(in srgb, var(--neutral-light) 12%, transparent);
+/* --- 색상 토큰 — common.md 2.1~2.2절(다크) --- */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --primary: #60a5fa;
+  --primary-hover: #93c5fd;
+  --primary-foreground: #0b1220;
+  --background: #161a1f;
+  --card: #1e242b;
+  --popover: #242b33;
+  --foreground: #e5e7eb;
+  --muted-foreground: #9ca3af;
+  --border: rgba(249, 250, 251, 0.12);
+  --ring: #93c5fd;
+  --sidebar: #10141a;
+  --sidebar-primary: #60a5fa;
+
+  /* subtle 배경 alpha는 common.md 표기값(0.16)에서 0.12로 조정했다. 다크 테마에서
+     Lozenge 배지 텍스트/배경 대비를 카드 서피스(--card) 기준으로 실측한 결과
+     danger 조합이 4.46:1로 WCAG AA(4.5:1) 미달이었다(2.8절 재검증). */
+  --success: #4ade80;
+  --success-foreground: #0b1220;
+  --success-subtle: rgba(74, 222, 128, 0.12);
+  --success-subtle-foreground: #4ade80;
+
+  --warning: #fbbf24;
+  --warning-foreground: #0b1220;
+  --warning-subtle: rgba(251, 191, 36, 0.12);
+  --warning-subtle-foreground: #fbbf24;
+
+  --danger: #f87171;
+  --danger-foreground: #0b1220;
+  --danger-subtle: rgba(248, 113, 113, 0.12);
+  --danger-subtle-foreground: #f87171;
+
+  --info: #60a5fa;
+  --info-foreground: #0b1220;
+  --info-subtle: rgba(96, 165, 250, 0.12);
+  --info-subtle-foreground: #60a5fa;
+
+  --neutral: #9ca3af;
+  --neutral-foreground: #0b1220;
+  --neutral-subtle: rgba(156, 163, 175, 0.12);
+  --neutral-subtle-foreground: #9ca3af;
+
+  --elevation-raised: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --elevation-overlay: 0 4px 16px rgba(0, 0, 0, 0.6);
 }
 
 @layer base {
@@ -140,9 +260,22 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* 키보드 포커스 가시화 (a11y) */
+  /* 키보드 포커스 가시화(2.8절) — 2px 링 + 색상 토큰 + 2px 오프셋 */
   :focus-visible {
     outline: 2px solid var(--color-ring);
     outline-offset: 2px;
+  }
+}
+
+/* 모션 감소 선호 시 모든 전환을 즉시 처리(2.6절). 0ms 대신 0.01ms를 사용해
+   transitionend/animationend 이벤트에 의존하는 로직이 깨지지 않도록 한다. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

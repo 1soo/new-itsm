@@ -17,11 +17,13 @@ export interface StatusBadgeProps {
   tone: StatusTone;
   label: string;
   className?: string;
+  /** Lozenge 강조 단계. 기본 subtle, SEV1 등 강한 강조가 꼭 필요할 때만 bold. */
+  emphasis?: "subtle" | "bold";
 }
 
-export function StatusBadge({ tone, label, className }: StatusBadgeProps) {
+export function StatusBadge({ tone, label, className, emphasis }: StatusBadgeProps) {
   return (
-    <Badge variant={tone} className={cn(className)}>
+    <Badge variant={tone} emphasis={emphasis} className={cn(className)}>
       {label}
     </Badge>
   );

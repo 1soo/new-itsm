@@ -38,7 +38,7 @@ export function TicketDetailLayout({
           {ticketKey ? (
             <p className="text-xs font-medium text-muted-foreground">{ticketKey}</p>
           ) : null}
-          <h1 className="text-xl font-semibold text-foreground">{title}</h1>
+          <h1 className="text-heading-large font-bold text-foreground">{title}</h1>
           {badges ? <div className="flex flex-wrap items-center gap-2">{badges}</div> : null}
         </div>
         {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}

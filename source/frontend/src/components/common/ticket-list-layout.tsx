@@ -31,7 +31,7 @@ export function TicketListLayout({
     <section className={cn("flex flex-col gap-4", className)}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
-          <h1 className="text-xl font-semibold text-foreground">{title}</h1>
+          <h1 className="text-heading-large font-bold text-foreground">{title}</h1>
           {description ? (
             <p className="text-sm text-muted-foreground">{description}</p>
           ) : null}

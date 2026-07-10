@@ -105,7 +105,7 @@ export function MultiSelect({
                   >
                     <span
                       className={cn(
-                        "flex size-4 items-center justify-center rounded-sm border border-primary",
+                        "flex size-4 items-center justify-center rounded-xs border border-primary",
                         selected
                           ? "bg-primary text-primary-foreground"
                           : "opacity-70",

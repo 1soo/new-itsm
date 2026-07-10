@@ -19,11 +19,17 @@ export interface PriorityBadgeProps {
   /** 표시 라벨(미지정 시 등급 코드 표시) */
   label?: string;
   className?: string;
+  /** Lozenge 강조 단계. 미지정 시 P1은 bold, 그 외는 subtle. */
+  emphasis?: "subtle" | "bold";
 }
 
-export function PriorityBadge({ priority, label, className }: PriorityBadgeProps) {
+export function PriorityBadge({ priority, label, className, emphasis }: PriorityBadgeProps) {
   return (
-    <Badge variant={PRIORITY_TONE[priority]} className={cn(className)}>
+    <Badge
+      variant={PRIORITY_TONE[priority]}
+      emphasis={emphasis ?? (priority === "P1" ? "bold" : "subtle")}
+      className={cn(className)}
+    >
       {label ?? priority}
     </Badge>
   );

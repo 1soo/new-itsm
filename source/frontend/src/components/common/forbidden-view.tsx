@@ -22,7 +22,7 @@ export function ForbiddenView({ onBack, className }: ForbiddenViewProps) {
     >
       <ShieldAlert className="size-14 text-danger" aria-hidden="true" />
       <div className="space-y-1">
-        <h1 className="text-xl font-semibold text-foreground">접근 권한이 없습니다</h1>
+        <h1 className="text-heading-large font-bold text-foreground">접근 권한이 없습니다</h1>
         <p className="text-sm text-muted-foreground">
           이 페이지에 접근할 권한이 없습니다.
         </p>

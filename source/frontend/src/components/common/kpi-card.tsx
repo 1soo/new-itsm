@@ -19,7 +19,7 @@ export function KpiCard({ label, value, unit, className }: KpiCardProps) {
     <Card className={cn("border-t-2 border-t-primary", className)}>
       <CardContent className="space-y-1.5 p-5">
         <p className="truncate text-sm text-muted-foreground">{label}</p>
-        <p className="text-2xl font-semibold text-foreground">
+        <p className="text-metric-medium font-bold text-foreground">
           {value}
           {unit ? (
             <span className="ml-1 text-base font-normal text-muted-foreground">
