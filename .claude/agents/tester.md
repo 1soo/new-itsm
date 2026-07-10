@@ -1,6 +1,6 @@
 ---
 name: tester
-model: sonnet
+model: sonnet  # Sonnet 5. 사용 불가 시 opus로 대체
 effort: high
 description: 기능 명세서와 요구사항(docs/01_analyze)이 명확히 구현되었는지 검증하는 테스트 에이전트. 도메인별 통합 테스트 시나리오를 작성하고, 빌드 테스트를 포함해 시나리오를 수행하며 결과를 기록한다.
 tools: Read, Write, Edit, Glob, Grep, Skill, Bash, mcp__playwright, SendMessage, TaskCreate, TaskList, TaskGet, TaskUpdate
@@ -37,5 +37,7 @@ mcpServers:
 
 ## D. 주의사항
 
+- **당신은 여러 도메인에 걸쳐 동일 인스턴스로 유지됩니다.** 도메인이 바뀔 때 삭제·재소집되지 않고, `dev-lead`의 지시로 `/compact`(필요 시 `/clear`)를 수행해 컨텍스트만 정리합니다. 정리 후에는 이전 도메인 테스트에 대한 기억이 요약되었거나 사라졌을 수 있으므로, 기존 테스트 산출물·패턴은 `docs/04_test/`를 직접 읽어 파악하십시오.
 - **단계별로 생각한다.**
 - **테스트 시나리오는 모두 수행**하고, **시나리오에 포함되지 않는 내용은 수행하지 않는다.**
+- **컨텍스트 사용량이 80%에 도달하면 `/compact`를 수행하고, `/compact` 후에도 사용량이 50% 이상이면 `/clear`를 수행한다.** (도메인 전환 시 정리 지시는 `dev-lead`가 별도로 보낸다.)
