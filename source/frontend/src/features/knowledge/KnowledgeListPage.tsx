@@ -88,9 +88,13 @@ export function KnowledgeListPage() {
   const columns: Column<ArticleSummary>[] = [
     { header: "제목", cell: (a) => <span className="line-clamp-1">{a.title}</span> },
     { header: "요약", cell: (a) => <span className="line-clamp-1 text-muted-foreground">{a.summary}</span> },
-    { header: "카테고리", cell: (a) => a.category || "-" },
-    { header: "상태", cell: (a) => <StatusBadge tone={statusTone(a.status)} label={statusLabel(a.status)} /> },
-    { header: "유용성", cell: (a) => `${Math.round(a.helpfulRate)}%` },
+    { header: "카테고리", cell: (a) => a.category || "-", className: "whitespace-nowrap" },
+    {
+      header: "상태",
+      cell: (a) => <StatusBadge tone={statusTone(a.status)} label={statusLabel(a.status)} />,
+      className: "whitespace-nowrap",
+    },
+    { header: "유용성", cell: (a) => `${Math.round(a.helpfulRate)}%`, className: "whitespace-nowrap" },
   ];
 
   const totalPages = data ? Math.ceil(data.totalElements / PAGE_SIZE) : 0;
