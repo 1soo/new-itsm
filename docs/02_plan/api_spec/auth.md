@@ -1,6 +1,6 @@
 # API 명세서 — 인증/계정/권한 (Auth & RBAC)
 
-> 도메인: auth · 버전: 0.1 · 작성일: 2026-07-09
+> 도메인: auth · 버전: 0.2 · 작성일: 2026-07-11 · Role-Menu 동적 매핑(유지보수 요청) API 추가(API-AUTH-016~022, 기존 screen/screen_role 재사용)
 
 ## 공통 규약
 
@@ -31,6 +31,13 @@
 | API-AUTH-013 | 역할 목록 조회 | GET | /api/v1/admin/roles | 필요(Admin) |
 | API-AUTH-014 | 역할 생성 | POST | /api/v1/admin/roles | 필요(Admin) |
 | API-AUTH-015 | 감사 로그 조회 | GET | /api/v1/admin/audit-logs | 필요(Admin) |
+| API-AUTH-016 | 메뉴(화면) 목록 조회 | GET | /api/v1/admin/screens | 필요(Admin) |
+| API-AUTH-017 | 메뉴 생성 | POST | /api/v1/admin/screens | 필요(Admin) |
+| API-AUTH-018 | 메뉴 수정 | PATCH | /api/v1/admin/screens/{screenId} | 필요(Admin) |
+| API-AUTH-019 | 메뉴 삭제 | DELETE | /api/v1/admin/screens/{screenId} | 필요(Admin) |
+| API-AUTH-020 | 메뉴에 역할 매핑 부여 | POST | /api/v1/admin/screens/{screenId}/roles | 필요(Admin) |
+| API-AUTH-021 | 메뉴 역할 매핑 회수 | DELETE | /api/v1/admin/screens/{screenId}/roles/{roleId} | 필요(Admin) |
+| API-AUTH-022 | 내 메뉴 조회 | GET | /api/v1/menus/mine | 필요 |
 
 ## 2. API 상세
 
@@ -258,3 +265,120 @@
   }
   ```
 - **Response Code**: 200(데이터 없으면 빈 배열) / 401 / 403
+
+### API-AUTH-016 · 메뉴(화면) 목록 조회
+
+Role-Menu 동적 매핑(SCR-ADMIN-006) 화면의 메뉴 목록. `screen` 테이블 전체(화면 마스터 겸 메뉴 마스터)를 조회하며, 각 항목에 현재 매핑된 역할 목록을 함께 반환한다.
+
+- **Endpoint**: `GET /api/v1/admin/screens?groupCode=&domain=&page=&size=`
+- **인증**: 필요(Access Token, System Admin)
+- **Header**: `Authorization: Bearer {accessToken}`
+- **Request Body**: 없음(쿼리 파라미터)
+- **Response Body** (200):
+  ```json
+  {
+    "content": [
+      {
+        "id": "number", "screenCode": "string", "screenName": "string", "path": "string", "domain": "string",
+        "iconName": "string|null", "groupCode": "string|null", "groupLabel": "string|null",
+        "sortOrder": "number", "navVisible": "boolean",
+        "roles": ["string · role.role_code, 매핑된 역할(없으면 전체 인증 사용자 공개)"]
+      }
+    ],
+    "page": "number", "size": "number", "totalElements": "number"
+  }
+  ```
+- **Response Code**: 200 정상 / 401 미인증 / 403 권한 부족
+
+### API-AUTH-017 · 메뉴 생성
+
+- **Endpoint**: `POST /api/v1/admin/screens`
+- **인증**: 필요(Access Token, System Admin)
+- **Header**: `Authorization: Bearer {accessToken}`, `Content-Type: application/json`
+- **Request Body**:
+  ```json
+  {
+    "screenCode": "string · 필수, 고유 식별 코드", "screenName": "string · 필수", "path": "string · 필수", "domain": "string · 필수",
+    "iconName": "string · 선택(lucide-react 컴포넌트명)", "groupCode": "string · 선택", "groupLabel": "string · 선택(groupCode와 함께 지정)",
+    "sortOrder": "number · 선택, 기본 0", "navVisible": "boolean · 선택, 기본 true"
+  }
+  ```
+- **Response Body** (201): API-AUTH-016 목록 항목과 동일 구조(`roles: []`)
+- **Response Code**:
+  | Code | 의미 |
+  |------|------|
+  | 201 | 생성 성공 |
+  | 400 | 필수 누락·형식 오류 |
+  | 403 | 권한 부족 |
+  | 409 | screenCode 중복(`screen.screen_code` UNIQUE) 또는 path 중복(`screen.path` UNIQUE) |
+
+### API-AUTH-018 · 메뉴 수정
+
+- **Endpoint**: `PATCH /api/v1/admin/screens/{screenId}`
+- **인증**: 필요(Access Token, System Admin)
+- **Header**: `Authorization: Bearer {accessToken}`, `Content-Type: application/json`
+- **Request Body**:
+  ```json
+  { "screenName": "string · 선택", "path": "string · 선택", "iconName": "string · 선택", "groupCode": "string · 선택", "groupLabel": "string · 선택", "sortOrder": "number · 선택", "navVisible": "boolean · 선택" }
+  ```
+  > `screenCode`·`domain`은 식별자로 취급해 수정 대상에서 제외한다.
+- **Response Body** (200): 갱신된 메뉴 정보(API-AUTH-016 항목 구조)
+- **Response Code**: 200 / 400 / 403 / 404 메뉴 없음 / 409 path 중복(`screen.path` UNIQUE, 다른 메뉴가 이미 사용 중인 경로로 변경 시)
+
+### API-AUTH-019 · 메뉴 삭제
+
+- **Endpoint**: `DELETE /api/v1/admin/screens/{screenId}`
+- **인증**: 필요(Access Token, System Admin)
+- **Header**: `Authorization: Bearer {accessToken}`
+- **Response Body** (200): `{ "id": "number", "deleted": true }`
+- **Response Code**: 200 / 403 / 404
+  > soft delete(`screen.is_deleted=true`) 처리. 연결된 `screen_role` 매핑은 별도로 삭제하지 않으며, 이후 메뉴·화면 접근 조회 시 `is_deleted=false` 조건으로 자동 제외된다.
+
+### API-AUTH-020 · 메뉴에 역할 매핑 부여
+
+- **Endpoint**: `POST /api/v1/admin/screens/{screenId}/roles`
+- **인증**: 필요(Access Token, System Admin)
+- **Header**: `Authorization: Bearer {accessToken}`, `Content-Type: application/json`
+- **Request Body**:
+  ```json
+  { "roleId": "number · 부여할 역할" }
+  ```
+- **Response Body** (200): `{ "screenId": "number", "roles": ["string"] }`
+- **Response Code**:
+  | Code | 의미 |
+  |------|------|
+  | 200 | 부여 성공(즉시 반영, 사이드바에서도 즉시 노출) |
+  | 400 | 존재하지 않는 역할 |
+  | 403 | 권한 부족 |
+  | 404 | 메뉴 없음 |
+  | 409 | 이미 매핑됨(`screen_role` UNIQUE(screen_id, role_id)) |
+
+### API-AUTH-021 · 메뉴 역할 매핑 회수
+
+- **Endpoint**: `DELETE /api/v1/admin/screens/{screenId}/roles/{roleId}`
+- **인증**: 필요(Access Token, System Admin)
+- **Header**: `Authorization: Bearer {accessToken}`
+- **Response Body** (200): `{ "screenId": "number", "roles": ["string"] }`
+- **Response Code**: 200 / 403 / 404
+
+### API-AUTH-022 · 내 메뉴 조회
+
+로그인 사용자의 역할에 매핑된 사이드바 메뉴 목록(SCR-COM-003). `screen_role`에 매핑이 전혀 없는 화면(예: 대시보드·내 프로필)은 전체 인증 사용자에게 공개된 것으로 간주해 항상 포함한다.
+
+- **Endpoint**: `GET /api/v1/menus/mine`
+- **인증**: 필요(Access Token)
+- **Header**: `Authorization: Bearer {accessToken}`
+- **Request Body**: 없음
+- **Response Body** (200):
+  ```json
+  {
+    "groups": [
+      {
+        "groupCode": "string|null", "groupLabel": "string|null",
+        "items": [ { "screenCode": "string", "screenName": "string", "path": "string", "iconName": "string|null" } ]
+      }
+    ]
+  }
+  ```
+  > `nav_visible=true`인 화면만 포함하며, `sort_order` 오름차순으로 정렬한다. 그룹 표시 순서는 그룹별 최소 `sort_order` 값 기준으로 정렬한다(`docs/02_plan/database/auth.md` 5절).
+- **Response Code**: 200(그룹 없으면 빈 배열) / 401 미인증

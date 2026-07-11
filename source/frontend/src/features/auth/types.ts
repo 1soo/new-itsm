@@ -36,3 +36,22 @@ export interface ChangePasswordRequest {
   currentPassword: string;
   newPassword: string;
 }
+
+/* 내 메뉴 조회(API-AUTH-022) — 사이드바 동적 구성(Role-Menu 동적 매핑). */
+
+export interface MenuItem {
+  screenCode: string;
+  screenName: string;
+  path: string;
+  iconName: string | null;
+}
+
+export interface MenuGroup {
+  groupCode: string | null;
+  groupLabel: string | null;
+  items: MenuItem[];
+}
+
+export interface MyMenuResponse {
+  groups: MenuGroup[];
+}

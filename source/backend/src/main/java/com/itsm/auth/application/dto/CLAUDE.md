@@ -24,3 +24,12 @@
 - `RoleCreatedResponse.java` — 역할 생성 응답
 - `RoleResponse.java` — 역할 조회 응답(userCount 포함)
 - `AuditLogResponse.java` — 감사 로그 응답(eventType, actor, target, result, occurredAt)
+- `ScreenResponse.java` — 메뉴(화면) 응답(사이드바 표시 컬럼 + 매핑된 roles 포함)
+- `CreateScreenRequest.java` — 메뉴 생성 요청(screenCode/screenName/path/domain 필수, 나머지 선택+기본값)
+- `UpdateScreenRequest.java` — 메뉴 수정 요청(모두 선택, screenCode·domain 제외)
+- `AssignScreenRoleRequest.java` — 메뉴 역할 매핑 부여 요청(roleId)
+- `ScreenRolesResponse.java` — 메뉴 역할 매핑 목록 응답(screenId, roles)
+- `ScreenDeletedResponse.java` — 메뉴 삭제 응답(id, deleted)
+- `MyMenuResponse.java` — 내 메뉴 조회 응답(groups)
+- `MenuGroupResponse.java` — 메뉴 그룹(groupCode/groupLabel, items)
+- `MenuItemResponse.java` — 메뉴 항목(screenCode/screenName/path/iconName)

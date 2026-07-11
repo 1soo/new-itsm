@@ -66,3 +66,59 @@
 
 - `source/db/` = DB / `source/backend/` = BE / `source/frontend/` 공통 = UI, 기능 = FE.
 - 동일 파일 동시 수정 금지. frontend 공통/기능 경계는 UI·FE가 착수 초기에 폴더 규칙으로 합의.
+
+---
+
+## Role-Menu 동적 매핑 (유지보수 요청, 2026-07-11)
+
+> Main 요청(유지보수). 기존 `screen`/`screen_role`을 메뉴 마스터·역할-메뉴 매핑으로 확장 재사용(신규 테이블 없음). 이번 유지보수는 이 도메인만으로는 UI 신규 소집 없이 FE가 필요한 소규모 컴포넌트(역할 매핑 슬라이드 패널)까지 직접 담당한다(Main 지시).
+
+### 설계 근거
+
+- DB: `docs/02_plan/database/auth.md` 5절(`screen` 컬럼 추가: `icon_name`/`group_code`/`group_label`/`sort_order`/`nav_visible`, `screen_role` 그대로 재사용)
+- API: `docs/02_plan/api_spec/auth.md` API-AUTH-016~022
+- 화면: `docs/02_plan/screen/admin.md` SCR-ADMIN-006(메뉴 관리, 신규), `docs/02_plan/screen/common.md` SCR-COM-003(사이드바, 동적 구성으로 전환)
+- 참고 기존 코드: `source/backend/src/main/java/com/itsm/auth/`(도메인 4계층, `AdminRoleController`/`RoleService` 패턴), `source/frontend/src/routes/navConfig.tsx`(대체 대상, 삭제 예정), `source/frontend/src/routes/AppLayout.tsx`(사이드바 그룹 조립부), `source/frontend/src/features/admin/`(`RoleManagementPage.tsx` 패턴 재사용)
+
+### 담당 범위
+
+#### DB (dev-database) — `source/db/sql/`
+
+- 신규 파일 `24_auth_menu_columns.sql`(다음 순번). `ALTER TABLE screen ADD COLUMN icon_name VARCHAR(50), ADD COLUMN group_code VARCHAR(30), ADD COLUMN group_label VARCHAR(50), ADD COLUMN sort_order INT NOT NULL DEFAULT 0, ADD COLUMN nav_visible BOOLEAN NOT NULL DEFAULT true;`
+- 백필(UPDATE): 기존 시드된 모든 `screen` 행에 대해 현재 사이드바 노출 여부·아이콘·그룹·순서를 채운다. **단일 원천은 현재 `source/frontend/src/routes/navConfig.tsx`**이므로, 이 파일의 그룹(`key`/`label`)·항목(`path`/`icon` 컴포넌트명·순서)을 `01_schema.sql`~`23_infra_monitoring_seed.sql`에 흩어진 각 도메인 `screen` INSERT의 `screen_code`/`path`와 매칭해 백필 UPDATE 문을 작성한다(경로 기준 매칭). navConfig에 없는 화면(로그인·상세/서브 화면·403/404·SCR-COM-005/010 등 비메뉴 화면)은 `nav_visible=false`, `icon_name`/`group_code`/`group_label`=NULL, `sort_order`=0으로 둔다. 그룹 라벨은 navConfig의 `label` 그대로(예: "서비스 요청"/"인시던트"), `main` 그룹처럼 label이 없는 항목은 `group_code`/`group_label` 모두 NULL로 둔다.
+- 신규 메뉴 1건 추가(SCR-ADMIN-006 자신): `screen_code='SCR-ADMIN-006'`, `screen_name='메뉴 관리'`, `path='/admin/menus'`, `domain='auth'`, `group_code='admin'`, `group_label='관리자'`, `nav_visible=true`, `icon_name`은 기존 관리자 그룹 아이콘(`Users`/`ShieldCheck`/`ScrollText`)과 겹치지 않는 lucide 아이콘명(예: `ListTree`) 선택, `sort_order`는 기존 관리자 그룹 항목(계정 관리/역할 관리/감사 로그) 마지막 순번 다음 값. + `screen_role`에 `SYSTEM_ADMIN` 매핑 1건 추가.
+- **(designer 확정, 2026-07-11)** `screen.path`에 `UNIQUE NOT NULL` 제약 추가(`ALTER TABLE screen ADD CONSTRAINT uq_screen_path UNIQUE (path);` 같은 파일에 포함). 백필 대상 기존 `path` 값들이 서로 중복되지 않는지 반드시 사전 확인 후 제약을 건다(중복 발견 시 dev-lead에게 즉시 보고, 임의로 값 변경 금지).
+- 이미 존재하는 `SCR-COM-012`(사용자 가이드, `/guide`) 행은 헤더 "?" 진입 전용이라 `nav_visible=false`로 백필(사이드바 미노출 유지, 기존 접근 제어에는 영향 없음).
+- 아이콘명 문자열은 FE(`navConfig.tsx`)가 사용하던 lucide-react 컴포넌트명을 그대로 문자열화(예: `<Users />` → `"Users"`). 매핑 과정에서 애매한 항목(그룹 순서·서브메뉴 판단)이 있으면 dev-frontend에게 직접 SendMessage로 확인 후 진행(navConfig.tsx가 원본이므로).
+- 완료 후 `source/db/sql/CLAUDE.md`에 파일 추가 사실 반영.
+
+#### BE (dev-backend) — `source/backend/src/main/java/com/itsm/auth/`
+
+- 신규 엔티티: `domain/Screen.java`(BaseEntity 상속, screenCode/screenName/path/domain/iconName/groupCode/groupLabel/sortOrder/navVisible), `domain/ScreenRole.java`(BaseEntity 상속, screenId/roleId).
+- 신규 리포지토리: `domain/repository/ScreenRepository.java`, `ScreenRoleRepository.java` + `infrastructure/persistence/ScreenJpaRepository.java`, `ScreenRoleJpaRepository.java`(Spring Data JPA). `ScreenRepository`는 목록 조회 시 `groupCode`/`domain` 필터 + `is_deleted=false` + 페이지네이션(`AppUserRepository.search()` 패턴 참고). `ScreenRoleRepository`는 `findByScreenId`/`findByRoleId`/`existsByScreenIdAndRoleId`/`findByScreenIdAndRoleId`.
+- 신규 DTO(`application/dto/`): `ScreenResponse`(id/screenCode/screenName/path/domain/iconName/groupCode/groupLabel/sortOrder/navVisible/roles: List\<String\>), `CreateScreenRequest`, `UpdateScreenRequest`, `AssignScreenRoleRequest`(roleId), `ScreenRolesResponse`(screenId/roles), `MyMenuResponse`(groups: List\<MenuGroupResponse\>), `MenuGroupResponse`(groupCode/groupLabel/items), `MenuItemResponse`(screenCode/screenName/path/iconName).
+- 신규 서비스 `application/ScreenAdminService.java`: list/create/update(soft delete 포함)/assignRole/revokeRole. `RoleRepository`로 역할 존재 검증(400 `ROLE_NOT_FOUND`). 생성 시 `screenCode` 중복 409. 역할 매핑 부여 시 이미 매핑돼 있으면 409(사용자 역할 부여와 달리 멱등 아님, API-AUTH-020 명시). 모든 변경은 `AuditLogService.record(EventType.ROLE_CHANGE, principal.userId(), principal.email(), screenCode, AuditResult.SUCCESS)`로 기록(`UserAdminService` 패턴 그대로). 삭제는 `screen.is_deleted=true`만 처리하고 `screen_role` 행은 정리하지 않는다(DB 설계 그대로).
+- 신규 서비스 `application/MyMenuService.java`(또는 `ScreenAdminService`에 통합 — 재량): `SecurityUtils.currentPrincipal().roles()` 기준으로 `nav_visible=true`·`is_deleted=false`인 화면 중 (a) `screen_role` 매핑이 전혀 없는 화면(전체 공개) 또는 (b) 매핑된 역할 중 하나라도 보유한 화면만 선택, `sort_order` 오름차순 정렬, `group_code`별로 묶어 그룹 표시 순서는 그룹 내 최소 `sort_order` 기준으로 정렬.
+- 컨트롤러: `presentation/AdminScreenController.java`(`/api/v1/admin/screens`, API-AUTH-016~021 — `SecurityConfig`의 `/api/v1/admin/**` 매처로 SYSTEM_ADMIN 인가 자동 적용), `presentation/MenuController.java`(`/api/v1/menus/mine`, API-AUTH-022 — 인증만 필요, `/admin/**` 매처 밖이므로 별도 컨트롤러로 분리).
+- `common/exception/ErrorCode.java`에 추가: `SCREEN_NOT_FOUND`(404), `SCREEN_CODE_DUPLICATE`(409), `PATH_DUPLICATE`(409, designer 확정 2026-07-11 — `screen.path` UNIQUE 추가, API-AUTH-017/018 둘 다 대상), `SCREEN_ROLE_MAPPING_DUPLICATE`(409).
+- 단위/통합 테스트는 기존 `RoleService`/`UserAdminService` 테스트 스타일을 따른다.
+
+#### FE (dev-frontend) — `source/frontend/src/`
+
+- **사이드바 동적화**: `routes/navConfig.tsx` 삭제. `routes/AppLayout.tsx`에서 정적 `navConfig` 순회 대신 마운트 시 `GET /api/v1/menus/mine` 1회 호출해 응답의 `groups`를 `NavGroup[]`으로 변환(그룹 라벨 없으면 `label` 미지정). 아이콘은 문자열(`iconName`)을 실제 lucide 컴포넌트로 변환하는 유틸(`import * as icons from "lucide-react"`, 존재하지 않는 이름이면 기본 아이콘로 폴백) 신규 작성(위치 예: `lib/icon.ts` 또는 `features/admin/icon.ts`, 관리자 메뉴 관리 화면과 공유). `activeKey` 계산 로직은 API 응답의 `path` 기준으로 동일하게 유지.
+- 로그인 직후(혹은 라우트 최초 진입 시) 메뉴 API 실패 시 사이드바는 빈 상태로 두고 토스트 없이 조용히 실패(치명적이지 않음) — 기존 알림 로딩 실패 처리(`catch`) 패턴 참고.
+- **메뉴 관리 화면(SCR-ADMIN-006)**: 신규 `features/admin/MenuManagementPage.tsx`(+ `features/admin/api.ts`에 메뉴 CRUD·역할매핑 함수 추가, `features/admin/types.ts`에 `Menu`/`CreateMenuRequest`/`UpdateMenuRequest` 타입 추가). `RoleManagementPage.tsx`와 동일한 패턴(`DataTable`+`Modal`+토스트)으로 목록·생성/수정 모달 구성. 우측 슬라이드 패널(역할 매핑, 체크박스 토글마다 즉시 API 호출)은 기존 `components/ui/dialog.tsx`(Radix Dialog) 위에 우측 슬라이드 스타일(`slide-in-from-right`, Overlay elevation)을 적용한 경량 래퍼로 직접 구현(신규 UI 프리미티브가 필요하다고 판단되면 진행 전 dev-lead에게 알릴 것 — 현재는 기존 Dialog 토큰 재사용만으로 충분하다고 판단해 UI 미소집).
+- 라우팅: `routes/index.tsx`에 `/admin/menus` 추가(`RequireAdmin` 하위, 다른 admin 라우트와 동일 패턴).
+- 신규 디렉토리 생성 없음(기존 `features/admin/` 확장)이라 `CLAUDE.md` 갱신만 파일 목록에 추가.
+
+### 진행 순서
+
+1. DB: 컬럼 추가 + 백필(navConfig.tsx 참조, 필요 시 dev-frontend와 직접 확인) + SCR-ADMIN-006 신규 시드 → 먼저 완료.
+2. BE: DB 스키마 확정 후 엔티티/서비스/컨트롤러 구현.
+3. FE: BE API 계약 확정 후 사이드바 동적화 + 메뉴 관리 화면. (navConfig.tsx 삭제는 BE `/menus/mine` 정상 동작 확인 후 진행 — 삭제 전까지 정적 navConfig을 유지해 회귀 방지)
+
+### 완료(테스트 통과) 기준
+
+- BE: API-AUTH-016~022 정상 + 오류코드(400/403/404/409) 케이스, `/menus/mine` 무매핑 화면 전체 공개 규칙, 감사 로그(ROLE_CHANGE) 기록.
+- FE: SYSTEM_ADMIN이 메뉴 생성·수정·삭제·역할 매핑 부여/회수 가능(즉시 반영), 일반 사용자 로그인 시 보유 역할 매핑 메뉴만 사이드바 노출(무매핑 메뉴는 항상 노출), 메뉴 삭제 시 사이드바에서 즉시 사라짐, 403 접근 통제(System Admin 외 SCR-ADMIN-006 접근 불가).
+- tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → 완료 시 커밋.

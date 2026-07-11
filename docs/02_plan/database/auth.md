@@ -1,6 +1,6 @@
 # 테이블 정의서 — 인증/계정/권한 (Auth & RBAC)
 
-> 도메인: auth · 버전: 0.1 · 작성일: 2026-07-09
+> 도메인: auth · 버전: 0.2 · 작성일: 2026-07-11 · Role-Menu 동적 매핑(유지보수 요청) 반영 — `screen`에 사이드바 표시 컬럼 추가, `screen_role`을 메뉴 노출 판정에도 재사용(신규 테이블 없음)
 
 계정·역할·RBAC·화면 매핑·세션(Refresh Token)·감사 로그를 정의한다. RBAC/화면 매핑 테이블(`screen`, `user_role`, `screen_role`)의 **단일 원천(single source of truth)**이며, 타 도메인 정의서는 이를 참조한다.
 
@@ -112,28 +112,33 @@ Refresh Token 세션 관리. 로그아웃/재발급 무효화 판정에 사용. 
 
 ### screen
 
-화면 정보. `screen_code`는 화면 설계서의 SCR-* 코드와 1:1 매핑.
+화면 정보. `screen_code`는 화면 설계서의 SCR-* 코드와 1:1 매핑. **사이드바 메뉴 마스터 데이터도 겸한다**(Role-Menu 동적 매핑, Main 요청 2026-07-11) — 별도 `menu` 테이블을 신설하지 않고 이 테이블에 사이드바 표시용 컬럼을 추가해 SCR-ADMIN-006(메뉴 관리)에서 관리자가 CRUD한다. `nav_visible=false`인 화면(상세/서브 화면 등 사이드바 미노출 대상)은 화면 접근 제어(screen_role) 판정에는 그대로 참여하되 사이드바에는 나타나지 않는다.
 
 | 컬럼 | 타입 | 제약 | 설명 |
 |------|------|------|------|
 | id | BIGINT | PK | |
 | screen_code | VARCHAR(50) | UNIQUE, NOT NULL | 화면 식별 코드(예: SCR-INC-001) |
-| screen_name | VARCHAR(100) | NOT NULL | 화면명 |
-| path | VARCHAR(255) | NOT NULL | 라우팅 경로 |
+| screen_name | VARCHAR(100) | NOT NULL | 화면명(= 메뉴명) |
+| path | VARCHAR(255) | UNIQUE, NOT NULL | 라우팅 경로(하나의 경로는 하나의 화면만 가리킴 — 중복 시 사이드바 라우팅 충돌) |
 | domain | VARCHAR(30) | NOT NULL | 소속 도메인(auth/incident 등) |
+| icon_name | VARCHAR(50) | NULL | 사이드바 아이콘(lucide-react 컴포넌트명, 예: `LayoutDashboard`). `nav_visible=false`면 미사용 |
+| group_code | VARCHAR(30) | NULL | 사이드바 그룹 키(예: srm/inc/admin). NULL은 그룹 라벨 없이 표시(대시보드 등 최상단 그룹) |
+| group_label | VARCHAR(50) | NULL | 사이드바 그룹 표시명(예: "서비스 요청"). group_code가 NULL이면 함께 NULL |
+| sort_order | INT | NOT NULL, DEFAULT 0 | 정렬 순서(오름차순). 그룹 표시 순서는 별도 컬럼 없이 그룹별 최소 sort_order 값으로 정렬 |
+| nav_visible | BOOLEAN | NOT NULL, DEFAULT true | 사이드바 노출 여부(false면 화면 접근 통제만 하고 메뉴에는 미노출) |
 | ...공통 컬럼... | | | |
 
-### screen_role (역할-화면 매핑)
+### screen_role (역할-화면 매핑, 역할-메뉴 매핑 겸용)
 
 | 컬럼 | 타입 | 제약 | 설명 |
 |------|------|------|------|
 | id | BIGINT | PK | |
-| screen_id | BIGINT | FK → screen.id, NOT NULL | 화면 |
+| screen_id | BIGINT | FK → screen.id, NOT NULL | 화면(메뉴) |
 | role_id | BIGINT | FK → role.id, NOT NULL | 역할 |
 | | | UNIQUE(screen_id, role_id) | 중복 방지 |
 | ...공통 컬럼... | | | |
 
-> 역할 코드·화면별 접근 매핑의 구체 값은 [security/authorization/](../security/authorization/)의 역할 정의서를 seed 근거로 사용한다.
+> 역할 코드·화면별 접근 매핑의 초기 값은 [security/authorization/](../security/authorization/)의 역할 정의서를 seed 근거로 사용하며, SCR-ADMIN-006(메뉴 관리)에서 관리자가 이 매핑을 동적으로 변경할 수 있다. 화면 접근 제어(403 판정)와 사이드바 메뉴 노출이 항상 동일한 `screen_role` 데이터를 기준으로 판정되므로 두 기능 간 불일치가 발생하지 않는다(단일 원천 유지). 메뉴 삭제는 soft delete(`screen.is_deleted=true`)로 처리하며, 연결된 `screen_role` 매핑 행은 별도로 정리하지 않는다(모든 조회가 `screen.is_deleted=false` 조건을 거치므로 정합성에 영향 없음).
 
 ## 6. 관계 · 제약조건 요약
 
@@ -141,4 +146,4 @@ Refresh Token 세션 관리. 로그아웃/재발급 무효화 판정에 사용. 
 - screen_role.screen_id → screen.id (FK), screen_role.role_id → role.id (FK), UNIQUE(screen_id, role_id)
 - refresh_token.user_id → app_user.id (FK), UNIQUE(jti)
 - audit_log.actor_id → app_user.id (FK, nullable)
-- app_user.email UNIQUE, role.role_code UNIQUE, screen.screen_code UNIQUE
+- app_user.email UNIQUE, role.role_code UNIQUE, screen.screen_code UNIQUE, screen.path UNIQUE

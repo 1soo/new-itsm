@@ -32,6 +32,7 @@ import { UserCreatePage } from "@/features/admin/UserCreatePage";
 import { UserDetailPage } from "@/features/admin/UserDetailPage";
 import { RoleManagementPage } from "@/features/admin/RoleManagementPage";
 import { AuditLogPage } from "@/features/admin/AuditLogPage";
+import { MenuManagementPage } from "@/features/admin/MenuManagementPage";
 import { PortalPage } from "@/features/service-request/PortalPage";
 import { RequestSubmitPage } from "@/features/service-request/RequestSubmitPage";
 import { RequestListPage } from "@/features/service-request/RequestListPage";
@@ -123,6 +124,7 @@ export const router = createBrowserRouter([
               { path: "/admin/users/:id", element: <UserDetailPage /> }, // SCR-ADMIN-003
               { path: "/admin/roles", element: <RoleManagementPage /> }, // SCR-ADMIN-004
               { path: "/admin/audit-logs", element: <AuditLogPage /> }, // SCR-ADMIN-005
+              { path: "/admin/menus", element: <MenuManagementPage /> }, // SCR-ADMIN-006
             ],
           },
 

@@ -25,6 +25,7 @@ public enum ErrorCode {
 
     // 404
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "계정을 찾을 수 없습니다."),
+    SCREEN_NOT_FOUND(HttpStatus.NOT_FOUND, "메뉴를 찾을 수 없습니다."),
 
     // 415
     UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "지원하지 않는 Content-Type입니다."),
@@ -91,6 +92,9 @@ public enum ErrorCode {
     // 409
     EMAIL_DUPLICATE(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),
     ROLE_NAME_DUPLICATE(HttpStatus.CONFLICT, "이미 존재하는 역할 코드 또는 역할명입니다."),
+    SCREEN_CODE_DUPLICATE(HttpStatus.CONFLICT, "이미 존재하는 화면 코드입니다."),
+    PATH_DUPLICATE(HttpStatus.CONFLICT, "이미 사용 중인 경로입니다."),
+    SCREEN_ROLE_MAPPING_DUPLICATE(HttpStatus.CONFLICT, "이미 매핑된 역할입니다."),
     ASSIGNEE_REQUIRED_FOR_REMEDIATION(HttpStatus.CONFLICT, "담당자가 배정되지 않아 개선(REMEDIATION) 단계로 전이할 수 없습니다."),
 
     // 500

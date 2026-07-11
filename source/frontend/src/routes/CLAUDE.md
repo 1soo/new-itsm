@@ -4,8 +4,7 @@
 
 ## 파일
 - `index.tsx` — 라우터 정의(`createBrowserRouter`). SessionBridge → AuthGuard → RequireAdmin/RequireRoles 중첩으로 도메인 화면을 경로에 매핑.
-- `navConfig.tsx` — 사이드바 내비게이션 설정(중앙 관리). 그룹·항목·아이콘·노출 허용 역할 정의. `NavItemDef`/`NavGroupDef` 타입 제공.
-- `AppLayout.tsx` — 앱 레이아웃. navConfig를 역할로 필터링해 AppShell에 주입, active 계산·navigate·로그아웃 확인 처리.
+- `AppLayout.tsx` — 앱 레이아웃. 마운트 시 `GET /api/v1/menus/mine`(API-AUTH-022, Role-Menu 동적 매핑)을 호출해 사이드바 메뉴를 구성(역할 필터링은 서버 수행)해 AppShell에 주입, active 계산·navigate·로그아웃 확인 처리.
 - `AuthGuard.tsx` — 인증 가드. 진입 시 세션 복구(`bootstrapAuth`), 미인증이면 로그인으로, 인증되면 AppLayout 렌더.
 - `SessionBridge.tsx` — apiClient 세션 만료(재발급 실패) 이벤트를 스토어·라우터에 연결(만료 토스트 + 로그인 이동).
 - `RequireAdmin.tsx` — SYSTEM_ADMIN 전용 라우트 가드(미달 시 /403).

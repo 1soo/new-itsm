@@ -3,10 +3,14 @@ import type { UserStatus } from "@/features/auth/types";
 import type {
   AuditLog,
   AuditLogQuery,
+  CreateMenuRequest,
   CreateRoleRequest,
   CreateUserRequest,
   PageResponse,
   Role,
+  Screen,
+  ScreenListQuery,
+  UpdateMenuRequest,
   UserDetail,
   UserListQuery,
   UserSummary,
@@ -98,6 +102,57 @@ export const adminApi = {
     const res = await apiClient.get<PageResponse<AuditLog>>("/admin/audit-logs", {
       params: cleanParams(query),
     });
+    return res.data;
+  },
+
+  // API-AUTH-016 메뉴(화면) 목록 조회
+  async listScreens(query: ScreenListQuery): Promise<PageResponse<Screen>> {
+    const res = await apiClient.get<PageResponse<Screen>>("/admin/screens", {
+      params: cleanParams(query),
+    });
+    return res.data;
+  },
+
+  // API-AUTH-017 메뉴 생성
+  async createScreen(body: CreateMenuRequest): Promise<Screen> {
+    const res = await apiClient.post<Screen>("/admin/screens", body);
+    return res.data;
+  },
+
+  // API-AUTH-018 메뉴 수정
+  async updateScreen(screenId: number, body: UpdateMenuRequest): Promise<Screen> {
+    const res = await apiClient.patch<Screen>(`/admin/screens/${screenId}`, body);
+    return res.data;
+  },
+
+  // API-AUTH-019 메뉴 삭제
+  async deleteScreen(screenId: number): Promise<{ id: number; deleted: boolean }> {
+    const res = await apiClient.delete<{ id: number; deleted: boolean }>(
+      `/admin/screens/${screenId}`,
+    );
+    return res.data;
+  },
+
+  // API-AUTH-020 메뉴에 역할 매핑 부여
+  async assignScreenRole(
+    screenId: number,
+    roleId: number,
+  ): Promise<{ screenId: number; roles: string[] }> {
+    const res = await apiClient.post<{ screenId: number; roles: string[] }>(
+      `/admin/screens/${screenId}/roles`,
+      { roleId },
+    );
+    return res.data;
+  },
+
+  // API-AUTH-021 메뉴 역할 매핑 회수
+  async revokeScreenRole(
+    screenId: number,
+    roleId: number,
+  ): Promise<{ screenId: number; roles: string[] }> {
+    const res = await apiClient.delete<{ screenId: number; roles: string[] }>(
+      `/admin/screens/${screenId}/roles/${roleId}`,
+    );
     return res.data;
   },
 };

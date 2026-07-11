@@ -196,3 +196,54 @@
 - "도메인 및 원칙" 섹션: 11개 아코디언 전체 노출(역할 무관), 기본 전부 접힘, 개별 펼침, v0.2 서술형 문구로 갱신 확인.
 - "역할별 수행 내용과 방법" 섹션: 로그인 역할이 상단 "내 역할" 배지+기본 펼침 고정, 나머지 접힘, v0.2 페르소나/구체 메뉴·버튼 서술형 문구 확인.
 - 사용자 가이드 진입 시 네트워크 요청 없음(정적 콘텐츠) 확인.
+
+---
+
+## 알림 확인처리 (모두 지우기·개별 X, 유지보수 요청, 2026-07-11)
+
+> Main 요청(유지보수). common 도메인 첫 번째 백엔드 API(`notification_dismissal` 테이블·API-COM-001/002 신규). UI 신규 소집 없이 FE가 `header.tsx` 변경까지 직접 담당(Main 지시, 기존 알림 팝오버 마크업 재사용 범위 내).
+
+### 설계 근거
+
+- DB: `docs/02_plan/database/common.md` 4절 `notification_dismissal`(append-only, UNIQUE(user_id, notification_type, source_id))
+- API: `docs/02_plan/api_spec/common.md` API-COM-001(확인처리, 개별/일괄 공용)·API-COM-002(확인처리 이력 조회) — common 도메인 최초 API 명세서
+- 화면: `docs/02_plan/screen/common.md` SCR-COM-002 "모두 지우기"·개별 X 버튼(상태·인터랙션 절 "알림 확인처리(신규...)" 문단)
+- 참고 기존 코드: `source/frontend/src/routes/AppLayout.tsx`(알림 조립 로직, 위 v1/v2 섹션 참고), `source/frontend/src/components/layout/header.tsx`(알림 팝오버 마크업), `source/backend/src/main/java/com/itsm/common/`(공통 백엔드 모듈 — 이번이 common 도메인 백엔드 최초 구현이므로 새 하위 패키지 구성 필요, `auth` 도메인 4계층 구조를 그대로 따른다)
+
+### 담당 범위
+
+#### DB (dev-database) — `source/db/sql/`
+
+- 신규 파일 `25_common_notification_dismissal.sql`(auth 쪽 `24_auth_menu_columns.sql` 다음 순번). `CREATE TABLE notification_dismissal`(`database/common.md` 4절 컬럼 그대로: id/user_id/notification_type/source_id/dismissed_at/created_by/created_at, `updated_*`/`is_deleted` 없음) + `UNIQUE(user_id, notification_type, source_id)` + FK(`user_id` → `app_user.id`) + 조회 인덱스(`user_id, notification_type, source_id`).
+- 시드 데이터 없음(사용자 조작으로만 채워지는 테이블).
+- 완료 후 `source/db/sql/CLAUDE.md`에 파일 추가 사실 반영.
+
+#### BE (dev-backend) — `source/backend/src/main/java/com/itsm/common/`
+
+- common 도메인 백엔드 최초 구현이므로 `auth` 패키지의 4계층 구조(application/domain/infrastructure/presentation)를 그대로 따라 `common` 패키지 하위에 신설(기존 `common/ticket/` 등과는 별개로 `common/notification/` 하위 패키지 신설 권장 — 재량).
+- 엔티티: `NotificationDismissal`(append-only, `BaseEntity` 미상속 — `RefreshToken`/`AuditLog` 패턴과 동일하게 id/userId/notificationType/sourceId/dismissedAt/createdBy/createdAt만 직접 필드로 선언).
+- 리포지토리: `NotificationDismissalRepository`(도메인 인터페이스) + JPA 구현체. 메서드: `existsByUserIdAndNotificationTypeAndSourceId`, `findByUserId`(정렬은 `dismissedAt` 무관 — API-COM-002는 정렬 규정 없음, 등록 편의상 `id` 오름차순 정도면 충분).
+- DTO: `DismissNotificationsRequest`(items: List\<Item\>, Item{notificationType, sourceId}), `DismissResultResponse`(dismissedCount), `NotificationDismissalResponse`(notificationType, sourceId, dismissedAt), `NotificationDismissalListResponse`(items).
+- 서비스 `NotificationDismissalService`: `dismiss(userId, items)` — 각 item에 대해 `existsBy...`로 이미 처리된 항목은 건너뛰고(멱등), 신규만 저장, 저장 건수를 `dismissedCount`로 반환. `principal.userId()`는 `SecurityUtils.currentPrincipal()`에서 조회(Request Body에 userId 없음 — API 명세 그대로). `list(userId)` — 로그인 사용자 전체 이력 조회.
+- 컨트롤러 `presentation/NotificationDismissalController.java`: `POST /api/v1/notifications/dismissals`(items 1개 이상 검증, 0개면 400 `VALIDATION_ERROR`), `GET /api/v1/notifications/dismissals`. `/admin/**` 매처 밖이라 인증만 요구(`SecurityConfig` 추가 변경 불필요 — 이미 `anyRequest().authenticated()`로 커버).
+- 신규 `ErrorCode` 불필요(기존 `VALIDATION_ERROR` 재사용). 감사 로그 기록 불필요(확인처리는 감사 대상 이벤트가 아님 — `audit_log`의 `EventType`에도 해당 유형 없음).
+
+#### FE (dev-frontend) — `source/frontend/src/`
+
+- 신규 `features/common/`(디렉토리 최초 생성이므로 `CLAUDE.md` 함께 작성) — `api.ts`(`commonApi.dismissNotifications(items)`/`commonApi.listDismissals()`), `types.ts`(`NotificationType`, `DismissalItem` 등). `docs/02_plan/api_spec/common.md`가 계약 기준.
+- `routes/AppLayout.tsx`: 알림 조립 로직(기존 `load()` 함수, 서비스요청/변경 승인·자산 만료 소스 수집부) 앞단에 `commonApi.listDismissals()` 결과를 조회해 `(notificationType, sourceId)` 매칭 항목을 후보에서 제외한 뒤 상위 8건을 구성하도록 수정. 뱃지 카운트(`count`)도 확인처리된 항목만큼 제외한 값으로 계산(각 소스 전체 건수에서 확인처리 이력과 매칭되는 건수를 뺀 값 — 서비스요청/변경은 개별 매칭, 자산은 `expiringWithinDays` 전체 건수 기준이라 근사 계산 필요, 화면 설계서 문구("확인처리된 알림은 제외한 전체 건수 합계") 그대로 구현).
+- "모두 지우기"/개별 X 클릭 핸들러 신규 작성: 클릭 시 `commonApi.dismissNotifications(items)` 호출(모두 지우기=현재 표시 중 상위 8건 전체, 개별 X=해당 1건) → 성공 시 로컬 state에서 즉시 제거 + 카운트 차감(서버 재조회 없이 낙관적 업데이트, 화면 설계서 "성공 시 목록을 즉시 비워" 문구에 맞춤). 실패 시 토스트 오류.
+- `components/layout/header.tsx` 직접 수정(이번 유지보수는 UI 미소집, Main 지시): 팝오버 헤더 우측 상단에 "모두 지우기" 텍스트 버튼 추가(`aria-label`="모든 알림 확인처리"), 각 알림 라인 1행 우측(시간 표시 옆)에 개별 X 아이콘 버튼 추가(`aria-label`="알림 확인처리", 클릭 시 `e.stopPropagation()`으로 라인 클릭·상세보기 이동과 분리). `HeaderNotificationItem`에 `sourceId`/`notificationType`(또는 기존 `key` 재사용) 식별자 필드 추가해 개별 확인처리 대상 특정. `HeaderProps`에 `onDismissAllNotifications?: () => void`, `onDismissNotification?: (item: HeaderNotificationItem) => void` 콜백 추가. 확인 다이얼로그 불필요(파괴적 동작 아님, 화면 설계서 명시).
+- 라우팅/신규 화면 없음(기존 헤더 팝오버 확장).
+
+### 진행 순서
+
+1. DB: `notification_dismissal` 테이블 생성 → 먼저 완료.
+2. BE: 테이블 확정 후 엔티티/서비스/컨트롤러 구현.
+3. FE: API 계약 확정 후 `features/common/` 신설 + `AppLayout.tsx`/`header.tsx` 수정.
+
+### 완료(테스트 통과) 기준
+
+- BE: API-COM-001(개별 1건/일괄 8건, 중복 포함 시 멱등 처리, items 누락 400)·API-COM-002(이력 없음 시 빈 배열) 정상 동작.
+- FE: "모두 지우기" 클릭 시 표시 중 알림 전체 확인처리 후 빈 상태 전환·뱃지 차감, 개별 X 클릭 시 해당 1건만 제거(라인 클릭·상세보기와 이벤트 분리 확인), 확인처리된 알림은 재로그인/재조회 후에도 다시 나타나지 않음(영구 저장 확인), 원본 승인 대기·자산 만료 데이터는 변경되지 않음(확인처리가 표시 여부에만 영향).
+- tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → 완료 시 커밋.

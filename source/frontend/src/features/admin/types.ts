@@ -82,3 +82,49 @@ export interface AuditLogQuery {
   page?: number;
   size?: number;
 }
+
+/* 메뉴(화면) 관리(SCR-ADMIN-006, Role-Menu 동적 매핑) — api_spec/auth.md(API-AUTH-016~022) 기준. */
+
+export interface Screen {
+  id: number;
+  screenCode: string;
+  screenName: string;
+  path: string;
+  domain: string;
+  iconName: string | null;
+  groupCode: string | null;
+  groupLabel: string | null;
+  sortOrder: number;
+  navVisible: boolean;
+  /** 매핑된 역할 코드(비어있으면 전체 인증 사용자 공개). */
+  roles: string[];
+}
+
+export interface ScreenListQuery {
+  groupCode?: string;
+  domain?: string;
+  page?: number;
+  size?: number;
+}
+
+export interface CreateMenuRequest {
+  screenCode: string;
+  screenName: string;
+  path: string;
+  domain: string;
+  iconName?: string;
+  groupCode?: string;
+  groupLabel?: string;
+  sortOrder?: number;
+  navVisible?: boolean;
+}
+
+export interface UpdateMenuRequest {
+  screenName?: string;
+  path?: string;
+  iconName?: string;
+  groupCode?: string;
+  groupLabel?: string;
+  sortOrder?: number;
+  navVisible?: boolean;
+}

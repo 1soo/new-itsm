@@ -6,13 +6,15 @@ import type { HeaderNotificationItem, HeaderSearchResult } from "@/components/la
 import type { NavGroup } from "@/components/layout/sidebar";
 import { ConfirmDialog } from "@/components/common";
 import { hasAnyRole, ROLE_APPROVER, ROLE_ASSET_MANAGER } from "@/features/auth/roles";
+import { authApi } from "@/features/auth/api";
+import type { MenuGroup as MyMenuGroup } from "@/features/auth/types";
 import { srmApi } from "@/features/service-request/api";
 import { changeApi } from "@/features/change/api";
 import { assetApi } from "@/features/asset/api";
 import { formatDate } from "@/features/asset/format";
 import { searchApi } from "@/features/search/api";
 import { domainLabel } from "@/features/search/status";
-import { navConfig } from "@/routes/navConfig";
+import { resolveIcon } from "@/lib/icon";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { logout } from "@/store/authSlice";
 
@@ -63,9 +65,10 @@ const SEARCH_PREVIEW_SIZE = 8;
 const SEARCH_DEBOUNCE_MS = 300;
 
 /*
- * 앱 레이아웃 — dev-ui의 AppShell(프레젠테이션)에 RBAC 필터된 메뉴·헤더 동작을 주입한다.
- * (SCR-COM-001~004) 메뉴 정의는 navConfig(중앙 관리)에서 가져와 역할로 필터링하고,
- * active 계산·navigate 주입·로그아웃 확인은 FE가 담당한다.
+ * 앱 레이아웃 — dev-ui의 AppShell(프레젠테이션)에 RBAC 메뉴·헤더 동작을 주입한다.
+ * (SCR-COM-001~004) 사이드바 메뉴는 마운트 시 GET /api/v1/menus/mine(API-AUTH-022) 1회
+ * 호출로 구성한다(Role-Menu 동적 매핑 — 역할 필터링은 서버가 수행). active 계산·navigate
+ * 주입·로그아웃 확인은 FE가 담당한다.
  */
 export function AppLayout() {
   const navigate = useNavigate();
@@ -80,40 +83,58 @@ export function AppLayout() {
   const matchesPath = (path: string) =>
     path === "/" ? pathname === "/" : pathname === path || pathname.startsWith(`${path}/`);
 
+  // 메뉴 목록은 로그인 세션 동안 고정이므로 마운트 시 1회만 조회한다.
+  // 실패해도 치명적이지 않으므로 토스트 없이 조용히 빈 사이드바로 둔다.
+  const [menuGroups, setMenuGroups] = useState<MyMenuGroup[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    authApi
+      .getMyMenu()
+      .then((res) => {
+        if (!cancelled) setMenuGroups(res.groups);
+      })
+      .catch(() => {
+        if (!cancelled) setMenuGroups([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // 하위 경로가 상위 메뉴 경로의 접두사와도 일치해 중복 active되는 것을 막기 위해,
   // 매칭되는 항목 중 path가 가장 긴(가장 구체적인, 정확 일치 시 자동으로 최장인) 항목만 active로 선정한다.
   const activeKey = useMemo(() => {
     let best: { key: string; path: string } | null = null;
-    for (const group of navConfig) {
+    for (const group of menuGroups) {
       for (const item of group.items) {
         if (!matchesPath(item.path)) continue;
         if (!best || item.path.length > best.path.length) {
-          best = item;
+          best = { key: item.screenCode, path: item.path };
         }
       }
     }
     return best?.key;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
+  }, [pathname, menuGroups]);
 
   const roles = user?.roles;
   const groups = useMemo<NavGroup[]>(() => {
-    return navConfig
-      .map((group) => {
-        const items = group.items
-          .filter((item) => !item.roles || hasAnyRole(roles, item.roles))
-          .map((item) => ({
-            key: item.key,
-            label: item.label,
-            icon: item.icon,
-            active: item.key === activeKey,
-            onSelect: () => navigate(item.path),
-          }));
-        return { key: group.key, label: group.label, items };
-      })
-      .filter((group) => group.items.length > 0);
+    return menuGroups.map((group) => ({
+      key: group.groupCode ?? "main",
+      label: group.groupLabel ?? undefined,
+      items: group.items.map((item) => {
+        const Icon = resolveIcon(item.iconName);
+        return {
+          key: item.screenCode,
+          label: item.screenName,
+          icon: <Icon />,
+          active: item.screenCode === activeKey,
+          onSelect: () => navigate(item.path),
+        };
+      }),
+    }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roles, activeKey, navigate]);
+  }, [menuGroups, activeKey, navigate]);
 
   // 알림 벨: 역할별 승인 대기(서비스요청·CAB)와 자산 만료 임박 항목을 조합해 팝오버 리스트로 조립한다
   // (신규 API 없이 기존 대기함 API 조합, 서비스요청→변경→자산 순으로 이어붙여 상위 8건만 노출).

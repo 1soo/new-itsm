@@ -72,7 +72,9 @@ class InfraMonitoringIntegrationTest {
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/22_infra_monitoring_schema.sql").toAbsolutePath()),
                     "/docker-entrypoint-initdb.d/22_infra_monitoring_schema.sql")
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/23_infra_monitoring_seed.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/23_infra_monitoring_seed.sql");
+                    "/docker-entrypoint-initdb.d/23_infra_monitoring_seed.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/24_auth_menu_columns.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/24_auth_menu_columns.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {

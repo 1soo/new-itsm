@@ -77,7 +77,13 @@ class AuthAdminIntegrationTest {
                     "/docker-entrypoint-initdb.d/20_compliance_schema.sql")
             .withCopyFileToContainer(
                     MountableFile.forHostPath(Paths.get("../db/sql/22_infra_monitoring_schema.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/22_infra_monitoring_schema.sql");
+                    "/docker-entrypoint-initdb.d/22_infra_monitoring_schema.sql")
+            // screen 사이드바 표시 컬럼 증분(Role-Menu 동적 매핑). 02_seed.sql 미마운트라 role/screen
+            // 시드 데이터는 없지만, 이 파일의 UPDATE/INSERT ... SELECT는 대상 행이 없으면 0건 처리되어
+            // 에러 없이 스키마(컬럼·UNIQUE 제약)만 반영된다.
+            .withCopyFileToContainer(
+                    MountableFile.forHostPath(Paths.get("../db/sql/24_auth_menu_columns.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/24_auth_menu_columns.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {
