@@ -9,3 +9,4 @@ auth 도메인의 REST 컨트롤러(프레젠테이션 계층).
 - `AdminAuditLogController.java` — `/api/v1/admin/audit-logs` 감사 로그 조회
 - `AdminScreenController.java` — `/api/v1/admin/screens` 메뉴(화면) CRUD·역할 매핑 부여/회수(Role-Menu 동적 매핑)
 - `MenuController.java` — `/api/v1/menus/mine` 내 메뉴 조회(인증만 필요, `/admin/**` 매처 밖이라 별도 컨트롤러)
+- `AdminApprovalProcessController.java` — `/api/v1/admin/approval-processes` 승인 프로세스 정의 CRUD(API-AUTH-023~029, 2026-07-11 승인 프로세스 커스텀 기능)

@@ -9,8 +9,6 @@ public record CatalogItemDetailResponse(
         Long id,
         String name,
         String description,
-        boolean approvalRequired,
-        String approverRole,
         Long queueId,
         Integer slaResponseMinutes,
         Integer slaResolveMinutes,

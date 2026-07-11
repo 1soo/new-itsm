@@ -1,6 +1,6 @@
 # 화면 설계서 — IT 자산 관리 / CMDB (Asset)
 
-> 도메인: asset · 버전: 0.1 · 작성일: 2026-07-09
+> 도메인: asset · 버전: 0.2 · 작성일: 2026-07-11 · 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 자산 상세에 공통 승인 패널 추가(폐기 전이 게이트, 매칭 규칙 없으면 기존처럼 즉시 전이)
 
 ## 1. 개요
 
@@ -68,8 +68,9 @@
   | 폐기 버튼 | 버튼 | 확인 다이얼로그·상태=폐기 | Danger |
   | 만료 정보 | 표시 | 임박/경과 강조 | Warning/Danger |
   | 티켓 연계 | 버튼 | 요청·인시던트·문제·변경 링크 | Base |
-- **상태 · 인터랙션**: 정의되지 않은 단계 전이 거부. 미존재 티켓 연계 시 400. 이력 기록.
-- **연관 API**: `GET /api/v1/assets/{id}`, `PATCH .../lifecycle`, `POST .../links`, `PATCH .../retire`
+  | 승인 패널(공용) | 패널 | 폐기 전이에 매칭되는 승인 프로세스가 있으면 차수 진행 상태(API-COM-004) 표시, 없으면 패널 자체를 노출하지 않고 기존처럼 즉시 전이 | Info/Warning/Success |
+- **상태 · 인터랙션**: 정의되지 않은 단계 전이 거부. 미존재 티켓 연계 시 400. 이력 기록. 폐기 시도 시 매칭되는 승인 프로세스가 있으면 409와 함께 승인 패널이 나타나며, 처리는 [common.md](common.md) SCR-COM-014에서 수행한다.
+- **연관 API**: `GET /api/v1/assets/{id}`, `PATCH .../lifecycle`, `POST .../links`, `PATCH .../retire`, `GET /api/v1/approvals/{approvalRequestId}`(API-COM-004)
 
 ### SCR-ITAM-004 · CI·CMDB 관계 뷰
 

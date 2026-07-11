@@ -1,6 +1,6 @@
 # API 명세서 — 엔터프라이즈 서비스 관리 (ESM)
 
-> 도메인: esm · 버전: 0.1 · 작성일: 2026-07-10
+> 도메인: esm · 버전: 0.2 · 작성일: 2026-07-11 · 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 부서 요청 IN_PROGRESS → COMPLETED 전이에 공통 승인 게이트([common.md](common.md) API-COM-003~005) 추가(관리자가 규칙을 설정하지 않으면 기존과 동일하게 게이트 없이 진행). HR 케이스·체크리스트 하위 작업은 게이트 대상에서 제외
 
 ## 공통 규약
 
@@ -10,7 +10,7 @@
 
 ## 0. 설계 배경
 
-- 부서 요청 처리는 서비스 요청(SRM) 도메인과 별도의 엔드포인트(`/api/v1/esm/*`)로 분리하되, 개념·상태 흐름은 단순화해 재사용한다(승인 단계는 요구사항에 없어 제외). 카탈로그 항목에 담당 부서(`department`)를 필수로 지정한다(REQ-ESM-001 Unwanted).
+- 부서 요청 처리는 서비스 요청(SRM) 도메인과 별도의 엔드포인트(`/api/v1/esm/*`)로 분리하되, 개념·상태 흐름은 단순화해 재사용한다(원 설계 시점엔 승인 단계가 요구사항에 없었으나, 승인 프로세스 커스텀 기능·유지보수 요청으로 IN_PROGRESS→COMPLETED 전이에 공통 승인 게이트가 opt-in으로 추가됨 — 관리자가 규칙을 만들지 않으면 기존과 동일). 카탈로그 항목에 담당 부서(`department`)를 필수로 지정한다(REQ-ESM-001 Unwanted).
 - 카탈로그 항목에 `checklistTemplateType`(NONE/ONBOARDING/OFFBOARDING)과 `checklistTemplate`(하위 작업 템플릿 목록)을 정의할 수 있다. 요청 제출 시(API-ESM-005) 해당 항목의 타입이 ONBOARDING/OFFBOARDING이면 시스템이 체크리스트를 자동 생성하고 템플릿의 하위 작업을 관련 부서에 배정한다. 템플릿이 비어 있으면 제출을 400으로 거부한다(REQ-ESM-005 Unwanted).
 - 오프보딩 체크리스트는 생성 시 자산(ITAM) 도메인의 `GET /api/v1/assets?owner={대상자명}`([asset.md](asset.md) API-ITAM-001)을 조회해 대상자 보유 자산마다 자산 회수 하위 작업을 자동 추가한다(REQ-ESM-006). 대상자 보유 자산이 없으면 자산 회수 하위 작업 없이 체크리스트만 생성한다(FEAT-ESM-006 예외 처리).
 - HR 케이스는 부서 요청과 별개 엔티티다. HR 담당자(HR_CASE_MANAGER)가 직접 접수(Intake)하며, 민감 정보이므로 해당 역할만 조회·처리할 수 있다(REQ-ESM-004).
@@ -138,7 +138,7 @@
 - **인증**: 필요(담당 부서 처리자)
 - **Request Body**: `{ "targetStatus": "IN_PROGRESS|COMPLETED|REJECTED", "note": "string" }`
 - **Response Body** (200): `{ "id": "number", "status": "string" }`
-- **Response Code**: 200 / 400 허용되지 않은 전이 / 403 담당 부서 아님 / 404
+- **Response Code**: 200 / 400 허용되지 않은 전이 / 403 담당 부서 아님 / 404 / 409 승인 완료 전 COMPLETED 전이 시도 — [common.md](common.md) 0절 공통 게이트 로직(domain=ESM, 요청유형 스코프 없음) 적용. 매칭되는 승인 프로세스가 없거나 0차 승인이면 게이트 없이 통과(기존과 동일)
 
 ### API-ESM-009 · 부서 요청 코멘트 등록
 

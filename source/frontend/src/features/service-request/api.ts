@@ -1,6 +1,5 @@
 import { apiClient } from "@/lib/apiClient";
 import type {
-  ApprovalItem,
   CatalogItemDetail,
   CatalogItemInput,
   CatalogItemSummary,
@@ -99,27 +98,6 @@ export const srmApi = {
       `/service-requests/${id}/status`,
       { targetStatus, note },
     );
-    return res.data;
-  },
-
-  // API-SRM-011 승인/반려 (지정 Approver)
-  async decideApproval(
-    id: number,
-    decision: "APPROVE" | "REJECT",
-    reason?: string,
-  ): Promise<{ id: number; approvalStatus: string }> {
-    const res = await apiClient.post<{ id: number; approvalStatus: string }>(
-      `/service-requests/${id}/approval`,
-      { decision, reason },
-    );
-    return res.data;
-  },
-
-  // API-SRM-012 승인 대기 목록 (Approver)
-  async listApprovals(): Promise<ApprovalItem[]> {
-    const res = await apiClient.get<ApprovalItem[]>("/approvals", {
-      params: { scope: "mine", type: "service-request" },
-    });
     return res.data;
   },
 

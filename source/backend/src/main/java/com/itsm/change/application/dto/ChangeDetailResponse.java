@@ -2,7 +2,6 @@ package com.itsm.change.application.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-import java.time.OffsetDateTime;
 import java.util.List;
 
 @Schema(description = "변경 상세")
@@ -14,11 +13,10 @@ public record ChangeDetailResponse(
         String type,
         String risk,
         String status,
-        String approvalRoute,
         String implementationPlan,
         String rollbackPlan,
         Result result,
-        List<ApprovalDto> approvals,
+        @Schema(description = "승인 정보(null=매칭되는 승인 프로세스 없음, 게이트 없이 진행)") ApprovalInfo approval,
         List<LinkRef> links,
         @Schema(description = "현재 상태에서 허용되는 다음 상태 목록") List<String> allowedTransitions
 ) {
@@ -27,8 +25,8 @@ public record ChangeDetailResponse(
     public record Result(String outcome, Boolean rolledBack, String note) {
     }
 
-    @Schema(description = "승인 이력")
-    public record ApprovalDto(String approver, String decision, String opinion, OffsetDateTime at) {
+    @Schema(description = "승인 정보")
+    public record ApprovalInfo(Long approvalRequestId, String status) {
     }
 
     @Schema(description = "연계 티켓 참조")

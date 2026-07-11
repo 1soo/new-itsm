@@ -2,8 +2,6 @@ package com.itsm.change.presentation;
 
 import com.itsm.auth.application.dto.PageResponse;
 import com.itsm.change.application.ChangeService;
-import com.itsm.change.application.dto.ChangeApprovalRequest;
-import com.itsm.change.application.dto.ChangeApprovalResponse;
 import com.itsm.change.application.dto.ChangeCreatedResponse;
 import com.itsm.change.application.dto.ChangeDetailResponse;
 import com.itsm.change.application.dto.ChangeMetricsResponse;
@@ -112,13 +110,13 @@ public class ChangeController {
         return ResponseEntity.ok(changeService.detail(id));
     }
 
-    @Operation(summary = "상태(6단계) 전이", description = "API-CHG-004 · REQUESTED→REVIEW→PLANNING→APPROVAL→IMPLEMENTATION→CLOSED")
+    @Operation(summary = "상태(6단계) 전이", description = "API-CHG-004 · REQUESTED→REVIEW→PLANNING→APPROVAL→IMPLEMENTATION→CLOSED. "
+            + "승인 게이트 연동은 Stage 2에서 완료(현재는 게이트 없이 통과)")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "전이 성공(표준 변경은 승인 자동 통과)"),
+            @ApiResponse(responseCode = "200", description = "전이 성공"),
             @ApiResponse(responseCode = "400", description = "허용되지 않은 전이", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "403", description = "권한 부족", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "404", description = "변경 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "409", description = "승인 완료 전 구현 전이 시도", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            @ApiResponse(responseCode = "404", description = "변경 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PatchMapping("/{id}/status")
     public ResponseEntity<StatusResponse> transition(@PathVariable Long id,
@@ -126,7 +124,7 @@ public class ChangeController {
         return ResponseEntity.ok(changeService.transition(id, request));
     }
 
-    @Operation(summary = "변경 유형·위험 변경", description = "API-CHG-005 · 위험도 미평가·고위험 시 기본 CAB 경로")
+    @Operation(summary = "변경 유형·위험 변경", description = "API-CHG-005 · type은 승인 프로세스의 요청유형 스코프로도 사용됨")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "정상"),
             @ApiResponse(responseCode = "400", description = "정의되지 않은 유형", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
@@ -139,23 +137,9 @@ public class ChangeController {
         return ResponseEntity.ok(changeService.classify(id, request));
     }
 
-    @Operation(summary = "승인/반려", description = "API-CHG-006 · 승인 경로 approver_role(CAB/동료검토→APPROVER) 보유자")
+    @Operation(summary = "구현 결과 기록", description = "API-CHG-008")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "정상"),
-            @ApiResponse(responseCode = "403", description = "approver_role 미보유", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "404", description = "변경/승인 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "409", description = "이미 결정됨", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    })
-    @PostMapping("/{id}/approval")
-    public ResponseEntity<ChangeApprovalResponse> approve(@PathVariable Long id,
-                                                          @Valid @RequestBody ChangeApprovalRequest request) {
-        return ResponseEntity.ok(changeService.decideApproval(id, request));
-    }
-
-    @Operation(summary = "구현 결과 기록", description = "API-CHG-008 · 승인되지 않은 변경은 400")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "정상"),
-            @ApiResponse(responseCode = "400", description = "승인되지 않은 변경", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "403", description = "권한 부족", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "404", description = "변경 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })

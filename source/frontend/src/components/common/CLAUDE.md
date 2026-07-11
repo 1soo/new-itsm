@@ -26,3 +26,7 @@
 - `dynamic-form.tsx` — 스키마 기반 동적 폼 렌더러(제어 컴포넌트, 인라인 오류).
 - `field-builder.tsx` — 동적 폼 필드 정의 빌더(라벨·유형·필수·옵션).
 - `form-schema.ts` — 동적 폼 스키마 계약(`FormFieldSchema`/`FormValues`/`FormErrors`)과 `validateForm`·`hasOptions` 헬퍼.
+- `approval-schema.ts` — 승인 프로세스 공용 타입. API-COM-004(`docs/02_plan/api_spec/common.md`) 응답 구조·필드명(`stepNo`/`decisionMode`/`roles[].{roleCode,decision,decidedBy,reason,decidedAt}`)을 그대로 따른다(`ApprovalStep`/`ApprovalStepRole` 등). `ApprovalMatchType`(AND/OR)은 `approval-process-flow.tsx`와도 공유.
+- `approval-process-flow.tsx` — 승인 프로세스 생성/편집 플로우(admin.md SCR-ADMIN-008). 0~3단계 카드 스택, 승인자 박스 드래그 재정렬(순서 교체), 역할 선택 슬라이드 패널(`ui/sheet`, 검색+드래그/클릭 추가), AND/OR 체크박스(역할 2개 이상), 승인자 0개 저장 확인 다이얼로그·박스별 역할 미선택 인라인 오류를 자체 처리. 제어 컴포넌트(`ApprovalStepBoxValue[]` 등 값+onChange). `domainDisabled`/`requestSubtypeDisabled`(편집 모드 등 식별 스코프 변경 불가 시)로 0/1단계 셀렉트 비활성화 가능. `ApprovalRoleOption`/`ApprovalStepBoxValue` 타입 제공.
+- `approval-step-progress.tsx` — 승인 차수 진행 현황(순수 프레젠테이션, 액션 없음). API-COM-004 `steps` 그대로 렌더링: 전체 차수 상태(완료 Success/현재 Warning/이후 Muted/반려 Danger) + `currentStepNo` 차수의 역할별 결정 상세(AND 전체 나열/OR "역할 중 하나", decidedBy·reason 포함). `compact` prop으로 상세 생략(반려 사유만 노출) 가능 — `approval-panel.tsx`가 이 모드로 재사용. 승인/반려 액션·사유 입력은 담당하지 않음(SCR-COM-014 화면에서 FE가 별도 조립).
+- `approval-panel.tsx` — 도메인 상세 화면(SRM/CHG/INC 등)이 재사용하는 읽기 전용 승인 현황 패널. `ApprovalStepProgress`를 compact 모드로 감싼다. `matched=false`이고 `emptyMessage` 미지정 시 렌더링하지 않음(INC처럼 패널 자체 미노출), 지정 시 안내 문구 표시(SRM처럼 "승인 절차가 없습니다").

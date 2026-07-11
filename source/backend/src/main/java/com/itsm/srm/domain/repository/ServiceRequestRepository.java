@@ -28,6 +28,6 @@ public interface ServiceRequestRepository {
 
     List<ServiceRequest> findByCreatedAtBetween(OffsetDateTime from, OffsetDateTime to);
 
-    /** 큐의 미종료(CLOSED/REJECTED 제외) 요청 건수. */
+    /** 큐의 미종료(CLOSED 제외) 요청 건수. */
     long countOpenByQueueId(Long queueId);
 }

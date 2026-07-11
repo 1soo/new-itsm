@@ -21,6 +21,7 @@ import java.util.List;
 
 /**
  * 서비스 카탈로그 유스케이스 (조회는 인증 사용자, 생성/수정은 PROCESS_OWNER).
+ * 승인 필요 여부·담당 역할은 더 이상 카탈로그 항목의 속성이 아니다(승인 프로세스 커스텀 기능으로 대체).
  */
 @Service
 public class ServiceCatalogService {
@@ -40,8 +41,7 @@ public class ServiceCatalogService {
     @Transactional(readOnly = true)
     public List<CatalogItemSummaryResponse> list(String category, String keyword) {
         return catalogItemRepository.search(category, keyword).stream()
-                .map(i -> new CatalogItemSummaryResponse(i.getId(), i.getName(), i.getDescription(),
-                        i.getCategory(), i.isApprovalRequired()))
+                .map(i -> new CatalogItemSummaryResponse(i.getId(), i.getName(), i.getDescription(), i.getCategory()))
                 .toList();
     }
 
@@ -52,9 +52,8 @@ public class ServiceCatalogService {
 
     @Transactional
     public CatalogItemDetailResponse create(CreateCatalogItemRequest request) {
-        String approverRole = resolveApproverRole(request.approvalRequired(), request.approverRole());
         ServiceCatalogItem item = catalogItemRepository.save(new ServiceCatalogItem(
-                request.name(), request.description(), null, request.approvalRequired(), approverRole,
+                request.name(), request.description(), null,
                 request.queueId(), request.slaResponseMinutes(), request.slaResolveMinutes()));
         saveFields(item.getId(), request.formSchema());
         return toDetail(item);
@@ -63,8 +62,8 @@ public class ServiceCatalogService {
     @Transactional
     public CatalogItemDetailResponse update(Long id, UpdateCatalogItemRequest request) {
         ServiceCatalogItem item = findItem(id);
-        item.update(request.name(), request.description(), null, request.approvalRequired(),
-                request.approverRole(), request.queueId(), request.slaResponseMinutes(), request.slaResolveMinutes());
+        item.update(request.name(), request.description(), null,
+                request.queueId(), request.slaResponseMinutes(), request.slaResolveMinutes());
         catalogItemRepository.save(item);
         if (request.formSchema() != null) {
             formFieldRepository.deleteByCatalogItemId(id);
@@ -99,16 +98,7 @@ public class ServiceCatalogService {
                         readOptions(f.getOptions())))
                 .toList();
         return new CatalogItemDetailResponse(item.getId(), item.getName(), item.getDescription(),
-                item.isApprovalRequired(), item.getApproverRole(), item.getQueueId(), item.getSlaResponseMinutes(),
-                item.getSlaResolveMinutes(), schema);
-    }
-
-    /** approvalRequired인데 approverRole 미지정이면 기본 APPROVER. */
-    private String resolveApproverRole(boolean approvalRequired, String approverRole) {
-        if (approverRole != null && !approverRole.isBlank()) {
-            return approverRole;
-        }
-        return approvalRequired ? "APPROVER" : null;
+                item.getQueueId(), item.getSlaResponseMinutes(), item.getSlaResolveMinutes(), schema);
     }
 
     private String writeOptions(List<String> options) {

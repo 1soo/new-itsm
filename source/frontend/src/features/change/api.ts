@@ -1,6 +1,5 @@
 import { apiClient } from "@/lib/apiClient";
 import type {
-  ApprovalQueueItem,
   ChangeDetail,
   ChangeListQuery,
   ChangeMetrics,
@@ -11,7 +10,6 @@ import type {
   ClassificationResult,
   CreateChangeInput,
   CreatedChange,
-  Decision,
   LinkInput,
   PageResponse,
   ResultInput,
@@ -61,23 +59,6 @@ export const changeApi = {
   // API-CHG-005 유형·위험 변경
   async updateClassification(id: number, body: ClassificationInput): Promise<ClassificationResult> {
     const res = await apiClient.patch<ClassificationResult>(`/changes/${id}/classification`, body);
-    return res.data;
-  },
-
-  // API-CHG-006 승인/반려 (Approver/CAB)
-  async decideApproval(id: number, decision: Decision, opinion?: string): Promise<{ id: number; status: string }> {
-    const res = await apiClient.post<{ id: number; status: string }>(
-      `/changes/${id}/approval`,
-      { decision, opinion },
-    );
-    return res.data;
-  },
-
-  // API-CHG-007 승인 대기 목록 (Approver/CAB)
-  async listApprovals(): Promise<ApprovalQueueItem[]> {
-    const res = await apiClient.get<ApprovalQueueItem[]>("/approvals", {
-      params: { scope: "mine", type: "change" },
-    });
     return res.data;
   },
 

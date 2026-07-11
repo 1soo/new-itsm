@@ -24,8 +24,8 @@ public record RequestDetailResponse(
         List<TimelineEntry> timeline,
         @Schema(description = "현재 상태·역할·승인 기준 수행 가능한 상태 전이 target 목록") List<String> allowedTransitions
 ) {
-    @Schema(description = "승인 정보")
-    public record ApprovalInfo(boolean required, String status, String reason) {
+    @Schema(description = "승인 정보(null=매칭되는 승인 프로세스 없음, 게이트 없이 진행)")
+    public record ApprovalInfo(Long approvalRequestId, String status) {
     }
 
     @Schema(description = "SLA 상태")

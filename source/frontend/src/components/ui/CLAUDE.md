@@ -16,6 +16,7 @@ shadcn/ui(new-york 스타일) 기반 공통 UI 프리미티브. Radix 위에 디
 - `label.tsx` — 폼 라벨(Radix Label).
 - `popover.tsx` — 팝오버(Radix Popover). Trigger/Content/Anchor.
 - `select.tsx` — 셀렉트(Radix Select). Trigger/Content/Item/Label/Separator, 스크롤 버튼 포함.
+- `sheet.tsx` — 슬라이드 패널(Radix Dialog 기반, side="right"|"left" 기본 right). Trigger/Close/Overlay/Content(닫기 버튼 내장)/Header/Title/Description. 승인 프로세스 역할 선택 사이드 패널 등에서 사용.
 - `skeleton.tsx` — 로딩 스켈레톤(pulse 애니메이션).
 - `sonner.tsx` — 토스트 컨테이너(sonner Toaster). 우상단 배치, `main.tsx`에서 마운트.
 - `table.tsx` — 표 프리미티브. Table/Header/Body/Row/Head/Cell/Caption.

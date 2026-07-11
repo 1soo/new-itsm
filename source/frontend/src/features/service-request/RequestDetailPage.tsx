@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  ApprovalPanel,
   Rating,
   StatusBadge,
   TicketDetailLayout,
@@ -13,6 +14,7 @@ import {
   type TimelineItem,
   toast,
 } from "@/components/common";
+import type { ApprovalStep } from "@/components/common";
 import { FullscreenLoader } from "@/routes/FullscreenLoader";
 import {
   hasAnyRole,
@@ -33,6 +35,7 @@ import type {
   SlaStatus,
   TargetStatus,
 } from "@/features/service-request/types";
+import { commonApi } from "@/features/common/api";
 import { useAppSelector } from "@/store/hooks";
 import { extractErrorMessage } from "@/lib/apiClient";
 
@@ -40,13 +43,8 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 요청 상세(SCR-SRM-005) — 검증·승인 상태·이행·종료·코멘트·SLA·CSAT 관리.
  * 허용 전이만 노출(BE allowedTransitions 우선, 없으면 status/역할/승인으로 유추),
  * 승인 대기 중 이행 버튼 숨김, 종료 요청 재종료 차단, CSAT는 종료+요청자에게만 노출.
+ * 승인 상태(공용, API-COM-004)는 진행 상태 조회 전용(공용 ApprovalPanel) — 결정 처리는 SCR-COM-014에서 수행한다.
  */
-const APPROVAL_LABEL: Record<string, string> = {
-  PENDING: "승인 대기",
-  APPROVED: "승인됨",
-  REJECTED: "반려됨",
-};
-
 const SLA_STATUS_SET = new Set(["OK", "WARNING", "BREACHED"]);
 
 function slaBadgeProps(value: string) {
@@ -60,7 +58,7 @@ function slaBadgeProps(value: string) {
 function fallbackTransitions(detail: RequestDetail, isAgent: boolean, isEndUser: boolean): TargetStatus[] {
   const s = detail.status;
   if (s === "CLOSED" || s === "REJECTED") return [];
-  const approvalPending = detail.approval?.required && detail.approval?.status === "PENDING";
+  const approvalPending = detail.approval?.status === "IN_PROGRESS";
   const out: TargetStatus[] = [];
   if (isAgent) {
     if (s === "SUBMITTED") out.push("VALIDATED");
@@ -87,6 +85,9 @@ export function RequestDetailPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
+  const [approvalSteps, setApprovalSteps] = useState<ApprovalStep[]>([]);
+  const [approvalCurrentStepNo, setApprovalCurrentStepNo] = useState<number | null>(null);
+
   const [comment, setComment] = useState("");
   const [commenting, setCommenting] = useState(false);
   const [transitioning, setTransitioning] = useState<TargetStatus | null>(null);
@@ -103,6 +104,15 @@ export function RequestDetailPage() {
       .then((d) => {
         setDetail(d);
         setNotFound(false);
+        if (d.approval.approvalRequestId == null) {
+          setApprovalSteps([]);
+          setApprovalCurrentStepNo(null);
+          return;
+        }
+        return commonApi.getApproval(d.approval.approvalRequestId).then((a) => {
+          setApprovalSteps(a.steps);
+          setApprovalCurrentStepNo(a.currentStepNo);
+        });
       })
       .catch((err) => {
         toast.error(extractErrorMessage(err));
@@ -207,22 +217,12 @@ export function RequestDetailPage() {
             </CardContent>
           </Card>
 
-          {detail.approval?.required ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">승인</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <MetaRow
-                  label="상태"
-                  value={detail.approval.status ? (APPROVAL_LABEL[detail.approval.status] ?? detail.approval.status) : "-"}
-                />
-                {detail.approval.status === "REJECTED" && detail.approval.reason ? (
-                  <p className="text-sm text-danger">반려 사유: {detail.approval.reason}</p>
-                ) : null}
-              </CardContent>
-            </Card>
-          ) : null}
+          <ApprovalPanel
+            matched={detail.approval.approvalRequestId != null}
+            steps={approvalSteps}
+            currentStepNo={approvalCurrentStepNo}
+            emptyMessage="이 요청에는 승인 절차가 없습니다"
+          />
 
           <Card>
             <CardHeader>

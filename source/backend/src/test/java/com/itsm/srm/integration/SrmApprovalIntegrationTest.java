@@ -4,14 +4,14 @@ import com.itsm.asset.application.AssetService;
 import com.itsm.asset.application.dto.CreateAssetRequest;
 import com.itsm.asset.application.dto.LinkAssetRequest;
 import com.itsm.asset.domain.AssetType;
+import com.itsm.common.approval.application.ApprovalInstanceService;
+import com.itsm.common.approval.domain.DecisionType;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.common.security.AuthPrincipal;
 import com.itsm.common.ticket.TicketType;
 import com.itsm.srm.application.ServiceCatalogService;
 import com.itsm.srm.application.ServiceRequestService;
-import com.itsm.srm.application.dto.ApprovalDecision;
-import com.itsm.srm.application.dto.ApprovalDecisionRequest;
 import com.itsm.srm.application.dto.CatalogItemDetailResponse;
 import com.itsm.srm.application.dto.CreateCatalogItemRequest;
 import com.itsm.srm.application.dto.CreateRequestRequest;
@@ -42,8 +42,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * 실 PostgreSQL(Testcontainers)로 승인 흐름을 검증한다. 특히 이미 결정된 승인 재처리 차단(409)과
- * 상태 오염 방지를 실 트랜잭션으로 재현·방지한다(단위 mock 사각지대 보완). 실제 DDL(01/03/04)을 마운트한다.
+ * 실 PostgreSQL(Testcontainers)로 공용 승인 엔진(common.approval) + SRM 게이트 연동을 검증한다.
+ * 게이트 차단(409, approvalRequestId 포함)·승인 후 재시도 통과·이미 결정된 역할 슬롯 재처리 차단(409)을
+ * 실 트랜잭션으로 재현한다(단위 mock 사각지대 보완). 실제 DDL(01~26)을 마운트한다.
  */
 @Testcontainers(disabledWithoutDocker = true)
 @SpringBootTest
@@ -79,7 +80,9 @@ class SrmApprovalIntegrationTest {
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/24_auth_menu_columns.sql").toAbsolutePath()),
                     "/docker-entrypoint-initdb.d/24_auth_menu_columns.sql")
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/25_common_notification_dismissal.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/25_common_notification_dismissal.sql");
+                    "/docker-entrypoint-initdb.d/25_common_notification_dismissal.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/26_approval_engine_schema.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/26_approval_engine_schema.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {
@@ -92,6 +95,7 @@ class SrmApprovalIntegrationTest {
 
     @Autowired ServiceCatalogService catalogService;
     @Autowired ServiceRequestService requestService;
+    @Autowired ApprovalInstanceService approvalInstanceService;
     @Autowired AssetService assetService;
     @Autowired JdbcTemplate jdbc;
 
@@ -111,46 +115,114 @@ class SrmApprovalIntegrationTest {
         return jdbc.queryForObject("select id from app_user where email = ?", Long.class, email);
     }
 
+    private Long roleIdOf(String roleCode) {
+        jdbc.update("insert into role(role_code, role_name, created_by) values (?,?,?) on conflict (role_code) do nothing",
+                roleCode, roleCode, "test");
+        return jdbc.queryForObject("select id from role where role_code = ?", Long.class, roleCode);
+    }
+
+    /** 요청유형 전용(tier=2) 규칙 1건 + 1차 OR 승인(주어진 역할)을 카탈로그 항목별로 시딩한다(테스트 간 격리). */
+    private void seedSubtypeProcess(String domain, String requestSubtypeKey, String roleCode) {
+        jdbc.update("insert into approval_process(domain, request_subtype_key, priority_tier, name, created_by) values (?,?,2,?,?)",
+                domain, requestSubtypeKey, "요청유형 규칙", "test");
+        Long processId = jdbc.queryForObject(
+                "select id from approval_process where domain = ? and request_subtype_key = ?",
+                Long.class, domain, requestSubtypeKey);
+        jdbc.update("insert into approval_process_step(approval_process_id, step_no, decision_mode, created_by) values (?,1,'OR',?)",
+                processId, "test");
+        Long stepId = jdbc.queryForObject(
+                "select id from approval_process_step where approval_process_id = ? and step_no = 1", Long.class, processId);
+        jdbc.update("insert into approval_process_step_role(step_id, role_id, created_by) values (?,?,?)",
+                stepId, roleIdOf(roleCode), "test");
+    }
+
     @Test
-    void reDecideAlreadyApprovedIsBlockedAndStateNotCorrupted() {
+    void gateBlocksThenApprovedRetrySucceeds() {
         long ts = System.nanoTime();
+        String domain = "SERVICE_REQUEST";
+
         Long requesterId = insertUser("req" + ts + "@itsm.local");
         Long approverId = insertUser("apr" + ts + "@itsm.local");
 
-        // 카탈로그(승인 필요, approver_role=APPROVER)
         as(1L, "PROCESS_OWNER");
         CatalogItemDetailResponse item = catalogService.create(new CreateCatalogItemRequest(
-                "Item" + ts, "d", true, "APPROVER", null, null, null,
+                "Item" + ts, "d", null, null, null,
                 List.of(new FormFieldDto("note", "Note", "text", false, null))));
+        seedSubtypeProcess(domain, String.valueOf(item.id()), "APPROVER");
 
-        // 요청 제출(요청자)
         as(requesterId, "END_USER");
         RequestCreatedResponse created = requestService.create(new CreateRequestRequest(item.id(), Map.of()));
         Long rid = created.id();
 
-        // 상담원: VALIDATED → ROUTED(승인 필요 → APPROVAL_PENDING, approval 생성)
         as(2L, "SERVICE_DESK_AGENT");
         requestService.transition(rid, new StatusTransitionRequest(RequestStatus.VALIDATED, null));
         requestService.transition(rid, new StatusTransitionRequest(RequestStatus.ROUTED, null));
 
-        // 승인자: 최초 승인 → APPROVED, 요청 ROUTED
-        as(approverId, "APPROVER");
-        requestService.decideApproval(rid, new ApprovalDecisionRequest(ApprovalDecision.APPROVE, "ok"));
+        // 게이트 차단: 인스턴스 없음 → 스냅샷 생성 + 409(approvalRequestId 포함)
+        BusinessException blocked = (BusinessException) org.junit.jupiter.api.Assertions.assertThrows(
+                BusinessException.class,
+                () -> requestService.transition(rid, new StatusTransitionRequest(RequestStatus.IN_FULFILLMENT, null)));
+        assertThat(blocked.getErrorCode()).isEqualTo(ErrorCode.APPROVAL_PENDING);
+        Long approvalRequestId = blocked.getApprovalRequestId();
+        assertThat(approvalRequestId).isNotNull();
 
-        // 상담원: 이행 진행
+        // 이미 진행 중인 인스턴스 재시도도 409
+        assertThatThrownBy(() ->
+                requestService.transition(rid, new StatusTransitionRequest(RequestStatus.IN_FULFILLMENT, null)))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode()).isEqualTo(ErrorCode.APPROVAL_PENDING));
+
+        // 승인자 결정 → APPROVED
+        as(approverId, "APPROVER");
+        var decision = approvalInstanceService.decide(approvalRequestId, DecisionType.APPROVE, "ok");
+        assertThat(decision.requestStatus()).isEqualTo("APPROVED");
+
+        // 재시도 시 게이트 통과
         as(2L, "SERVICE_DESK_AGENT");
-        requestService.transition(rid, new StatusTransitionRequest(RequestStatus.IN_FULFILLMENT, null));
+        var status = requestService.transition(rid, new StatusTransitionRequest(RequestStatus.IN_FULFILLMENT, null));
+        assertThat(status.status()).isEqualTo("IN_FULFILLMENT");
 
-        // 승인자: 이미 결정된 승인 재처리 → 409, 상태 오염 없음
+        String approvalStatus = jdbc.queryForObject(
+                "select status from approval_request where id = ?", String.class, approvalRequestId);
+        assertThat(approvalStatus).isEqualTo("APPROVED");
+    }
+
+    @Test
+    void reDecideAlreadyDecidedRoleSlotIsBlockedAndStateNotCorrupted() {
+        long ts = System.nanoTime();
+        String domain = "SERVICE_REQUEST";
+
+        Long requesterId = insertUser("req" + ts + "@itsm.local");
+        Long approverId = insertUser("apr" + ts + "@itsm.local");
+
+        as(1L, "PROCESS_OWNER");
+        CatalogItemDetailResponse item = catalogService.create(new CreateCatalogItemRequest(
+                "Item" + ts, "d", null, null, null,
+                List.of(new FormFieldDto("note", "Note", "text", false, null))));
+        seedSubtypeProcess(domain, String.valueOf(item.id()), "APPROVER");
+
+        as(requesterId, "END_USER");
+        RequestCreatedResponse created = requestService.create(new CreateRequestRequest(item.id(), Map.of()));
+        Long rid = created.id();
+
+        as(2L, "SERVICE_DESK_AGENT");
+        requestService.transition(rid, new StatusTransitionRequest(RequestStatus.VALIDATED, null));
+        requestService.transition(rid, new StatusTransitionRequest(RequestStatus.ROUTED, null));
+        assertThatThrownBy(() ->
+                requestService.transition(rid, new StatusTransitionRequest(RequestStatus.IN_FULFILLMENT, null)));
+
+        Long approvalRequestId = jdbc.queryForObject(
+                "select id from approval_request where ticket_type='SERVICE_REQUEST' and ticket_id = ?", Long.class, rid);
+
         as(approverId, "APPROVER");
-        assertThatThrownBy(() -> requestService.decideApproval(rid, new ApprovalDecisionRequest(ApprovalDecision.REJECT, "flip")))
+        approvalInstanceService.decide(approvalRequestId, DecisionType.APPROVE, "ok");
+
+        assertThatThrownBy(() -> approvalInstanceService.decide(approvalRequestId, DecisionType.REJECT, "flip"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(((BusinessException) e).getErrorCode()).isEqualTo(ErrorCode.APPROVAL_ALREADY_DECIDED));
 
-        String status = jdbc.queryForObject("select status from service_request where id = ?", String.class, rid);
         String approvalStatus = jdbc.queryForObject(
-                "select status from approval where ticket_type='SERVICE_REQUEST' and ticket_id = ?", String.class, rid);
-        assertThat(status).isEqualTo("IN_FULFILLMENT"); // 되돌려지지 않음
+                "select status from approval_request where id = ?", String.class, approvalRequestId);
         assertThat(approvalStatus).isEqualTo("APPROVED"); // 뒤집히지 않음
     }
 
@@ -163,7 +235,7 @@ class SrmApprovalIntegrationTest {
 
         as(1L, "PROCESS_OWNER");
         CatalogItemDetailResponse item = catalogService.create(new CreateCatalogItemRequest(
-                "AssetLinkItem" + ts, "d", false, null, null, null, null, List.of()));
+                "AssetLinkItem" + ts, "d", null, null, null, List.of()));
 
         as(requesterId, "END_USER");
         RequestCreatedResponse created = requestService.create(new CreateRequestRequest(item.id(), Map.of()));

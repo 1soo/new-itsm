@@ -33,12 +33,14 @@ import { UserDetailPage } from "@/features/admin/UserDetailPage";
 import { RoleManagementPage } from "@/features/admin/RoleManagementPage";
 import { AuditLogPage } from "@/features/admin/AuditLogPage";
 import { MenuManagementPage } from "@/features/admin/MenuManagementPage";
+import { ApprovalProcessListPage } from "@/features/admin/ApprovalProcessListPage";
+import { ApprovalProcessFormPage } from "@/features/admin/ApprovalProcessFormPage";
+import { ApprovalInboxPage } from "@/features/common/ApprovalInboxPage";
 import { PortalPage } from "@/features/service-request/PortalPage";
 import { RequestSubmitPage } from "@/features/service-request/RequestSubmitPage";
 import { RequestListPage } from "@/features/service-request/RequestListPage";
 import { RequestQueuePage } from "@/features/service-request/RequestQueuePage";
 import { RequestDetailPage } from "@/features/service-request/RequestDetailPage";
-import { ApprovalInboxPage } from "@/features/service-request/ApprovalInboxPage";
 import { CatalogManagePage } from "@/features/service-request/CatalogManagePage";
 import { MetricsPage } from "@/features/service-request/MetricsPage";
 import { IncidentListPage } from "@/features/incident/IncidentListPage";
@@ -53,7 +55,6 @@ import { KnownErrorSearchPage } from "@/features/problem/KnownErrorSearchPage";
 import { ChangeListPage } from "@/features/change/ChangeListPage";
 import { ChangeCreatePage } from "@/features/change/ChangeCreatePage";
 import { ChangeDetailPage } from "@/features/change/ChangeDetailPage";
-import { ChangeApprovalInboxPage } from "@/features/change/ChangeApprovalInboxPage";
 import { ChangeSchedulePage } from "@/features/change/ChangeSchedulePage";
 import { ChangeMetricsPage } from "@/features/change/ChangeMetricsPage";
 import { KnowledgeListPage } from "@/features/knowledge/KnowledgeListPage";
@@ -114,6 +115,7 @@ export const router = createBrowserRouter([
           { path: "/403", element: <ForbiddenPage /> }, // SCR-COM-006
           { path: "/search", element: <SearchResultsPage /> }, // SCR-COM-011
           { path: "/guide", element: <GuidePage /> }, // SCR-COM-012
+          { path: "/approvals", element: <ApprovalInboxPage /> }, // SCR-COM-014 (전 도메인 공용, 역할 제한 없음)
 
           // 관리자 라우트 — SYSTEM_ADMIN 전용
           {
@@ -125,6 +127,9 @@ export const router = createBrowserRouter([
               { path: "/admin/roles", element: <RoleManagementPage /> }, // SCR-ADMIN-004
               { path: "/admin/audit-logs", element: <AuditLogPage /> }, // SCR-ADMIN-005
               { path: "/admin/menus", element: <MenuManagementPage /> }, // SCR-ADMIN-006
+              { path: "/admin/approval-processes", element: <ApprovalProcessListPage /> }, // SCR-ADMIN-007
+              { path: "/admin/approval-processes/new", element: <ApprovalProcessFormPage /> }, // SCR-ADMIN-008
+              { path: "/admin/approval-processes/:id", element: <ApprovalProcessFormPage /> }, // SCR-ADMIN-008
             ],
           },
 
@@ -153,12 +158,6 @@ export const router = createBrowserRouter([
             children: [
               { path: "/admin/service-catalog", element: <CatalogManagePage /> }, // SCR-SRM-007
               { path: "/service-requests/metrics", element: <MetricsPage /> }, // SCR-SRM-008
-            ],
-          },
-          {
-            element: <RequireRoles roles={[ROLE_APPROVER]} />,
-            children: [
-              { path: "/approvals/service-requests", element: <ApprovalInboxPage /> }, // SCR-SRM-006
             ],
           },
           {
@@ -206,12 +205,6 @@ export const router = createBrowserRouter([
               { path: "/changes/new", element: <ChangeCreatePage /> }, // SCR-CHG-002
               { path: "/changes/schedule", element: <ChangeSchedulePage /> }, // SCR-CHG-005
               { path: "/changes/metrics", element: <ChangeMetricsPage /> }, // SCR-CHG-006
-            ],
-          },
-          {
-            element: <RequireRoles roles={[ROLE_APPROVER]} />,
-            children: [
-              { path: "/approvals/changes", element: <ChangeApprovalInboxPage /> }, // SCR-CHG-004
             ],
           },
           {

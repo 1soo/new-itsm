@@ -3,30 +3,26 @@ package com.itsm.srm.application;
 import com.itsm.asset.application.AssetService;
 import com.itsm.auth.domain.AppUser;
 import com.itsm.auth.domain.repository.AppUserRepository;
+import com.itsm.common.approval.application.ApprovalGateService;
+import com.itsm.common.approval.domain.ApprovalRequest;
+import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.common.security.AuthPrincipal;
 import com.itsm.common.security.SecurityUtils;
-import com.itsm.common.ticket.Approval;
-import com.itsm.common.ticket.ApprovalStatus;
 import com.itsm.common.ticket.Comment;
 import com.itsm.common.ticket.TicketType;
 import com.itsm.common.ticket.TimelineEvent;
-import com.itsm.common.ticket.repository.ApprovalRepository;
 import com.itsm.common.ticket.repository.CommentRepository;
 import com.itsm.common.ticket.repository.TicketLinkRepository;
 import com.itsm.common.ticket.repository.TimelineEventRepository;
 import com.itsm.auth.application.dto.PageResponse;
-import com.itsm.srm.application.dto.ApprovalDecision;
-import com.itsm.srm.application.dto.ApprovalDecisionRequest;
-import com.itsm.srm.application.dto.ApprovalDecisionResponse;
 import com.itsm.srm.application.dto.AssignRequest;
 import com.itsm.srm.application.dto.CommentCreateRequest;
 import com.itsm.srm.application.dto.CommentResponse;
 import com.itsm.srm.application.dto.CreateRequestRequest;
 import com.itsm.srm.application.dto.CsatRequest;
 import com.itsm.srm.application.dto.CsatResponse;
-import com.itsm.srm.application.dto.PendingApprovalResponse;
 import com.itsm.srm.application.dto.RequestCreatedResponse;
 import com.itsm.srm.application.dto.RequestDetailResponse;
 import com.itsm.srm.application.dto.RequestSummaryResponse;
@@ -57,8 +53,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 서비스 요청 유스케이스: 제출·조회·배정·상태전이·승인·코멘트·CSAT.
- * RBAC: scope mine/all, Agent 배정·이행, 지정 Approver 승인, 요청자 CSAT.
+ * 서비스 요청 유스케이스: 제출·조회·배정·상태전이·코멘트·CSAT.
+ * RBAC: scope mine/all, Agent 배정·이행, 요청자 CSAT.
+ * 승인은 전 도메인 공용 승인 엔진(common.approval)이 담당하며, IN_FULFILLMENT 전이 시 게이트를 통과해야 한다
+ * (docs/02_plan/api_spec/service-request.md API-SRM-010, docs/02_plan/api_spec/common.md 0절).
  */
 @Service
 public class ServiceRequestService {
@@ -67,6 +65,7 @@ public class ServiceRequestService {
     private static final String PROCESS_OWNER = "PROCESS_OWNER";
     private static final String APPROVER = "APPROVER";
     private static final TicketType TT = TicketType.SERVICE_REQUEST;
+    private static final String DOMAIN = "SERVICE_REQUEST";
 
     private final ServiceRequestRepository requestRepository;
     private final ServiceRequestFormValueRepository formValueRepository;
@@ -74,12 +73,13 @@ public class ServiceRequestService {
     private final CatalogFormFieldRepository formFieldRepository;
     private final QueueRepository queueRepository;
     private final CsatRepository csatRepository;
-    private final ApprovalRepository approvalRepository;
     private final CommentRepository commentRepository;
     private final TimelineEventRepository timelineRepository;
     private final AppUserRepository appUserRepository;
     private final TicketLinkRepository ticketLinkRepository;
     private final AssetService assetService;
+    private final ApprovalGateService approvalGateService;
+    private final ApprovalRequestRepository approvalRequestRepository;
 
     public ServiceRequestService(ServiceRequestRepository requestRepository,
                                  ServiceRequestFormValueRepository formValueRepository,
@@ -87,24 +87,26 @@ public class ServiceRequestService {
                                  CatalogFormFieldRepository formFieldRepository,
                                  QueueRepository queueRepository,
                                  CsatRepository csatRepository,
-                                 ApprovalRepository approvalRepository,
                                  CommentRepository commentRepository,
                                  TimelineEventRepository timelineRepository,
                                  AppUserRepository appUserRepository,
                                  TicketLinkRepository ticketLinkRepository,
-                                 AssetService assetService) {
+                                 AssetService assetService,
+                                 ApprovalGateService approvalGateService,
+                                 ApprovalRequestRepository approvalRequestRepository) {
         this.requestRepository = requestRepository;
         this.formValueRepository = formValueRepository;
         this.catalogItemRepository = catalogItemRepository;
         this.formFieldRepository = formFieldRepository;
         this.queueRepository = queueRepository;
         this.csatRepository = csatRepository;
-        this.approvalRepository = approvalRepository;
         this.commentRepository = commentRepository;
         this.timelineRepository = timelineRepository;
         this.appUserRepository = appUserRepository;
         this.ticketLinkRepository = ticketLinkRepository;
         this.assetService = assetService;
+        this.approvalGateService = approvalGateService;
+        this.approvalRequestRepository = approvalRequestRepository;
     }
 
     // ---------- create ----------
@@ -172,13 +174,11 @@ public class ServiceRequestService {
         formValueRepository.findByServiceRequestId(id)
                 .forEach(v -> formValues.put(v.getFieldKey(), v.getFieldValue()));
 
-        Approval approval = approvalRepository.findByTicketTypeAndTicketId(TT, id).orElse(null);
-        boolean approvalRequired = item != null && item.isApprovalRequired();
-        boolean approvalApproved = approval != null && approval.getStatus() == ApprovalStatus.APPROVED;
+        ApprovalRequest latestApproval = approvalRequestRepository
+                .findTopByTicketTypeAndTicketIdOrderByIdDesc(TT, id).orElse(null);
         RequestDetailResponse.ApprovalInfo approvalInfo = new RequestDetailResponse.ApprovalInfo(
-                approvalRequired,
-                approval != null ? approval.getStatus().name() : null,
-                approval != null ? approval.getDecisionReason() : null);
+                latestApproval != null ? latestApproval.getId() : null,
+                latestApproval != null ? latestApproval.getStatus().name() : null);
 
         RequestDetailResponse.SlaInfo slaInfo = new RequestDetailResponse.SlaInfo(
                 SlaCalculator.status(request.getCreatedAt(), request.getSlaResponseDue(),
@@ -204,12 +204,12 @@ public class ServiceRequestService {
                 request.getStatus().name(), formValues,
                 userName(request.getRequesterId()), userName(request.getAssigneeId()), queueName(request.getQueueId()),
                 approvalInfo, slaInfo, List.of(), linkedAssets, comments, timeline,
-                allowedTransitions(principal, request, approvalRequired, approvalApproved));
+                allowedTransitions(principal, request));
     }
 
-    /** 현재 상태·요청자 역할·승인 상태 기준으로 수행 가능한 상태 전이 target 목록(FE 버튼 노출용). */
-    private List<String> allowedTransitions(AuthPrincipal principal, ServiceRequest sr,
-                                            boolean approvalRequired, boolean approvalApproved) {
+    /** 현재 상태·요청자 역할 기준으로 수행 가능한 상태 전이 target 목록(FE 버튼 노출용).
+     * 승인 게이트 통과 여부는 실제 전이 시도 시 판정하므로(409로 안내) 여기서는 선반영하지 않는다. */
+    private List<String> allowedTransitions(AuthPrincipal principal, ServiceRequest sr) {
         if (sr.getStatus().isTerminal()) {
             return List.of();
         }
@@ -220,9 +220,6 @@ public class ServiceRequestService {
                     ? (isRequester || SecurityUtils.hasAnyRole(AGENT))
                     : SecurityUtils.hasAnyRole(AGENT);
             if (!roleOk) {
-                continue;
-            }
-            if (target == RequestStatus.IN_FULFILLMENT && approvalRequired && !approvalApproved) {
                 continue;
             }
             result.add(target.name());
@@ -262,82 +259,15 @@ public class ServiceRequestService {
             throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION);
         }
 
-        ServiceCatalogItem item = catalogItemRepository.findById(sr.getCatalogItemId()).orElse(null);
-        boolean approvalRequired = item != null && item.isApprovalRequired();
-
-        if (target == RequestStatus.IN_FULFILLMENT && approvalRequired) {
-            boolean approved = approvalRepository.findByTicketTypeAndTicketId(TT, id)
-                    .map(a -> a.getStatus() == ApprovalStatus.APPROVED).orElse(false);
-            if (!approved) {
-                throw new BusinessException(ErrorCode.APPROVAL_PENDING);
-            }
+        if (target == RequestStatus.IN_FULFILLMENT) {
+            approvalGateService.checkGate(DOMAIN, String.valueOf(sr.getCatalogItemId()), sr.getRequesterId(), TT, id);
         }
 
-        RequestStatus effective = target;
-        if (target == RequestStatus.ROUTED && approvalRequired) {
-            effective = RequestStatus.APPROVAL_PENDING;
-            if (approvalRepository.findByTicketTypeAndTicketId(TT, id).isEmpty()) {
-                String approverRole = (item.getApproverRole() != null && !item.getApproverRole().isBlank())
-                        ? item.getApproverRole() : APPROVER; // 카탈로그 approver_role 복사, 미지정 시 기본 APPROVER
-                approvalRepository.save(new Approval(TT, id, approverRole));
-            }
-        }
-        sr.changeStatus(effective);
+        sr.changeStatus(target);
         requestRepository.save(sr);
-        timelineRepository.save(TimelineEvent.of(TT, id, "STATUS_" + effective.name(),
-                StringUtils.hasText(request.note()) ? request.note() : "상태가 " + effective.name() + "로 변경되었습니다."));
-        return new StatusResponse(id, effective.name());
-    }
-
-    // ---------- approval ----------
-
-    @Transactional
-    public ApprovalDecisionResponse decideApproval(Long id, ApprovalDecisionRequest request) {
-        AuthPrincipal principal = SecurityUtils.currentPrincipal();
-        ServiceRequest sr = findRequest(id);
-        Approval approval = approvalRepository.findByTicketTypeAndTicketId(TT, id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.APPROVAL_NOT_FOUND));
-        if (!SecurityUtils.hasRole(approval.getApproverRole())) {
-            throw new BusinessException(ErrorCode.ACCESS_DENIED); // 승인 담당 역할 미보유
-        }
-        if (!approval.isPending()) {
-            throw new BusinessException(ErrorCode.APPROVAL_ALREADY_DECIDED); // 이미 결정된 건 재처리 차단(상태 오염 방지)
-        }
-        if (request.decision() == ApprovalDecision.REJECT && !StringUtils.hasText(request.reason())) {
-            throw new BusinessException(ErrorCode.REJECT_REASON_REQUIRED);
-        }
-        if (request.decision() == ApprovalDecision.APPROVE) {
-            approval.approve(principal.userId(), request.reason());
-            sr.changeStatus(RequestStatus.ROUTED);
-            timelineRepository.save(TimelineEvent.of(TT, id, "APPROVAL_APPROVED", "승인되었습니다."));
-        } else {
-            approval.reject(principal.userId(), request.reason());
-            sr.changeStatus(RequestStatus.REJECTED);
-            timelineRepository.save(TimelineEvent.of(TT, id, "APPROVAL_REJECTED", "반려되었습니다: " + request.reason()));
-        }
-        approvalRepository.save(approval);
-        requestRepository.save(sr);
-        return new ApprovalDecisionResponse(id, approval.getStatus().name());
-    }
-
-    @Transactional(readOnly = true)
-    public List<PendingApprovalResponse> pendingApprovals() {
-        AuthPrincipal principal = SecurityUtils.currentPrincipal();
-        if (principal.roles().isEmpty()) {
-            return List.of();
-        }
-        return approvalRepository.findByTicketTypeAndStatusAndApproverRoleIn(TT, ApprovalStatus.PENDING, principal.roles())
-                .stream()
-                .map(a -> {
-                    ServiceRequest sr = requestRepository.findById(a.getTicketId()).orElse(null);
-                    return new PendingApprovalResponse(
-                            a.getTicketId(),
-                            sr != null ? sr.getTicketKey() : null,
-                            sr != null ? catalogName(sr.getCatalogItemId()) : null,
-                            sr != null ? userName(sr.getRequesterId()) : null,
-                            a.getCreatedAt());
-                })
-                .toList();
+        timelineRepository.save(TimelineEvent.of(TT, id, "STATUS_" + target.name(),
+                StringUtils.hasText(request.note()) ? request.note() : "상태가 " + target.name() + "로 변경되었습니다."));
+        return new StatusResponse(id, target.name());
     }
 
     // ---------- comment ----------

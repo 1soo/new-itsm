@@ -16,7 +16,8 @@ import lombok.NoArgsConstructor;
 import java.time.OffsetDateTime;
 
 /**
- * 변경 요청(RFC). 유형·위험도·승인 경로·6단계 상태·구현 결과를 관리한다.
+ * 변경 요청(RFC). 유형·위험도·6단계 상태·구현 결과를 관리한다.
+ * 승인 경로(자동/동료검토/CAB) 자동 라우팅은 승인 프로세스 커스텀 기능(2026-07-11)으로 제거되었다(공용 승인 엔진이 대체, Stage 2에서 연동).
  */
 @Getter
 @Entity
@@ -49,10 +50,6 @@ public class ChangeRequest extends BaseEntity {
     @Column(nullable = false, length = 20)
     private ChangeStatus status;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "approval_route", length = 15)
-    private ApprovalRoute approvalRoute;
-
     @Column(name = "implementation_plan", columnDefinition = "text")
     private String implementationPlan;
 
@@ -76,7 +73,7 @@ public class ChangeRequest extends BaseEntity {
     private String resultNote;
 
     public ChangeRequest(String ticketKey, String summary, String description, ChangeType type, ChangeRisk risk,
-                          ApprovalRoute approvalRoute, String implementationPlan, String rollbackPlan,
+                          String implementationPlan, String rollbackPlan,
                           OffsetDateTime scheduledAt, Long templateId) {
         this.ticketKey = ticketKey;
         this.summary = summary;
@@ -84,7 +81,6 @@ public class ChangeRequest extends BaseEntity {
         this.type = type;
         this.risk = risk;
         this.status = ChangeStatus.REQUESTED;
-        this.approvalRoute = approvalRoute;
         this.implementationPlan = implementationPlan;
         this.rollbackPlan = rollbackPlan;
         this.scheduledAt = scheduledAt;
@@ -98,10 +94,6 @@ public class ChangeRequest extends BaseEntity {
     public void updateClassification(ChangeType type, ChangeRisk risk) {
         this.type = type;
         this.risk = risk;
-    }
-
-    public void updateApprovalRoute(ApprovalRoute approvalRoute) {
-        this.approvalRoute = approvalRoute;
     }
 
     public void recordResult(Outcome outcome, Boolean rolledBack, String resultNote) {

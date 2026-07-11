@@ -1,13 +1,13 @@
 import type { StatusTone } from "@/components/common";
 import type {
-  ApprovalRoute,
   ChangeStatus,
   ChangeTargetStatus,
   ChangeType,
   Risk,
 } from "@/features/change/types";
 
-/* CHG 상태·유형·위험도·승인경로 표시 매핑 — common.md 시맨틱 색상, change.md 팔레트. */
+/* CHG 상태·유형·위험도 표시 매핑 — common.md 시맨틱 색상, change.md 팔레트. 승인 경로(구 CAB 자동 라우팅)는
+   승인 프로세스 커스텀 기능(유지보수 요청)으로 완전 제거되어 별도 라벨/tone이 없다. */
 
 const STATUS_LABEL: Record<ChangeStatus, string> = {
   REQUESTED: "요청",
@@ -70,25 +70,6 @@ export function riskLabel(r: Risk): string {
 }
 export function riskTone(r: Risk): StatusTone {
   return RISK_TONE[r] ?? "muted";
-}
-
-const APPROVAL_ROUTE_LABEL: Record<ApprovalRoute, string> = {
-  AUTO: "자동",
-  PEER_REVIEW: "동료검토",
-  CAB: "CAB",
-};
-
-const APPROVAL_ROUTE_TONE: Record<ApprovalRoute, StatusTone> = {
-  AUTO: "info",
-  PEER_REVIEW: "muted",
-  CAB: "warning",
-};
-
-export function approvalRouteLabel(r: ApprovalRoute): string {
-  return APPROVAL_ROUTE_LABEL[r] ?? r;
-}
-export function approvalRouteTone(r: ApprovalRoute): StatusTone {
-  return APPROVAL_ROUTE_TONE[r] ?? "muted";
 }
 
 export const CHANGE_TYPES: ChangeType[] = ["STANDARD", "NORMAL", "EMERGENCY"];

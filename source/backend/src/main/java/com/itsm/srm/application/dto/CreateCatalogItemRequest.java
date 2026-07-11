@@ -11,8 +11,6 @@ public record CreateCatalogItemRequest(
         @Schema(description = "요청 유형명(필수)")
         @NotBlank String name,
         String description,
-        boolean approvalRequired,
-        @Schema(description = "승인 담당 역할코드(기본 APPROVER, approvalRequired=true 시 사용)") String approverRole,
         Long queueId,
         Integer slaResponseMinutes,
         Integer slaResolveMinutes,

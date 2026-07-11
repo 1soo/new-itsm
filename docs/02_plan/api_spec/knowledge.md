@@ -1,6 +1,6 @@
 # API 명세서 — 지식 관리 (Knowledge)
 
-> 도메인: knowledge · 버전: 0.1 · 작성일: 2026-07-09
+> 도메인: knowledge · 버전: 0.2 · 작성일: 2026-07-11 · 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 게이트키퍼 단일승인을 커스텀 프로세스로 대체, 전용 승인 API(API-KM-007/008) 삭제 후 공통 승인 API([common.md](common.md) API-COM-003~005)로 대체. 매칭되는 승인 프로세스가 없으면 검토 요청 즉시 게시(PUBLISHED)
 
 ## 공통 규약
 
@@ -17,8 +17,6 @@
 | API-KM-004 | 기사 수정 | PATCH | /api/v1/knowledge/articles/{id} | 필요(Contributor) |
 | API-KM-005 | 기사 삭제 | DELETE | /api/v1/knowledge/articles/{id} | 필요(Contributor) |
 | API-KM-006 | 기사 상태 전이(검토 요청 등) | PATCH | /api/v1/knowledge/articles/{id}/status | 필요 |
-| API-KM-007 | 검토·게시 승인/반려 | POST | /api/v1/knowledge/articles/{id}/review | 필요(Gatekeeper) |
-| API-KM-008 | 검토 대기 목록 | GET | /api/v1/knowledge/reviews | 필요(Gatekeeper) |
 | API-KM-009 | 유용성 평가/피드백 | POST | /api/v1/knowledge/articles/{id}/feedback | 필요 |
 | API-KM-010 | 카테고리 목록 | GET | /api/v1/knowledge/categories | 필요 |
 | API-KM-011 | KCS 티켓 연계(작성/연결) | POST | /api/v1/knowledge/articles/link | 필요 |
@@ -79,25 +77,8 @@
 - **Endpoint**: `PATCH /api/v1/knowledge/articles/{id}/status`
 - **인증**: 필요
 - **Request Body**: `{ "targetStatus": "IN_REVIEW · 검토 요청" }`
-- **Response Code**: 200 / 400 허용되지 않은 전이 / 403 / 404
-
-### API-KM-007 · 검토·게시 승인/반려
-
-- **Endpoint**: `POST /api/v1/knowledge/articles/{id}/review`
-- **인증**: 필요(Gatekeeper)
-- **Request Body**: `{ "decision": "APPROVE|REJECT", "reason": "string · 반려 시 필수" }`
-- **Response Body** (200): `{ "id": "number", "status": "PUBLISHED|DRAFT" }`
-- **Response Code**: 200 / 400 반려 사유 누락 / 403 게이트키퍼 권한 없음 / 404. 반려 시 초안 복귀·사유 표시.
-
-### API-KM-008 · 검토 대기 목록
-
-- **Endpoint**: `GET /api/v1/knowledge/reviews?scope=mine`
-- **인증**: 필요(Gatekeeper)
-- **Response Body** (200):
-  ```json
-  [ { "articleId": "number", "title": "string", "author": "string", "requestedAt": "ISO-8601" } ]
-  ```
-- **Response Code**: 200 / 401 / 403
+- **Response Body** (200): `{ "id": "number", "status": "IN_REVIEW|PUBLISHED", "approvalRequestId": "number|null" }`
+- **Response Code**: 200 / 400 허용되지 않은 전이 / 403 / 404. [common.md](common.md) 0절 공통 게이트 로직(domain=KNOWLEDGE, 요청유형 스코프 없음) 적용 — 매칭되는 승인 프로세스가 없거나 0차 승인이면 **즉시 PUBLISHED로 전이**(승인 없이 게시, 결과 `status="PUBLISHED"`). 매칭 규칙이 있으면 승인 인스턴스를 생성하고 `status="IN_REVIEW"`(대기)로 저장한다. 인스턴스가 [common.md](common.md) API-COM-005로 APPROVED 확정되면 기사 상태를 PUBLISHED로, REJECTED 확정되면 DRAFT로 전환하고 반려 사유(결정 시 등록한 reason)를 기사에 표시한다(기존 API-KM-007 반려 동작 계승).
 
 ### API-KM-009 · 유용성 평가/피드백
 

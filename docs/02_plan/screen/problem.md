@@ -1,6 +1,6 @@
 # 화면 설계서 — 문제 관리 (Problem)
 
-> 도메인: problem · 버전: 0.1 · 작성일: 2026-07-09
+> 도메인: problem · 버전: 0.2 · 작성일: 2026-07-11 · 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 상세 화면에 공통 승인 패널 추가(WORKAROUND → RESOLVED_CLOSED 전이 게이트, 매칭 규칙 없으면 기존처럼 즉시 전이)
 
 ## 1. 개요
 
@@ -70,8 +70,9 @@
   | 변경 연계 | 버튼 | 신규/기존 변경 링크 | Base |
   | 후속 조치 리스트 | 반복 입력 | 항목·상태(진행중/완료) | Base/Success |
   | 종료 버튼 | 버튼 | 종료 전이 | Success |
-- **상태 · 인터랙션**: 순서 어긋난 전이 거부. RCA는 개인 강제 지정 안 함. 미존재 인시던트/변경 연결 시 400. 미해결 후속조치 남은 채 종료 시 경고 다이얼로그. 워크어라운드 빈 내용 저장 거부.
-- **연관 API**: `GET /api/v1/problems/{id}`, `PATCH .../status`, `PUT .../rca`, `POST .../workaround`, `POST .../known-errors`, `POST .../links`, `POST/PATCH .../actions`, `POST .../close`
+  | 승인 패널(공용) | 패널 | RESOLVED_CLOSED 전이에 매칭되는 승인 프로세스가 있으면 차수 진행 상태(API-COM-004) 표시, 없으면 패널 자체를 노출하지 않고 기존처럼 즉시 전이 | Info/Warning/Success |
+- **상태 · 인터랙션**: 순서 어긋난 전이 거부. RCA는 개인 강제 지정 안 함. 미존재 인시던트/변경 연결 시 400. 미해결 후속조치 남은 채 종료 시 경고 다이얼로그. 워크어라운드 빈 내용 저장 거부. 종료(RESOLVED_CLOSED) 전이 시도 시 매칭되는 승인 프로세스가 있으면 409와 함께 승인 패널이 나타나며, 처리는 [common.md](common.md) SCR-COM-014에서 수행한다.
+- **연관 API**: `GET /api/v1/problems/{id}`, `PATCH .../status`, `PUT .../rca`, `POST .../workaround`, `POST .../known-errors`, `POST .../links`, `POST/PATCH .../actions`, `POST .../close`, `GET /api/v1/approvals/{approvalRequestId}`(API-COM-004)
 
 ### SCR-PRB-004 · KEDB 검색
 

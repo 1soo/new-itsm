@@ -33,3 +33,10 @@
 - `MyMenuResponse.java` — 내 메뉴 조회 응답(groups)
 - `MenuGroupResponse.java` — 메뉴 그룹(groupCode/groupLabel, items)
 - `MenuItemResponse.java` — 메뉴 항목(screenCode/screenName/path/iconName)
+- `ApprovalDomainResponse.java` — 승인 프로세스 대상 도메인 응답(domain, label, hasRequestSubtype)
+- `ApprovalProcessStepInput.java` — 승인 프로세스 차수 입력(decisionMode, roleIds) — 생성/수정 요청이 공유
+- `CreateApprovalProcessRequest.java` — 승인 프로세스 생성 요청(domain·requestSubtypeKey·requesterRoleIds·steps)
+- `UpdateApprovalProcessRequest.java` — 승인 프로세스 수정 요청(전달된 필드만 갱신, requesterRoleIds·steps는 전달 시 전체 교체)
+- `ApprovalProcessSummaryResponse.java` — 승인 프로세스 목록 항목(우선순위·요청자 역할·차수 수 포함)
+- `ApprovalProcessDetailResponse.java` — 승인 프로세스 상세(요청자 역할 id·차수별 역할 id)
+- `ApprovalProcessDeletedResponse.java` — 승인 프로세스 삭제 응답(id, deleted)

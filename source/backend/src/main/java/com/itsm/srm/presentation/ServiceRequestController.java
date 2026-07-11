@@ -4,8 +4,6 @@ import com.itsm.auth.application.dto.PageResponse;
 import com.itsm.common.exception.ErrorResponse;
 import com.itsm.srm.application.MetricsService;
 import com.itsm.srm.application.ServiceRequestService;
-import com.itsm.srm.application.dto.ApprovalDecisionRequest;
-import com.itsm.srm.application.dto.ApprovalDecisionResponse;
 import com.itsm.srm.application.dto.AssignRequest;
 import com.itsm.srm.application.dto.CommentCreateRequest;
 import com.itsm.srm.application.dto.CommentResponse;
@@ -131,20 +129,6 @@ public class ServiceRequestController {
     public ResponseEntity<StatusResponse> transition(@PathVariable Long id,
                                                      @Valid @RequestBody StatusTransitionRequest request) {
         return ResponseEntity.ok(requestService.transition(id, request));
-    }
-
-    @Operation(summary = "요청 승인/반려(지정 Approver)")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "정상"),
-            @ApiResponse(responseCode = "400", description = "반려 사유 누락", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "403", description = "지정 승인자 아님", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "404", description = "요청/승인 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    })
-    @PreAuthorize("hasRole('APPROVER')")
-    @PostMapping("/{id}/approval")
-    public ResponseEntity<ApprovalDecisionResponse> approve(@PathVariable Long id,
-                                                            @Valid @RequestBody ApprovalDecisionRequest request) {
-        return ResponseEntity.ok(requestService.decideApproval(id, request));
     }
 
     @Operation(summary = "요청 코멘트 등록")

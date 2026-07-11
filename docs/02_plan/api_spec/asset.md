@@ -1,6 +1,6 @@
 # API 명세서 — IT 자산 관리 / CMDB (Asset)
 
-> 도메인: asset · 버전: 0.1 · 작성일: 2026-07-09
+> 도메인: asset · 버전: 0.2 · 작성일: 2026-07-11 · 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 자산 폐기(퇴역) 전이에 공통 승인 게이트([common.md](common.md) API-COM-003~005) 추가(관리자가 규칙을 설정하지 않으면 기존과 동일하게 게이트 없이 진행)
 
 ## 공통 규약
 
@@ -86,14 +86,14 @@
 - **인증**: 필요(Asset Manager)
 - **Request Body**: `{ "targetStage": "PLANNING|PROCUREMENT|OPERATION|MAINTENANCE|RETIREMENT" }`
 - **Response Body** (200): `{ "id": "number", "status": "string" }` (이력 기록)
-- **Response Code**: 200 / 400 정의되지 않은 단계 / 403 / 404
+- **Response Code**: 200 / 400 정의되지 않은 단계 / 403 / 404 / 409 targetStage=RETIREMENT인데 승인 완료 전 — [common.md](common.md) 0절 공통 게이트 로직(domain=ASSET, 요청유형 스코프 없음) 적용. 매칭되는 승인 프로세스가 없거나 0차 승인이면 게이트 없이 통과(기존과 동일)
 
 ### API-ITAM-006 · 자산 폐기
 
 - **Endpoint**: `PATCH /api/v1/assets/{id}/retire`
 - **인증**: 필요(Asset Manager)
 - **Response Body** (200): `{ "id": "number", "status": "RETIRED" }`
-- **Response Code**: 200 / 403 / 404
+- **Response Code**: 200 / 403 / 404 / 409 승인 완료 전 폐기 시도 — API-ITAM-005(targetStage=RETIREMENT)와 동일한 공통 게이트 로직 적용
 
 ### API-ITAM-007 · 자산 티켓 연계
 

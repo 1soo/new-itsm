@@ -3,7 +3,6 @@ import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FieldBuilder, type FormFieldSchema, toast } from "@/components/common";
@@ -16,13 +15,13 @@ import { extractErrorMessage } from "@/lib/apiClient";
 import { cn } from "@/lib/utils";
 
 /*
- * 서비스 카탈로그 관리(SCR-SRM-007) — 프로세스 오너가 요청 유형(양식·SLA·승인·큐)을 정의.
+ * 서비스 카탈로그 관리(SCR-SRM-007) — 프로세스 오너가 요청 유형(양식·SLA·큐)을 정의.
+ * 승인 여부·경로는 SCR-ADMIN-008(승인 프로세스 생성/편집)에서 별도 설정(승인 프로세스 커스텀 기능으로 대체).
  * 좌: 카탈로그 목록 / 우: 편집·생성 폼(FieldBuilder로 동적 필드 정의). 이름·양식 누락 시 400 인라인.
  */
 interface FormState {
   name: string;
   description: string;
-  approvalRequired: boolean;
   queueId: string;
   slaResponseMinutes: string;
   slaResolveMinutes: string;
@@ -32,7 +31,6 @@ interface FormState {
 const EMPTY_FORM: FormState = {
   name: "",
   description: "",
-  approvalRequired: false,
   queueId: "",
   slaResponseMinutes: "",
   slaResolveMinutes: "",
@@ -63,7 +61,6 @@ export function CatalogManagePage() {
       setForm({
         name: detail.name,
         description: detail.description ?? "",
-        approvalRequired: detail.approvalRequired,
         queueId: "",
         slaResponseMinutes: String(detail.slaResponseMinutes ?? ""),
         slaResolveMinutes: String(detail.slaResolveMinutes ?? ""),
@@ -96,7 +93,6 @@ export function CatalogManagePage() {
     const payload: CatalogItemInput = {
       name: form.name.trim(),
       description: form.description.trim(),
-      approvalRequired: form.approvalRequired,
       queueId: form.queueId ? Number(form.queueId) : undefined,
       slaResponseMinutes: Number(form.slaResponseMinutes) || 0,
       slaResolveMinutes: Number(form.slaResolveMinutes) || 0,
@@ -207,17 +203,6 @@ export function CatalogManagePage() {
                   onChange={(e) => setForm((f) => ({ ...f, queueId: e.target.value }))}
                 />
               </div>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="approval"
-                  checked={form.approvalRequired}
-                  onCheckedChange={(c) => setForm((f) => ({ ...f, approvalRequired: c === true }))}
-                />
-                <Label htmlFor="approval" className="font-normal">
-                  승인 필요
-                </Label>
-              </div>
-
               <div className="space-y-1.5">
                 <Label>양식 필드</Label>
                 <FieldBuilder

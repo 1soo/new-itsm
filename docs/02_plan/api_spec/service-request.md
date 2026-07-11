@@ -1,6 +1,6 @@
 # API 명세서 — 서비스 요청 관리 (Service Request)
 
-> 도메인: service-request · 버전: 0.1 · 작성일: 2026-07-09
+> 도메인: service-request · 버전: 0.2 · 작성일: 2026-07-11 · 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 카탈로그 항목별 approvalRequired/approverRole 필드 제거, 전용 승인 API(API-SRM-011/012) 삭제 후 공통 승인 API([common.md](common.md) API-COM-003~005)로 대체
 
 ## 공통 규약
 
@@ -21,8 +21,6 @@
 | API-SRM-008 | 요청 상세 조회 | GET | /api/v1/service-requests/{id} | 필요 |
 | API-SRM-009 | 요청 담당자 배정 | POST | /api/v1/service-requests/{id}/assign | 필요(Agent) |
 | API-SRM-010 | 요청 상태 전이(검증/이행/종료) | PATCH | /api/v1/service-requests/{id}/status | 필요 |
-| API-SRM-011 | 요청 승인/반려 | POST | /api/v1/service-requests/{id}/approval | 필요(Approver) |
-| API-SRM-012 | 승인 대기 목록 | GET | /api/v1/approvals | 필요(Approver) |
 | API-SRM-013 | 요청 코멘트 등록 | POST | /api/v1/service-requests/{id}/comments | 필요 |
 | API-SRM-014 | CSAT 제출 | POST | /api/v1/service-requests/{id}/csat | 필요(요청자) |
 | API-SRM-015 | 요청 지표 조회 | GET | /api/v1/service-requests/metrics | 필요 |
@@ -36,9 +34,10 @@
 - **인증**: 필요(Access Token)
 - **Response Body** (200):
   ```json
-  [ { "id": "number", "name": "string", "description": "string", "category": "string", "approvalRequired": "boolean" } ]
+  [ { "id": "number", "name": "string", "description": "string", "category": "string" } ]
   ```
 - **Response Code**: 200 / 401
+  > 승인 필요 여부는 더 이상 카탈로그 항목의 고정 속성이 아니다(요청자의 보유 역할에 따라 매칭되는 승인 프로세스가 달라질 수 있음). 개별 요청의 승인 여부는 상세 조회(API-SRM-008) `approval` 필드로 확인한다.
 
 ### API-SRM-002 · 카탈로그 항목 상세(양식 스키마)
 
@@ -47,7 +46,7 @@
 - **Response Body** (200):
   ```json
   {
-    "id": "number", "name": "string", "description": "string", "approvalRequired": "boolean",
+    "id": "number", "name": "string", "description": "string",
     "slaResponseMinutes": "number", "slaResolveMinutes": "number",
     "formSchema": [ { "key": "string", "label": "string", "type": "text|select|number|date|file", "required": "boolean", "options": ["string"] } ]
   }
@@ -62,12 +61,12 @@
 - **Request Body**:
   ```json
   {
-    "name": "string · 필수", "description": "string", "approvalRequired": "boolean",
-    "approverRole": "string · 승인 담당 역할코드(기본 APPROVER), approvalRequired=true 시 사용",
+    "name": "string · 필수", "description": "string",
     "queueId": "number", "slaResponseMinutes": "number", "slaResolveMinutes": "number",
     "formSchema": [ { "key": "string", "label": "string", "type": "string", "required": "boolean", "options": ["string"] } ]
   }
   ```
+  > 승인 필요 여부·승인 담당 역할은 더 이상 카탈로그 항목 생성 시 지정하지 않는다(승인 프로세스 커스텀 기능으로 완전 대체 — [auth.md](auth.md) API-AUTH-027에서 SYSTEM_ADMIN이 도메인=SERVICE_REQUEST, 요청유형=이 카탈로그 항목으로 별도 설정).
 - **Response Body** (201): 생성된 항목
 - **Response Code**: 201 / 400 이름·양식 누락 / 403 권한 부족
 
@@ -125,7 +124,7 @@
   {
     "id": "number", "ticketKey": "string", "catalogItemName": "string", "status": "string",
     "formValues": {}, "requester": "string", "assignee": "string", "queue": "string",
-    "approval": { "required": "boolean", "status": "PENDING|APPROVED|REJECTED", "reason": "string" },
+    "approval": { "approvalRequestId": "number|null", "status": "IN_PROGRESS|APPROVED|REJECTED|null · null=매칭되는 승인 프로세스 없음(게이트 없이 진행)" },
     "sla": { "responseStatus": "string", "resolveStatus": "string" },
     "linkedArticles": [ { "articleId": "number", "title": "string" } ],
     "linkedAssets": [ { "id": "number", "assetKey": "string" } ],
@@ -133,7 +132,7 @@
     "timeline": [ { "type": "string", "message": "string", "at": "ISO-8601" } ]
   }
   ```
-- **Response Code**: 200 / 401 / 403 / 404
+- **Response Code**: 200 / 401 / 403 / 404. `approval` 상세(차수별 진행 상태)는 [common.md](common.md) API-COM-004로 조회한다.
 
 ### API-SRM-009 · 요청 담당자 배정
 
@@ -157,25 +156,7 @@
   | 200 | 전이 성공 |
   | 400 | 허용되지 않은 전이 / 이미 종료된 요청 재종료 |
   | 403 | 권한 부족(이행 등) |
-  | 409 | 승인 대기 중 이행 전이 시도 |
-
-### API-SRM-011 · 요청 승인/반려
-
-- **Endpoint**: `POST /api/v1/service-requests/{id}/approval`
-- **인증**: 필요(approval.approver_role 보유자)
-- **Request Body**: `{ "decision": "APPROVE|REJECT", "reason": "string · 반려 시 필수" }`
-- **Response Body** (200): `{ "id": "number", "approvalStatus": "string" }`
-- **Response Code**: 200 / 400 반려 사유 누락 / 403 approver_role 미보유 / 404 / 409 이미 결정됨. **역할 기반 승인**: approver_role을 가진 사용자면 처리 가능하며, 먼저 처리한 사용자가 결정자로 기록(decided_by_id). role claim에 approver_role 미포함 시 403.
-
-### API-SRM-012 · 승인 대기 목록
-
-- **Endpoint**: `GET /api/v1/approvals?scope=mine&type=service-request`
-- **인증**: 필요(Approver 계열 역할)
-- **Response Body** (200):
-  ```json
-  [ { "requestId": "number", "ticketKey": "string", "catalogItemName": "string", "requester": "string", "requestedAt": "ISO-8601" } ]
-  ```
-- **Response Code**: 200 / 401 / 403. `scope=mine` = 현재 사용자의 role claim에 approval.approver_role이 포함된 **PENDING 승인 공유 목록**(특정 개인 배정이 아닌 역할 기반 공유함). `catalogItemName`은 헤더 알림 드롭다운(common.md SCR-COM-002)의 제목 표시용으로, 요청의 카탈로그 항목명을 그대로 노출한다.
+  | 409 | 승인 완료 전 이행(IN_FULFILLMENT) 전이 시도 — [common.md](common.md) 0절 공통 게이트 로직(domain=SERVICE_REQUEST, requestSubtypeKey=service_catalog_item.id) 적용. 매칭되는 승인 프로세스가 없거나 0차 승인이면 게이트 없이 통과 |
 
 ### API-SRM-013 · 요청 코멘트 등록
 

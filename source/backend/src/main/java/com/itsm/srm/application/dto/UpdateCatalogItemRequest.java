@@ -8,8 +8,6 @@ import java.util.List;
 public record UpdateCatalogItemRequest(
         String name,
         String description,
-        Boolean approvalRequired,
-        String approverRole,
         Long queueId,
         Integer slaResponseMinutes,
         Integer slaResolveMinutes,

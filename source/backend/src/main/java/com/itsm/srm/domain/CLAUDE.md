@@ -9,7 +9,7 @@ srm 도메인의 엔티티·enum·리포지토리 계약.
 - `ServiceRequestFormValue.java` — 요청별 양식 입력 값 엔티티
 - `Queue.java` — 요청 처리 큐 엔티티
 - `Csat.java` — 고객 만족도(CSAT) 엔티티
-- `RequestStatus.java` — 요청 상태 enum(SUBMITTED, VALIDATED, ROUTED, APPROVAL_PENDING, IN_FULFILLMENT, FULFILLED, CLOSED, REJECTED)
+- `RequestStatus.java` — 요청 상태 enum(SUBMITTED, VALIDATED, ROUTED, IN_FULFILLMENT, FULFILLED, CLOSED). 승인 게이트는 상태값이 아니라 IN_FULFILLMENT 전이 시도 시 공용 승인 엔진이 판정
 - `SlaStatus.java` — SLA 상태 enum(OK, WARNING, BREACHED)
 
 ## 하위 디렉토리

@@ -56,14 +56,12 @@ class ServiceCatalogServiceTest {
                 .thenReturn(List.of(new CatalogFormField(1L, "reason", "사유", "text", true, null, 0)));
 
         CreateCatalogItemRequest request = new CreateCatalogItemRequest(
-                "Laptop", "desc", true, "APPROVER", 1L, 60, 480,
+                "Laptop", "desc", 1L, 60, 480,
                 List.of(new FormFieldDto("reason", "Reason", "text", true, null)));
 
         CatalogItemDetailResponse response = service.create(request);
 
         assertThat(response.name()).isEqualTo("Laptop");
-        assertThat(response.approvalRequired()).isTrue();
-        assertThat(response.approverRole()).isEqualTo("APPROVER");
         assertThat(response.formSchema()).hasSize(1);
     }
 

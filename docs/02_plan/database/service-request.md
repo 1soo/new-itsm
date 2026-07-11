@@ -1,8 +1,8 @@
 # 테이블 정의서 — 서비스 요청 관리 (Service Request)
 
-> 도메인: service-request · 버전: 0.1 · 작성일: 2026-07-09
+> 도메인: service-request · 버전: 0.2 · 작성일: 2026-07-11 · 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 카탈로그 항목별 승인 필드(`approval_required`/`approver_role`) 제거
 
-서비스 카탈로그(요청 유형·동적 양식), 큐, 서비스 요청, 동적 양식 값, CSAT를 정의한다. 승인은 [common.md](common.md)의 `approval`, 코멘트는 `comment`를 사용한다.
+서비스 카탈로그(요청 유형·동적 양식), 큐, 서비스 요청, 동적 양식 값, CSAT를 정의한다. 승인은 [common.md](common.md)의 `approval_process`/`approval_request` 커스텀 승인 엔진(전 도메인 공용), 코멘트는 `comment`를 사용한다. 카탈로그 항목(`service_catalog_item.id`)은 승인 프로세스의 요청유형 스코프(`approval_process.request_subtype_key`)로도 사용된다.
 
 ## 1. 정규화 방침
 
@@ -47,8 +47,6 @@
 | name | VARCHAR(150) | NOT NULL | 요청 유형명 |
 | description | VARCHAR(500) | NULL | 설명 |
 | category | VARCHAR(100) | NULL | 카탈로그 그룹 |
-| approval_required | BOOLEAN | NOT NULL, DEFAULT false | 승인 필요 여부 |
-| approver_role | VARCHAR(50) | NULL | 승인 담당 역할(role.role_code, 기본 'APPROVER'). approval_required=true일 때 승인 라우팅에 사용 |
 | queue_id | BIGINT | FK → queue.id, NULL | 담당 큐 |
 | sla_response_minutes | INT | NULL | 응답 SLA(분) |
 | sla_resolve_minutes | INT | NULL | 해결 SLA(분) |
@@ -117,4 +115,4 @@
 - service_request.catalog_item_id → service_catalog_item.id, requester_id/assignee_id → app_user.id, queue_id → queue.id (FK)
 - service_request_form_value.service_request_id → service_request.id (FK), UNIQUE(service_request_id, field_key)
 - csat.service_request_id → service_request.id (FK, UNIQUE)
-- 승인은 common.approval(ticket_type='SERVICE_REQUEST'), 코멘트는 common.comment 사용
+- 승인은 common.approval_process(domain='SERVICE_REQUEST', request_subtype_key=service_catalog_item.id)로 매칭된 규칙에 따라 common.approval_request(ticket_type='SERVICE_REQUEST')가 생성, 코멘트는 common.comment 사용

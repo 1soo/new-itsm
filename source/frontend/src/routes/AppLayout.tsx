@@ -5,16 +5,15 @@ import { AppShell } from "@/components/layout/app-shell";
 import type { HeaderNotificationItem, HeaderSearchResult } from "@/components/layout/header";
 import type { NavGroup } from "@/components/layout/sidebar";
 import { ConfirmDialog, toast } from "@/components/common";
-import { hasAnyRole, ROLE_APPROVER, ROLE_ASSET_MANAGER } from "@/features/auth/roles";
+import { hasAnyRole, ROLE_ASSET_MANAGER } from "@/features/auth/roles";
 import { authApi } from "@/features/auth/api";
 import type { MenuGroup as MyMenuGroup } from "@/features/auth/types";
-import { srmApi } from "@/features/service-request/api";
-import { changeApi } from "@/features/change/api";
 import { assetApi } from "@/features/asset/api";
 import { formatDate } from "@/features/asset/format";
 import { searchApi } from "@/features/search/api";
 import { domainLabel } from "@/features/search/status";
 import { commonApi } from "@/features/common/api";
+import { ticketDetailPath, ticketTypeApprovalLabel } from "@/features/common/status";
 import type { DismissalItem, NotificationType } from "@/features/common/types";
 import { resolveIcon } from "@/lib/icon";
 import { extractErrorMessage } from "@/lib/apiClient";
@@ -149,8 +148,9 @@ export function AppLayout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [menuGroups, activeKey, navigate]);
 
-  // 알림 벨: 역할별 승인 대기(서비스요청·CAB)와 자산 만료 임박 항목을 조합해 팝오버 리스트로 조립한다
-  // (신규 API 없이 기존 대기함 API 조합, 5초 간격으로 재조회하며 표시 상한 없음 — 유지보수 요청).
+  // 알림 벨: 승인 대기(전 도메인 공용, API-COM-003)와 자산 만료 임박 항목을 조합해 팝오버 리스트로 조립한다
+  // (승인 프로세스 커스텀 기능으로 서비스요청·변경 전용 API에서 공용 API로 전환, 5초 간격으로 재조회하며
+  // 표시 상한 없음 — 유지보수 요청).
   // 뱃지 카운트는 표시 목록의 누적과 무관하게 매 polling마다 서버 기준 전체 대기 건수 합계로 재계산한다.
   // 항목 클릭 시 이동할 상세 경로는 key로 조회한다.
   // 원본 시각(atIso)을 보관해두고, 팝오버가 열릴 때마다 그 시점 기준으로 timeLabel을 재계산한다
@@ -188,41 +188,24 @@ export function AppLayout() {
       let count = 0;
       const candidates: NotificationSource[] = [];
 
-      if (hasAnyRole(roles, [ROLE_APPROVER])) {
-        const [srmApprovals, chgApprovals] = await Promise.all([
-          srmApi.listApprovals(),
-          changeApi.listApprovals(),
-        ]);
-        const srmVisible = srmApprovals.filter(
-          (a) => !dismissedKeys.has(dismissalKey("SERVICE_REQUEST_APPROVAL", a.requestId)),
-        );
-        const chgVisible = chgApprovals.filter(
-          (a) => !dismissedKeys.has(dismissalKey("CHANGE_APPROVAL", a.changeId)),
-        );
-        count += srmVisible.length + chgVisible.length;
+      // 승인 프로세스 커스텀 기능(전 도메인 공용) — 승인자 역할이 티켓마다 동적으로 결정되므로
+      // 특정 역할 보유 여부로 게이팅하지 않고 전 인증 사용자 대상으로 조회한다.
+      const approvals = await commonApi.listMyApprovals();
+      const approvalsVisible = approvals.content.filter(
+        (a) => !dismissedKeys.has(dismissalKey("APPROVAL", a.approvalRequestId)),
+      );
+      count += approvalsVisible.length;
 
-        for (const a of srmVisible) {
-          candidates.push({
-            key: `sr-${a.requestId}`,
-            domainLabel: "서비스요청 승인",
-            title: a.catalogItemName,
-            atIso: a.requestedAt,
-            href: `/service-requests/${a.requestId}`,
-            notificationType: "SERVICE_REQUEST_APPROVAL",
-            sourceId: a.requestId,
-          });
-        }
-        for (const a of chgVisible) {
-          candidates.push({
-            key: `chg-${a.changeId}`,
-            domainLabel: "변경 승인",
-            title: a.summary,
-            atIso: a.createdAt,
-            href: `/changes/${a.changeId}`,
-            notificationType: "CHANGE_APPROVAL",
-            sourceId: a.changeId,
-          });
-        }
+      for (const a of approvalsVisible) {
+        candidates.push({
+          key: `approval-${a.approvalRequestId}`,
+          domainLabel: ticketTypeApprovalLabel(a.ticketType),
+          title: a.ticketSummary,
+          atIso: a.requestedAt,
+          href: ticketDetailPath(a.ticketType, a.ticketId),
+          notificationType: "APPROVAL",
+          sourceId: a.approvalRequestId,
+        });
       }
 
       if (hasAnyRole(roles, [ROLE_ASSET_MANAGER])) {

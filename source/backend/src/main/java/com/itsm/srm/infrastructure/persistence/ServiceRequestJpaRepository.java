@@ -33,7 +33,7 @@ public interface ServiceRequestJpaRepository extends JpaRepository<ServiceReques
     @Query("""
             select count(r) from ServiceRequest r
             where r.isDeleted = false and r.queueId = :queueId
-              and r.status not in (com.itsm.srm.domain.RequestStatus.CLOSED, com.itsm.srm.domain.RequestStatus.REJECTED)
+              and r.status <> com.itsm.srm.domain.RequestStatus.CLOSED
             """)
     long countOpenByQueueId(@Param("queueId") Long queueId);
 

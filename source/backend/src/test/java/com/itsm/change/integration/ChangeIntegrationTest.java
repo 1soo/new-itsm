@@ -5,8 +5,6 @@ import com.itsm.asset.application.dto.CreateAssetRequest;
 import com.itsm.asset.application.dto.LinkAssetRequest;
 import com.itsm.asset.domain.AssetType;
 import com.itsm.change.application.ChangeService;
-import com.itsm.change.application.dto.ChangeApprovalDecision;
-import com.itsm.change.application.dto.ChangeApprovalRequest;
 import com.itsm.change.application.dto.ClassificationRequest;
 import com.itsm.change.application.dto.CreateChangeRequest;
 import com.itsm.change.application.dto.LinkRequest;
@@ -45,10 +43,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 실 PostgreSQL(Testcontainers)로 변경(change) 전체 흐름을 검증한다.
- * RFC 등록(승인경로 분류: CAB/PEER_REVIEW/AUTO)→6단계 전이(승인 전 구현 차단 409)→
- * 승인/반려(역할 기반 공유 대기함, 반려사유 필수, 재결정 409)→구현결과(미승인 400)→
- * 인시던트/문제 양방향 연계→일정·템플릿·지표를 실 트랜잭션·실 FK로 재현한다.
- * 실제 DDL(01/03/04/06/08/10)을 마운트한다.
+ * RFC 등록→6단계 전이(순서 위반 400)→분류(유형·위험)→구현결과→인시던트/문제/자산 양방향 연계→일정·템플릿·지표를
+ * 실 트랜잭션·실 FK로 재현한다. 승인 경로 자동 라우팅·승인/반려는 승인 프로세스 커스텀 기능(2026-07-11)으로
+ * 제거되었다(공용 승인 엔진이 대체, Stage 1은 게이트 없이 통과 — Stage 2에서 게이트 연동 테스트 추가 예정).
+ * 실제 DDL(01/03/04/06/08/10/.../26)을 마운트한다.
  */
 @Testcontainers(disabledWithoutDocker = true)
 @SpringBootTest
@@ -84,7 +82,9 @@ class ChangeIntegrationTest {
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/24_auth_menu_columns.sql").toAbsolutePath()),
                     "/docker-entrypoint-initdb.d/24_auth_menu_columns.sql")
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/25_common_notification_dismissal.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/25_common_notification_dismissal.sql");
+                    "/docker-entrypoint-initdb.d/25_common_notification_dismissal.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/26_approval_engine_schema.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/26_approval_engine_schema.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {
@@ -134,13 +134,11 @@ class ChangeIntegrationTest {
     }
 
     @Test
-    void fullChangeLifecycleWithCabApproval() {
+    void fullChangeLifecycleWithoutGate() {
         long ts = System.nanoTime();
         Long cmId = insertUser("cm" + ts + "@itsm.local");
-        Long approverId = insertUser("apr" + ts + "@itsm.local");
         as(cmId, "CHANGE_MANAGER");
 
-        // 등록 — 고위험 → CAB 경로
         var created = changeService.create(new CreateChangeRequest("결제 모듈 배포", "설명",
                 ChangeType.NORMAL, ChangeRisk.HIGH, "배포 계획", List.of("payment-api"), "롤백 계획", null, null));
         Long id = created.id();
@@ -158,110 +156,26 @@ class ChangeIntegrationTest {
                         .isEqualTo(ErrorCode.INVALID_STATUS_TRANSITION));
 
         changeService.transition(id, new StatusTransitionRequest(ChangeStatus.APPROVAL, null));
-        // CAB 경로 → 승인 대기 레코드 생성 확인
-        Long approvalCount = jdbc.queryForObject(
-                "select count(*) from approval where ticket_type='CHANGE' and ticket_id=? and status='PENDING'",
-                Long.class, id);
-        assertThat(approvalCount).isEqualTo(1);
-
-        // 승인 완료 전 구현 전이 → 409
-        assertThatThrownBy(() -> changeService.transition(id, new StatusTransitionRequest(ChangeStatus.IMPLEMENTATION, null)))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                        .isEqualTo(ErrorCode.APPROVAL_PENDING));
-
-        // 구현 결과 기록 시도(미승인) → 400
-        assertThatThrownBy(() -> changeService.recordResult(id, new ResultRequest(Outcome.SUCCESS, false, "완료")))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                        .isEqualTo(ErrorCode.CHANGE_NOT_APPROVED));
-
-        // CAB(APPROVER) 승인
-        as(approverId, "APPROVER");
-        var approved = changeService.decideApproval(id, new ChangeApprovalRequest(ChangeApprovalDecision.APPROVE, "승인합니다"));
-        assertThat(approved.id()).isEqualTo(id);
-
-        // 재결정 → 409
-        assertThatThrownBy(() -> changeService.decideApproval(id, new ChangeApprovalRequest(ChangeApprovalDecision.APPROVE, null)))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                        .isEqualTo(ErrorCode.APPROVAL_ALREADY_DECIDED));
-
-        // 승인 후 구현 전이 성공
-        as(cmId, "CHANGE_MANAGER");
+        // Stage 1(공용 승인 엔진 도입): 게이트 연동 전이라 승인 없이 구현 전이 통과(Stage 2에서 게이트 추가)
         var toImpl = changeService.transition(id, new StatusTransitionRequest(ChangeStatus.IMPLEMENTATION, null));
         assertThat(toImpl.status()).isEqualTo("IMPLEMENTATION");
 
-        // 구현 결과 기록
         var result = changeService.recordResult(id, new ResultRequest(Outcome.SUCCESS, false, "정상 배포"));
         assertThat(result.outcome()).isEqualTo("SUCCESS");
         changeService.transition(id, new StatusTransitionRequest(ChangeStatus.CLOSED, null));
 
-        // 상세 조회 — 승인 이력 노출
         var detail = changeService.detail(id);
-        assertThat(detail.approvals()).extracting("decision").contains("APPROVED");
         assertThat(detail.status()).isEqualTo("CLOSED");
     }
 
     @Test
-    void standardChangeWithTemplateAutoApproves() {
-        // TC-CHG-015: risk 미평가(null)로 생성해도 STANDARD+templateId는 AUTO여야 한다.
-        as(insertUser("cm" + System.nanoTime() + "@itsm.local"), "CHANGE_MANAGER");
-        Long templateId = insertTemplate("표준 배포 템플릿");
-        var created = changeService.create(new CreateChangeRequest("표준 패치 배포", null,
-                ChangeType.STANDARD, null, null, null, null, null, templateId));
-        Long id = created.id();
-
-        assertThat(changeService.detail(id).approvalRoute()).isEqualTo("AUTO");
-
-        changeService.transition(id, new StatusTransitionRequest(ChangeStatus.REVIEW, null));
-        changeService.transition(id, new StatusTransitionRequest(ChangeStatus.PLANNING, null));
-        changeService.transition(id, new StatusTransitionRequest(ChangeStatus.APPROVAL, null));
-
-        // AUTO 경로 → 승인 레코드 생성 안 됨
-        Long approvalCount = jdbc.queryForObject(
-                "select count(*) from approval where ticket_type='CHANGE' and ticket_id=?", Long.class, id);
-        assertThat(approvalCount).isEqualTo(0);
-
-        // 승인 절차 없이 구현 전이 즉시 성공
-        var toImpl = changeService.transition(id, new StatusTransitionRequest(ChangeStatus.IMPLEMENTATION, null));
-        assertThat(toImpl.status()).isEqualTo("IMPLEMENTATION");
-    }
-
-    @Test
-    void classificationChangesApprovalRoute() {
+    void classificationUpdatesTypeAndRisk() {
         as(insertUser("cm" + System.nanoTime() + "@itsm.local"), "CHANGE_MANAGER");
         var created = changeService.create(new CreateChangeRequest("긴급 조치", null,
                 ChangeType.EMERGENCY, null, null, null, null, null, null));
         var response = changeService.classify(created.id(), new ClassificationRequest(ChangeType.NORMAL, ChangeRisk.MEDIUM));
-        assertThat(response.approvalRoute()).isEqualTo("PEER_REVIEW");
-
-        var response2 = changeService.classify(created.id(), new ClassificationRequest(ChangeType.NORMAL, ChangeRisk.HIGH));
-        assertThat(response2.approvalRoute()).isEqualTo("CAB");
-    }
-
-    @Test
-    void rejectRequiresReasonAndRecordsDecision() {
-        long ts = System.nanoTime();
-        as(insertUser("cm" + ts + "@itsm.local"), "CHANGE_MANAGER");
-        var created = changeService.create(new CreateChangeRequest("위험 변경", null,
-                ChangeType.NORMAL, ChangeRisk.HIGH, null, null, null, null, null));
-        Long id = created.id();
-        changeService.transition(id, new StatusTransitionRequest(ChangeStatus.REVIEW, null));
-        changeService.transition(id, new StatusTransitionRequest(ChangeStatus.PLANNING, null));
-        changeService.transition(id, new StatusTransitionRequest(ChangeStatus.APPROVAL, null));
-
-        as(insertUser("apr" + ts + "@itsm.local"), "APPROVER");
-        assertThatThrownBy(() -> changeService.decideApproval(id, new ChangeApprovalRequest(ChangeApprovalDecision.REJECT, null)))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                        .isEqualTo(ErrorCode.REJECT_REASON_REQUIRED));
-
-        var rejected = changeService.decideApproval(id, new ChangeApprovalRequest(ChangeApprovalDecision.REJECT, "위험도 과다"));
-        assertThat(rejected.id()).isEqualTo(id);
-        String status = jdbc.queryForObject(
-                "select status from approval where ticket_type='CHANGE' and ticket_id=?", String.class, id);
-        assertThat(status).isEqualTo("REJECTED");
+        assertThat(response.type()).isEqualTo("NORMAL");
+        assertThat(response.risk()).isEqualTo("MEDIUM");
     }
 
     @Test

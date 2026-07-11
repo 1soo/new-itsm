@@ -189,7 +189,7 @@ class ComplianceServiceTest {
         ReflectionTestUtils.setField(req, "id", 1L);
         when(requirementRepository.findById(1L)).thenReturn(Optional.of(req));
         ChangeRequest change = new ChangeRequest("CHG-2026-0001", "요약", null, ChangeType.NORMAL, null,
-                null, null, null, null, null);
+                null, null, null, null);
         when(changeRequestRepository.findById(5L)).thenReturn(Optional.of(change));
         when(ticketLinkRepository.existsBySourceTypeAndSourceIdAndTargetTypeAndTargetId(any(), any(), any(), any()))
                 .thenReturn(false);

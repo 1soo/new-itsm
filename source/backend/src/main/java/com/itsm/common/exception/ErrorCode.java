@@ -59,7 +59,6 @@ public enum ErrorCode {
 
     // --- Change (CHG) ---
     CHANGE_NOT_FOUND(HttpStatus.NOT_FOUND, "변경 요청을 찾을 수 없습니다."),
-    CHANGE_NOT_APPROVED(HttpStatus.BAD_REQUEST, "승인되지 않은 변경입니다."),
 
     // --- Knowledge (KM) ---
     ARTICLE_NOT_FOUND(HttpStatus.NOT_FOUND, "기사를 찾을 수 없습니다."),
@@ -88,6 +87,13 @@ public enum ErrorCode {
 
     // --- Infra Monitoring (IOM) ---
     INFRA_METRIC_ALERT_NOT_FOUND(HttpStatus.NOT_FOUND, "임계치 초과 알림을 찾을 수 없습니다."),
+
+    // --- 승인 프로세스 커스텀(공용 승인 엔진, common.md/auth.md) ---
+    APPROVAL_PROCESS_NOT_FOUND(HttpStatus.NOT_FOUND, "승인 프로세스를 찾을 수 없습니다."),
+    INVALID_APPROVAL_DOMAIN(HttpStatus.BAD_REQUEST, "정의되지 않은 도메인입니다."),
+    APPROVAL_STEP_ROLES_REQUIRED(HttpStatus.BAD_REQUEST, "차수의 승인 역할(roleIds)은 1개 이상이어야 합니다."),
+    APPROVAL_STEPS_TOO_MANY(HttpStatus.BAD_REQUEST, "승인자 차수는 최대 10개까지 설정할 수 있습니다."),
+    APPROVAL_PROCESS_PRIORITY_CONFLICT(HttpStatus.CONFLICT, "동일 범위의 승인 프로세스가 이미 존재합니다."),
 
     // 409
     EMAIL_DUPLICATE(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),

@@ -1,6 +1,6 @@
 # 화면 설계서 — 엔터프라이즈 서비스 관리 (ESM)
 
-> 도메인: esm · 버전: 0.1 · 작성일: 2026-07-10
+> 도메인: esm · 버전: 0.2 · 작성일: 2026-07-11 · 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 부서 요청 상세에 공통 승인 패널 추가(IN_PROGRESS → COMPLETED 전이 게이트, 매칭 규칙 없으면 기존처럼 즉시 전이). HR 케이스·체크리스트 하위 작업은 대상 아님
 
 ## 1. 개요
 
@@ -96,8 +96,9 @@
   | 상태 전이 버튼 | 버튼 | 처리중/완료/반려 | Base/Success/Danger |
   | 연계 체크리스트 카드 | 카드 | 온보딩/오프보딩 시 진행률 요약, 클릭 시 SCR-ESM-009 이동 | Info |
   | 코멘트 입력 | 입력 | 요청자-처리자 소통 | Border/Base |
-- **상태 · 인터랙션**: 담당 부서 처리자가 아니면 상태 전이 버튼 비노출. 체크리스트가 없는 일반 요청은 카드 미노출.
-- **연관 API**: `GET /api/v1/esm/requests/{id}`, `PATCH .../status`, `POST .../comments`
+  | 승인 패널(공용) | 패널 | COMPLETED 전이에 매칭되는 승인 프로세스가 있으면 차수 진행 상태(API-COM-004) 표시, 없으면 패널 자체를 노출하지 않고 기존처럼 즉시 전이 | Info/Warning/Success |
+- **상태 · 인터랙션**: 담당 부서 처리자가 아니면 상태 전이 버튼 비노출. 체크리스트가 없는 일반 요청은 카드 미노출. COMPLETED 전이 시도 시 매칭되는 승인 프로세스가 있으면 409와 함께 승인 패널이 나타나며, 처리는 [common.md](common.md) SCR-COM-014에서 수행한다.
+- **연관 API**: `GET /api/v1/esm/requests/{id}`, `PATCH .../status`, `POST .../comments`, `GET /api/v1/approvals/{approvalRequestId}`(API-COM-004)
 
 ### SCR-ESM-006 · 부서별 카탈로그 관리
 

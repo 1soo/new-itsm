@@ -7,7 +7,6 @@ public record CatalogItemSummaryResponse(
         Long id,
         String name,
         String description,
-        String category,
-        boolean approvalRequired
+        String category
 ) {
 }

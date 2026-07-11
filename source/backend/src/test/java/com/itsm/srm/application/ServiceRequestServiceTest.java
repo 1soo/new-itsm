@@ -2,17 +2,17 @@ package com.itsm.srm.application;
 
 import com.itsm.asset.application.AssetService;
 import com.itsm.auth.domain.repository.AppUserRepository;
+import com.itsm.common.approval.application.ApprovalGateService;
+import com.itsm.common.approval.domain.ApprovalRequest;
+import com.itsm.common.approval.domain.ApprovalRequestStatus;
+import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.common.security.AuthPrincipal;
-import com.itsm.common.ticket.Approval;
 import com.itsm.common.ticket.TicketType;
-import com.itsm.common.ticket.repository.ApprovalRepository;
 import com.itsm.common.ticket.repository.CommentRepository;
 import com.itsm.common.ticket.repository.TicketLinkRepository;
 import com.itsm.common.ticket.repository.TimelineEventRepository;
-import com.itsm.srm.application.dto.ApprovalDecision;
-import com.itsm.srm.application.dto.ApprovalDecisionRequest;
 import com.itsm.srm.application.dto.AssignRequest;
 import com.itsm.srm.application.dto.CreateRequestRequest;
 import com.itsm.srm.application.dto.CsatRequest;
@@ -47,6 +47,10 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -59,22 +63,23 @@ class ServiceRequestServiceTest {
     @Mock CatalogFormFieldRepository formFieldRepository;
     @Mock QueueRepository queueRepository;
     @Mock CsatRepository csatRepository;
-    @Mock ApprovalRepository approvalRepository;
     @Mock CommentRepository commentRepository;
     @Mock TimelineEventRepository timelineRepository;
     @Mock AppUserRepository appUserRepository;
     @Mock TicketLinkRepository ticketLinkRepository;
     @Mock AssetService assetService;
+    @Mock ApprovalGateService approvalGateService;
+    @Mock ApprovalRequestRepository approvalRequestRepository;
 
     ServiceRequestService service;
 
     @BeforeEach
     void setUp() {
         service = new ServiceRequestService(requestRepository, formValueRepository, catalogItemRepository,
-                formFieldRepository, queueRepository, csatRepository, approvalRepository, commentRepository,
-                timelineRepository, appUserRepository, ticketLinkRepository, assetService);
+                formFieldRepository, queueRepository, csatRepository, commentRepository,
+                timelineRepository, appUserRepository, ticketLinkRepository, assetService,
+                approvalGateService, approvalRequestRepository);
         when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(approvalRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(csatRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     }
 
@@ -97,9 +102,8 @@ class ServiceRequestServiceTest {
         return r;
     }
 
-    private ServiceCatalogItem catalog(boolean approvalRequired) {
-        return new ServiceCatalogItem("Laptop", null, null, approvalRequired,
-                approvalRequired ? "APPROVER" : null, 1L, null, null);
+    private ServiceCatalogItem catalog() {
+        return new ServiceCatalogItem("Laptop", null, null, 1L, null, null);
     }
 
     private ErrorCode codeOf(Throwable e) {
@@ -121,7 +125,7 @@ class ServiceRequestServiceTest {
     @Test
     void createRequiredFieldMissingThrows() {
         login(1L, "END_USER");
-        when(catalogItemRepository.findById(10L)).thenReturn(Optional.of(catalog(false)));
+        when(catalogItemRepository.findById(10L)).thenReturn(Optional.of(catalog()));
         when(formFieldRepository.findByCatalogItemIdOrderBySortOrderAsc(any()))
                 .thenReturn(List.of(new CatalogFormField(10L, "reason", "사유", "text", true, null, 0)));
 
@@ -133,7 +137,7 @@ class ServiceRequestServiceTest {
     @Test
     void createSuccess() {
         login(1L, "END_USER");
-        when(catalogItemRepository.findById(10L)).thenReturn(Optional.of(catalog(false)));
+        when(catalogItemRepository.findById(10L)).thenReturn(Optional.of(catalog()));
         when(formFieldRepository.findByCatalogItemIdOrderBySortOrderAsc(any())).thenReturn(List.of());
         when(requestRepository.countByTicketKeyStartingWith(any())).thenReturn(0L);
 
@@ -176,6 +180,19 @@ class ServiceRequestServiceTest {
                 .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.ACCESS_DENIED));
     }
 
+    @Test
+    void detailExposesLatestApprovalRequest() {
+        login(2L, "END_USER");
+        when(requestRepository.findById(1L)).thenReturn(Optional.of(request(2L, RequestStatus.ROUTED)));
+        ApprovalRequest approvalRequest = new ApprovalRequest(TicketType.SERVICE_REQUEST, 1L, 100L, (short) 1);
+        when(approvalRequestRepository.findTopByTicketTypeAndTicketIdOrderByIdDesc(TicketType.SERVICE_REQUEST, 1L))
+                .thenReturn(Optional.of(approvalRequest));
+
+        var response = service.detail(1L);
+
+        assertThat(response.approval().status()).isEqualTo(ApprovalRequestStatus.IN_PROGRESS.name());
+    }
+
     // ---------- transition ----------
 
     @Test
@@ -192,7 +209,6 @@ class ServiceRequestServiceTest {
     void transitionInvalidThrows() {
         login(1L, "SERVICE_DESK_AGENT");
         when(requestRepository.findById(1L)).thenReturn(Optional.of(request(2L, RequestStatus.SUBMITTED)));
-        when(catalogItemRepository.findById(any())).thenReturn(Optional.of(catalog(false)));
 
         assertThatThrownBy(() -> service.transition(1L, new StatusTransitionRequest(RequestStatus.FULFILLED, null)))
                 .isInstanceOf(BusinessException.class)
@@ -210,23 +226,9 @@ class ServiceRequestServiceTest {
     }
 
     @Test
-    void transitionApprovalPendingConflict() {
-        login(1L, "SERVICE_DESK_AGENT");
-        when(requestRepository.findById(1L)).thenReturn(Optional.of(request(2L, RequestStatus.APPROVAL_PENDING)));
-        when(catalogItemRepository.findById(any())).thenReturn(Optional.of(catalog(true)));
-        when(approvalRepository.findByTicketTypeAndTicketId(TicketType.SERVICE_REQUEST, 1L))
-                .thenReturn(Optional.of(new Approval(TicketType.SERVICE_REQUEST, 1L, "APPROVER")));
-
-        assertThatThrownBy(() -> service.transition(1L, new StatusTransitionRequest(RequestStatus.IN_FULFILLMENT, null)))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.APPROVAL_PENDING));
-    }
-
-    @Test
     void transitionSuccessValidated() {
         login(1L, "SERVICE_DESK_AGENT");
         when(requestRepository.findById(1L)).thenReturn(Optional.of(request(2L, RequestStatus.SUBMITTED)));
-        when(catalogItemRepository.findById(any())).thenReturn(Optional.of(catalog(false)));
 
         var response = service.transition(1L, new StatusTransitionRequest(RequestStatus.VALIDATED, "검증 완료"));
 
@@ -234,77 +236,29 @@ class ServiceRequestServiceTest {
     }
 
     @Test
-    void routedWithApprovalBecomesApprovalPending() {
+    void transitionInFulfillmentGateBlockedPropagates409() {
         login(1L, "SERVICE_DESK_AGENT");
-        when(requestRepository.findById(1L)).thenReturn(Optional.of(request(2L, RequestStatus.VALIDATED)));
-        when(catalogItemRepository.findById(any())).thenReturn(Optional.of(catalog(true)));
-        when(approvalRepository.findByTicketTypeAndTicketId(any(), any())).thenReturn(Optional.empty());
+        when(requestRepository.findById(1L)).thenReturn(Optional.of(request(2L, RequestStatus.ROUTED)));
+        doThrow(new BusinessException(ErrorCode.APPROVAL_PENDING, ErrorCode.APPROVAL_PENDING.getDefaultMessage(), 55L))
+                .when(approvalGateService).checkGate(eq("SERVICE_REQUEST"), any(), anyLong(), eq(TicketType.SERVICE_REQUEST), eq(1L));
 
-        var response = service.transition(1L, new StatusTransitionRequest(RequestStatus.ROUTED, null));
-
-        assertThat(response.status()).isEqualTo("APPROVAL_PENDING");
-    }
-
-    // ---------- approval ----------
-
-    @Test
-    void approvalNotFoundThrows() {
-        login(5L, "APPROVER");
-        when(requestRepository.findById(1L)).thenReturn(Optional.of(request(2L, RequestStatus.APPROVAL_PENDING)));
-        when(approvalRepository.findByTicketTypeAndTicketId(any(), any())).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> service.decideApproval(1L, new ApprovalDecisionRequest(ApprovalDecision.APPROVE, null)))
+        assertThatThrownBy(() -> service.transition(1L, new StatusTransitionRequest(RequestStatus.IN_FULFILLMENT, null)))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.APPROVAL_NOT_FOUND));
+                .satisfies(e -> {
+                    assertThat(codeOf(e)).isEqualTo(ErrorCode.APPROVAL_PENDING);
+                    assertThat(((BusinessException) e).getApprovalRequestId()).isEqualTo(55L);
+                });
     }
 
     @Test
-    void approvalNotDesignatedForbidden() {
-        login(5L, "APPROVER");
-        when(requestRepository.findById(1L)).thenReturn(Optional.of(request(2L, RequestStatus.APPROVAL_PENDING)));
-        when(approvalRepository.findByTicketTypeAndTicketId(any(), any()))
-                .thenReturn(Optional.of(new Approval(TicketType.SERVICE_REQUEST, 1L, "CAB_APPROVER")));
+    void transitionInFulfillmentGatePassSuccess() {
+        login(1L, "SERVICE_DESK_AGENT");
+        when(requestRepository.findById(1L)).thenReturn(Optional.of(request(2L, RequestStatus.ROUTED)));
+        doNothing().when(approvalGateService).checkGate(any(), any(), anyLong(), any(), anyLong());
 
-        assertThatThrownBy(() -> service.decideApproval(1L, new ApprovalDecisionRequest(ApprovalDecision.APPROVE, null)))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.ACCESS_DENIED));
-    }
+        var response = service.transition(1L, new StatusTransitionRequest(RequestStatus.IN_FULFILLMENT, null));
 
-    @Test
-    void approvalRejectWithoutReasonThrows() {
-        login(5L, "APPROVER");
-        when(requestRepository.findById(1L)).thenReturn(Optional.of(request(2L, RequestStatus.APPROVAL_PENDING)));
-        when(approvalRepository.findByTicketTypeAndTicketId(any(), any()))
-                .thenReturn(Optional.of(new Approval(TicketType.SERVICE_REQUEST, 1L, "APPROVER")));
-
-        assertThatThrownBy(() -> service.decideApproval(1L, new ApprovalDecisionRequest(ApprovalDecision.REJECT, " ")))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.REJECT_REASON_REQUIRED));
-    }
-
-    @Test
-    void approvalAlreadyDecidedThrows() {
-        login(5L, "APPROVER");
-        when(requestRepository.findById(1L)).thenReturn(Optional.of(request(2L, RequestStatus.IN_FULFILLMENT)));
-        Approval decided = new Approval(TicketType.SERVICE_REQUEST, 1L, "APPROVER");
-        decided.approve(5L, "ok");
-        when(approvalRepository.findByTicketTypeAndTicketId(any(), any())).thenReturn(Optional.of(decided));
-
-        assertThatThrownBy(() -> service.decideApproval(1L, new ApprovalDecisionRequest(ApprovalDecision.APPROVE, "again")))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.APPROVAL_ALREADY_DECIDED));
-    }
-
-    @Test
-    void approvalApproveSuccess() {
-        login(5L, "APPROVER");
-        when(requestRepository.findById(1L)).thenReturn(Optional.of(request(2L, RequestStatus.APPROVAL_PENDING)));
-        when(approvalRepository.findByTicketTypeAndTicketId(any(), any()))
-                .thenReturn(Optional.of(new Approval(TicketType.SERVICE_REQUEST, 1L, "APPROVER")));
-
-        var response = service.decideApproval(1L, new ApprovalDecisionRequest(ApprovalDecision.APPROVE, "승인"));
-
-        assertThat(response.approvalStatus()).isEqualTo("APPROVED");
+        assertThat(response.status()).isEqualTo("IN_FULFILLMENT");
     }
 
     // ---------- assign ----------

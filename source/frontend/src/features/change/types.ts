@@ -13,9 +13,7 @@ export type ChangeStatus =
 /** 전이 목표 상태(REQUESTED는 시작 상태라 목표에 없음). */
 export type ChangeTargetStatus = Exclude<ChangeStatus, "REQUESTED">;
 
-export type ApprovalRoute = "AUTO" | "PEER_REVIEW" | "CAB";
 export type Outcome = "SUCCESS" | "FAILURE";
-export type Decision = "APPROVE" | "REJECT";
 export type LinkTargetType = "INCIDENT" | "PROBLEM";
 export type LinkedItemType = "INCIDENT" | "PROBLEM" | "ASSET" | "COMPLIANCE_REQUIREMENT";
 
@@ -43,16 +41,15 @@ export interface ChangeResult {
   note: string;
 }
 
-export interface ChangeApprovalRecord {
-  approver: string;
-  decision: "APPROVED" | "REJECTED";
-  opinion: string;
-  at: string;
-}
-
 export interface ChangeLink {
   type: LinkedItemType;
   targetKey: string;
+}
+
+/** 승인 프로세스 커스텀 기능(유지보수 요청) — approvalRequestId=null이면 매칭되는 승인 프로세스가 없어 게이트 없이 진행. */
+export interface ChangeApproval {
+  approvalRequestId: number | null;
+  status: "IN_PROGRESS" | "APPROVED" | "REJECTED" | null;
 }
 
 export interface ChangeDetail {
@@ -63,11 +60,10 @@ export interface ChangeDetail {
   type: ChangeType;
   risk: Risk | null;
   status: ChangeStatus;
-  approvalRoute: ApprovalRoute;
   implementationPlan: string;
   rollbackPlan: string;
   result: ChangeResult;
-  approvals: ChangeApprovalRecord[];
+  approval: ChangeApproval;
   links: ChangeLink[];
   /** BE 제공 시 이 목록만 전이 버튼으로 노출. */
   allowedTransitions?: ChangeTargetStatus[];
@@ -111,7 +107,6 @@ export interface ClassificationResult {
   id: number;
   type: ChangeType;
   risk: Risk | null;
-  approvalRoute: ApprovalRoute;
 }
 
 export interface ResultInput {
@@ -123,16 +118,6 @@ export interface ResultInput {
 export interface LinkInput {
   targetType: LinkTargetType;
   targetId: number;
-}
-
-export interface ApprovalQueueItem {
-  changeId: number;
-  ticketKey: string;
-  type: ChangeType;
-  risk: Risk | null;
-  requester: string;
-  summary: string;
-  createdAt: string;
 }
 
 export interface ScheduleItem {

@@ -1,6 +1,6 @@
 # API 명세서 — 공통 (Common)
 
-> 도메인: common · 버전: 0.2 · 작성일: 2026-07-11 · 헤더 알림 5초 polling 전환(유지보수 요청)에 따라 팝오버 표시 "상위 8건" 상한 폐지 반영(엔드포인트·요청/응답 스키마 변경 없음), 알림 확인처리(모두 지우기·개별 X, 유지보수 요청) 최초 작성
+> 도메인: common · 버전: 0.3 · 작성일: 2026-07-11 · 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 전 도메인 공용 승인 대기함·결정 API(API-COM-003~005) 신규, 기존 도메인별 전용 승인 API(API-SRM-011/012, API-CHG-006/007, API-KM-007/008) 대체
 
 ## 공통 규약
 
@@ -12,18 +12,37 @@
   ```
 - **인가 실패**: 미인증 401.
 
+## 0. 설계 배경 — 공통 승인 게이트·결정 엔진
+
+승인 프로세스 커스텀 기능(유지보수 요청)에 따라 서비스요청·변경·지식뿐 아니라 인시던트·문제 등 전 도메인이 동일한 승인 엔진을 공유한다. 규칙 정의(`docs/02_plan/database/common.md` `approval_process*`)의 CRUD는 관리자 전용이라 [auth.md](auth.md)에 별도로 정의하며(API-AUTH-023~029), 이 문서는 **인스턴스(진행 중 승인 건) 조회·결정 API**만 다룬다.
+
+**게이트 체크(내부 공통 로직, 각 도메인 상태 전이 API가 호출)**: 각 도메인의 상태 전이 API(예: `PATCH .../status`)가 게이트가 걸린 target 전이를 처리하기 전에 아래 순서로 판정한다.
+
+1. 대상 티켓의 (도메인, 요청유형 스코프 값, 요청자 보유 역할)로 `approval_process`를 조회한다. 후보 = `domain` 일치 AND (`request_subtype_key IS NULL` OR 대상 티켓의 요청유형 값과 일치) AND (요청자 역할 스코프 없음 OR 요청자가 스코프 역할 중 하나라도 보유). 후보 중 `priority_tier`가 가장 큰(가장 좁은 범위) 규칙 1개를 선택한다.
+2. 매칭 규칙이 없거나, 매칭 규칙의 승인자 차수(`approval_process_step`)가 0개면 **승인 없이 그대로 전이를 허용**한다(인스턴스 생성 안 함).
+3. 매칭 규칙에 차수가 1개 이상이면, 해당 티켓의 진행 중(`status='IN_PROGRESS'`) 승인 인스턴스가 있는지 확인한다.
+   - 없으면 규칙을 스냅샷하여 새 인스턴스(`approval_request`+`approval_request_step`+`approval_request_step_role`)를 생성하고, 전이 요청은 **409**로 거부한다(응답에 생성된 `approvalRequestId` 포함, 승인 대기 안내).
+   - 이미 있고 `IN_PROGRESS`면 **409**로 거부한다.
+   - 이미 있고 `APPROVED`면 전이를 허용한다.
+   - 이미 있고 `REJECTED`면 **409**로 거부한다(반려 사유는 상세 조회로 확인. 재승인이 필요하면 도메인별 기존 반려 처리 흐름을 따른다 — 예: KNOWLEDGE는 초안 복귀 후 재검토 요청 시 신규 인스턴스가 다시 생성됨).
+
+**결정 처리(각 도메인 공용, API-COM-005)**: 차수의 `decision_mode`가 **OR**이면 그 차수에 필요한 역할 중 아무 역할이나 최초 1건의 결정이 기록되는 즉시 차수 전체가 그 결정(APPROVE/REJECT)으로 확정된다(공유 대기함 + 선처리자 결정, 기존 SRM/CHANGE 패턴과 동일). **AND**이면 차수에 필요한 각 역할마다 APPROVE가 모두 채워져야 차수가 APPROVED되며, 어느 역할이든 REJECT가 기록되면 그 즉시 차수·인스턴스 전체가 REJECTED로 확정된다. 처리자가 해당 차수에서 필요한 역할을 2개 이상 보유하면 1회 결정으로 보유한 역할 슬롯이 모두 채워진다. 차수가 APPROVED되면 다음 차수로 진행(`current_step_no` 증가)하고 마지막 차수까지 APPROVED되면 인스턴스 전체가 APPROVED로 확정되어 원래 전이가 재시도 시 허용된다. 인스턴스가 APPROVED/REJECTED로 확정되면, 해당 도메인은 후속 처리를 수행한다(예: KNOWLEDGE는 APPROVED 시 PUBLISHED로, REJECTED 시 DRAFT+반려사유로 전환 — 각 도메인 문서 참조).
+
 ## 1. API 목록
 
 | API ID | 기능 | Method | Endpoint | 인증 |
 |--------|------|--------|----------|------|
 | API-COM-001 | 알림 확인처리(개별/일괄) | POST | /api/v1/notifications/dismissals | 필요 |
 | API-COM-002 | 확인처리된 알림 목록 조회 | GET | /api/v1/notifications/dismissals | 필요 |
+| API-COM-003 | 승인 대기함 목록 조회(전 도메인 공용) | GET | /api/v1/approvals | 필요 |
+| API-COM-004 | 승인 인스턴스 상세 조회 | GET | /api/v1/approvals/{approvalRequestId} | 필요 |
+| API-COM-005 | 승인/반려 결정 | POST | /api/v1/approvals/{approvalRequestId}/decisions | 필요 |
 
 ## 2. API 상세
 
 ### API-COM-001 · 알림 확인처리(개별/일괄)
 
-헤더 알림 드롭다운(SCR-COM-002)의 "모두 지우기"(items에 현재 표시 중인 알림 전체 — 5초 polling merge로 누적된 만큼, 상한 없음)와 개별 X 버튼(items에 1건)이 공용으로 사용한다. 확인처리는 표시 여부에만 영향을 주며, 원본 승인 대기(API-SRM-012/API-CHG-007)·자산 만료(API-ITAM-001) 데이터는 변경하지 않는다.
+헤더 알림 드롭다운(SCR-COM-002)의 "모두 지우기"(items에 현재 표시 중인 알림 전체 — 5초 polling merge로 누적된 만큼, 상한 없음)와 개별 X 버튼(items에 1건)이 공용으로 사용한다. 확인처리는 표시 여부에만 영향을 주며, 원본 승인 대기(API-COM-003)·자산 만료(API-ITAM-001) 데이터는 변경하지 않는다.
 
 - **Endpoint**: `POST /api/v1/notifications/dismissals`
 - **인증**: 필요(Access Token)
@@ -37,8 +56,8 @@
   {
     "items": [
       {
-        "notificationType": "string · SERVICE_REQUEST_APPROVAL|CHANGE_APPROVAL|ASSET_EXPIRY",
-        "sourceId": "number · 승인 대기(requestId/changeId) 또는 자산 id"
+        "notificationType": "string · APPROVAL(전 도메인 공용 승인 대기)|ASSET_EXPIRY",
+        "sourceId": "number · APPROVAL이면 approvalRequestId, ASSET_EXPIRY면 자산 id"
       }
     ]
   }
@@ -57,7 +76,7 @@
 
 ### API-COM-002 · 확인처리된 알림 목록 조회
 
-FE가 3개 도메인 API(승인 대기 2종·자산 만료)로 알림 후보를 조합한 뒤, 이 조회 결과의 (notificationType, sourceId)와 매칭되는 항목을 제외해 신규 표시 여부를 판별하는 데 사용한다(5초 polling마다 재조회, 표시 목록은 merge 누적 방식이라 상한 없음).
+FE가 알림 후보(승인 대기·자산 만료)로 조합한 뒤, 이 조회 결과의 (notificationType, sourceId)와 매칭되는 항목을 제외해 신규 표시 여부를 판별하는 데 사용한다(5초 polling마다 재조회, 표시 목록은 merge 누적 방식이라 상한 없음).
 
 - **Endpoint**: `GET /api/v1/notifications/dismissals`
 - **인증**: 필요(Access Token)
@@ -79,3 +98,84 @@ FE가 3개 도메인 API(승인 대기 2종·자산 만료)로 알림 후보를 
   |------|------|
   | 200 | 정상(이력 없으면 빈 배열) |
   | 401 | 미인증 |
+
+### API-COM-003 · 승인 대기함 목록 조회(전 도메인 공용)
+
+기존 도메인별 전용 승인 대기 API(API-SRM-012, API-CHG-007)를 대체하는 전 도메인 공용 엔드포인트. `scope=mine`은 로그인 사용자가 현재 대기 차수(`current_step_no`)에 필요한 역할을 보유하고 아직 그 역할 슬롯을 결정하지 않은 인스턴스만 반환한다(역할 기반 공유 대기함, 기존 SRM/CHANGE 패턴을 전 도메인으로 확장).
+
+- **Endpoint**: `GET /api/v1/approvals?scope=mine&domain=&page=&size=`
+- **인증**: 필요(Access Token)
+- **Header**:
+  | 이름 | 필수 | 설명 |
+  |------|------|------|
+  | Authorization | Y | `Bearer {accessToken}` |
+- **Request Body**: 없음(쿼리 파라미터). `domain` 선택(SERVICE_REQUEST/CHANGE/KNOWLEDGE/INCIDENT/PROBLEM 등, 미지정 시 전체)
+- **Response Body** (200):
+  ```json
+  {
+    "content": [
+      {
+        "approvalRequestId": "number", "ticketType": "string", "ticketId": "number", "ticketKey": "string",
+        "ticketSummary": "string · 알림·목록 표시용 제목(도메인별 summary/title/name 등을 그대로 노출)",
+        "requester": "string", "currentStepNo": "number", "requestedAt": "ISO-8601 · 인스턴스 생성 시각"
+      }
+    ],
+    "page": "number", "size": "number", "totalElements": "number"
+  }
+  ```
+- **Response Code**: 200 / 401
+
+### API-COM-004 · 승인 인스턴스 상세 조회
+
+차수별 진행 상태(역할별 결정 현황 포함)를 조회한다. 도메인 상세 화면(변경/서비스요청/지식/인시던트/문제 상세)의 승인 진행 패널이 사용한다.
+
+- **Endpoint**: `GET /api/v1/approvals/{approvalRequestId}`
+- **인증**: 필요(Access Token)
+- **Header**:
+  | 이름 | 필수 | 설명 |
+  |------|------|------|
+  | Authorization | Y | `Bearer {accessToken}` |
+- **Response Body** (200):
+  ```json
+  {
+    "id": "number", "ticketType": "string", "ticketId": "number", "ticketKey": "string",
+    "status": "IN_PROGRESS|APPROVED|REJECTED", "currentStepNo": "number|null",
+    "steps": [
+      {
+        "stepNo": "number", "decisionMode": "AND|OR", "status": "PENDING|APPROVED|REJECTED|SKIPPED",
+        "roles": [
+          { "roleCode": "string", "roleName": "string", "decision": "PENDING|APPROVE|REJECT", "decidedBy": "string|null", "reason": "string|null", "decidedAt": "ISO-8601|null" }
+        ]
+      }
+    ]
+  }
+  ```
+- **Response Code**: 200 / 401 / 404
+
+### API-COM-005 · 승인/반려 결정
+
+0절 "결정 처리" 로직에 따라 처리한다. 기존 도메인별 전용 승인 API(API-SRM-011, API-CHG-006, API-KM-007)를 대체한다.
+
+- **Endpoint**: `POST /api/v1/approvals/{approvalRequestId}/decisions`
+- **인증**: 필요(현재 대기 차수(`currentStepNo`)에 필요한 역할 보유자)
+- **Header**:
+  | 이름 | 필수 | 설명 |
+  |------|------|------|
+  | Authorization | Y | `Bearer {accessToken}` |
+  | Content-Type | Y | application/json |
+- **Request Body**:
+  ```json
+  { "decision": "APPROVE|REJECT · 필수", "reason": "string · REJECT 시 필수" }
+  ```
+- **Response Body** (200):
+  ```json
+  { "approvalRequestId": "number", "stepNo": "number", "stepStatus": "PENDING|APPROVED|REJECTED", "requestStatus": "IN_PROGRESS|APPROVED|REJECTED" }
+  ```
+- **Response Code**:
+  | Code | 의미 |
+  |------|------|
+  | 200 | 결정 반영(AND면 본인이 보유한 역할 슬롯 전부, OR면 차수 전체 확정) |
+  | 400 | REJECT인데 사유 누락 |
+  | 403 | 현재 대기 차수에 필요한 역할 미보유 |
+  | 404 | 인스턴스 없음 |
+  | 409 | 이미 결정된 역할 슬롯 재처리 시도, 또는 인스턴스가 이미 APPROVED/REJECTED로 종료됨 |

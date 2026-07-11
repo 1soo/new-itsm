@@ -1,6 +1,6 @@
 # 화면 설계서 — 인시던트 관리 (Incident)
 
-> 도메인: incident · 버전: 0.1 · 작성일: 2026-07-09
+> 도메인: incident · 버전: 0.2 · 작성일: 2026-07-11 · 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 상세 화면에 공통 승인 패널 추가(IN_PROGRESS → RESOLVED 전이 게이트, 매칭 규칙 없으면 기존처럼 즉시 전이)
 
 ## 1. 개요
 
@@ -71,8 +71,9 @@
   | 상태 업데이트 입력 | 입력+공개범위 토글 | 내부/외부 구분 | Info |
   | 해결 처리·시간지표 | 폼/표시 | 영향시작·탐지·영향종료 / MTTD·MTTA·MTTR | Success |
   | 문제 연계 버튼 | 버튼 | 신규/기존 문제 링크 | Base |
-- **상태 · 인터랙션**: 허용되지 않은 상태 전이 비노출. IM 권한 없으면 역할 배정 버튼 숨김/403. 시간 정보 없으면 해당 지표 "미산정" 표시. SEV1·2 해결·PM 미작성 시 "포스트모템 필요" 배너. 잘못된 심각도/미존재 문제 연계 시 400.
-- **연관 API**: `GET /api/v1/incidents/{id}`, `PATCH .../severity`, `PATCH .../status`, `POST .../roles`, `POST .../escalate`, `POST .../updates`, `POST .../resolve`, `POST .../links`
+  | 승인 패널(공용) | 패널 | RESOLVED 전이에 매칭되는 승인 프로세스가 있으면 차수 진행 상태(API-COM-004) 표시, 없으면 패널 자체를 노출하지 않고 기존처럼 즉시 전이 | Info/Warning/Success |
+- **상태 · 인터랙션**: 허용되지 않은 상태 전이 비노출. IM 권한 없으면 역할 배정 버튼 숨김/403. 시간 정보 없으면 해당 지표 "미산정" 표시. SEV1·2 해결·PM 미작성 시 "포스트모템 필요" 배너. 잘못된 심각도/미존재 문제 연계 시 400. RESOLVED 전이 시도 시 매칭되는 승인 프로세스가 있으면 409와 함께 승인 패널이 나타나며, 처리는 [common.md](common.md) SCR-COM-014에서 수행한다.
+- **연관 API**: `GET /api/v1/incidents/{id}`, `PATCH .../severity`, `PATCH .../status`, `POST .../roles`, `POST .../escalate`, `POST .../updates`, `POST .../resolve`, `POST .../links`, `GET /api/v1/approvals/{approvalRequestId}`(API-COM-004)
 
 ### SCR-INC-004 · 포스트모템 편집
 

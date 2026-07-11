@@ -2,11 +2,6 @@ package com.itsm.change.application;
 
 import com.itsm.asset.application.AssetService;
 import com.itsm.auth.application.dto.PageResponse;
-import com.itsm.auth.domain.AppUser;
-import com.itsm.auth.domain.repository.AppUserRepository;
-import com.itsm.change.application.dto.ChangeApprovalDecision;
-import com.itsm.change.application.dto.ChangeApprovalRequest;
-import com.itsm.change.application.dto.ChangeApprovalResponse;
 import com.itsm.change.application.dto.ChangeCreatedResponse;
 import com.itsm.change.application.dto.ChangeDetailResponse;
 import com.itsm.change.application.dto.ChangeMetricsResponse;
@@ -17,13 +12,11 @@ import com.itsm.change.application.dto.ClassificationResponse;
 import com.itsm.change.application.dto.CreateChangeRequest;
 import com.itsm.change.application.dto.LinkRequest;
 import com.itsm.change.application.dto.LinkResponse;
-import com.itsm.change.application.dto.PendingChangeApprovalResponse;
 import com.itsm.change.application.dto.ResultRequest;
 import com.itsm.change.application.dto.ResultResponse;
 import com.itsm.change.application.dto.ScheduleItemResponse;
 import com.itsm.change.application.dto.StatusResponse;
 import com.itsm.change.application.dto.StatusTransitionRequest;
-import com.itsm.change.domain.ApprovalRoute;
 import com.itsm.change.domain.ChangeAffectedSystem;
 import com.itsm.change.domain.ChangeRequest;
 import com.itsm.change.domain.ChangeRisk;
@@ -34,16 +27,14 @@ import com.itsm.change.domain.Outcome;
 import com.itsm.change.domain.repository.ChangeAffectedSystemRepository;
 import com.itsm.change.domain.repository.ChangeRequestRepository;
 import com.itsm.change.domain.repository.ChangeTemplateRepository;
+import com.itsm.common.approval.domain.ApprovalRequest;
+import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
-import com.itsm.common.security.AuthPrincipal;
 import com.itsm.common.security.SecurityUtils;
-import com.itsm.common.ticket.Approval;
-import com.itsm.common.ticket.ApprovalStatus;
 import com.itsm.common.ticket.TicketLink;
 import com.itsm.common.ticket.TicketType;
 import com.itsm.common.ticket.TimelineEvent;
-import com.itsm.common.ticket.repository.ApprovalRepository;
 import com.itsm.common.ticket.repository.TicketLinkRepository;
 import com.itsm.common.ticket.repository.TimelineEventRepository;
 import com.itsm.compliance.domain.ComplianceRequirement;
@@ -63,10 +54,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 변경(change) 유스케이스: RFC 등록·조회·6단계 전이·분류(승인경로)·승인/반려·구현결과·
+ * 변경(change) 유스케이스: RFC 등록·조회·6단계 전이·분류·구현결과·
  * 인시던트/문제 연계·일정·표준 변경 템플릿·지표.
  * RBAC(change_manager.md/approver.md): 대부분 CHANGE_MANAGER 전용이며, 상세 조회는 APPROVER도 가능.
- * 승인 결정/대기 목록은 approval.approver_role(CAB/동료검토→APPROVER) 보유자가 처리(역할 기반 공유 대기함).
+ * 승인 경로 자동 라우팅·승인 결정·대기 목록은 승인 프로세스 커스텀 기능(2026-07-11)으로 제거되었다(공용 승인 엔진이 대체).
+ * Stage 1(공용 엔진 도입)에서는 컴파일 유지를 위해 구 승인 코드만 제거했으며, IMPLEMENTATION 전이의 실제 게이트 연동은
+ * Stage 2에서 진행한다(그때까지 게이트 없이 통과).
  */
 @Service
 public class ChangeService {
@@ -78,37 +71,34 @@ public class ChangeService {
     private final ChangeRequestRepository changeRequestRepository;
     private final ChangeTemplateRepository templateRepository;
     private final ChangeAffectedSystemRepository affectedSystemRepository;
-    private final ApprovalRepository approvalRepository;
     private final TicketLinkRepository ticketLinkRepository;
     private final TimelineEventRepository timelineRepository;
     private final IncidentRepository incidentRepository;
     private final ProblemRepository problemRepository;
-    private final AppUserRepository appUserRepository;
     private final AssetService assetService;
     private final ComplianceRequirementRepository complianceRequirementRepository;
+    private final ApprovalRequestRepository approvalRequestRepository;
 
     public ChangeService(ChangeRequestRepository changeRequestRepository,
                          ChangeTemplateRepository templateRepository,
                          ChangeAffectedSystemRepository affectedSystemRepository,
-                         ApprovalRepository approvalRepository,
                          TicketLinkRepository ticketLinkRepository,
                          TimelineEventRepository timelineRepository,
                          IncidentRepository incidentRepository,
                          ProblemRepository problemRepository,
-                         AppUserRepository appUserRepository,
                          AssetService assetService,
-                         ComplianceRequirementRepository complianceRequirementRepository) {
+                         ComplianceRequirementRepository complianceRequirementRepository,
+                         ApprovalRequestRepository approvalRequestRepository) {
         this.changeRequestRepository = changeRequestRepository;
         this.templateRepository = templateRepository;
         this.affectedSystemRepository = affectedSystemRepository;
-        this.approvalRepository = approvalRepository;
         this.ticketLinkRepository = ticketLinkRepository;
         this.timelineRepository = timelineRepository;
         this.incidentRepository = incidentRepository;
         this.problemRepository = problemRepository;
-        this.appUserRepository = appUserRepository;
         this.assetService = assetService;
         this.complianceRequirementRepository = complianceRequirementRepository;
+        this.approvalRequestRepository = approvalRequestRepository;
     }
 
     // ---------- create (API-CHG-002) ----------
@@ -121,10 +111,9 @@ public class ChangeService {
                     .filter(t -> !t.isDeleted())
                     .orElseThrow(() -> new BusinessException(ErrorCode.VALIDATION_ERROR, "유효하지 않은 템플릿입니다."));
         }
-        ApprovalRoute route = computeApprovalRoute(request.type(), request.risk(), request.templateId());
         ChangeRequest saved = changeRequestRepository.save(new ChangeRequest(
                 nextTicketKey(), request.summary(), request.description(), request.type(), request.risk(),
-                route, request.implementationPlan(), request.rollbackPlan(), request.scheduledAt(),
+                request.implementationPlan(), request.rollbackPlan(), request.scheduledAt(),
                 request.templateId()));
         if (request.affectedSystems() != null) {
             for (String systemName : request.affectedSystems()) {
@@ -168,15 +157,8 @@ public class ChangeService {
         if (!ChangeStateMachine.isAllowed(change.getStatus(), target)) {
             throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION);
         }
-        if (target == ChangeStatus.IMPLEMENTATION && !isApproved(change, id)) {
-            throw new BusinessException(ErrorCode.APPROVAL_PENDING);
-        }
         change.changeStatus(target);
         changeRequestRepository.save(change);
-        if (target == ChangeStatus.APPROVAL && change.getApprovalRoute() != ApprovalRoute.AUTO
-                && approvalRepository.findByTicketTypeAndTicketId(TT, id).isEmpty()) {
-            approvalRepository.save(new Approval(TT, id, APPROVER));
-        }
         timelineRepository.save(TimelineEvent.of(TT, id, "STATUS_" + target.name(),
                 StringUtils.hasText(request.note()) ? request.note() : "상태가 " + target.name() + "로 변경되었습니다."));
         return new StatusResponse(id, target.name());
@@ -189,64 +171,9 @@ public class ChangeService {
         requireRole(CM);
         ChangeRequest change = findChange(id);
         change.updateClassification(request.type(), request.risk());
-        ApprovalRoute route = computeApprovalRoute(request.type(), request.risk(), change.getTemplateId());
-        change.updateApprovalRoute(route);
         changeRequestRepository.save(change);
         return new ClassificationResponse(id, change.getType().name(),
-                change.getRisk() != null ? change.getRisk().name() : null, route.name());
-    }
-
-    // ---------- approval (API-CHG-006) ----------
-
-    @Transactional
-    public ChangeApprovalResponse decideApproval(Long id, ChangeApprovalRequest request) {
-        AuthPrincipal principal = SecurityUtils.currentPrincipal();
-        ChangeRequest change = findChange(id);
-        Approval approval = approvalRepository.findByTicketTypeAndTicketId(TT, id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.APPROVAL_NOT_FOUND));
-        if (!SecurityUtils.hasRole(approval.getApproverRole())) {
-            throw new BusinessException(ErrorCode.ACCESS_DENIED); // 승인 담당 역할 미보유
-        }
-        if (!approval.isPending()) {
-            throw new BusinessException(ErrorCode.APPROVAL_ALREADY_DECIDED); // 이미 결정된 건 재처리 차단
-        }
-        if (request.decision() == ChangeApprovalDecision.REJECT
-                && !StringUtils.hasText(request.opinion())) {
-            throw new BusinessException(ErrorCode.REJECT_REASON_REQUIRED);
-        }
-        if (request.decision() == ChangeApprovalDecision.APPROVE) {
-            approval.approve(principal.userId(), request.opinion());
-            timelineRepository.save(TimelineEvent.of(TT, id, "APPROVAL_APPROVED", "승인되었습니다."));
-        } else {
-            approval.reject(principal.userId(), request.opinion());
-            timelineRepository.save(TimelineEvent.of(TT, id, "APPROVAL_REJECTED", "반려되었습니다: " + request.opinion()));
-        }
-        approvalRepository.save(approval);
-        return new ChangeApprovalResponse(id, change.getStatus().name());
-    }
-
-    // ---------- pending approvals (API-CHG-007) ----------
-
-    @Transactional(readOnly = true)
-    public List<PendingChangeApprovalResponse> pendingApprovals() {
-        AuthPrincipal principal = SecurityUtils.currentPrincipal();
-        if (principal.roles().isEmpty()) {
-            return List.of();
-        }
-        return approvalRepository.findByTicketTypeAndStatusAndApproverRoleIn(TT, ApprovalStatus.PENDING, principal.roles())
-                .stream()
-                .map(a -> {
-                    ChangeRequest c = changeRequestRepository.findById(a.getTicketId()).orElse(null);
-                    return new PendingChangeApprovalResponse(
-                            a.getTicketId(),
-                            c != null ? c.getTicketKey() : null,
-                            c != null && c.getType() != null ? c.getType().name() : null,
-                            c != null && c.getRisk() != null ? c.getRisk().name() : null,
-                            c != null ? c.getCreatedBy() : null,
-                            c != null ? c.getSummary() : null,
-                            a.getCreatedAt());
-                })
-                .toList();
+                change.getRisk() != null ? change.getRisk().name() : null);
     }
 
     // ---------- result (API-CHG-008) ----------
@@ -255,9 +182,6 @@ public class ChangeService {
     public ResultResponse recordResult(Long id, ResultRequest request) {
         requireRole(CM);
         ChangeRequest change = findChange(id);
-        if (!isApproved(change, id)) {
-            throw new BusinessException(ErrorCode.CHANGE_NOT_APPROVED);
-        }
         change.recordResult(request.outcome(), request.rolledBack(), request.note());
         changeRequestRepository.save(change);
         timelineRepository.save(TimelineEvent.of(TT, id, "RESULT",
@@ -337,10 +261,9 @@ public class ChangeService {
     /** 문제에서 신규 변경(RFC)을 생성한다. 역할 검사는 호출측(ProblemService)에서 수행. */
     @Transactional
     public Long createLinkedChange(String summary, String description) {
-        ApprovalRoute route = computeApprovalRoute(ChangeType.NORMAL, null, null);
         ChangeRequest saved = changeRequestRepository.save(new ChangeRequest(
                 nextTicketKey(), summary, description, ChangeType.NORMAL, null,
-                route, null, null, null, null));
+                null, null, null, null));
         timelineRepository.save(TimelineEvent.of(TT, saved.getId(), "CREATE", "문제 연계로 변경 요청이 생성되었습니다."));
         return saved.getId();
     }
@@ -372,24 +295,6 @@ public class ChangeService {
         }
     }
 
-    private ApprovalRoute computeApprovalRoute(ChangeType type, ChangeRisk risk, Long templateId) {
-        if (type == ChangeType.STANDARD && templateId != null) {
-            return ApprovalRoute.AUTO; // 사전 승인된 표준 변경은 위험도 평가 여부와 무관하게 재승인 없이 진행(REQ-CHG-006)
-        }
-        if (risk == null || risk == ChangeRisk.HIGH) {
-            return ApprovalRoute.CAB;
-        }
-        return ApprovalRoute.PEER_REVIEW;
-    }
-
-    private boolean isApproved(ChangeRequest change, Long id) {
-        if (change.getApprovalRoute() == ApprovalRoute.AUTO) {
-            return true;
-        }
-        return approvalRepository.findByTicketTypeAndTicketId(TT, id)
-                .map(a -> a.getStatus() == ApprovalStatus.APPROVED).orElse(false);
-    }
-
     private void saveLinkOnce(TicketType sourceType, Long sourceId, TicketType targetType, Long targetId) {
         if (!ticketLinkRepository.existsBySourceTypeAndSourceIdAndTargetTypeAndTargetId(
                 sourceType, sourceId, targetType, targetId)) {
@@ -414,13 +319,6 @@ public class ChangeService {
         ChangeDetailResponse.Result result = new ChangeDetailResponse.Result(
                 c.getOutcome() != null ? c.getOutcome().name() : null, c.getRolledBack(), c.getResultNote());
 
-        List<ChangeDetailResponse.ApprovalDto> approvals = approvalRepository.findByTicketTypeAndTicketId(TT, id)
-                .filter(a -> !a.isPending())
-                .map(a -> new ChangeDetailResponse.ApprovalDto(userName(a.getDecidedById()),
-                        a.getStatus().name(), a.getDecisionReason(), a.getDecidedAt()))
-                .map(List::of)
-                .orElse(List.of());
-
         List<ChangeDetailResponse.LinkRef> links = new ArrayList<>(
                 ticketLinkRepository.findBySourceTypeAndSourceId(TT, id).stream()
                         .filter(l -> l.getTargetType() == TicketType.INCIDENT || l.getTargetType() == TicketType.PROBLEM
@@ -435,10 +333,15 @@ public class ChangeService {
         List<String> allowed = ChangeStateMachine.allowedTargets(c.getStatus()).stream()
                 .map(ChangeStatus::name).sorted().toList();
 
+        ApprovalRequest latestApproval = approvalRequestRepository
+                .findTopByTicketTypeAndTicketIdOrderByIdDesc(TT, id).orElse(null);
+        ChangeDetailResponse.ApprovalInfo approvalInfo = new ChangeDetailResponse.ApprovalInfo(
+                latestApproval != null ? latestApproval.getId() : null,
+                latestApproval != null ? latestApproval.getStatus().name() : null);
+
         return new ChangeDetailResponse(id, c.getTicketKey(), c.getSummary(), c.getDescription(),
                 c.getType().name(), c.getRisk() != null ? c.getRisk().name() : null, c.getStatus().name(),
-                c.getApprovalRoute() != null ? c.getApprovalRoute().name() : null,
-                c.getImplementationPlan(), c.getRollbackPlan(), result, approvals, links, allowed);
+                c.getImplementationPlan(), c.getRollbackPlan(), result, approvalInfo, links, allowed);
     }
 
     private String linkedTicketKey(TicketType type, Long targetId) {
@@ -454,10 +357,6 @@ public class ChangeService {
     private String complianceRequirementKeyOf(Long requirementId) {
         return complianceRequirementRepository.findById(requirementId)
                 .map(ComplianceRequirement::getRequirementKey).orElse(null);
-    }
-
-    private String userName(Long id) {
-        return id == null ? null : appUserRepository.findById(id).map(AppUser::getName).orElse(null);
     }
 
     private double round(double value) {

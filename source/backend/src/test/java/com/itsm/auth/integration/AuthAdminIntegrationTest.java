@@ -86,7 +86,10 @@ class AuthAdminIntegrationTest {
                     "/docker-entrypoint-initdb.d/24_auth_menu_columns.sql")
             .withCopyFileToContainer(
                     MountableFile.forHostPath(Paths.get("../db/sql/25_common_notification_dismissal.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/25_common_notification_dismissal.sql");
+                    "/docker-entrypoint-initdb.d/25_common_notification_dismissal.sql")
+            .withCopyFileToContainer(
+                    MountableFile.forHostPath(Paths.get("../db/sql/26_approval_engine_schema.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/26_approval_engine_schema.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {

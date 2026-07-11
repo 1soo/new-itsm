@@ -14,13 +14,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { StatusBadge, TicketDetailLayout, toast } from "@/components/common";
+import { ApprovalPanel, StatusBadge, TicketDetailLayout, toast } from "@/components/common";
+import type { ApprovalStep } from "@/components/common";
 import { FullscreenLoader } from "@/routes/FullscreenLoader";
 import { changeApi } from "@/features/change/api";
-import { formatDateTime } from "@/features/change/format";
 import {
-  approvalRouteLabel,
-  approvalRouteTone,
   fallbackTransitions,
   riskLabel,
   riskTone,
@@ -30,6 +28,7 @@ import {
   typeTone,
 } from "@/features/change/status";
 import type { ChangeDetail, LinkTargetType, Outcome } from "@/features/change/types";
+import { commonApi } from "@/features/common/api";
 import { extractErrorMessage } from "@/lib/apiClient";
 
 /*
@@ -41,6 +40,8 @@ export function ChangeDetailPage() {
   const id = Number(useParams().id);
 
   const [detail, setDetail] = useState<ChangeDetail | null>(null);
+  const [approvalSteps, setApprovalSteps] = useState<ApprovalStep[]>([]);
+  const [approvalCurrentStepNo, setApprovalCurrentStepNo] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -52,6 +53,15 @@ export function ChangeDetailPage() {
       .then((d) => {
         setDetail(d);
         setNotFound(false);
+        if (d.approval.approvalRequestId == null) {
+          setApprovalSteps([]);
+          setApprovalCurrentStepNo(null);
+          return;
+        }
+        return commonApi.getApproval(d.approval.approvalRequestId).then((a) => {
+          setApprovalSteps(a.steps);
+          setApprovalCurrentStepNo(a.currentStepNo);
+        });
       })
       .catch((err) => {
         toast.error(extractErrorMessage(err));
@@ -86,7 +96,7 @@ export function ChangeDetailPage() {
   }
 
   const transitions = detail.allowedTransitions ?? fallbackTransitions(detail.status);
-  const approved = detail.approvalRoute === "AUTO" || detail.approvals.some((a) => a.decision === "APPROVED");
+  const approved = detail.approval.approvalRequestId == null || detail.approval.status === "APPROVED";
 
   return (
     <TicketDetailLayout
@@ -120,36 +130,19 @@ export function ChangeDetailPage() {
       meta={
         <>
           <Card>
-            <CardHeader><CardTitle className="text-base">승인 경로</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">구현·롤백 계획</CardTitle></CardHeader>
             <CardContent className="space-y-1.5 text-sm">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-muted-foreground">경로</span>
-                <StatusBadge tone={approvalRouteTone(detail.approvalRoute)} label={approvalRouteLabel(detail.approvalRoute)} />
-              </div>
               <MetaRow label="구현 계획" value={detail.implementationPlan || "-"} />
               <MetaRow label="롤백 계획" value={detail.rollbackPlan || "-"} />
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader><CardTitle className="text-base">승인 이력</CardTitle></CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              {detail.approvals.length === 0 ? (
-                <p className="text-muted-foreground">이력 없음</p>
-              ) : (
-                detail.approvals.map((a, i) => (
-                  <div key={i} className="space-y-0.5 border-b border-border pb-2 last:border-0 last:pb-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-foreground">{a.approver}</span>
-                      <StatusBadge tone={a.decision === "APPROVED" ? "success" : "danger"} label={a.decision === "APPROVED" ? "승인" : "반려"} />
-                    </div>
-                    {a.opinion ? <p className="text-muted-foreground">{a.opinion}</p> : null}
-                    <p className="text-xs text-muted-foreground">{formatDateTime(a.at)}</p>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
+          <ApprovalPanel
+            matched={detail.approval.approvalRequestId != null}
+            steps={approvalSteps}
+            currentStepNo={approvalCurrentStepNo}
+            emptyMessage="이 변경에는 승인 절차가 없습니다"
+          />
 
           <Card>
             <CardHeader><CardTitle className="text-base">연계 항목</CardTitle></CardHeader>

@@ -28,3 +28,14 @@ export {
   type FormValues,
   type FormErrors,
 } from "./form-schema";
+export {
+  type ApprovalMatchType,
+  type ApprovalStepDecisionMode,
+  type ApprovalStepStatus,
+  type ApprovalRoleDecisionValue,
+  type ApprovalStepRole,
+  type ApprovalStep,
+} from "./approval-schema";
+export { ApprovalProcessFlow, type ApprovalRoleOption, type ApprovalStepBoxValue } from "./approval-process-flow";
+export { ApprovalStepProgress } from "./approval-step-progress";
+export { ApprovalPanel } from "./approval-panel";

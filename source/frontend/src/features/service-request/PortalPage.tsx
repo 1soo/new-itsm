@@ -118,14 +118,7 @@ export function PortalPage() {
               className="cursor-pointer transition-colors hover:border-primary"
             >
               <CardHeader>
-                <CardTitle className="flex items-center justify-between gap-2 text-base">
-                  {item.name}
-                  {item.approvalRequired ? (
-                    <Badge variant="warning" className="shrink-0">
-                      승인 필요
-                    </Badge>
-                  ) : null}
-                </CardTitle>
+                <CardTitle className="text-base">{item.name}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-sm text-muted-foreground">
                 <p className="line-clamp-2">{item.description}</p>

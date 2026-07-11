@@ -1,15 +1,22 @@
 import { apiClient } from "@/lib/apiClient";
 import type { UserStatus } from "@/features/auth/types";
 import type {
+  ApprovalDomainOption,
+  ApprovalProcessDetail,
+  ApprovalProcessListQuery,
+  ApprovalProcessSummary,
   AuditLog,
   AuditLogQuery,
+  CreateApprovalProcessRequest,
   CreateMenuRequest,
   CreateRoleRequest,
   CreateUserRequest,
   PageResponse,
+  RequestSubtypeOption,
   Role,
   Screen,
   ScreenListQuery,
+  UpdateApprovalProcessRequest,
   UpdateMenuRequest,
   UserDetail,
   UserListQuery,
@@ -152,6 +159,63 @@ export const adminApi = {
   ): Promise<{ screenId: number; roles: string[] }> {
     const res = await apiClient.delete<{ screenId: number; roles: string[] }>(
       `/admin/screens/${screenId}/roles/${roleId}`,
+    );
+    return res.data;
+  },
+
+  // API-AUTH-023 승인 프로세스 대상 도메인 목록
+  async listApprovalDomains(): Promise<ApprovalDomainOption[]> {
+    const res = await apiClient.get<ApprovalDomainOption[]>("/admin/approval-processes/domains");
+    return res.data;
+  },
+
+  // API-AUTH-024 도메인별 요청유형 후보 목록
+  async listRequestSubtypes(domain: string): Promise<RequestSubtypeOption[]> {
+    const res = await apiClient.get<RequestSubtypeOption[]>(
+      `/admin/approval-processes/domains/${domain}/request-subtypes`,
+    );
+    return res.data;
+  },
+
+  // API-AUTH-025 승인 프로세스 목록
+  async listApprovalProcesses(
+    query: ApprovalProcessListQuery,
+  ): Promise<PageResponse<ApprovalProcessSummary>> {
+    const res = await apiClient.get<PageResponse<ApprovalProcessSummary>>(
+      "/admin/approval-processes",
+      { params: cleanParams(query) },
+    );
+    return res.data;
+  },
+
+  // API-AUTH-026 승인 프로세스 상세
+  async getApprovalProcess(id: number): Promise<ApprovalProcessDetail> {
+    const res = await apiClient.get<ApprovalProcessDetail>(`/admin/approval-processes/${id}`);
+    return res.data;
+  },
+
+  // API-AUTH-027 승인 프로세스 생성
+  async createApprovalProcess(body: CreateApprovalProcessRequest): Promise<ApprovalProcessDetail> {
+    const res = await apiClient.post<ApprovalProcessDetail>("/admin/approval-processes", body);
+    return res.data;
+  },
+
+  // API-AUTH-028 승인 프로세스 수정
+  async updateApprovalProcess(
+    id: number,
+    body: UpdateApprovalProcessRequest,
+  ): Promise<ApprovalProcessDetail> {
+    const res = await apiClient.patch<ApprovalProcessDetail>(
+      `/admin/approval-processes/${id}`,
+      body,
+    );
+    return res.data;
+  },
+
+  // API-AUTH-029 승인 프로세스 삭제
+  async deleteApprovalProcess(id: number): Promise<{ id: number; deleted: boolean }> {
+    const res = await apiClient.delete<{ id: number; deleted: boolean }>(
+      `/admin/approval-processes/${id}`,
     );
     return res.data;
   },

@@ -1,6 +1,6 @@
 # API 명세서 — 변경 관리 (Change)
 
-> 도메인: change · 버전: 0.1 · 작성일: 2026-07-09
+> 도메인: change · 버전: 0.2 · 작성일: 2026-07-11 · 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 위험도 기반 CAB 자동 라우팅 제거, 전용 승인 API(API-CHG-006/007) 삭제 후 공통 승인 API([common.md](common.md) API-COM-003~005)로 대체
 
 ## 공통 규약
 
@@ -16,8 +16,6 @@
 | API-CHG-003 | 변경 상세 조회 | GET | /api/v1/changes/{id} | 필요 |
 | API-CHG-004 | 상태(6단계) 전이 | PATCH | /api/v1/changes/{id}/status | 필요 |
 | API-CHG-005 | 변경 유형·위험 변경 | PATCH | /api/v1/changes/{id}/classification | 필요 |
-| API-CHG-006 | 승인/반려 | POST | /api/v1/changes/{id}/approval | 필요(Approver/CAB) |
-| API-CHG-007 | 승인 대기 목록 | GET | /api/v1/approvals | 필요(Approver/CAB) |
 | API-CHG-008 | 구현 결과 기록 | POST | /api/v1/changes/{id}/result | 필요 |
 | API-CHG-009 | 인시던트/문제 연계 | POST | /api/v1/changes/{id}/links | 필요 |
 | API-CHG-010 | 변경 일정(캘린더) 조회 | GET | /api/v1/changes/schedule | 필요 |
@@ -64,13 +62,13 @@
   {
     "id": "number", "ticketKey": "string", "summary": "string", "description": "string",
     "type": "string", "risk": "string", "status": "string",
-    "approvalRoute": "AUTO|PEER_REVIEW|CAB", "implementationPlan": "string", "rollbackPlan": "string",
+    "implementationPlan": "string", "rollbackPlan": "string",
     "result": { "outcome": "SUCCESS|FAILURE|null", "rolledBack": "boolean", "note": "string" },
-    "approvals": [ { "approver": "string", "decision": "APPROVED|REJECTED", "opinion": "string", "at": "ISO-8601" } ],
+    "approval": { "approvalRequestId": "number|null", "status": "IN_PROGRESS|APPROVED|REJECTED|null · null=매칭되는 승인 프로세스 없음(게이트 없이 진행)" },
     "links": [ { "type": "INCIDENT|PROBLEM|ASSET|COMPLIANCE_REQUIREMENT", "targetKey": "string" } ]
   }
   ```
-- **Response Code**: 200 / 401 / 404. `COMPLIANCE_REQUIREMENT` 링크는 컴플라이언스 도메인에서 생성한다([compliance.md](compliance.md) API-COMP-005, REQ-COMP-005).
+- **Response Code**: 200 / 401 / 404. `COMPLIANCE_REQUIREMENT` 링크는 컴플라이언스 도메인에서 생성한다([compliance.md](compliance.md) API-COMP-005, REQ-COMP-005). `approval` 상세(차수별 진행 상태)는 [common.md](common.md) API-COM-004로 조회한다.
 
 ### API-CHG-004 · 상태(6단계) 전이
 
@@ -80,9 +78,9 @@
 - **Response Code**:
   | Code | 의미 |
   |------|------|
-  | 200 | 전이 성공(표준 변경은 승인 자동 통과) |
+  | 200 | 전이 성공 |
   | 400 | 허용되지 않은 전이 |
-  | 409 | 승인 완료 전 구현(IMPLEMENTATION) 전이 시도 |
+  | 409 | 승인 완료 전 구현(IMPLEMENTATION) 전이 시도 — [common.md](common.md) 0절 공통 게이트 로직(domain=CHANGE, requestSubtypeKey=change_request.type) 적용. 매칭되는 승인 프로세스가 없거나 0차 승인이면 게이트 없이 통과(표준 변경 등) |
   | 403 / 404 | 권한 부족 / 없음 |
 
 ### API-CHG-005 · 변경 유형·위험 변경
@@ -90,26 +88,8 @@
 - **Endpoint**: `PATCH /api/v1/changes/{id}/classification`
 - **인증**: 필요
 - **Request Body**: `{ "type": "STANDARD|NORMAL|EMERGENCY", "risk": "HIGH|MEDIUM|LOW" }`
-- **Response Body** (200): `{ "id": "number", "type": "string", "risk": "string", "approvalRoute": "string" }`
-- **Response Code**: 200 / 400 정의되지 않은 유형 / 403 / 404. 위험도 미평가·고위험 시 기본 CAB 경로.
-
-### API-CHG-006 · 승인/반려
-
-- **Endpoint**: `POST /api/v1/changes/{id}/approval`
-- **인증**: 필요(approval.approver_role 보유자, CAB=APPROVER)
-- **Request Body**: `{ "decision": "APPROVE|REJECT", "opinion": "string" }`
-- **Response Body** (200): `{ "id": "number", "status": "string" }`
-- **Response Code**: 200 / 403 approver_role 미보유 / 404 / 409 이미 결정됨. **역할 기반 승인**(SRM과 동일): 승인 경로로 결정된 approver_role(CAB/동료검토→APPROVER)을 가진 사용자가 처리, 먼저 처리한 사용자가 결정자로 기록.
-
-### API-CHG-007 · 승인 대기 목록
-
-- **Endpoint**: `GET /api/v1/approvals?scope=mine&type=change`
-- **인증**: 필요(Approver 계열 역할)
-- **Response Body** (200):
-  ```json
-  [ { "changeId": "number", "ticketKey": "string", "type": "string", "risk": "string", "requester": "string", "summary": "string", "createdAt": "ISO-8601" } ]
-  ```
-- **Response Code**: 200 / 401 / 403. `scope=mine` = role claim에 approval.approver_role이 포함된 PENDING 승인 공유 목록(역할 기반 공유함). `summary`/`createdAt`은 헤더 알림 드롭다운(common.md SCR-COM-002)의 제목·상대 시간 표시용으로, 각각 `ChangeRequest.summary`와 승인 레코드 생성 시각(`BaseEntity.createdAt`)을 그대로 노출한다.
+- **Response Body** (200): `{ "id": "number", "type": "string", "risk": "string" }`
+- **Response Code**: 200 / 400 정의되지 않은 유형 / 403 / 404. `type`은 승인 프로세스의 요청유형 스코프(`approval_process.request_subtype_key`)로도 사용되므로, 변경 시 이후 상태 전이의 승인 게이트 매칭 결과가 달라질 수 있다(승인 경로 자동 라우팅은 더 이상 없음 — 유지보수 요청으로 커스텀 승인 프로세스가 완전 대체).
 
 ### API-CHG-008 · 구현 결과 기록
 

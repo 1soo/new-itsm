@@ -13,6 +13,8 @@ import lombok.NoArgsConstructor;
 
 /**
  * 요청 유형(카탈로그 항목). 동적 양식은 CatalogFormField로 분리.
+ * 승인 필요 여부는 더 이상 카탈로그 항목의 고정 속성이 아니다(승인 프로세스 커스텀 기능으로 완전 대체 —
+ * SYSTEM_ADMIN이 도메인=SERVICE_REQUEST, 요청유형=이 항목으로 별도 설정, docs/02_plan/api_spec/auth.md API-AUTH-027).
  */
 @Getter
 @Entity
@@ -33,12 +35,6 @@ public class ServiceCatalogItem extends BaseEntity {
     @Column(length = 100)
     private String category;
 
-    @Column(name = "approval_required", nullable = false)
-    private boolean approvalRequired = false;
-
-    @Column(name = "approver_role", length = 50)
-    private String approverRole;
-
     @Column(name = "queue_id")
     private Long queueId;
 
@@ -48,25 +44,21 @@ public class ServiceCatalogItem extends BaseEntity {
     @Column(name = "sla_resolve_minutes")
     private Integer slaResolveMinutes;
 
-    public ServiceCatalogItem(String name, String description, String category, boolean approvalRequired,
-                              String approverRole, Long queueId, Integer slaResponseMinutes, Integer slaResolveMinutes) {
+    public ServiceCatalogItem(String name, String description, String category,
+                              Long queueId, Integer slaResponseMinutes, Integer slaResolveMinutes) {
         this.name = name;
         this.description = description;
         this.category = category;
-        this.approvalRequired = approvalRequired;
-        this.approverRole = approverRole;
         this.queueId = queueId;
         this.slaResponseMinutes = slaResponseMinutes;
         this.slaResolveMinutes = slaResolveMinutes;
     }
 
-    public void update(String name, String description, String category, Boolean approvalRequired,
-                       String approverRole, Long queueId, Integer slaResponseMinutes, Integer slaResolveMinutes) {
+    public void update(String name, String description, String category,
+                       Long queueId, Integer slaResponseMinutes, Integer slaResolveMinutes) {
         if (name != null) this.name = name;
         if (description != null) this.description = description;
         if (category != null) this.category = category;
-        if (approvalRequired != null) this.approvalRequired = approvalRequired;
-        if (approverRole != null) this.approverRole = approverRole;
         if (queueId != null) this.queueId = queueId;
         if (slaResponseMinutes != null) this.slaResponseMinutes = slaResponseMinutes;
         if (slaResolveMinutes != null) this.slaResolveMinutes = slaResolveMinutes;

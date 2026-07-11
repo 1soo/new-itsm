@@ -1,6 +1,6 @@
 # 화면 설계서 — 컴플라이언스 관리 (Compliance Management)
 
-> 도메인: compliance · 버전: 0.1 · 작성일: 2026-07-10
+> 도메인: compliance · 버전: 0.2 · 작성일: 2026-07-11 · 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 시정조치 항목에 공통 승인 패널 추가(IN_PROGRESS → RESOLVED 전이 게이트, 매칭 규칙 없으면 기존처럼 즉시 전이)
 
 ## 1. 개요
 
@@ -66,8 +66,9 @@
   | 시정조치 상태 전이 | 버튼 | 탐지→조치중→해결 | Warning/Success |
   | 변경 연계 | 버튼 | 변경 요청 링크 | Info |
   | 감사 로그 목록 | 리스트 | 요구사항 관련 활동 이력(수행자·시각) | Info |
-- **상태 · 인터랙션**: 책임자 미지정 시 목록/상세에 "책임자 미지정" 표시. 정의되지 않은 시정조치 상태 전이 시 400. 미존재 변경 요청 연계 시 400.
-- **연관 API**: `GET /api/v1/compliance/requirements/{id}`, `PATCH .../` , `POST .../owner`, `POST .../corrective-actions`, `PATCH /api/v1/compliance/corrective-actions/{actionId}/status`, `POST .../links`, `GET /api/v1/compliance/audit-logs`
+  | 승인 패널(공용) | 패널 | 개별 시정조치의 IN_PROGRESS→RESOLVED 전이에 매칭되는 승인 프로세스가 있으면 해당 시정조치 항목 옆에 차수 진행 상태(API-COM-004) 표시, 없으면 패널 자체를 노출하지 않고 기존처럼 즉시 전이 | Info/Warning/Success |
+- **상태 · 인터랙션**: 책임자 미지정 시 목록/상세에 "책임자 미지정" 표시. 정의되지 않은 시정조치 상태 전이 시 400. 미존재 변경 요청 연계 시 400. 시정조치 RESOLVED 전이 시도 시 매칭되는 승인 프로세스가 있으면 409와 함께 해당 항목에 승인 패널이 나타나며, 처리는 [common.md](common.md) SCR-COM-014에서 수행한다.
+- **연관 API**: `GET /api/v1/compliance/requirements/{id}`, `PATCH .../` , `POST .../owner`, `POST .../corrective-actions`, `PATCH /api/v1/compliance/corrective-actions/{actionId}/status`, `POST .../links`, `GET /api/v1/compliance/audit-logs`, `GET /api/v1/approvals/{approvalRequestId}`(API-COM-004)
 
 ### SCR-COMP-004 · 준수 현황 대시보드
 

@@ -128,3 +128,80 @@ export interface UpdateMenuRequest {
   sortOrder?: number;
   navVisible?: boolean;
 }
+
+/* 승인 프로세스 관리(SCR-ADMIN-007/008, 승인 프로세스 커스텀 기능) — api_spec/auth.md(API-AUTH-023~029) 기준. */
+
+/** 승인 프로세스 대상 도메인(요청자가 제출하는 티켓 개념이 있는 9개 도메인). */
+export type ApprovalDomain =
+  | "SERVICE_REQUEST"
+  | "CHANGE"
+  | "KNOWLEDGE"
+  | "INCIDENT"
+  | "PROBLEM"
+  | "ASSET"
+  | "VULNERABILITY"
+  | "COMPLIANCE"
+  | "ESM";
+
+export interface ApprovalDomainOption {
+  domain: ApprovalDomain;
+  label: string;
+  hasRequestSubtype: boolean;
+}
+
+export interface RequestSubtypeOption {
+  /** request_subtype_key로 저장될 값. */
+  key: string;
+  label: string;
+}
+
+export type DecisionMode = "AND" | "OR";
+
+export interface ApprovalProcessStep {
+  stepNo: number;
+  decisionMode: DecisionMode;
+  roleIds: number[];
+}
+
+export interface ApprovalProcessSummary {
+  id: number;
+  domain: ApprovalDomain;
+  requestSubtypeKey: string | null;
+  requestSubtypeLabel: string | null;
+  priorityTier: number;
+  name: string;
+  requesterRoles: string[];
+  stepCount: number;
+}
+
+export interface ApprovalProcessDetail {
+  id: number;
+  domain: ApprovalDomain;
+  requestSubtypeKey: string | null;
+  name: string;
+  description: string | null;
+  requesterRoleIds: number[];
+  steps: ApprovalProcessStep[];
+}
+
+export interface ApprovalProcessListQuery {
+  domain?: ApprovalDomain | "";
+  page?: number;
+  size?: number;
+}
+
+export interface CreateApprovalProcessRequest {
+  domain: ApprovalDomain;
+  requestSubtypeKey: string | null;
+  name: string;
+  description?: string;
+  requesterRoleIds: number[];
+  steps: { decisionMode: DecisionMode; roleIds: number[] }[];
+}
+
+export interface UpdateApprovalProcessRequest {
+  name?: string;
+  description?: string;
+  requesterRoleIds?: number[];
+  steps?: { decisionMode: DecisionMode; roleIds: number[] }[];
+}

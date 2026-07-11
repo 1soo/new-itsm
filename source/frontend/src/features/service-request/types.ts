@@ -30,14 +30,12 @@ export interface CatalogItemSummary {
   name: string;
   description?: string;
   category?: string;
-  approvalRequired: boolean;
 }
 
 export interface CatalogItemDetail {
   id: number;
   name: string;
   description: string;
-  approvalRequired: boolean;
   slaResponseMinutes: number;
   slaResolveMinutes: number;
   formSchema: FormFieldSchema[];
@@ -46,7 +44,6 @@ export interface CatalogItemDetail {
 export interface CatalogItemInput {
   name: string;
   description: string;
-  approvalRequired: boolean;
   queueId?: number;
   slaResponseMinutes: number;
   slaResolveMinutes: number;
@@ -94,10 +91,10 @@ export interface RequestTimelineEvent {
   at: string;
 }
 
+/** 승인 프로세스 커스텀 기능(유지보수 요청) — approvalRequestId=null이면 매칭되는 승인 프로세스가 없어 게이트 없이 진행. */
 export interface RequestApproval {
-  required: boolean;
-  status?: "PENDING" | "APPROVED" | "REJECTED";
-  reason?: string;
+  approvalRequestId: number | null;
+  status: "IN_PROGRESS" | "APPROVED" | "REJECTED" | null;
 }
 
 export interface RequestSla {
@@ -132,14 +129,6 @@ export interface RequestDetail {
   timeline: RequestTimelineEvent[];
   /** BE가 제공하면 이 목록만 전이 버튼으로 노출(허용 전이). 없으면 FE가 status/approval로 유추. */
   allowedTransitions?: TargetStatus[];
-}
-
-export interface ApprovalItem {
-  requestId: number;
-  ticketKey: string;
-  catalogItemName: string;
-  requester: string;
-  requestedAt: string;
 }
 
 export interface RequestMetrics {
