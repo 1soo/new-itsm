@@ -1,0 +1,10 @@
+{"items":[
+ {"notificationType":"ASSET_EXPIRY","sourceId":998001},
+ {"notificationType":"ASSET_EXPIRY","sourceId":998002},
+ {"notificationType":"ASSET_EXPIRY","sourceId":998003},
+ {"notificationType":"SERVICE_REQUEST_APPROVAL","sourceId":998004},
+ {"notificationType":"SERVICE_REQUEST_APPROVAL","sourceId":998005},
+ {"notificationType":"CHANGE_APPROVAL","sourceId":998006},
+ {"notificationType":"CHANGE_APPROVAL","sourceId":998007},
+ {"notificationType":"ASSET_EXPIRY","sourceId":998008}
+]}

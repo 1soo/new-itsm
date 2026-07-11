@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from "react";
-import { Bell, HelpCircle, Menu, Search } from "lucide-react";
+import { Bell, HelpCircle, Menu, Search, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,6 +64,10 @@ export interface HeaderProps {
   onSelectNotification?: (item: HeaderNotificationItem) => void;
   /** 알림 팝오버 열림/닫힘 상태 변경 시 호출(열릴 때 FE가 timeLabel을 현재 시각 기준으로 재계산). */
   onNotificationsOpenChange?: (open: boolean) => void;
+  /** "모두 지우기" 클릭 시 호출(표시 중 알림 전체 확인처리). */
+  onDismissAllNotifications?: () => void;
+  /** 알림 항목의 개별 X 클릭 시 호출(해당 1건만 확인처리). 라인 클릭(상세 이동)과는 분리된 동작. */
+  onDismissNotification?: (item: HeaderNotificationItem) => void;
   onProfile?: () => void;
   onChangePassword?: () => void;
   onLogout?: () => void;
@@ -88,6 +92,8 @@ export function Header({
   notifications,
   onSelectNotification,
   onNotificationsOpenChange,
+  onDismissAllNotifications,
+  onDismissNotification,
   onProfile,
   onChangePassword,
   onLogout,
@@ -218,6 +224,20 @@ export function Header({
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-80 p-1" align="end">
+            {notifications && notifications.length > 0 && onDismissAllNotifications ? (
+              <div className="flex items-center justify-end border-b border-border px-2 py-1">
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  className="h-auto p-0 text-xs"
+                  aria-label="모든 알림 확인처리"
+                  onClick={onDismissAllNotifications}
+                >
+                  모두 지우기
+                </Button>
+              </div>
+            ) : null}
             <ul className="max-h-80 overflow-auto">
               {notifications && notifications.length === 0 ? (
                 <li className="px-2 py-1.5 text-sm text-muted-foreground">
@@ -232,7 +252,22 @@ export function Header({
                   >
                     <div className="flex items-center justify-between gap-2">
                       <StatusBadge tone="info" label={n.domainLabel} className="shrink-0" />
-                      <span className="shrink-0 text-xs text-muted-foreground">{n.timeLabel}</span>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <span className="text-xs text-muted-foreground">{n.timeLabel}</span>
+                        {onDismissNotification ? (
+                          <button
+                            type="button"
+                            aria-label="알림 확인처리"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDismissNotification(n);
+                            }}
+                            className="rounded-sm p-0.5 text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                          >
+                            <X className="size-3.5" />
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <span className="flex-1 truncate text-sm text-foreground">{n.text}</span>

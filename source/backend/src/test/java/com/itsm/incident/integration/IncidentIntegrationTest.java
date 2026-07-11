@@ -90,7 +90,9 @@ class IncidentIntegrationTest {
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/22_infra_monitoring_schema.sql").toAbsolutePath()),
                     "/docker-entrypoint-initdb.d/22_infra_monitoring_schema.sql")
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/24_auth_menu_columns.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/24_auth_menu_columns.sql");
+                    "/docker-entrypoint-initdb.d/24_auth_menu_columns.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/25_common_notification_dismissal.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/25_common_notification_dismissal.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {

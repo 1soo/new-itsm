@@ -4,7 +4,7 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AppShell } from "@/components/layout/app-shell";
 import type { HeaderNotificationItem, HeaderSearchResult } from "@/components/layout/header";
 import type { NavGroup } from "@/components/layout/sidebar";
-import { ConfirmDialog } from "@/components/common";
+import { ConfirmDialog, toast } from "@/components/common";
 import { hasAnyRole, ROLE_APPROVER, ROLE_ASSET_MANAGER } from "@/features/auth/roles";
 import { authApi } from "@/features/auth/api";
 import type { MenuGroup as MyMenuGroup } from "@/features/auth/types";
@@ -14,7 +14,10 @@ import { assetApi } from "@/features/asset/api";
 import { formatDate } from "@/features/asset/format";
 import { searchApi } from "@/features/search/api";
 import { domainLabel } from "@/features/search/status";
+import { commonApi } from "@/features/common/api";
+import type { DismissalItem, NotificationType } from "@/features/common/types";
 import { resolveIcon } from "@/lib/icon";
+import { extractErrorMessage } from "@/lib/apiClient";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { logout } from "@/store/authSlice";
 
@@ -57,6 +60,14 @@ interface NotificationSource {
   /** atIso가 null일 때 사용할 고정 시간/만료 텍스트. */
   fixedTimeLabel?: string;
   href: string;
+  /** 확인처리(API-COM-001) 대상 식별. */
+  notificationType: NotificationType;
+  sourceId: number;
+}
+
+/** 확인처리 이력 매칭 키(notificationType+sourceId 조합). */
+function dismissalKey(notificationType: NotificationType, sourceId: number): string {
+  return `${notificationType}:${sourceId}`;
 }
 
 /** 헤더 통합 검색 미리보기 결과 건수(공유 API-SEARCH-001, common.md SCR-COM-002 기준 5~8). */
@@ -147,6 +158,7 @@ export function AppLayout() {
   );
   const notificationSources = useRef<NotificationSource[]>([]);
   const notificationHrefByKey = useRef<Map<string, string>>(new Map());
+  const notificationDismissTargetByKey = useRef<Map<string, DismissalItem>>(new Map());
 
   const buildNotificationItems = (now: number): HeaderNotificationItem[] =>
     notificationSources.current.map((s) => ({
@@ -160,6 +172,13 @@ export function AppLayout() {
     let cancelled = false;
 
     const load = async () => {
+      // 확인처리된 알림은 후보에서 제외한다(API-COM-002). 조회 실패는 치명적이지 않으므로
+      // 필터링 없이(빈 이력으로 간주) 진행한다.
+      const dismissedKeys = await commonApi
+        .listDismissals()
+        .then((res) => new Set(res.items.map((d) => dismissalKey(d.notificationType, d.sourceId))))
+        .catch(() => new Set<string>());
+
       let count = 0;
       const sources: NotificationSource[] = [];
 
@@ -168,24 +187,34 @@ export function AppLayout() {
           srmApi.listApprovals(),
           changeApi.listApprovals(),
         ]);
-        count += srmApprovals.length + chgApprovals.length;
+        const srmVisible = srmApprovals.filter(
+          (a) => !dismissedKeys.has(dismissalKey("SERVICE_REQUEST_APPROVAL", a.requestId)),
+        );
+        const chgVisible = chgApprovals.filter(
+          (a) => !dismissedKeys.has(dismissalKey("CHANGE_APPROVAL", a.changeId)),
+        );
+        count += srmVisible.length + chgVisible.length;
 
-        for (const a of srmApprovals) {
+        for (const a of srmVisible) {
           sources.push({
             key: `sr-${a.requestId}`,
             domainLabel: "서비스요청 승인",
             title: a.catalogItemName,
             atIso: a.requestedAt,
             href: `/service-requests/${a.requestId}`,
+            notificationType: "SERVICE_REQUEST_APPROVAL",
+            sourceId: a.requestId,
           });
         }
-        for (const a of chgApprovals) {
+        for (const a of chgVisible) {
           sources.push({
             key: `chg-${a.changeId}`,
             domainLabel: "변경 승인",
             title: a.summary,
             atIso: a.createdAt,
             href: `/changes/${a.changeId}`,
+            notificationType: "CHANGE_APPROVAL",
+            sourceId: a.changeId,
           });
         }
       }
@@ -195,9 +224,15 @@ export function AppLayout() {
           expiringWithinDays: ASSET_EXPIRING_WITHIN_DAYS,
           size: NOTIFICATION_PREVIEW_SIZE,
         });
-        count += assets.totalElements;
+        const visibleAssets = assets.content.filter(
+          (asset) => !dismissedKeys.has(dismissalKey("ASSET_EXPIRY", asset.id)),
+        );
+        // totalElements는 전체 만료 임박 건수 기준이라, 현재 배치(상위 size건)에서 확인처리된
+        // 건수만큼만 근사로 차감한다(화면 밖의 확인처리 이력까지는 정확히 반영하지 못함).
+        const dismissedInBatch = assets.content.length - visibleAssets.length;
+        count += Math.max(0, assets.totalElements - dismissedInBatch);
 
-        for (const asset of assets.content) {
+        for (const asset of visibleAssets) {
           sources.push({
             key: `asset-${asset.id}`,
             domainLabel: "자산 만료",
@@ -205,6 +240,8 @@ export function AppLayout() {
             atIso: null,
             fixedTimeLabel: `${formatDate(asset.expiryDate)} 만료`,
             href: `/assets/${asset.id}`,
+            notificationType: "ASSET_EXPIRY",
+            sourceId: asset.id,
           });
         }
       }
@@ -213,6 +250,12 @@ export function AppLayout() {
         notificationSources.current = sources.slice(0, NOTIFICATION_PREVIEW_SIZE);
         notificationHrefByKey.current = new Map(
           notificationSources.current.map((s) => [s.key, s.href]),
+        );
+        notificationDismissTargetByKey.current = new Map(
+          notificationSources.current.map((s) => [
+            s.key,
+            { notificationType: s.notificationType, sourceId: s.sourceId },
+          ]),
         );
         setNotificationCount(count);
         setNotificationItems(buildNotificationItems(Date.now()));
@@ -223,6 +266,7 @@ export function AppLayout() {
       if (!cancelled) {
         notificationSources.current = [];
         notificationHrefByKey.current = new Map();
+        notificationDismissTargetByKey.current = new Map();
         setNotificationCount(0);
         setNotificationItems([]);
       }
@@ -243,6 +287,40 @@ export function AppLayout() {
   const handleNotificationsOpenChange = (open: boolean) => {
     if (!open) return;
     setNotificationItems(buildNotificationItems(Date.now()));
+  };
+
+  // 알림 확인처리(API-COM-001) — 원본 승인 대기·자산 만료 데이터는 변경하지 않고 표시 여부만 낙관적으로 갱신한다.
+  const handleDismissAllNotifications = async () => {
+    const targets = notificationSources.current.map((s) => ({
+      notificationType: s.notificationType,
+      sourceId: s.sourceId,
+    }));
+    if (targets.length === 0) return;
+    try {
+      await commonApi.dismissNotifications(targets);
+      notificationSources.current = [];
+      notificationHrefByKey.current = new Map();
+      notificationDismissTargetByKey.current = new Map();
+      setNotificationCount((c) => Math.max(0, c - targets.length));
+      setNotificationItems([]);
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
+    }
+  };
+
+  const handleDismissNotification = async (item: HeaderNotificationItem) => {
+    const target = notificationDismissTargetByKey.current.get(item.key);
+    if (!target) return;
+    try {
+      await commonApi.dismissNotifications([target]);
+      notificationSources.current = notificationSources.current.filter((s) => s.key !== item.key);
+      notificationHrefByKey.current.delete(item.key);
+      notificationDismissTargetByKey.current.delete(item.key);
+      setNotificationCount((c) => Math.max(0, c - 1));
+      setNotificationItems(buildNotificationItems(Date.now()));
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
+    }
   };
 
   // 헤더 통합 검색 미리보기: 입력 중 디바운스 후 API-SEARCH-001을 size=8로 호출해 드롭다운에 표시.
@@ -307,6 +385,8 @@ export function AppLayout() {
           notifications: notificationItems,
           onSelectNotification: handleSelectNotification,
           onNotificationsOpenChange: handleNotificationsOpenChange,
+          onDismissAllNotifications: handleDismissAllNotifications,
+          onDismissNotification: handleDismissNotification,
           searchResults,
           onSearch: (query) => {
             if (query.trim()) navigate(`/search?keyword=${encodeURIComponent(query.trim())}`);
