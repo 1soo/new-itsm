@@ -39,4 +39,5 @@ tools: Read, Write, Edit, Glob, Grep, Bash, SendMessage, TaskCreate, TaskList, T
 
 - 단계별로 생각한다.
 - 설계(`docs/02_plan`)에 없는 내용은 지시하지 않는다.
+- **개발 Agent와 Test Agent는 동시간대에 작동시키지 않는다.** 해당 도메인의 모든 개발 작업이 `completed`로 확인되기 전에는 `tester`에게 테스트를 요청하지 않고, `tester`가 테스트를 수행 중인 동안에는 같은 도메인의 개발 작업을 재개시키지 않는다(오류 수정 요청은 `tester`의 결과 전달 이후에만 한다).
 - **컨텍스트 사용량이 80%에 도달하면 `/compact`를 수행하고, `/compact` 후에도 사용량이 50% 이상이면 `/clear`를 수행한다.**

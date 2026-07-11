@@ -14,7 +14,7 @@
 ## 디렉토리 구조
 
 ```
-docs/     # 분석·설계·개발계획·테스트 산출물 (01_analyze ~ 04_test)
+docs/     # 분석·설계·개발계획·테스트 산출물 (01_analyze ~ 04_test), 유지보수 이력(06_maintenance)
 source/
 ├── frontend/   # React(CSR)
 ├── backend/    # Spring Boot
@@ -61,6 +61,7 @@ npm run dev
 - `docs/02_plan/` — 화면/API/DB/보안/역할/인프라 설계
 - `docs/03_develop/plan/` — 도메인별 개발 계획
 - `docs/04_test/{domain}/{yyyyMMdd-HHmmss}/` — 도메인별 통합 테스트 시나리오·결과
+- `docs/06_maintenance/{yyyyMMdd-HHmmss}/{domain}/report.md` — 개발 완료 후 추가 요구사항(유지보수) 이력. 인덱스는 `docs/06_maintenance/CLAUDE.md`
 
 ---
 
@@ -88,8 +89,10 @@ npm run dev
 | 개발-BE | `developer`(역할: BE) | 백엔드 API 구현(도메인 로직, 인증·인가, 예외처리 등). |
 | 개발-DB | `developer`(역할: DB) | 데이터베이스 스키마·초기 데이터 구현. |
 | 테스트 | `tester` | 기능 명세·요구사항 기준으로 도메인별 통합 테스트 시나리오 작성·수행, 결과를 `dev-lead`에게 전달. |
+| 유지보수 | `maintainer` | 개발 완료된 시스템에 대한 추가 요구사항을 도메인별로 분석하고, 유사 유지보수 이력을 조회해 `designer`에게 전달. 유지보수 개발 완료 후 이력(`docs/06_maintenance/`)을 기록. |
 
 > 개발 구현 4종(UI/FE/BE/DB)은 모두 `developer` 정의를 재사용하며, 소집 시 역할 지시로 담당 범위를 한정한다. 렌더링 방식(CSR/SSR)에 따라 실제 소집 인원 구성이 달라질 수 있다.
+> **이미 개발이 완료된 시스템에 대한 추가 요구사항**이면 `analyzer` 대신 `maintainer`를 소집해 분석부터 진행한다(설계·개발·테스트는 기존 흐름을 그대로 재사용).
 
 ## 3. Custom Command
 
