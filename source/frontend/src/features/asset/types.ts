@@ -50,6 +50,12 @@ export interface LinkedCi {
   name: string;
 }
 
+/** 승인 프로세스 커스텀 기능(유지보수 요청) — approvalRequestId=null이면 매칭되는 승인 프로세스가 없어 게이트 없이 진행. */
+export interface AssetApproval {
+  approvalRequestId: number | null;
+  status: "IN_PROGRESS" | "APPROVED" | "REJECTED" | null;
+}
+
 export interface AssetDetail {
   id: number;
   assetKey: string;
@@ -60,6 +66,7 @@ export interface AssetDetail {
   location: string;
   attributes: Record<string, string>;
   expiry: AssetExpiry;
+  approval: AssetApproval;
   lifecycleHistory: LifecycleEntry[];
   linkedTickets: LinkedTicket[];
   linkedCis: LinkedCi[];

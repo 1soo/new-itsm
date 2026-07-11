@@ -12,7 +12,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ConfirmDialog, StatusBadge, toast } from "@/components/common";
+import { ApprovalPanel, ConfirmDialog, StatusBadge, toast } from "@/components/common";
+import type { ApprovalStep } from "@/components/common";
 import { FullscreenLoader } from "@/routes/FullscreenLoader";
 import { assetApi } from "@/features/asset/api";
 import { formatDate, formatDateTime } from "@/features/asset/format";
@@ -25,6 +26,7 @@ import {
   typeTone,
 } from "@/features/asset/status";
 import type { AssetDetail, AssetStatus, ExpiryField, TicketType } from "@/features/asset/types";
+import { commonApi } from "@/features/common/api";
 import { extractErrorMessage } from "@/lib/apiClient";
 
 const NON_TERMINAL_STAGES: AssetStatus[] = ["PLANNING", "PROCUREMENT", "OPERATION", "MAINTENANCE"];
@@ -38,6 +40,8 @@ export function AssetDetailPage() {
   const id = Number(useParams().id);
 
   const [detail, setDetail] = useState<AssetDetail | null>(null);
+  const [approvalSteps, setApprovalSteps] = useState<ApprovalStep[]>([]);
+  const [approvalCurrentStepNo, setApprovalCurrentStepNo] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -46,24 +50,49 @@ export function AssetDetailPage() {
   const [ticketType, setTicketType] = useState<TicketType>("INCIDENT");
   const [ticketId, setTicketId] = useState("");
 
+  const refreshDetail = useCallback(
+    (silent: boolean) => {
+      if (!silent) setLoading(true);
+      return assetApi
+        .get(id)
+        .then((d) => {
+          setDetail(d);
+          setNotFound(false);
+          if (d.approval.approvalRequestId == null) {
+            setApprovalSteps([]);
+            setApprovalCurrentStepNo(null);
+            return;
+          }
+          return commonApi.getApproval(d.approval.approvalRequestId).then((a) => {
+            setApprovalSteps(a.steps);
+            setApprovalCurrentStepNo(a.currentStepNo);
+          });
+        })
+        .catch((err) => {
+          if (!silent) {
+            toast.error(extractErrorMessage(err));
+            setNotFound(true);
+          }
+        })
+        .finally(() => {
+          if (!silent) setLoading(false);
+        });
+    },
+    [id],
+  );
+
   const load = useCallback(() => {
-    setLoading(true);
-    assetApi
-      .get(id)
-      .then((d) => {
-        setDetail(d);
-        setNotFound(false);
-      })
-      .catch((err) => {
-        toast.error(extractErrorMessage(err));
-        setNotFound(true);
-      })
-      .finally(() => setLoading(false));
-  }, [id]);
+    void refreshDetail(false);
+  }, [refreshDetail]);
 
   useEffect(load, [load]);
 
-  const run = async (key: string, fn: () => Promise<unknown>, successMsg?: string) => {
+  const run = async (
+    key: string,
+    fn: () => Promise<unknown>,
+    successMsg?: string,
+    reloadOnError = false,
+  ) => {
     setBusy(key);
     try {
       await fn();
@@ -71,6 +100,9 @@ export function AssetDetailPage() {
       load();
     } catch (err) {
       toast.error(extractErrorMessage(err));
+      // 전이/폐기가 게이트(409)로 거부된 경우 BE가 이미 승인 인스턴스를 생성했을 수 있으므로,
+      // 전체 로딩 화면 없이 조용히 다시 조회해 승인 패널에 반영한다.
+      if (reloadOnError) refreshDetail(true);
     } finally {
       setBusy(null);
     }
@@ -84,6 +116,7 @@ export function AssetDetailPage() {
       load();
     } catch (err) {
       toast.error(extractErrorMessage(err));
+      refreshDetail(true);
     } finally {
       setBusy(null);
       setConfirmRetire(false);
@@ -110,6 +143,7 @@ export function AssetDetailPage() {
 
   const isRetired = detail.status === "RETIREMENT";
   const transitions = NON_TERMINAL_STAGES.filter((s) => s !== detail.status);
+  const approved = detail.approval.approvalRequestId == null || detail.approval.status === "APPROVED";
 
   return (
     <>
@@ -135,7 +169,13 @@ export function AssetDetailPage() {
                   {statusLabel(t)}
                 </Button>
               ))}
-              <Button size="sm" variant="destructive" onClick={() => setConfirmRetire(true)}>
+              <Button
+                size="sm"
+                variant="destructive"
+                disabled={!approved}
+                title={!approved ? "승인 완료 전에는 폐기할 수 없습니다" : undefined}
+                onClick={() => setConfirmRetire(true)}
+              >
                 폐기
               </Button>
             </div>
@@ -214,6 +254,12 @@ export function AssetDetailPage() {
                 <ExpiryRow label="계약" value={detail.expiry.contract} />
               </CardContent>
             </Card>
+
+            <ApprovalPanel
+              matched={detail.approval.approvalRequestId != null}
+              steps={approvalSteps}
+              currentStepNo={approvalCurrentStepNo}
+            />
 
             <Card>
               <CardHeader><CardTitle className="text-base">연결 티켓</CardTitle></CardHeader>

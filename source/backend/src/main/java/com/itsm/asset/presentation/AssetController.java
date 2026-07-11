@@ -112,7 +112,8 @@ public class AssetController {
             @ApiResponse(responseCode = "200", description = "전이 성공(이력 기록)"),
             @ApiResponse(responseCode = "400", description = "정의되지 않은 단계", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "403", description = "권한 부족", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "404", description = "자산 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            @ApiResponse(responseCode = "404", description = "자산 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "targetStage=RETIREMENT인데 승인 완료 전", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PatchMapping("/{id}/lifecycle")
     public ResponseEntity<StatusResponse> transition(@PathVariable Long id,
@@ -124,7 +125,8 @@ public class AssetController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "정상"),
             @ApiResponse(responseCode = "403", description = "권한 부족", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "404", description = "자산 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            @ApiResponse(responseCode = "404", description = "자산 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "승인 완료 전 폐기 시도", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PatchMapping("/{id}/retire")
     public ResponseEntity<StatusResponse> retire(@PathVariable Long id) {

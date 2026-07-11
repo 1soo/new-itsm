@@ -19,11 +19,16 @@ public record AssetDetailResponse(
         Map<String, String> attributes,
         Expiry expiry,
         List<LifecycleEntry> lifecycleHistory,
+        @Schema(description = "승인 정보(null=매칭되는 승인 프로세스 없음, 게이트 없이 진행)") ApprovalInfo approval,
         List<LinkedTicket> linkedTickets,
         List<LinkedCi> linkedCis
 ) {
     @Schema(description = "만료일 3종(임박/경과 상태 포함)")
     public record Expiry(ExpiryDate license, ExpiryDate warranty, ExpiryDate contract) {
+    }
+
+    @Schema(description = "승인 정보")
+    public record ApprovalInfo(Long approvalRequestId, String status) {
     }
 
     @Schema(description = "만료일과 상태(OK/EXPIRING/EXPIRED, 날짜 없으면 상태도 null)")
