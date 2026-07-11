@@ -5,15 +5,14 @@ import type {
   ArticleListQuery,
   ArticleStatus,
   ArticleSummary,
+  ArticleTransitionResult,
   Category,
   CreatedArticle,
-  Decision,
   FeedbackInput,
   FeedbackResult,
   KnowledgeMetrics,
   LinkInput,
   PageResponse,
-  ReviewQueueItem,
 } from "@/features/knowledge/types";
 
 /* KM API 호출 — 모두 공통 apiClient 경유. api_spec/knowledge.md 준수. */
@@ -57,24 +56,14 @@ export const knowledgeApi = {
     await apiClient.delete(`/knowledge/articles/${id}`);
   },
 
-  // API-KM-006 기사 상태 전이(검토 요청)
-  async transition(id: number, targetStatus: Extract<ArticleStatus, "IN_REVIEW">): Promise<void> {
-    await apiClient.patch(`/knowledge/articles/${id}/status`, { targetStatus });
-  },
-
-  // API-KM-007 검토·게시 승인/반려 (Gatekeeper)
-  async review(id: number, decision: Decision, reason?: string): Promise<{ id: number; status: ArticleStatus }> {
-    const res = await apiClient.post<{ id: number; status: ArticleStatus }>(
-      `/knowledge/articles/${id}/review`,
-      { decision, reason },
-    );
-    return res.data;
-  },
-
-  // API-KM-008 검토 대기 목록 (Gatekeeper)
-  async listReviews(): Promise<ReviewQueueItem[]> {
-    const res = await apiClient.get<ReviewQueueItem[]>("/knowledge/reviews", {
-      params: { scope: "mine" },
+  // API-KM-006 기사 상태 전이(검토 요청). 승인 프로세스 커스텀 기능(유지보수 요청) — 매칭 규칙 없으면
+  // 즉시 PUBLISHED, 있으면 IN_REVIEW(승인 인스턴스 생성). 결정(승인/반려)은 공용 승인 API가 처리.
+  async transition(
+    id: number,
+    targetStatus: Extract<ArticleStatus, "IN_REVIEW">,
+  ): Promise<ArticleTransitionResult> {
+    const res = await apiClient.patch<ArticleTransitionResult>(`/knowledge/articles/${id}/status`, {
+      targetStatus,
     });
     return res.data;
   },

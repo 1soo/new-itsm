@@ -1,7 +1,8 @@
 package com.itsm.knowledge.application;
 
-import com.itsm.auth.domain.AppUser;
-import com.itsm.auth.domain.repository.AppUserRepository;
+import com.itsm.common.approval.application.ApprovalGateService;
+import com.itsm.common.approval.domain.ApprovalRequest;
+import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.common.security.AuthPrincipal;
@@ -21,11 +22,9 @@ import com.itsm.knowledge.application.dto.FeedbackResponse;
 import com.itsm.knowledge.application.dto.KnowledgeMetricsResponse;
 import com.itsm.knowledge.application.dto.LinkArticleRequest;
 import com.itsm.knowledge.application.dto.LinkArticleResponse;
-import com.itsm.knowledge.application.dto.PendingReviewResponse;
-import com.itsm.knowledge.application.dto.ReviewRequest;
-import com.itsm.knowledge.application.dto.ReviewResponse;
 import com.itsm.knowledge.application.dto.StatusResponse;
 import com.itsm.knowledge.application.dto.StatusTransitionRequest;
+import com.itsm.knowledge.application.dto.StatusTransitionResponse;
 import com.itsm.knowledge.application.dto.UpdateArticleRequest;
 import com.itsm.knowledge.domain.ArticleLabel;
 import com.itsm.knowledge.domain.ArticleStatus;
@@ -33,15 +32,12 @@ import com.itsm.knowledge.domain.KnowledgeArticle;
 import com.itsm.knowledge.domain.KnowledgeCategory;
 import com.itsm.knowledge.domain.KnowledgeFeedback;
 import com.itsm.knowledge.domain.KnowledgeLabel;
-import com.itsm.knowledge.domain.KnowledgeReview;
-import com.itsm.knowledge.domain.ReviewDecision;
 import com.itsm.knowledge.domain.SearchLog;
 import com.itsm.knowledge.domain.repository.ArticleLabelRepository;
 import com.itsm.knowledge.domain.repository.KnowledgeArticleRepository;
 import com.itsm.knowledge.domain.repository.KnowledgeCategoryRepository;
 import com.itsm.knowledge.domain.repository.KnowledgeFeedbackRepository;
 import com.itsm.knowledge.domain.repository.KnowledgeLabelRepository;
-import com.itsm.knowledge.domain.repository.KnowledgeReviewRepository;
 import com.itsm.knowledge.domain.repository.SearchLogRepository;
 import com.itsm.problem.domain.repository.ProblemRepository;
 import com.itsm.srm.domain.repository.ServiceRequestRepository;
@@ -58,17 +54,21 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
- * 지식(knowledge) 유스케이스: 검색/목록·상세·작성/수정/삭제·상태전이·검토승인/반려·검토대기·
+ * 지식(knowledge) 유스케이스: 검색/목록·상세·작성/수정/삭제·상태전이(공용 승인 게이트)·
  * 유용성평가·카테고리·KCS 티켓 연계·지표.
  * RBAC(knowledge_contributor.md/knowledge_gatekeeper.md): 작성/수정/삭제/검토요청/KCS연계는 CONTRIBUTOR 전용,
- * 검토승인·검토대기·지표는 GATEKEEPER 전용. 검색/열람/평가/카테고리는 인증된 모든 사용자에게 개방하되
+ * 지표는 GATEKEEPER 전용. 검색/열람/평가/카테고리는 인증된 모든 사용자에게 개방하되
  * 미게시 기사는 작성자 본인 또는 GATEKEEPER만 열람 가능.
+ * 검토승인/반려·검토대기 전용 API(API-KM-007/008)는 승인 프로세스 커스텀 기능(2026-07-11)으로 제거되었다
+ * — 공용 승인 엔진(common.approval)이 대체하며, 결정 확정 시 {@link KnowledgeApprovalDecisionCallback}이
+ * 기사를 자동 전환한다(승인→PUBLISHED, 반려→DRAFT).
  */
 @Service
 public class KnowledgeService {
 
     private static final String KC = "KNOWLEDGE_CONTRIBUTOR";
     private static final String KG = "KNOWLEDGE_GATEKEEPER";
+    private static final String DOMAIN = "KNOWLEDGE";
     private static final int SUMMARY_LENGTH = 100;
     private static final int TOP_KEYWORD_LIMIT = 5;
 
@@ -77,38 +77,38 @@ public class KnowledgeService {
     private final KnowledgeLabelRepository labelRepository;
     private final ArticleLabelRepository articleLabelRepository;
     private final KnowledgeFeedbackRepository feedbackRepository;
-    private final KnowledgeReviewRepository reviewRepository;
     private final SearchLogRepository searchLogRepository;
     private final TicketLinkRepository ticketLinkRepository;
-    private final AppUserRepository appUserRepository;
     private final IncidentRepository incidentRepository;
     private final ProblemRepository problemRepository;
     private final ServiceRequestRepository serviceRequestRepository;
+    private final ApprovalGateService approvalGateService;
+    private final ApprovalRequestRepository approvalRequestRepository;
 
     public KnowledgeService(KnowledgeArticleRepository articleRepository,
                             KnowledgeCategoryRepository categoryRepository,
                             KnowledgeLabelRepository labelRepository,
                             ArticleLabelRepository articleLabelRepository,
                             KnowledgeFeedbackRepository feedbackRepository,
-                            KnowledgeReviewRepository reviewRepository,
                             SearchLogRepository searchLogRepository,
                             TicketLinkRepository ticketLinkRepository,
-                            AppUserRepository appUserRepository,
                             IncidentRepository incidentRepository,
                             ProblemRepository problemRepository,
-                            ServiceRequestRepository serviceRequestRepository) {
+                            ServiceRequestRepository serviceRequestRepository,
+                            ApprovalGateService approvalGateService,
+                            ApprovalRequestRepository approvalRequestRepository) {
         this.articleRepository = articleRepository;
         this.categoryRepository = categoryRepository;
         this.labelRepository = labelRepository;
         this.articleLabelRepository = articleLabelRepository;
         this.feedbackRepository = feedbackRepository;
-        this.reviewRepository = reviewRepository;
         this.searchLogRepository = searchLogRepository;
         this.ticketLinkRepository = ticketLinkRepository;
-        this.appUserRepository = appUserRepository;
         this.incidentRepository = incidentRepository;
         this.problemRepository = problemRepository;
         this.serviceRequestRepository = serviceRequestRepository;
+        this.approvalGateService = approvalGateService;
+        this.approvalRequestRepository = approvalRequestRepository;
     }
 
     // ---------- search/list (API-KM-001) ----------
@@ -195,50 +195,27 @@ public class KnowledgeService {
 
     // ---------- status transition (API-KM-006) ----------
 
+    /**
+     * 검토 요청(DRAFT→IN_REVIEW). 항상 200으로 성공하되, 공용 승인 게이트(domain=KNOWLEDGE, 요청유형 스코프 없음)
+     * 매칭 결과에 따라 즉시 게시(매칭 없음/0차) 또는 IN_REVIEW(매칭 있음, 인스턴스 생성)로 결과가 갈린다.
+     * 인스턴스가 이후 APPROVED/REJECTED로 확정되면 {@link KnowledgeApprovalDecisionCallback}이 자동으로 전환한다.
+     */
     @Transactional
-    public StatusResponse transition(Long id, StatusTransitionRequest request) {
+    public StatusTransitionResponse transition(Long id, StatusTransitionRequest request) {
         requireRole(KC);
         KnowledgeArticle article = findArticle(id);
         if (article.getStatus() != ArticleStatus.DRAFT || request.targetStatus() != ArticleStatus.IN_REVIEW) {
             throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION);
         }
-        article.changeStatus(ArticleStatus.IN_REVIEW);
-        articleRepository.save(article);
-        return new StatusResponse(id, article.getStatus().name());
-    }
-
-    // ---------- review (API-KM-007) ----------
-
-    @Transactional
-    public ReviewResponse review(Long id, ReviewRequest request) {
-        AuthPrincipal principal = SecurityUtils.currentPrincipal();
-        requireRole(KG);
-        KnowledgeArticle article = findArticle(id);
-        if (article.getStatus() != ArticleStatus.IN_REVIEW) {
-            throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION);
-        }
-        if (request.decision() == ReviewDecision.REJECT && !StringUtils.hasText(request.reason())) {
-            throw new BusinessException(ErrorCode.REJECT_REASON_REQUIRED);
-        }
-        if (request.decision() == ReviewDecision.APPROVE) {
+        ApprovalGateService.GateDecision decision = approvalGateService.evaluateAndCreateIfNeeded(
+                DOMAIN, null, article.getAuthorId(), TicketType.KNOWLEDGE, id);
+        if (decision.passed()) {
             article.publish();
         } else {
-            article.changeStatus(ArticleStatus.DRAFT);
+            article.changeStatus(ArticleStatus.IN_REVIEW);
         }
         articleRepository.save(article);
-        reviewRepository.save(new KnowledgeReview(id, principal.userId(), request.decision(), request.reason()));
-        return new ReviewResponse(id, article.getStatus().name());
-    }
-
-    // ---------- pending reviews (API-KM-008) ----------
-
-    @Transactional(readOnly = true)
-    public List<PendingReviewResponse> pendingReviews() {
-        requireRole(KG);
-        return articleRepository.search(null, null, null, ArticleStatus.IN_REVIEW, null, true, Pageable.unpaged())
-                .stream()
-                .map(a -> new PendingReviewResponse(a.getId(), a.getTitle(), userName(a.getAuthorId()), a.getUpdatedAt()))
-                .toList();
+        return new StatusTransitionResponse(id, article.getStatus().name(), decision.approvalRequestId());
     }
 
     // ---------- feedback (API-KM-009) ----------
@@ -398,8 +375,13 @@ public class KnowledgeService {
                 .map(al -> labelRepository.findById(al.getLabelId()).map(KnowledgeLabel::getName).orElse(null))
                 .filter(Objects::nonNull)
                 .toList();
+        ApprovalRequest latestApproval = approvalRequestRepository
+                .findTopByTicketTypeAndTicketIdOrderByIdDesc(TicketType.KNOWLEDGE, a.getId()).orElse(null);
+        ArticleDetailResponse.ApprovalInfo approvalInfo = new ArticleDetailResponse.ApprovalInfo(
+                latestApproval != null ? latestApproval.getId() : null,
+                latestApproval != null ? latestApproval.getStatus().name() : null);
         return new ArticleDetailResponse(a.getId(), a.getTitle(), a.getBody(), a.getStatus().name(),
-                categoryName(a.getCategoryId()), labels, a.getHelpfulCount(), a.getNotHelpfulCount());
+                categoryName(a.getCategoryId()), labels, a.getHelpfulCount(), a.getNotHelpfulCount(), approvalInfo);
     }
 
     private String summarize(String body) {
@@ -417,10 +399,6 @@ public class KnowledgeService {
     private String categoryName(Long categoryId) {
         return categoryId == null ? null
                 : categoryRepository.findById(categoryId).map(KnowledgeCategory::getName).orElse(null);
-    }
-
-    private String userName(Long id) {
-        return id == null ? null : appUserRepository.findById(id).map(AppUser::getName).orElse(null);
     }
 
     private double round(double value) {

@@ -49,6 +49,7 @@ public class ApprovalInstanceService {
     private final ApprovalRoleResolver roleResolver;
     private final AppUserRepository appUserRepository;
     private final Map<TicketType, ApprovalTicketSummaryProvider> summaryProviders;
+    private final Map<TicketType, ApprovalDecisionCallback> decisionCallbacks;
 
     public ApprovalInstanceService(ApprovalRequestRepository approvalRequestRepository,
                                    ApprovalRequestStepRepository requestStepRepository,
@@ -56,7 +57,8 @@ public class ApprovalInstanceService {
                                    ApprovalDecisionRepository decisionRepository,
                                    ApprovalRoleResolver roleResolver,
                                    AppUserRepository appUserRepository,
-                                   List<ApprovalTicketSummaryProvider> summaryProviders) {
+                                   List<ApprovalTicketSummaryProvider> summaryProviders,
+                                   List<ApprovalDecisionCallback> decisionCallbacks) {
         this.approvalRequestRepository = approvalRequestRepository;
         this.requestStepRepository = requestStepRepository;
         this.requestStepRoleRepository = requestStepRoleRepository;
@@ -65,6 +67,8 @@ public class ApprovalInstanceService {
         this.appUserRepository = appUserRepository;
         this.summaryProviders = summaryProviders.stream()
                 .collect(java.util.stream.Collectors.toMap(ApprovalTicketSummaryProvider::supportedType, Function.identity()));
+        this.decisionCallbacks = decisionCallbacks.stream()
+                .collect(java.util.stream.Collectors.toMap(ApprovalDecisionCallback::supportedType, Function.identity()));
     }
 
     // ---------- API-COM-003 ----------
@@ -163,20 +167,35 @@ public class ApprovalInstanceService {
             ar.reject();
             approvalRequestRepository.save(ar);
             skipRemainingSteps(ar.getId(), step.getStepNo());
+            notifyFinalized(ar, false, reason);
         } else {
             Optional<ApprovalRequestStep> next = requestStepRepository.findByApprovalRequestIdOrderByStepNoAsc(ar.getId())
                     .stream().filter(s -> s.getStepNo() > step.getStepNo()).findFirst();
             if (next.isPresent()) {
                 ar.advanceTo(next.get().getStepNo());
+                approvalRequestRepository.save(ar);
             } else {
                 ar.approve();
+                approvalRequestRepository.save(ar);
+                notifyFinalized(ar, true, null);
             }
-            approvalRequestRepository.save(ar);
         }
         return new ApprovalDecisionResultResponse(ar.getId(), step.getStepNo(), outcome.name(), ar.getStatus().name());
     }
 
     // ---------- helpers ----------
+
+    private void notifyFinalized(ApprovalRequest ar, boolean approved, String reason) {
+        ApprovalDecisionCallback callback = decisionCallbacks.get(ar.getTicketType());
+        if (callback == null) {
+            return;
+        }
+        if (approved) {
+            callback.onApproved(ar.getTicketId());
+        } else {
+            callback.onRejected(ar.getTicketId(), reason);
+        }
+    }
 
     private ApprovalStepStatus resolveStepOutcome(ApprovalRequestStep step, DecisionType justDecided) {
         if (step.getDecisionMode() == DecisionMode.OR) {

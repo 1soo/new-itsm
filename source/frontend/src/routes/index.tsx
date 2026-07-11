@@ -60,7 +60,6 @@ import { ChangeMetricsPage } from "@/features/change/ChangeMetricsPage";
 import { KnowledgeListPage } from "@/features/knowledge/KnowledgeListPage";
 import { ArticleViewPage } from "@/features/knowledge/ArticleViewPage";
 import { ArticleEditPage } from "@/features/knowledge/ArticleEditPage";
-import { ReviewInboxPage } from "@/features/knowledge/ReviewInboxPage";
 import { KnowledgeMetricsPage } from "@/features/knowledge/KnowledgeMetricsPage";
 import { AssetListPage } from "@/features/asset/AssetListPage";
 import { AssetFormPage } from "@/features/asset/AssetFormPage";
@@ -241,7 +240,6 @@ export const router = createBrowserRouter([
           {
             element: <RequireRoles roles={[ROLE_KNOWLEDGE_GATEKEEPER]} />,
             children: [
-              { path: "/knowledge/reviews", element: <ReviewInboxPage /> }, // SCR-KM-004
               { path: "/knowledge/metrics", element: <KnowledgeMetricsPage /> }, // SCR-KM-005
             ],
           },

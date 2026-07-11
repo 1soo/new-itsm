@@ -8,5 +8,4 @@ knowledge 도메인 리포지토리 인터페이스의 Spring Data JPA 구현체
 - `KnowledgeLabelJpaRepository.java` — KnowledgeLabelRepository 구현
 - `ArticleLabelJpaRepository.java` — ArticleLabelRepository 구현
 - `KnowledgeFeedbackJpaRepository.java` — KnowledgeFeedbackRepository 구현
-- `KnowledgeReviewJpaRepository.java` — KnowledgeReviewRepository 구현
 - `SearchLogJpaRepository.java` — SearchLogRepository 구현

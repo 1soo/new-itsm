@@ -10,10 +10,9 @@ import com.itsm.knowledge.application.dto.FeedbackRequest;
 import com.itsm.knowledge.application.dto.FeedbackResponse;
 import com.itsm.knowledge.application.dto.LinkArticleRequest;
 import com.itsm.knowledge.application.dto.LinkArticleResponse;
-import com.itsm.knowledge.application.dto.ReviewRequest;
-import com.itsm.knowledge.application.dto.ReviewResponse;
 import com.itsm.knowledge.application.dto.StatusResponse;
 import com.itsm.knowledge.application.dto.StatusTransitionRequest;
+import com.itsm.knowledge.application.dto.StatusTransitionResponse;
 import com.itsm.knowledge.application.dto.UpdateArticleRequest;
 import com.itsm.knowledge.domain.ArticleStatus;
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,7 +38,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Knowledge", description = "지식 관리 API (API-KM-001~009,011). 작성/수정/삭제/연계는 CONTRIBUTOR, 검토승인은 GATEKEEPER 전용.")
+@Tag(name = "Knowledge", description = "지식 관리 API (API-KM-001~006,009,011). 작성/수정/삭제/검토요청/연계는 CONTRIBUTOR 전용. "
+        + "검토승인/반려는 공용 승인 대기함(common.approval, API-COM-003~005)이 담당")
 @SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/api/v1/knowledge/articles")
@@ -110,29 +110,18 @@ public class KnowledgeArticleController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "기사 상태 전이", description = "API-KM-006 · DRAFT→IN_REVIEW(검토 요청)만 허용")
+    @Operation(summary = "기사 상태 전이", description = "API-KM-006 · DRAFT→IN_REVIEW(검토 요청)만 허용. "
+            + "공용 승인 게이트(domain=KNOWLEDGE) 매칭 결과에 따라 즉시 PUBLISHED 또는 IN_REVIEW(승인 대기)로 응답")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "정상"),
+            @ApiResponse(responseCode = "200", description = "정상(항상 성공, status로 결과 확인)"),
             @ApiResponse(responseCode = "400", description = "허용되지 않은 전이", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "403", description = "권한 부족", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "404", description = "기사 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PatchMapping("/{id}/status")
-    public ResponseEntity<StatusResponse> transition(@PathVariable Long id,
-                                                      @Valid @RequestBody StatusTransitionRequest request) {
+    public ResponseEntity<StatusTransitionResponse> transition(@PathVariable Long id,
+                                                                @Valid @RequestBody StatusTransitionRequest request) {
         return ResponseEntity.ok(knowledgeService.transition(id, request));
-    }
-
-    @Operation(summary = "검토·게시 승인/반려", description = "API-KM-007 · Gatekeeper 전용, 반려 시 사유 필수")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "정상(승인=게시, 반려=초안 복귀)"),
-            @ApiResponse(responseCode = "400", description = "반려 사유 누락/검토 상태 아님", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "403", description = "Gatekeeper 권한 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "404", description = "기사 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    })
-    @PostMapping("/{id}/review")
-    public ResponseEntity<ReviewResponse> review(@PathVariable Long id, @Valid @RequestBody ReviewRequest request) {
-        return ResponseEntity.ok(knowledgeService.review(id, request));
     }
 
     @Operation(summary = "유용성 평가", description = "API-KM-009 · 미게시 기사 평가 거부")

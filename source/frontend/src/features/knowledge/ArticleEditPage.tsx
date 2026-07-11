@@ -13,16 +13,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ConfirmDialog, StatusBadge, toast } from "@/components/common";
+import { ApprovalPanel, ConfirmDialog, StatusBadge, toast } from "@/components/common";
+import type { ApprovalStep } from "@/components/common";
 import { FullscreenLoader } from "@/routes/FullscreenLoader";
 import { knowledgeApi } from "@/features/knowledge/api";
 import { statusLabel, statusTone } from "@/features/knowledge/status";
 import type { ArticleDetail, Category } from "@/features/knowledge/types";
+import { commonApi } from "@/features/common/api";
 import { extractErrorMessage } from "@/lib/apiClient";
 
 /*
  * 기사 작성·편집(SCR-KM-003) — 제목/본문 필수, 카테고리/라벨 지정, 검토 요청(DRAFT→IN_REVIEW), 삭제.
  * id 없으면 신규 작성 모드, 저장 성공 시 동일 화면(편집 모드)으로 이동.
+ * 승인 상태(공용, API-COM-004)는 기사 상세의 approval.approvalRequestId로 조회해 공용 ApprovalPanel로
+ * 표시한다(SRM/CHANGE와 동일 패턴) — 페이지 재진입·새로고침에도 항상 복원됨. 매칭되는 승인 프로세스가
+ * 없으면(approvalRequestId=null) "검토 요청" 즉시 게시되어 패널이 렌더링되지 않는다.
  */
 export function ArticleEditPage() {
   const navigate = useNavigate();
@@ -43,6 +48,9 @@ export function ArticleEditPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  const [approvalSteps, setApprovalSteps] = useState<ApprovalStep[]>([]);
+  const [approvalCurrentStepNo, setApprovalCurrentStepNo] = useState<number | null>(null);
+
   useEffect(() => {
     knowledgeApi.listCategories().then(setCategories).catch((err) => toast.error(extractErrorMessage(err)));
   }, []);
@@ -58,6 +66,15 @@ export function ArticleEditPage() {
         setBody(d.body);
         setLabels(d.labels.join(", "));
         setNotFound(false);
+        if (d.approval.approvalRequestId == null) {
+          setApprovalSteps([]);
+          setApprovalCurrentStepNo(null);
+          return;
+        }
+        return commonApi.getApproval(d.approval.approvalRequestId).then((a) => {
+          setApprovalSteps(a.steps);
+          setApprovalCurrentStepNo(a.currentStepNo);
+        });
       })
       .catch((err) => {
         toast.error(extractErrorMessage(err));
@@ -110,8 +127,12 @@ export function ArticleEditPage() {
     if (!id) return;
     setBusy("review");
     try {
-      await knowledgeApi.transition(id, "IN_REVIEW");
-      toast.success("검토가 요청되었습니다");
+      const result = await knowledgeApi.transition(id, "IN_REVIEW");
+      toast.success(
+        result.status === "PUBLISHED"
+          ? "승인 절차 없이 게시되었습니다"
+          : "검토가 요청되었습니다. 승인 대기 중입니다.",
+      );
       load();
     } catch (err) {
       toast.error(extractErrorMessage(err));
@@ -220,6 +241,14 @@ export function ArticleEditPage() {
                   </Button>
                 </CardContent>
               </Card>
+            ) : null}
+
+            {detail ? (
+              <ApprovalPanel
+                matched={detail.approval.approvalRequestId != null}
+                steps={approvalSteps}
+                currentStepNo={approvalCurrentStepNo}
+              />
             ) : null}
           </div>
         </div>

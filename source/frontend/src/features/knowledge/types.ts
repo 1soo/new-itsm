@@ -1,7 +1,6 @@
 /* knowledge(KM) 도메인 타입 — api_spec/knowledge.md 계약 기준. */
 
 export type ArticleStatus = "DRAFT" | "IN_REVIEW" | "PUBLISHED";
-export type Decision = "APPROVE" | "REJECT";
 export type KcsTicketType = "SERVICE_REQUEST" | "INCIDENT" | "PROBLEM";
 
 export interface PageResponse<T> {
@@ -21,6 +20,12 @@ export interface ArticleSummary {
   helpfulRate: number;
 }
 
+/** 승인 프로세스 커스텀 기능(유지보수 요청) — approvalRequestId=null이면 매칭되는 승인 프로세스가 없어 게이트 없이 진행. */
+export interface ArticleApproval {
+  approvalRequestId: number | null;
+  status: "IN_PROGRESS" | "APPROVED" | "REJECTED" | null;
+}
+
 export interface ArticleDetail {
   id: number;
   title: string;
@@ -30,6 +35,7 @@ export interface ArticleDetail {
   labels: string[];
   helpful: number;
   notHelpful: number;
+  approval: ArticleApproval;
 }
 
 export interface ArticleListQuery {
@@ -53,16 +59,16 @@ export interface CreatedArticle {
   status: ArticleStatus;
 }
 
+/** API-KM-006 상태 전이 응답. 승인 프로세스 커스텀 기능(유지보수 요청) — 매칭 규칙 없으면 즉시 PUBLISHED. */
+export interface ArticleTransitionResult {
+  id: number;
+  status: Extract<ArticleStatus, "IN_REVIEW" | "PUBLISHED">;
+  approvalRequestId: number | null;
+}
+
 export interface Category {
   id: number;
   name: string;
-}
-
-export interface ReviewQueueItem {
-  articleId: number;
-  title: string;
-  author: string;
-  requestedAt: string;
 }
 
 export interface FeedbackInput {

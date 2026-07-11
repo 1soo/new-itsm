@@ -1,6 +1,7 @@
 package com.itsm.knowledge.application;
 
-import com.itsm.auth.domain.repository.AppUserRepository;
+import com.itsm.common.approval.application.ApprovalGateService;
+import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.common.security.AuthPrincipal;
@@ -12,19 +13,16 @@ import com.itsm.incident.domain.repository.IncidentRepository;
 import com.itsm.knowledge.application.dto.CreateArticleRequest;
 import com.itsm.knowledge.application.dto.FeedbackRequest;
 import com.itsm.knowledge.application.dto.LinkArticleRequest;
-import com.itsm.knowledge.application.dto.ReviewRequest;
 import com.itsm.knowledge.application.dto.StatusTransitionRequest;
 import com.itsm.knowledge.application.dto.UpdateArticleRequest;
 import com.itsm.knowledge.domain.ArticleStatus;
 import com.itsm.knowledge.domain.KnowledgeArticle;
 import com.itsm.knowledge.domain.KnowledgeCategory;
-import com.itsm.knowledge.domain.ReviewDecision;
 import com.itsm.knowledge.domain.repository.ArticleLabelRepository;
 import com.itsm.knowledge.domain.repository.KnowledgeArticleRepository;
 import com.itsm.knowledge.domain.repository.KnowledgeCategoryRepository;
 import com.itsm.knowledge.domain.repository.KnowledgeFeedbackRepository;
 import com.itsm.knowledge.domain.repository.KnowledgeLabelRepository;
-import com.itsm.knowledge.domain.repository.KnowledgeReviewRepository;
 import com.itsm.knowledge.domain.repository.SearchLogRepository;
 import com.itsm.problem.domain.repository.ProblemRepository;
 import com.itsm.srm.domain.ServiceRequest;
@@ -65,21 +63,22 @@ class KnowledgeServiceTest {
     @Mock KnowledgeLabelRepository labelRepository;
     @Mock ArticleLabelRepository articleLabelRepository;
     @Mock KnowledgeFeedbackRepository feedbackRepository;
-    @Mock KnowledgeReviewRepository reviewRepository;
     @Mock SearchLogRepository searchLogRepository;
     @Mock TicketLinkRepository ticketLinkRepository;
-    @Mock AppUserRepository appUserRepository;
     @Mock IncidentRepository incidentRepository;
     @Mock ProblemRepository problemRepository;
     @Mock ServiceRequestRepository serviceRequestRepository;
+    @Mock ApprovalGateService approvalGateService;
+    @Mock ApprovalRequestRepository approvalRequestRepository;
 
     KnowledgeService service;
 
     @BeforeEach
     void setUp() {
         service = new KnowledgeService(articleRepository, categoryRepository, labelRepository, articleLabelRepository,
-                feedbackRepository, reviewRepository, searchLogRepository, ticketLinkRepository, appUserRepository,
-                incidentRepository, problemRepository, serviceRequestRepository);
+                feedbackRepository, searchLogRepository, ticketLinkRepository,
+                incidentRepository, problemRepository, serviceRequestRepository,
+                approvalGateService, approvalRequestRepository);
         when(articleRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(articleLabelRepository.findByArticleId(any())).thenReturn(List.of());
     }
@@ -206,6 +205,19 @@ class KnowledgeServiceTest {
         assertThat(response.status()).isEqualTo("PUBLISHED");
     }
 
+    @Test
+    void detailExposesLatestApprovalRequest() {
+        login(99L, "END_USER");
+        when(articleRepository.findById(1L)).thenReturn(Optional.of(article(ArticleStatus.PUBLISHED, 2L)));
+        var approvalRequest = new com.itsm.common.approval.domain.ApprovalRequest(
+                TicketType.KNOWLEDGE, 1L, 100L, (short) 1);
+        approvalRequest.approve();
+        when(approvalRequestRepository.findTopByTicketTypeAndTicketIdOrderByIdDesc(eq(TicketType.KNOWLEDGE), any()))
+                .thenReturn(Optional.of(approvalRequest));
+        var response = service.detail(1L);
+        assertThat(response.approval().status()).isEqualTo("APPROVED");
+    }
+
     // ---------- update ----------
 
     @Test
@@ -227,14 +239,32 @@ class KnowledgeServiceTest {
                 .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.ACCESS_DENIED));
     }
 
-    // ---------- status transition ----------
+    // ---------- status transition (게이트) ----------
 
     @Test
-    void transitionDraftToInReviewSucceeds() {
+    void transitionWithoutMatchingRulePublishesImmediately() {
         login(1L, "KNOWLEDGE_CONTRIBUTOR");
         when(articleRepository.findById(1L)).thenReturn(Optional.of(article(ArticleStatus.DRAFT, 1L)));
+        when(approvalGateService.evaluateAndCreateIfNeeded(eq("KNOWLEDGE"), any(), any(), eq(TicketType.KNOWLEDGE), eq(1L)))
+                .thenReturn(new ApprovalGateService.GateDecision(true, null));
+
         var response = service.transition(1L, new StatusTransitionRequest(ArticleStatus.IN_REVIEW));
+
+        assertThat(response.status()).isEqualTo("PUBLISHED");
+        assertThat(response.approvalRequestId()).isNull();
+    }
+
+    @Test
+    void transitionWithMatchingRuleStaysInReview() {
+        login(1L, "KNOWLEDGE_CONTRIBUTOR");
+        when(articleRepository.findById(1L)).thenReturn(Optional.of(article(ArticleStatus.DRAFT, 1L)));
+        when(approvalGateService.evaluateAndCreateIfNeeded(eq("KNOWLEDGE"), any(), any(), eq(TicketType.KNOWLEDGE), eq(1L)))
+                .thenReturn(new ApprovalGateService.GateDecision(false, 55L));
+
+        var response = service.transition(1L, new StatusTransitionRequest(ArticleStatus.IN_REVIEW));
+
         assertThat(response.status()).isEqualTo("IN_REVIEW");
+        assertThat(response.approvalRequestId()).isEqualTo(55L);
     }
 
     @Test
@@ -244,61 +274,6 @@ class KnowledgeServiceTest {
         assertThatThrownBy(() -> service.transition(1L, new StatusTransitionRequest(ArticleStatus.IN_REVIEW)))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.INVALID_STATUS_TRANSITION));
-    }
-
-    // ---------- review ----------
-
-    @Test
-    void reviewApproveSucceedsAndPublishes() {
-        login(1L, "KNOWLEDGE_GATEKEEPER");
-        when(articleRepository.findById(1L)).thenReturn(Optional.of(article(ArticleStatus.IN_REVIEW, 2L)));
-        var response = service.review(1L, new ReviewRequest(ReviewDecision.APPROVE, null));
-        assertThat(response.status()).isEqualTo("PUBLISHED");
-        verify(reviewRepository).save(any());
-    }
-
-    @Test
-    void reviewRejectRequiresReason() {
-        login(1L, "KNOWLEDGE_GATEKEEPER");
-        when(articleRepository.findById(1L)).thenReturn(Optional.of(article(ArticleStatus.IN_REVIEW, 2L)));
-        assertThatThrownBy(() -> service.review(1L, new ReviewRequest(ReviewDecision.REJECT, null)))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.REJECT_REASON_REQUIRED));
-    }
-
-    @Test
-    void reviewRejectRevertsToDraft() {
-        login(1L, "KNOWLEDGE_GATEKEEPER");
-        when(articleRepository.findById(1L)).thenReturn(Optional.of(article(ArticleStatus.IN_REVIEW, 2L)));
-        var response = service.review(1L, new ReviewRequest(ReviewDecision.REJECT, "품질 미달"));
-        assertThat(response.status()).isEqualTo("DRAFT");
-    }
-
-    @Test
-    void reviewForbiddenForNonGatekeeper() {
-        login(1L, "KNOWLEDGE_CONTRIBUTOR");
-        assertThatThrownBy(() -> service.review(1L, new ReviewRequest(ReviewDecision.APPROVE, null)))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.ACCESS_DENIED));
-    }
-
-    @Test
-    void reviewNonInReviewArticleRejected() {
-        login(1L, "KNOWLEDGE_GATEKEEPER");
-        when(articleRepository.findById(1L)).thenReturn(Optional.of(article(ArticleStatus.DRAFT, 2L)));
-        assertThatThrownBy(() -> service.review(1L, new ReviewRequest(ReviewDecision.APPROVE, null)))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.INVALID_STATUS_TRANSITION));
-    }
-
-    // ---------- pending reviews ----------
-
-    @Test
-    void pendingReviewsForbiddenForNonGatekeeper() {
-        login(1L, "KNOWLEDGE_CONTRIBUTOR");
-        assertThatThrownBy(() -> service.pendingReviews())
-                .isInstanceOf(BusinessException.class)
-                .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.ACCESS_DENIED));
     }
 
     // ---------- feedback ----------

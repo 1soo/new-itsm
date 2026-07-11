@@ -134,4 +134,28 @@ public class ApprovalGateService {
         }
         return request;
     }
+
+    /**
+     * KNOWLEDGE처럼 "전이 요청은 항상 성공(200)하되 게이트 매칭 여부로 결과 상태만 갈리는" 도메인을 위한
+     * 논-스로잉 게이트 평가. {@link #checkGate}와 달리 이전 인스턴스 상태를 재사용하지 않고, 매칭 규칙이
+     * 있으면(1차 이상) 항상 새 인스턴스를 생성한다(반려 후 재검토 요청 시에도 신규 인스턴스, common.md 0절).
+     * 별도 트랜잭션이 필요 없다 — 호출측 전이 자체가 이 결과와 함께 정상 커밋되는 구조이기 때문이다.
+     */
+    public GateDecision evaluateAndCreateIfNeeded(String domain, String requestSubtypeKey, Long requesterId,
+                                                  TicketType ticketType, Long ticketId) {
+        ApprovalProcess matched = matchProcess(domain, requestSubtypeKey, requesterId);
+        if (matched == null) {
+            return new GateDecision(true, null);
+        }
+        List<ApprovalProcessStep> steps = processStepRepository.findByApprovalProcessIdOrderByStepNoAsc(matched.getId());
+        if (steps.isEmpty()) {
+            return new GateDecision(true, null);
+        }
+        ApprovalRequest created = createInstance(matched, steps, ticketType, ticketId);
+        return new GateDecision(false, created.getId());
+    }
+
+    /** {@link #evaluateAndCreateIfNeeded} 판정 결과(통과 여부 + 생성된 인스턴스 id, 통과 시 null). */
+    public record GateDecision(boolean passed, Long approvalRequestId) {
+    }
 }
