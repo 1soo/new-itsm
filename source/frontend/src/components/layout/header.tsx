@@ -58,7 +58,7 @@ export interface HeaderProps {
   onSearchInputChange?: (query: string) => void;
   /** 미리보기 결과 항목 클릭 시 해당 상세로 이동. */
   onSelectSearchResult?: (result: HeaderSearchResult) => void;
-  /** 알림 팝오버 항목(undefined면 로딩 전 상태로 팝오버 미표시, 빈 배열이면 "새로운 알림이 없습니다" 표시). FE가 상위 8건을 조립해 주입. */
+  /** 알림 팝오버 항목(undefined면 로딩 전 상태로 팝오버 미표시, 빈 배열이면 "새로운 알림이 없습니다" 표시). FE가 조립해 주입(표시 상한 없음, 스크롤로 전체 노출). */
   notifications?: HeaderNotificationItem[];
   /** 알림 항목의 "상세 보기" 클릭 시 개별 상세로 이동. */
   onSelectNotification?: (item: HeaderNotificationItem) => void;

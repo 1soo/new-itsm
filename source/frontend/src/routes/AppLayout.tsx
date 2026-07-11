@@ -24,8 +24,10 @@ import { logout } from "@/store/authSlice";
 /** 자산 만료 임박 판정 임계값(일). API-ITAM-001 서버 계산 기준(EXPIRING)과 동일하게 맞춘다. */
 const ASSET_EXPIRING_WITHIN_DAYS = 30;
 
-/** 알림 팝오버 미리보기 상한(common.md SCR-COM-002 기준 8건). 벨 뱃지 카운트는 이 상한과 무관하게 전체 대기 건수 합계. */
-const NOTIFICATION_PREVIEW_SIZE = 8;
+/** 자산 만료 임박 조회 페이지 크기(API-ITAM-001 `size=8` 고정, common.md SCR-COM-002 매핑 표 기준). 알림 표시 상한과는 무관(표시 상한은 유지보수 요청으로 폐지). */
+const ASSET_EXPIRY_QUERY_SIZE = 8;
+/** 알림 5초 polling 간격(ms). 탭이 백그라운드면 정지, 포그라운드 복귀 시 즉시 1회 조회 후 재개(common.md SCR-COM-002 유지보수 요청). */
+const NOTIFICATION_POLL_INTERVAL_MS = 5_000;
 /** 알림 항목 본문 표시 최대 길이(초과 시 말줄임표). */
 const NOTIFICATION_TEXT_MAX_LENGTH = 40;
 
@@ -148,8 +150,9 @@ export function AppLayout() {
   }, [menuGroups, activeKey, navigate]);
 
   // 알림 벨: 역할별 승인 대기(서비스요청·CAB)와 자산 만료 임박 항목을 조합해 팝오버 리스트로 조립한다
-  // (신규 API 없이 기존 대기함 API 조합, 서비스요청→변경→자산 순으로 이어붙여 상위 8건만 노출).
-  // 뱃지 카운트는 상한과 무관한 전체 대기 건수 합계. 항목 클릭 시 이동할 상세 경로는 key로 조회한다.
+  // (신규 API 없이 기존 대기함 API 조합, 5초 간격으로 재조회하며 표시 상한 없음 — 유지보수 요청).
+  // 뱃지 카운트는 표시 목록의 누적과 무관하게 매 polling마다 서버 기준 전체 대기 건수 합계로 재계산한다.
+  // 항목 클릭 시 이동할 상세 경로는 key로 조회한다.
   // 원본 시각(atIso)을 보관해두고, 팝오버가 열릴 때마다 그 시점 기준으로 timeLabel을 재계산한다
   // (자산 만료는 상대 시간이 아니라 고정 문자열이라 재계산 대상이 아님).
   const [notificationCount, setNotificationCount] = useState(0);
@@ -170,9 +173,12 @@ export function AppLayout() {
 
   useEffect(() => {
     let cancelled = false;
+    let intervalId: ReturnType<typeof setInterval> | undefined;
+    // 최초 poll 성공 여부. 실패 시 이 값으로 "빈 상태로 초기화"할지 "기존 목록 유지(조용히 재시도)"할지 구분한다.
+    const hasLoadedOnce = { current: false };
 
-    const load = async () => {
-      // 확인처리된 알림은 후보에서 제외한다(API-COM-002). 조회 실패는 치명적이지 않으므로
+    const poll = async () => {
+      // 확인처리된 알림은 신규 후보 판별에서 제외한다(API-COM-002). 조회 실패는 치명적이지 않으므로
       // 필터링 없이(빈 이력으로 간주) 진행한다.
       const dismissedKeys = await commonApi
         .listDismissals()
@@ -180,7 +186,7 @@ export function AppLayout() {
         .catch(() => new Set<string>());
 
       let count = 0;
-      const sources: NotificationSource[] = [];
+      const candidates: NotificationSource[] = [];
 
       if (hasAnyRole(roles, [ROLE_APPROVER])) {
         const [srmApprovals, chgApprovals] = await Promise.all([
@@ -196,7 +202,7 @@ export function AppLayout() {
         count += srmVisible.length + chgVisible.length;
 
         for (const a of srmVisible) {
-          sources.push({
+          candidates.push({
             key: `sr-${a.requestId}`,
             domainLabel: "서비스요청 승인",
             title: a.catalogItemName,
@@ -207,7 +213,7 @@ export function AppLayout() {
           });
         }
         for (const a of chgVisible) {
-          sources.push({
+          candidates.push({
             key: `chg-${a.changeId}`,
             domainLabel: "변경 승인",
             title: a.summary,
@@ -222,7 +228,7 @@ export function AppLayout() {
       if (hasAnyRole(roles, [ROLE_ASSET_MANAGER])) {
         const assets = await assetApi.list({
           expiringWithinDays: ASSET_EXPIRING_WITHIN_DAYS,
-          size: NOTIFICATION_PREVIEW_SIZE,
+          size: ASSET_EXPIRY_QUERY_SIZE,
         });
         const visibleAssets = assets.content.filter(
           (asset) => !dismissedKeys.has(dismissalKey("ASSET_EXPIRY", asset.id)),
@@ -233,7 +239,7 @@ export function AppLayout() {
         count += Math.max(0, assets.totalElements - dismissedInBatch);
 
         for (const asset of visibleAssets) {
-          sources.push({
+          candidates.push({
             key: `asset-${asset.id}`,
             domainLabel: "자산 만료",
             title: asset.name,
@@ -246,34 +252,74 @@ export function AppLayout() {
         }
       }
 
-      if (!cancelled) {
-        notificationSources.current = sources.slice(0, NOTIFICATION_PREVIEW_SIZE);
-        notificationHrefByKey.current = new Map(
-          notificationSources.current.map((s) => [s.key, s.href]),
-        );
-        notificationDismissTargetByKey.current = new Map(
-          notificationSources.current.map((s) => [
-            s.key,
-            { notificationType: s.notificationType, sourceId: s.sourceId },
-          ]),
-        );
-        setNotificationCount(count);
-        setNotificationItems(buildNotificationItems(Date.now()));
+      if (cancelled) return;
+
+      // merge: 클라이언트에 아직 없는(유형+원본 ID 기준) 후보만 기존 목록 뒤에 이어 붙인다.
+      // 기존 목록에 이미 있는 항목은 이번 poll 결과에 없더라도 제거하지 않는다(제거는 dismiss 액션에서만 발생).
+      const existingKeys = new Set(
+        notificationSources.current.map((s) => dismissalKey(s.notificationType, s.sourceId)),
+      );
+      const newSources = candidates.filter(
+        (c) => !existingKeys.has(dismissalKey(c.notificationType, c.sourceId)),
+      );
+      if (newSources.length > 0) {
+        notificationSources.current = [...notificationSources.current, ...newSources];
+        for (const s of newSources) {
+          notificationHrefByKey.current.set(s.key, s.href);
+          notificationDismissTargetByKey.current.set(s.key, {
+            notificationType: s.notificationType,
+            sourceId: s.sourceId,
+          });
+        }
       }
+
+      hasLoadedOnce.current = true;
+      setNotificationCount(count);
+      setNotificationItems(buildNotificationItems(Date.now()));
     };
 
-    load().catch(() => {
-      if (!cancelled) {
+    const runPoll = () => {
+      poll().catch(() => {
+        if (cancelled || hasLoadedOnce.current) return;
+        // 최초 poll이 실패한 경우에만 빈 상태로 초기화(팝오버가 "로딩 전" 상태로 남지 않도록).
+        // 이후 poll 실패는 기존 목록을 유지한 채 조용히 다음 주기에 재시도한다(backoff 없음).
         notificationSources.current = [];
         notificationHrefByKey.current = new Map();
         notificationDismissTargetByKey.current = new Map();
         setNotificationCount(0);
         setNotificationItems([]);
+      });
+    };
+
+    const startPolling = () => {
+      if (intervalId !== undefined) return;
+      intervalId = setInterval(runPoll, NOTIFICATION_POLL_INTERVAL_MS);
+    };
+    const stopPolling = () => {
+      if (intervalId !== undefined) {
+        clearInterval(intervalId);
+        intervalId = undefined;
       }
-    });
+    };
+
+    // 탭이 백그라운드면 polling을 정지하고, 포그라운드 복귀 시 즉시 1회 조회 후 재개한다.
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        runPoll();
+        startPolling();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    runPoll();
+    if (!document.hidden) startPolling();
 
     return () => {
       cancelled = true;
+      stopPolling();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roles]);

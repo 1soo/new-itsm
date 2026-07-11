@@ -247,3 +247,48 @@
 - BE: API-COM-001(개별 1건/일괄 8건, 중복 포함 시 멱등 처리, items 누락 400)·API-COM-002(이력 없음 시 빈 배열) 정상 동작.
 - FE: "모두 지우기" 클릭 시 표시 중 알림 전체 확인처리 후 빈 상태 전환·뱃지 차감, 개별 X 클릭 시 해당 1건만 제거(라인 클릭·상세보기와 이벤트 분리 확인), 확인처리된 알림은 재로그인/재조회 후에도 다시 나타나지 않음(영구 저장 확인), 원본 승인 대기·자산 만료 데이터는 변경되지 않음(확인처리가 표시 여부에만 영향).
 - tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → 완료 시 커밋.
+
+---
+
+## 헤더 알림 5초 polling 전환 (유지보수 요청, 2026-07-11)
+
+> BE/DB 변경 없음(기존 3개 도메인 API + API-COM-002 재사용). FE 단독 작업. UI(`header.tsx`)는 변경 불필요 — 이미 `max-h-80 overflow-auto` 스크롤과 "모두 지우기"/개별 X를 지원하므로 표시 상한 폐지에 마크업 변경이 필요 없다(designer 확인).
+
+### 설계 근거
+
+- `docs/02_plan/screen/common.md` SCR-COM-002 v0.11(2026-07-11) "알림 5초 polling(신규...)" 문단, `docs/02_plan/api_spec/common.md` v0.2(엔드포인트/스키마 변경 없음).
+- 참고 기존 코드: `source/frontend/src/routes/AppLayout.tsx`(L150~324 알림 조립 로직 — 위 "알림 확인처리" 섹션에서 구현된 부분).
+
+### 스펙
+
+1. 조회 주기: 세션 인증 유지 중 5초 간격 polling(신규 API 없음, 기존 3개 도메인 API + `commonApi.listDismissals()`를 매 주기 재조회).
+2. Page Visibility API로 탭 비활성(백그라운드) 시 polling 정지, 포그라운드 복귀 시 재개.
+3. 팝오버가 열려 있어도 polling은 계속 진행.
+4. **merge 규칙**: 매 poll마다 새로 계산한 후보 목록(SR→CHG→Asset 순, 확인처리 이력 제외) 중 현재 표시 목록에 없는 항목(key=notificationType+sourceId 기준)만 판별해 **기존 목록 뒤에 추가**한다. 기존에 표시된 항목은 서버 응답에서 더 이상 나오지 않아도 절대 제거하지 않는다 — 제거는 오직 사용자의 개별 X/모두 지우기(기존 구현된 `handleDismissNotification`/`handleDismissAllNotifications`)에서만 발생.
+5. 팝오버 "상위 8건" 표시 상한 폐지 — `NOTIFICATION_PREVIEW_SIZE`를 이용한 `slice(0, ...)` 제거. 단, `assetApi.list({ size: 8 })`의 `size=8`은 API-ITAM-001 페이지 크기 파라미터(API 계약, `docs/02_plan/api_spec/asset.md` 무변경)이므로 그대로 유지 — display cap과 API page size를 별도 상수로 분리한다.
+6. 벨 뱃지 카운트는 표시 목록 merge와 무관하게 매 poll마다 서버 기준(확인처리 이력 제외 전체 대기 합계)으로 재계산 — 기존 계산 로직(자산은 `totalElements - dismissedInBatch` 근사) 그대로 유지, 재계산 시점만 5초마다로 확장.
+7. 연속 조회 실패 시 backoff/중단 없이 5초 고정 간격 재시도 유지 — **최초 로드 실패**는 기존처럼 빈 상태로 초기화하되, **polling 도중 실패**는 현재 표시 상태를 그대로 두고 다음 주기에 재시도(목록을 비우거나 롤백하지 않음).
+
+### 담당 범위
+
+#### dev-frontend — `source/frontend/src/routes/AppLayout.tsx`
+
+- L27-28 `NOTIFICATION_PREVIEW_SIZE` 상수 제거(또는 자산 API 페이지 크기 전용 상수로 이름 변경, 예: `ASSET_EXPIRY_QUERY_SIZE = 8`) — `assetApi.list({ size: ... })` 호출(L223~226)에는 이 값을 그대로 사용하고, L250 `sources.slice(0, NOTIFICATION_PREVIEW_SIZE)` cap은 제거(후보 전체를 그대로 사용).
+- L171-279 기존 `useEffect(() => { const load = async () => {...}; load()... }, [roles])`를 polling 구조로 확장:
+  - 후보 목록 계산 로직(다움처리 이력 조회 → 역할별 SR/CHG/Asset 소스 조립, L177~247)은 재사용하되 **최초 로드**와 **polling 재조회**를 구분하는 파라미터를 두어, 최초 로드는 결과로 전체 교체, polling 재조회는 위 4번 merge 규칙(key 기준 신규 항목만 append) 적용.
+  - `notificationHrefByKey`/`notificationDismissTargetByKey` 맵은 매번 `notificationSources.current`(merge 후 전체) 기준으로 재구성.
+  - `setInterval(5000)`으로 polling 시작, `document.visibilityState`가 `"hidden"`이면 `clearInterval`, `visibilitychange` 이벤트로 `"visible"` 복귀 시 즉시 1회 재조회 후 interval 재개. 언마운트 시 interval·리스너 정리.
+  - polling 재조회 실패 시(catch) 상태를 초기화하지 않고 조용히 skip(다음 5초 주기에 자동 재시도) — 최초 로드 실패 시의 기존 reset-to-empty 로직(L265~273)은 그대로 유지.
+  - `handleDismissAllNotifications`/`handleDismissNotification`(L293~324)은 변경 불필요(이미 로컬 state에서 즉시 제거하는 낙관적 업데이트 — polling과 충돌하지 않음, 다음 poll의 후보 목록도 `listDismissals()`로 이미 걸러짐).
+- `header.tsx`는 변경하지 않는다(설계 확인 — 이미 스크롤·무제한 리스트 렌더 지원).
+
+### 완료(테스트 통과) 기준
+
+- 5초 간격으로 승인 대기/자산 만료 알림이 자동 갱신(신규 승인 대기 생성 후 5초~10초 내 팝오버에 미조작으로 반영)되는지 확인.
+- 탭을 백그라운드로 전환하면 polling이 멈추고(네트워크 탭 등에서 요청 정지 확인), 포그라운드 복귀 시 재개되는지 확인.
+- 팝오버가 열려 있는 상태에서도 새 알림이 추가되는지(merge) 확인.
+- 이미 표시된 알림이 서버에서 사라져도(예: 다른 경로로 처리) 화면에서 사라지지 않고, 개별 X/모두 지우기로만 제거되는지 확인.
+- 팝오버에 9건 이상 누적 시 상한 없이 전체가 스크롤로 노출되는지 확인(8건 cap 폐지).
+- 뱃지 카운트가 5초마다 서버 기준으로 갱신되는지, merge된 표시 목록 건수와 뱃지 값이 달라질 수 있는지(정상 동작) 확인.
+- API 연속 실패 시 화면이 비워지지 않고 유지되며, 복구 후 정상 반영되는지 확인(가능한 범위 내 재현).
+- tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → 완료 시 커밋.
