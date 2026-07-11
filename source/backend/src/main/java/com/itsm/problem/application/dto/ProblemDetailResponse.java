@@ -16,6 +16,7 @@ public record ProblemDetailResponse(
         String urgency,
         Rca rca,
         String workaround,
+        @Schema(description = "승인 정보(null=매칭되는 승인 프로세스 없음, 게이트 없이 진행)") ApprovalInfo approval,
         List<LinkRef> linkedIncidents,
         List<LinkRef> linkedChanges,
         List<LinkRef> linkedAssets,
@@ -25,6 +26,10 @@ public record ProblemDetailResponse(
 
     @Schema(description = "근본 원인 분석(RCA)")
     public record Rca(String rootCause, List<String> fiveWhys, String category) {
+    }
+
+    @Schema(description = "승인 정보")
+    public record ApprovalInfo(Long approvalRequestId, String status) {
     }
 
     @Schema(description = "연계 티켓/자산 참조")

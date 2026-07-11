@@ -3,6 +3,8 @@ package com.itsm.incident.application;
 import com.itsm.asset.application.AssetService;
 import com.itsm.auth.domain.AppUser;
 import com.itsm.auth.domain.repository.AppUserRepository;
+import com.itsm.common.approval.application.ApprovalGateService;
+import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.common.security.AuthPrincipal;
@@ -47,6 +49,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -66,6 +70,8 @@ class IncidentServiceTest {
     @Mock com.itsm.problem.application.ProblemService problemService;
     @Mock com.itsm.change.application.ChangeService changeService;
     @Mock AssetService assetService;
+    @Mock ApprovalGateService approvalGateService;
+    @Mock ApprovalRequestRepository approvalRequestRepository;
 
     IncidentService service;
 
@@ -73,7 +79,8 @@ class IncidentServiceTest {
     void setUp() {
         service = new IncidentService(incidentRepository, responderRepository, severityHistoryRepository,
                 postmortemRepository, fiveWhyRepository, actionItemRepository, timelineRepository,
-                ticketLinkRepository, appUserRepository, problemService, changeService, assetService);
+                ticketLinkRepository, appUserRepository, problemService, changeService, assetService,
+                approvalGateService, approvalRequestRepository);
         when(incidentRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(responderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(severityHistoryRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -86,6 +93,8 @@ class IncidentServiceTest {
         when(timelineRepository.findByTicketTypeAndTicketIdOrderByOccurredAtAsc(any(), any())).thenReturn(List.of());
         when(fiveWhyRepository.findByPostmortemIdOrderByStepNoAsc(any())).thenReturn(List.of());
         when(actionItemRepository.findByPostmortemId(any())).thenReturn(List.of());
+        when(approvalRequestRepository.findTopByTicketTypeAndTicketIdOrderByIdDesc(any(), any()))
+                .thenReturn(Optional.empty());
     }
 
     @AfterEach
@@ -255,6 +264,32 @@ class IncidentServiceTest {
         assertThat(response.status()).isEqualTo("IN_PROGRESS");
     }
 
+    @Test
+    void transitionToResolvedGatePassSucceeds() {
+        login(1L, "SERVICE_DESK_AGENT");
+        when(incidentRepository.findById(1L)).thenReturn(Optional.of(incident(Severity.SEV2, IncidentStatus.IN_PROGRESS)));
+        doNothing().when(approvalGateService).checkGate(any(), any(), any(), any(), any());
+
+        var response = service.transition(1L, new StatusTransitionRequest(IncidentStatus.RESOLVED, null));
+
+        assertThat(response.status()).isEqualTo("RESOLVED");
+    }
+
+    @Test
+    void transitionToResolvedGateBlockedPropagates409() {
+        login(1L, "SERVICE_DESK_AGENT");
+        when(incidentRepository.findById(1L)).thenReturn(Optional.of(incident(Severity.SEV2, IncidentStatus.IN_PROGRESS)));
+        doThrow(new BusinessException(ErrorCode.APPROVAL_PENDING, ErrorCode.APPROVAL_PENDING.getDefaultMessage(), 77L))
+                .when(approvalGateService).checkGate(any(), any(), any(), any(), any());
+
+        assertThatThrownBy(() -> service.transition(1L, new StatusTransitionRequest(IncidentStatus.RESOLVED, null)))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> {
+                    assertThat(codeOf(e)).isEqualTo(ErrorCode.APPROVAL_PENDING);
+                    assertThat(((BusinessException) e).getApprovalRequestId()).isEqualTo(77L);
+                });
+    }
+
     // ---------- role assignment ----------
 
     @Test
@@ -422,6 +457,32 @@ class IncidentServiceTest {
         assertThat(response.metrics().mttdMinutes()).isNull();
         assertThat(response.metrics().mttaMinutes()).isEqualTo(20);
         assertThat(response.metrics().mttrMinutes()).isNull();
+    }
+
+    @Test
+    void resolveGatePassSucceeds() {
+        login(1L, "INCIDENT_MANAGER");
+        when(incidentRepository.findById(1L)).thenReturn(Optional.of(incident(Severity.SEV1, IncidentStatus.IN_PROGRESS)));
+        doNothing().when(approvalGateService).checkGate(any(), any(), any(), any(), any());
+
+        var response = service.resolve(1L, new ResolveRequest(null, null, null, "복구 완료"));
+
+        assertThat(response.status()).isEqualTo("RESOLVED");
+    }
+
+    @Test
+    void resolveGateBlockedPropagates409() {
+        login(1L, "INCIDENT_MANAGER");
+        when(incidentRepository.findById(1L)).thenReturn(Optional.of(incident(Severity.SEV1, IncidentStatus.IN_PROGRESS)));
+        doThrow(new BusinessException(ErrorCode.APPROVAL_PENDING, ErrorCode.APPROVAL_PENDING.getDefaultMessage(), 77L))
+                .when(approvalGateService).checkGate(any(), any(), any(), any(), any());
+
+        assertThatThrownBy(() -> service.resolve(1L, new ResolveRequest(null, null, null, "복구 완료")))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> {
+                    assertThat(codeOf(e)).isEqualTo(ErrorCode.APPROVAL_PENDING);
+                    assertThat(((BusinessException) e).getApprovalRequestId()).isEqualTo(77L);
+                });
     }
 
     // ---------- postmortem ----------

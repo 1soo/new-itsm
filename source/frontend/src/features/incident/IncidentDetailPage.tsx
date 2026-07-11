@@ -14,9 +14,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  ApprovalPanel,
   StatusBadge,
   TicketDetailLayout,
   Timeline,
+  type ApprovalStep,
   type TimelineItem,
   toast,
 } from "@/components/common";
@@ -39,6 +41,7 @@ import type {
   Severity,
   Visibility,
 } from "@/features/incident/types";
+import { commonApi } from "@/features/common/api";
 import { useAppSelector } from "@/store/hooks";
 import { extractErrorMessage } from "@/lib/apiClient";
 
@@ -70,6 +73,8 @@ export function IncidentDetailPage() {
   const isIM = hasAnyRole(roles, [ROLE_INCIDENT_MANAGER]);
 
   const [detail, setDetail] = useState<IncidentDetail | null>(null);
+  const [approvalSteps, setApprovalSteps] = useState<ApprovalStep[]>([]);
+  const [approvalCurrentStepNo, setApprovalCurrentStepNo] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -85,26 +90,51 @@ export function IncidentDetailPage() {
   const [escType, setEscType] = useState<"HIERARCHICAL" | "FUNCTIONAL">("HIERARCHICAL");
   const [escReason, setEscReason] = useState("");
 
+  const refreshDetail = useCallback(
+    (silent: boolean) => {
+      if (!silent) setLoading(true);
+      return incidentApi
+        .get(id)
+        .then((d) => {
+          setDetail(d);
+          setSev(d.severity);
+          setPri(d.priority);
+          setNotFound(false);
+          if (d.approval.approvalRequestId == null) {
+            setApprovalSteps([]);
+            setApprovalCurrentStepNo(null);
+            return;
+          }
+          return commonApi.getApproval(d.approval.approvalRequestId).then((a) => {
+            setApprovalSteps(a.steps);
+            setApprovalCurrentStepNo(a.currentStepNo);
+          });
+        })
+        .catch((err) => {
+          if (!silent) {
+            toast.error(extractErrorMessage(err));
+            setNotFound(true);
+          }
+        })
+        .finally(() => {
+          if (!silent) setLoading(false);
+        });
+    },
+    [id],
+  );
+
   const load = useCallback(() => {
-    setLoading(true);
-    incidentApi
-      .get(id)
-      .then((d) => {
-        setDetail(d);
-        setSev(d.severity);
-        setPri(d.priority);
-        setNotFound(false);
-      })
-      .catch((err) => {
-        toast.error(extractErrorMessage(err));
-        setNotFound(true);
-      })
-      .finally(() => setLoading(false));
-  }, [id]);
+    void refreshDetail(false);
+  }, [refreshDetail]);
 
   useEffect(load, [load]);
 
-  const run = async (key: string, fn: () => Promise<unknown>, successMsg?: string) => {
+  const run = async (
+    key: string,
+    fn: () => Promise<unknown>,
+    successMsg?: string,
+    reloadOnError = false,
+  ) => {
     setBusy(key);
     try {
       await fn();
@@ -112,6 +142,9 @@ export function IncidentDetailPage() {
       load();
     } catch (err) {
       toast.error(extractErrorMessage(err));
+      // 상태 전이가 게이트(409)로 거부된 경우 BE가 이미 승인 인스턴스를 생성했을 수 있으므로,
+      // 전체 로딩 화면 없이 조용히 다시 조회해 승인 패널에 반영한다.
+      if (reloadOnError) refreshDetail(true);
     } finally {
       setBusy(null);
     }
@@ -130,6 +163,7 @@ export function IncidentDetailPage() {
   const transitions = detail.allowedTransitions ?? fallbackTransitions(detail.status);
   const isSev12 = detail.severity === "SEV1" || detail.severity === "SEV2";
   const showPmBanner = detail.postmortemRequired ?? (isSev12 && detail.status === "RESOLVED");
+  const approved = detail.approval.approvalRequestId == null || detail.approval.status === "APPROVED";
 
   const timelineItems: TimelineItem[] = detail.timeline.map((t, i) => ({
     id: String(i),
@@ -158,11 +192,22 @@ export function IncidentDetailPage() {
           <StatusBadge tone={statusTone(detail.status)} label={statusLabel(detail.status)} />
         </>
       }
-      actions={transitions.map((t) => (
-        <Button key={t} loading={busy === `st-${t}`} onClick={() => run(`st-${t}`, () => incidentApi.transition(id, t), `상태가 '${statusLabel(t)}'로 변경되었습니다`)}>
-          {statusLabel(t)}
-        </Button>
-      ))}
+      actions={transitions.map((t) => {
+        const blocked = t === "RESOLVED" && !approved;
+        return (
+          <Button
+            key={t}
+            loading={busy === `st-${t}`}
+            disabled={blocked}
+            title={blocked ? "승인 완료 전에는 해결 상태로 전이할 수 없습니다" : undefined}
+            onClick={() =>
+              run(`st-${t}`, () => incidentApi.transition(id, t), `상태가 '${statusLabel(t)}'로 변경되었습니다`, true)
+            }
+          >
+            {statusLabel(t)}
+          </Button>
+        );
+      })}
       meta={
         <>
           <Card>
@@ -202,6 +247,12 @@ export function IncidentDetailPage() {
               <MetaRow label="MTTR" value={formatMinutes(detail.metrics?.mttrMinutes)} />
             </CardContent>
           </Card>
+
+          <ApprovalPanel
+            matched={detail.approval.approvalRequestId != null}
+            steps={approvalSteps}
+            currentStepNo={approvalCurrentStepNo}
+          />
 
           <Card>
             <CardHeader><CardTitle className="text-base">대응 역할</CardTitle></CardHeader>
@@ -336,6 +387,7 @@ export function IncidentDetailPage() {
           <CardContent>
             <ResolveForm
               busy={busy === "resolve"}
+              approved={approved}
               onSubmit={(vals) =>
                 run(
                   "resolve",
@@ -346,6 +398,7 @@ export function IncidentDetailPage() {
                     resolutionNote: vals.resolutionNote.trim() || undefined,
                   }),
                   "해결 처리되었습니다",
+                  true,
                 )
               }
             />
@@ -403,7 +456,15 @@ function MetaRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ResolveForm({ busy, onSubmit }: { busy: boolean; onSubmit: (v: { impactStartAt: string; detectedAt: string; impactEndAt: string; resolutionNote: string }) => void }) {
+function ResolveForm({
+  busy,
+  approved,
+  onSubmit,
+}: {
+  busy: boolean;
+  approved: boolean;
+  onSubmit: (v: { impactStartAt: string; detectedAt: string; impactEndAt: string; resolutionNote: string }) => void;
+}) {
   const [impactStartAt, setImpactStartAt] = useState("");
   const [detectedAt, setDetectedAt] = useState("");
   const [impactEndAt, setImpactEndAt] = useState("");
@@ -435,7 +496,14 @@ function ResolveForm({ busy, onSubmit }: { busy: boolean; onSubmit: (v: { impact
         <Input id="rn" value={resolutionNote} onChange={(e) => setResolutionNote(e.target.value)} />
       </div>
       <div className="flex justify-end">
-        <Button type="submit" loading={busy}>해결 처리</Button>
+        <Button
+          type="submit"
+          loading={busy}
+          disabled={!approved}
+          title={!approved ? "승인 완료 전에는 해결 처리할 수 없습니다" : undefined}
+        >
+          해결 처리
+        </Button>
       </div>
     </form>
   );

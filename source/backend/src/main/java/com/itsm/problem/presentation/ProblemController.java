@@ -104,7 +104,8 @@ public class ProblemController {
             @ApiResponse(responseCode = "200", description = "전이 성공"),
             @ApiResponse(responseCode = "400", description = "순서 어긋난 전이", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "403", description = "권한 부족", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "404", description = "문제 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            @ApiResponse(responseCode = "404", description = "문제 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "승인 완료 전 RESOLVED_CLOSED 전이 시도", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PatchMapping("/{id}/status")
     public ResponseEntity<StatusResponse> transition(@PathVariable Long id,

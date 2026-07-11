@@ -5,6 +5,9 @@ import com.itsm.auth.application.dto.PageResponse;
 import com.itsm.auth.domain.AppUser;
 import com.itsm.auth.domain.repository.AppUserRepository;
 import com.itsm.change.application.ChangeService;
+import com.itsm.common.approval.application.ApprovalGateService;
+import com.itsm.common.approval.domain.ApprovalRequest;
+import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.common.security.AuthPrincipal;
@@ -76,6 +79,7 @@ public class IncidentService {
     private static final String IM = "INCIDENT_MANAGER";
     private static final String AGENT = "SERVICE_DESK_AGENT";
     private static final TicketType TT = TicketType.INCIDENT;
+    private static final String DOMAIN = "INCIDENT";
 
     private final IncidentRepository incidentRepository;
     private final IncidentResponderRepository responderRepository;
@@ -89,6 +93,8 @@ public class IncidentService {
     private final ProblemService problemService;
     private final ChangeService changeService;
     private final AssetService assetService;
+    private final ApprovalGateService approvalGateService;
+    private final ApprovalRequestRepository approvalRequestRepository;
 
     public IncidentService(IncidentRepository incidentRepository,
                            IncidentResponderRepository responderRepository,
@@ -101,7 +107,9 @@ public class IncidentService {
                            AppUserRepository appUserRepository,
                            ProblemService problemService,
                            ChangeService changeService,
-                           AssetService assetService) {
+                           AssetService assetService,
+                           ApprovalGateService approvalGateService,
+                           ApprovalRequestRepository approvalRequestRepository) {
         this.incidentRepository = incidentRepository;
         this.responderRepository = responderRepository;
         this.severityHistoryRepository = severityHistoryRepository;
@@ -114,6 +122,8 @@ public class IncidentService {
         this.problemService = problemService;
         this.changeService = changeService;
         this.assetService = assetService;
+        this.approvalGateService = approvalGateService;
+        this.approvalRequestRepository = approvalRequestRepository;
     }
 
     // ---------- create (API-INC-002) ----------
@@ -162,11 +172,17 @@ public class IncidentService {
                                 t.getEventType(), t.getVisibility().name(), t.getMessage(), t.getOccurredAt()))
                         .toList();
 
+        ApprovalRequest latestApproval = approvalRequestRepository
+                .findTopByTicketTypeAndTicketIdOrderByIdDesc(TT, id).orElse(null);
+        IncidentDetailResponse.ApprovalInfo approvalInfo = new IncidentDetailResponse.ApprovalInfo(
+                latestApproval != null ? latestApproval.getId() : null,
+                latestApproval != null ? latestApproval.getStatus().name() : null);
+
         return new IncidentDetailResponse(
                 inc.getId(), inc.getTicketKey(), inc.getSummary(), inc.getDescription(),
                 inc.getSeverity().name(), inc.getPriority() != null ? inc.getPriority().name() : null,
                 inc.getStatus().name(), inc.getAffectedService(), inc.getAffectedProduct(),
-                responders, metricsOf(inc), links, timeline, allowedTransitions(principal, inc));
+                responders, metricsOf(inc), approvalInfo, links, timeline, allowedTransitions(principal, inc));
     }
 
     private List<String> allowedTransitions(AuthPrincipal principal, Incident inc) {
@@ -205,6 +221,9 @@ public class IncidentService {
         IncidentStatus target = request.targetStatus();
         if (!IncidentStateMachine.isAllowed(inc.getStatus(), target)) {
             throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION);
+        }
+        if (target == IncidentStatus.RESOLVED) {
+            approvalGateService.checkGate(DOMAIN, null, requesterIdOf(inc), TT, id);
         }
         inc.changeStatus(target);
         incidentRepository.save(inc);
@@ -263,6 +282,7 @@ public class IncidentService {
     public ResolveResponse resolve(Long id, ResolveRequest request) {
         requireAnyRole(IM);
         Incident inc = findIncident(id);
+        approvalGateService.checkGate(DOMAIN, null, requesterIdOf(inc), TT, id);
         OffsetDateTime impactStart = request.impactStartAt() != null ? request.impactStartAt() : inc.getImpactStartAt();
         OffsetDateTime detected = request.detectedAt() != null ? request.detectedAt() : inc.getDetectedAt();
         OffsetDateTime impactEnd = request.impactEndAt() != null ? request.impactEndAt() : inc.getImpactEndAt();
@@ -439,6 +459,11 @@ public class IncidentService {
 
     private String userName(Long id) {
         return id == null ? null : appUserRepository.findById(id).map(AppUser::getName).orElse(null);
+    }
+
+    /** 승인 게이트의 "요청자"는 인시던트를 등록한 사용자(created_by, 이메일)로 판정한다. */
+    private Long requesterIdOf(Incident inc) {
+        return appUserRepository.findByEmail(inc.getCreatedBy()).map(AppUser::getId).orElse(null);
     }
 
     /** 연계 대상 ticketKey 조회(API-INC-003 links). PROBLEM은 INC-012로 직접 연계, CHANGE는 API-CHG-009(change→incident)

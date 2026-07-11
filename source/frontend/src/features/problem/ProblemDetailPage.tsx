@@ -8,12 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  ApprovalPanel,
   ConfirmDialog,
   PriorityBadge,
   StatusBadge,
   TicketDetailLayout,
   toast,
 } from "@/components/common";
+import type { ApprovalStep } from "@/components/common";
 import { FullscreenLoader } from "@/routes/FullscreenLoader";
 import { problemApi } from "@/features/problem/api";
 import {
@@ -25,6 +27,7 @@ import {
   statusTone,
 } from "@/features/problem/status";
 import type { ProblemDetail } from "@/features/problem/types";
+import { commonApi } from "@/features/common/api";
 import { extractErrorMessage } from "@/lib/apiClient";
 
 /*
@@ -36,30 +39,57 @@ export function ProblemDetailPage() {
   const id = Number(useParams().id);
 
   const [detail, setDetail] = useState<ProblemDetail | null>(null);
+  const [approvalSteps, setApprovalSteps] = useState<ApprovalStep[]>([]);
+  const [approvalCurrentStepNo, setApprovalCurrentStepNo] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
   const [closeWarning, setCloseWarning] = useState<string | null>(null);
 
+  const refreshDetail = useCallback(
+    (silent: boolean) => {
+      if (!silent) setLoading(true);
+      return problemApi
+        .get(id)
+        .then((d) => {
+          setDetail(d);
+          setNotFound(false);
+          if (d.approval.approvalRequestId == null) {
+            setApprovalSteps([]);
+            setApprovalCurrentStepNo(null);
+            return;
+          }
+          return commonApi.getApproval(d.approval.approvalRequestId).then((a) => {
+            setApprovalSteps(a.steps);
+            setApprovalCurrentStepNo(a.currentStepNo);
+          });
+        })
+        .catch((err) => {
+          if (!silent) {
+            toast.error(extractErrorMessage(err));
+            setNotFound(true);
+          }
+        })
+        .finally(() => {
+          if (!silent) setLoading(false);
+        });
+    },
+    [id],
+  );
+
   const load = useCallback(() => {
-    setLoading(true);
-    problemApi
-      .get(id)
-      .then((d) => {
-        setDetail(d);
-        setNotFound(false);
-      })
-      .catch((err) => {
-        toast.error(extractErrorMessage(err));
-        setNotFound(true);
-      })
-      .finally(() => setLoading(false));
-  }, [id]);
+    void refreshDetail(false);
+  }, [refreshDetail]);
 
   useEffect(load, [load]);
 
-  const run = async (key: string, fn: () => Promise<unknown>, successMsg?: string) => {
+  const run = async (
+    key: string,
+    fn: () => Promise<unknown>,
+    successMsg?: string,
+    reloadOnError = false,
+  ) => {
     setBusy(key);
     try {
       await fn();
@@ -67,6 +97,9 @@ export function ProblemDetailPage() {
       load();
     } catch (err) {
       toast.error(extractErrorMessage(err));
+      // 상태 전이가 게이트(409)로 거부된 경우 BE가 이미 승인 인스턴스를 생성했을 수 있으므로,
+      // 전체 로딩 화면 없이 조용히 다시 조회해 승인 패널에 반영한다.
+      if (reloadOnError) refreshDetail(true);
     } finally {
       setBusy(null);
     }
@@ -84,6 +117,7 @@ export function ProblemDetailPage() {
 
   const transitions = detail.allowedTransitions ?? fallbackTransitions(detail.status);
   const isClosed = detail.status === "RESOLVED_CLOSED";
+  const approved = detail.approval.approvalRequestId == null || detail.approval.status === "APPROVED";
 
   const handleClose = async (force: boolean) => {
     setBusy("close");
@@ -120,17 +154,22 @@ export function ProblemDetailPage() {
         }
         actions={
           <>
-            {transitions.map((t) => (
-              <Button
-                key={t}
-                loading={busy === `st-${t}`}
-                onClick={() =>
-                  run(`st-${t}`, () => problemApi.transition(id, t), `상태가 '${statusLabel(t)}'로 변경되었습니다`)
-                }
-              >
-                {statusLabel(t)}
-              </Button>
-            ))}
+            {transitions.map((t) => {
+              const blocked = t === "RESOLVED_CLOSED" && !approved;
+              return (
+                <Button
+                  key={t}
+                  loading={busy === `st-${t}`}
+                  disabled={blocked}
+                  title={blocked ? "승인 완료 전에는 종료 상태로 전이할 수 없습니다" : undefined}
+                  onClick={() =>
+                    run(`st-${t}`, () => problemApi.transition(id, t), `상태가 '${statusLabel(t)}'로 변경되었습니다`, true)
+                  }
+                >
+                  {statusLabel(t)}
+                </Button>
+              );
+            })}
             {!isClosed ? (
               <Button
                 className="bg-success text-success-foreground hover:bg-success/90"
@@ -154,6 +193,12 @@ export function ProblemDetailPage() {
                 {detail.component ? <MetaRow label="구성요소" value={detail.component} /> : null}
               </CardContent>
             </Card>
+
+            <ApprovalPanel
+              matched={detail.approval.approvalRequestId != null}
+              steps={approvalSteps}
+              currentStepNo={approvalCurrentStepNo}
+            />
 
             <Card>
               <CardHeader><CardTitle className="text-base">연결 인시던트</CardTitle></CardHeader>

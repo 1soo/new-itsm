@@ -1,6 +1,6 @@
 # API 명세서 — 인시던트 관리 (Incident)
 
-> 도메인: incident · 버전: 0.2 · 작성일: 2026-07-11 · 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — IN_PROGRESS → RESOLVED 전이에 공통 승인 게이트([common.md](common.md) API-COM-003~005) 추가(관리자가 규칙을 설정하지 않으면 기존과 동일하게 게이트 없이 진행)
+> 도메인: incident · 버전: 0.3 · 작성일: 2026-07-11 · 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — IN_PROGRESS → RESOLVED 전이(API-INC-005, API-INC-009 두 경로 모두)에 공통 승인 게이트([common.md](common.md) API-COM-003~005) 추가(관리자가 규칙을 설정하지 않으면 기존과 동일하게 게이트 없이 진행)
 
 ## 공통 규약
 
@@ -121,7 +121,7 @@
   ```json
   { "id": "number", "status": "RESOLVED", "metrics": { "mttdMinutes": "number|null", "mttaMinutes": "number|null", "mttrMinutes": "number|null" } }
   ```
-- **Response Code**: 200(시각 없으면 해당 지표 null=미산정) / 403 / 404
+- **Response Code**: 200(시각 없으면 해당 지표 null=미산정) / 403 / 404 / 409 승인 완료 전 RESOLVED 전이 시도 — API-INC-005와 동일한 [common.md](common.md) 0절 공통 게이트 로직(domain=INCIDENT) 적용. 본 API도 IN_PROGRESS→RESOLVED 전이를 수행하므로 API-INC-005와 동일 게이트를 거친다(우회 경로 방지). 매칭되는 승인 프로세스가 없거나 0차 승인이면 게이트 없이 통과(기존과 동일)
 
 ### API-INC-010 · 포스트모템 조회
 

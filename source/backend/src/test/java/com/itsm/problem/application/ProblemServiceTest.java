@@ -1,7 +1,10 @@
 package com.itsm.problem.application;
 
 import com.itsm.asset.application.AssetService;
+import com.itsm.auth.domain.repository.AppUserRepository;
 import com.itsm.change.application.ChangeService;
+import com.itsm.common.approval.application.ApprovalGateService;
+import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.common.security.AuthPrincipal;
@@ -48,6 +51,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -67,6 +72,9 @@ class ProblemServiceTest {
     @Mock ChangeService changeService;
     @Mock com.itsm.knowledge.domain.repository.KnowledgeArticleRepository knowledgeArticleRepository;
     @Mock AssetService assetService;
+    @Mock ApprovalGateService approvalGateService;
+    @Mock ApprovalRequestRepository approvalRequestRepository;
+    @Mock AppUserRepository appUserRepository;
 
     ProblemService service;
 
@@ -74,7 +82,8 @@ class ProblemServiceTest {
     void setUp() {
         service = new ProblemService(problemRepository, fiveWhyRepository, knownErrorRepository,
                 actionRepository, timelineRepository, ticketLinkRepository, incidentRepository, changeService,
-                knowledgeArticleRepository, assetService);
+                knowledgeArticleRepository, assetService, approvalGateService, approvalRequestRepository,
+                appUserRepository);
         when(problemRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(fiveWhyRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(knownErrorRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -84,6 +93,8 @@ class ProblemServiceTest {
         when(actionRepository.findByProblemId(any())).thenReturn(List.of());
         when(ticketLinkRepository.findBySourceTypeAndSourceId(any(), any())).thenReturn(List.of());
         when(problemRepository.countByTicketKeyStartingWith(any())).thenReturn(0L);
+        when(approvalRequestRepository.findTopByTicketTypeAndTicketIdOrderByIdDesc(any(), any()))
+                .thenReturn(Optional.empty());
     }
 
     @AfterEach
@@ -170,6 +181,33 @@ class ProblemServiceTest {
                 new StatusTransitionRequest(ProblemStatus.RESOLVED_CLOSED, null)))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.INVALID_STATUS_TRANSITION));
+    }
+
+    @Test
+    void transitionToResolvedClosedGatePassSucceeds() {
+        login("PROBLEM_MANAGER");
+        when(problemRepository.findById(1L)).thenReturn(Optional.of(problem(ProblemStatus.WORKAROUND)));
+        doNothing().when(approvalGateService).checkGate(any(), any(), any(), any(), any());
+
+        var response = service.transition(1L, new StatusTransitionRequest(ProblemStatus.RESOLVED_CLOSED, null));
+
+        assertThat(response.status()).isEqualTo("RESOLVED_CLOSED");
+    }
+
+    @Test
+    void transitionToResolvedClosedGateBlockedPropagates409() {
+        login("PROBLEM_MANAGER");
+        when(problemRepository.findById(1L)).thenReturn(Optional.of(problem(ProblemStatus.WORKAROUND)));
+        doThrow(new BusinessException(ErrorCode.APPROVAL_PENDING, ErrorCode.APPROVAL_PENDING.getDefaultMessage(), 77L))
+                .when(approvalGateService).checkGate(any(), any(), any(), any(), any());
+
+        assertThatThrownBy(() -> service.transition(1L,
+                new StatusTransitionRequest(ProblemStatus.RESOLVED_CLOSED, null)))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> {
+                    assertThat(codeOf(e)).isEqualTo(ErrorCode.APPROVAL_PENDING);
+                    assertThat(((BusinessException) e).getApprovalRequestId()).isEqualTo(77L);
+                });
     }
 
     // ---------- RCA ----------

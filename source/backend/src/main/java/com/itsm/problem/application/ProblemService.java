@@ -2,7 +2,12 @@ package com.itsm.problem.application;
 
 import com.itsm.asset.application.AssetService;
 import com.itsm.auth.application.dto.PageResponse;
+import com.itsm.auth.domain.AppUser;
+import com.itsm.auth.domain.repository.AppUserRepository;
 import com.itsm.change.application.ChangeService;
+import com.itsm.common.approval.application.ApprovalGateService;
+import com.itsm.common.approval.domain.ApprovalRequest;
+import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.common.security.AuthPrincipal;
@@ -68,6 +73,7 @@ public class ProblemService {
 
     private static final String PM = "PROBLEM_MANAGER";
     private static final TicketType TT = TicketType.PROBLEM;
+    private static final String DOMAIN = "PROBLEM";
 
     private final ProblemRepository problemRepository;
     private final ProblemFiveWhyRepository fiveWhyRepository;
@@ -79,6 +85,9 @@ public class ProblemService {
     private final ChangeService changeService;
     private final KnowledgeArticleRepository knowledgeArticleRepository;
     private final AssetService assetService;
+    private final ApprovalGateService approvalGateService;
+    private final ApprovalRequestRepository approvalRequestRepository;
+    private final AppUserRepository appUserRepository;
 
     public ProblemService(ProblemRepository problemRepository,
                           ProblemFiveWhyRepository fiveWhyRepository,
@@ -89,7 +98,10 @@ public class ProblemService {
                           IncidentRepository incidentRepository,
                           ChangeService changeService,
                           KnowledgeArticleRepository knowledgeArticleRepository,
-                          AssetService assetService) {
+                          AssetService assetService,
+                          ApprovalGateService approvalGateService,
+                          ApprovalRequestRepository approvalRequestRepository,
+                          AppUserRepository appUserRepository) {
         this.problemRepository = problemRepository;
         this.fiveWhyRepository = fiveWhyRepository;
         this.knownErrorRepository = knownErrorRepository;
@@ -100,6 +112,9 @@ public class ProblemService {
         this.changeService = changeService;
         this.knowledgeArticleRepository = knowledgeArticleRepository;
         this.assetService = assetService;
+        this.approvalGateService = approvalGateService;
+        this.approvalRequestRepository = approvalRequestRepository;
+        this.appUserRepository = appUserRepository;
     }
 
     // ---------- create (API-PRB-002) ----------
@@ -148,6 +163,9 @@ public class ProblemService {
         ProblemStatus target = request.targetStatus();
         if (!ProblemStateMachine.isAllowed(problem.getStatus(), target)) {
             throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION);
+        }
+        if (target == ProblemStatus.RESOLVED_CLOSED) {
+            approvalGateService.checkGate(DOMAIN, null, requesterIdOf(problem), TT, id);
         }
         problem.changeStatus(target);
         problemRepository.save(problem);
@@ -373,11 +391,17 @@ public class ProblemService {
         List<String> allowed = ProblemStateMachine.allowedTargets(p.getStatus()).stream()
                 .map(ProblemStatus::name).sorted().toList();
 
+        ApprovalRequest latestApproval = approvalRequestRepository
+                .findTopByTicketTypeAndTicketIdOrderByIdDesc(TT, id).orElse(null);
+        ProblemDetailResponse.ApprovalInfo approvalInfo = new ProblemDetailResponse.ApprovalInfo(
+                latestApproval != null ? latestApproval.getId() : null,
+                latestApproval != null ? latestApproval.getStatus().name() : null);
+
         return new ProblemDetailResponse(id, p.getTicketKey(), p.getSummary(), p.getDescription(),
                 p.getStatus().name(), p.getPriority() != null ? p.getPriority().name() : null,
                 p.getImpact() != null ? p.getImpact().name() : null,
                 p.getUrgency() != null ? p.getUrgency().name() : null,
-                rca, p.getWorkaround(), linkedIncidents, linkedChanges, linkedAssets, actions, allowed);
+                rca, p.getWorkaround(), approvalInfo, linkedIncidents, linkedChanges, linkedAssets, actions, allowed);
     }
 
     private KnownErrorSearchResponse toKnownErrorSearch(KnownError k) {
@@ -408,6 +432,11 @@ public class ProblemService {
         String prefix = "PRB-" + Year.now().getValue() + "-";
         long seq = problemRepository.countByTicketKeyStartingWith(prefix) + 1;
         return prefix + String.format("%04d", seq);
+    }
+
+    /** 승인 게이트의 "요청자"는 문제를 등록한 사용자(created_by, 이메일)로 판정한다. */
+    private Long requesterIdOf(Problem problem) {
+        return appUserRepository.findByEmail(problem.getCreatedBy()).map(AppUser::getId).orElse(null);
     }
 
     private Problem findProblem(Long id) {

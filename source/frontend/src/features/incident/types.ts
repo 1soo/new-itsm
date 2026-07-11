@@ -50,6 +50,12 @@ export interface IncidentTimelineEvent {
   at: string;
 }
 
+/** 승인 프로세스 커스텀 기능(유지보수 요청) — approvalRequestId=null이면 매칭되는 승인 프로세스가 없어 게이트 없이 진행. */
+export interface IncidentApproval {
+  approvalRequestId: number | null;
+  status: "IN_PROGRESS" | "APPROVED" | "REJECTED" | null;
+}
+
 export interface IncidentDetail {
   id: number;
   ticketKey: string;
@@ -62,6 +68,7 @@ export interface IncidentDetail {
   affectedProduct?: string;
   responders: Responder[];
   metrics: IncidentMetricsDetail;
+  approval: IncidentApproval;
   links: IncidentLink[];
   timeline: IncidentTimelineEvent[];
   /** 목록 배너 판단용(제공 시). */
