@@ -15,3 +15,4 @@
 |------|--------|------|------|
 | 20260711-140000 | auth | 역할-메뉴 동적 매핑(screen/screen_role 확장, 메뉴 관리 화면 신규) | docs/06_maintenance/20260711-140000/auth/report.md |
 | 20260711-140000 | common | 헤더 알림 확인처리(모두 지우기/개별 X, notification_dismissal 신규) | docs/06_maintenance/20260711-140000/common/report.md |
+| 20260711-160000 | common | 헤더 알림 5초 polling 전환(merge 정책·8건 cap 폐지·백그라운드 정지) | docs/06_maintenance/20260711-160000/common/report.md |
