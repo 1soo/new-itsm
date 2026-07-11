@@ -17,6 +17,7 @@ import com.itsm.change.domain.Outcome;
 import com.itsm.change.domain.repository.ChangeAffectedSystemRepository;
 import com.itsm.change.domain.repository.ChangeRequestRepository;
 import com.itsm.change.domain.repository.ChangeTemplateRepository;
+import com.itsm.common.approval.application.ApprovalGateService;
 import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
@@ -48,6 +49,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -67,6 +70,7 @@ class ChangeServiceTest {
     @Mock AssetService assetService;
     @Mock ComplianceRequirementRepository complianceRequirementRepository;
     @Mock ApprovalRequestRepository approvalRequestRepository;
+    @Mock ApprovalGateService approvalGateService;
 
     ChangeService service;
 
@@ -74,7 +78,8 @@ class ChangeServiceTest {
     void setUp() {
         service = new ChangeService(changeRequestRepository, templateRepository, affectedSystemRepository,
                 ticketLinkRepository, timelineRepository, incidentRepository,
-                problemRepository, assetService, complianceRequirementRepository, approvalRequestRepository);
+                problemRepository, assetService, complianceRequirementRepository, approvalRequestRepository,
+                approvalGateService, appUserRepository);
         when(changeRequestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(timelineRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(changeRequestRepository.countByTicketKeyStartingWith(any())).thenReturn(0L);
@@ -184,12 +189,27 @@ class ChangeServiceTest {
     }
 
     @Test
-    void transitionToImplementationSucceeds() {
-        // Stage 1(공용 승인 엔진 도입): 게이트 연동은 Stage 2에서 완료, 현재는 게이트 없이 통과.
+    void transitionToImplementationGatePassSucceeds() {
         login("CHANGE_MANAGER");
         when(changeRequestRepository.findById(1L)).thenReturn(Optional.of(change(ChangeStatus.APPROVAL)));
+        doNothing().when(approvalGateService).checkGate(any(), any(), any(), any(), any());
         var response = service.transition(1L, new StatusTransitionRequest(ChangeStatus.IMPLEMENTATION, null));
         assertThat(response.status()).isEqualTo("IMPLEMENTATION");
+    }
+
+    @Test
+    void transitionToImplementationGateBlockedPropagates409() {
+        login("CHANGE_MANAGER");
+        when(changeRequestRepository.findById(1L)).thenReturn(Optional.of(change(ChangeStatus.APPROVAL)));
+        doThrow(new BusinessException(ErrorCode.APPROVAL_PENDING, ErrorCode.APPROVAL_PENDING.getDefaultMessage(), 77L))
+                .when(approvalGateService).checkGate(any(), any(), any(), any(), any());
+
+        assertThatThrownBy(() -> service.transition(1L, new StatusTransitionRequest(ChangeStatus.IMPLEMENTATION, null)))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> {
+                    assertThat(codeOf(e)).isEqualTo(ErrorCode.APPROVAL_PENDING);
+                    assertThat(((BusinessException) e).getApprovalRequestId()).isEqualTo(77L);
+                });
     }
 
     // ---------- classification ----------

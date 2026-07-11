@@ -97,29 +97,40 @@ export function RequestDetailPage() {
   const [csatSubmitting, setCsatSubmitting] = useState(false);
   const [csatDone, setCsatDone] = useState(false);
 
-  const load = useCallback(() => {
-    setLoading(true);
-    srmApi
-      .getRequest(id)
-      .then((d) => {
-        setDetail(d);
-        setNotFound(false);
-        if (d.approval.approvalRequestId == null) {
-          setApprovalSteps([]);
-          setApprovalCurrentStepNo(null);
-          return;
-        }
-        return commonApi.getApproval(d.approval.approvalRequestId).then((a) => {
-          setApprovalSteps(a.steps);
-          setApprovalCurrentStepNo(a.currentStepNo);
+  const refreshDetail = useCallback(
+    (silent: boolean) => {
+      if (!silent) setLoading(true);
+      return srmApi
+        .getRequest(id)
+        .then((d) => {
+          setDetail(d);
+          setNotFound(false);
+          if (d.approval.approvalRequestId == null) {
+            setApprovalSteps([]);
+            setApprovalCurrentStepNo(null);
+            return;
+          }
+          return commonApi.getApproval(d.approval.approvalRequestId).then((a) => {
+            setApprovalSteps(a.steps);
+            setApprovalCurrentStepNo(a.currentStepNo);
+          });
+        })
+        .catch((err) => {
+          if (!silent) {
+            toast.error(extractErrorMessage(err));
+            setNotFound(true);
+          }
+        })
+        .finally(() => {
+          if (!silent) setLoading(false);
         });
-      })
-      .catch((err) => {
-        toast.error(extractErrorMessage(err));
-        setNotFound(true);
-      })
-      .finally(() => setLoading(false));
-  }, [id]);
+    },
+    [id],
+  );
+
+  const load = useCallback(() => {
+    void refreshDetail(false);
+  }, [refreshDetail]);
 
   useEffect(load, [load]);
 
@@ -131,6 +142,9 @@ export function RequestDetailPage() {
       load();
     } catch (err) {
       toast.error(extractErrorMessage(err));
+      // 이행(IN_FULFILLMENT) 전이가 게이트(409)로 거부된 경우 BE가 이미 승인 인스턴스를 생성했을
+      // 수 있으므로, 전체 로딩 화면 없이 조용히 다시 조회해 승인 패널에 반영한다.
+      refreshDetail(true);
     } finally {
       setTransitioning(null);
     }
@@ -178,7 +192,12 @@ export function RequestDetailPage() {
     );
   }
 
-  const transitions = detail.allowedTransitions ?? fallbackTransitions(detail, isAgent, isEndUser);
+  // 승인 대기 중(매칭 규칙 있고 미승인)에는 이행 전이 버튼을 숨긴다(service-request.md, BE가 제공하는
+  // allowedTransitions에도 승인 게이트가 반영되지 않을 수 있어 FE에서 한 번 더 걸러낸다).
+  const approvalPending = detail.approval.status === "IN_PROGRESS";
+  const transitions = (detail.allowedTransitions ?? fallbackTransitions(detail, isAgent, isEndUser)).filter(
+    (t) => !(t === "IN_FULFILLMENT" && approvalPending),
+  );
   const showCsat = detail.status === "CLOSED" && isEndUser;
 
   const timelineItems: TimelineItem[] = detail.timeline.map((t, i) => ({

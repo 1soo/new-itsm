@@ -46,33 +46,49 @@ export function ChangeDetailPage() {
   const [notFound, setNotFound] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
-  const load = useCallback(() => {
-    setLoading(true);
-    changeApi
-      .get(id)
-      .then((d) => {
-        setDetail(d);
-        setNotFound(false);
-        if (d.approval.approvalRequestId == null) {
-          setApprovalSteps([]);
-          setApprovalCurrentStepNo(null);
-          return;
-        }
-        return commonApi.getApproval(d.approval.approvalRequestId).then((a) => {
-          setApprovalSteps(a.steps);
-          setApprovalCurrentStepNo(a.currentStepNo);
+  const refreshDetail = useCallback(
+    (silent: boolean) => {
+      if (!silent) setLoading(true);
+      return changeApi
+        .get(id)
+        .then((d) => {
+          setDetail(d);
+          setNotFound(false);
+          if (d.approval.approvalRequestId == null) {
+            setApprovalSteps([]);
+            setApprovalCurrentStepNo(null);
+            return;
+          }
+          return commonApi.getApproval(d.approval.approvalRequestId).then((a) => {
+            setApprovalSteps(a.steps);
+            setApprovalCurrentStepNo(a.currentStepNo);
+          });
+        })
+        .catch((err) => {
+          if (!silent) {
+            toast.error(extractErrorMessage(err));
+            setNotFound(true);
+          }
+        })
+        .finally(() => {
+          if (!silent) setLoading(false);
         });
-      })
-      .catch((err) => {
-        toast.error(extractErrorMessage(err));
-        setNotFound(true);
-      })
-      .finally(() => setLoading(false));
-  }, [id]);
+    },
+    [id],
+  );
+
+  const load = useCallback(() => {
+    void refreshDetail(false);
+  }, [refreshDetail]);
 
   useEffect(load, [load]);
 
-  const run = async (key: string, fn: () => Promise<unknown>, successMsg?: string) => {
+  const run = async (
+    key: string,
+    fn: () => Promise<unknown>,
+    successMsg?: string,
+    reloadOnError = false,
+  ) => {
     setBusy(key);
     try {
       await fn();
@@ -80,6 +96,9 @@ export function ChangeDetailPage() {
       load();
     } catch (err) {
       toast.error(extractErrorMessage(err));
+      // 상태 전이가 게이트(409)로 거부된 경우 BE가 이미 승인 인스턴스를 생성했을 수 있으므로,
+      // 전체 로딩 화면 없이 조용히 다시 조회해 승인 패널에 반영한다.
+      if (reloadOnError) refreshDetail(true);
     } finally {
       setBusy(null);
     }
@@ -121,7 +140,9 @@ export function ChangeDetailPage() {
             loading={busy === `st-${t}`}
             disabled={blocked}
             title={blocked ? "승인 완료 전에는 구현 단계로 전이할 수 없습니다" : undefined}
-            onClick={() => run(`st-${t}`, () => changeApi.transition(id, t), `상태가 '${statusLabel(t)}'로 변경되었습니다`)}
+            onClick={() =>
+              run(`st-${t}`, () => changeApi.transition(id, t), `상태가 '${statusLabel(t)}'로 변경되었습니다`, true)
+            }
           >
             {statusLabel(t)}
           </Button>

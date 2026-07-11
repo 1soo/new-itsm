@@ -110,13 +110,13 @@ public class ChangeController {
         return ResponseEntity.ok(changeService.detail(id));
     }
 
-    @Operation(summary = "상태(6단계) 전이", description = "API-CHG-004 · REQUESTED→REVIEW→PLANNING→APPROVAL→IMPLEMENTATION→CLOSED. "
-            + "승인 게이트 연동은 Stage 2에서 완료(현재는 게이트 없이 통과)")
+    @Operation(summary = "상태(6단계) 전이", description = "API-CHG-004 · REQUESTED→REVIEW→PLANNING→APPROVAL→IMPLEMENTATION→CLOSED")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "전이 성공"),
             @ApiResponse(responseCode = "400", description = "허용되지 않은 전이", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "403", description = "권한 부족", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "404", description = "변경 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            @ApiResponse(responseCode = "404", description = "변경 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "승인 완료 전 구현(IMPLEMENTATION) 전이 시도", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PatchMapping("/{id}/status")
     public ResponseEntity<StatusResponse> transition(@PathVariable Long id,

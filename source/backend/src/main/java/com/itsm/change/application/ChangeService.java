@@ -2,6 +2,8 @@ package com.itsm.change.application;
 
 import com.itsm.asset.application.AssetService;
 import com.itsm.auth.application.dto.PageResponse;
+import com.itsm.auth.domain.AppUser;
+import com.itsm.auth.domain.repository.AppUserRepository;
 import com.itsm.change.application.dto.ChangeCreatedResponse;
 import com.itsm.change.application.dto.ChangeDetailResponse;
 import com.itsm.change.application.dto.ChangeMetricsResponse;
@@ -27,6 +29,7 @@ import com.itsm.change.domain.Outcome;
 import com.itsm.change.domain.repository.ChangeAffectedSystemRepository;
 import com.itsm.change.domain.repository.ChangeRequestRepository;
 import com.itsm.change.domain.repository.ChangeTemplateRepository;
+import com.itsm.common.approval.application.ApprovalGateService;
 import com.itsm.common.approval.domain.ApprovalRequest;
 import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
@@ -58,8 +61,8 @@ import java.util.List;
  * 인시던트/문제 연계·일정·표준 변경 템플릿·지표.
  * RBAC(change_manager.md/approver.md): 대부분 CHANGE_MANAGER 전용이며, 상세 조회는 APPROVER도 가능.
  * 승인 경로 자동 라우팅·승인 결정·대기 목록은 승인 프로세스 커스텀 기능(2026-07-11)으로 제거되었다(공용 승인 엔진이 대체).
- * Stage 1(공용 엔진 도입)에서는 컴파일 유지를 위해 구 승인 코드만 제거했으며, IMPLEMENTATION 전이의 실제 게이트 연동은
- * Stage 2에서 진행한다(그때까지 게이트 없이 통과).
+ * IMPLEMENTATION 전이 시 공용 승인 게이트(domain=CHANGE, requestSubtypeKey=change_request.type)를 통과해야 한다
+ * (Stage 2, docs/02_plan/api_spec/change.md API-CHG-004 0절).
  */
 @Service
 public class ChangeService {
@@ -67,6 +70,7 @@ public class ChangeService {
     private static final String CM = "CHANGE_MANAGER";
     private static final String APPROVER = "APPROVER";
     private static final TicketType TT = TicketType.CHANGE;
+    private static final String DOMAIN = "CHANGE";
 
     private final ChangeRequestRepository changeRequestRepository;
     private final ChangeTemplateRepository templateRepository;
@@ -78,6 +82,8 @@ public class ChangeService {
     private final AssetService assetService;
     private final ComplianceRequirementRepository complianceRequirementRepository;
     private final ApprovalRequestRepository approvalRequestRepository;
+    private final ApprovalGateService approvalGateService;
+    private final AppUserRepository appUserRepository;
 
     public ChangeService(ChangeRequestRepository changeRequestRepository,
                          ChangeTemplateRepository templateRepository,
@@ -88,7 +94,9 @@ public class ChangeService {
                          ProblemRepository problemRepository,
                          AssetService assetService,
                          ComplianceRequirementRepository complianceRequirementRepository,
-                         ApprovalRequestRepository approvalRequestRepository) {
+                         ApprovalRequestRepository approvalRequestRepository,
+                         ApprovalGateService approvalGateService,
+                         AppUserRepository appUserRepository) {
         this.changeRequestRepository = changeRequestRepository;
         this.templateRepository = templateRepository;
         this.affectedSystemRepository = affectedSystemRepository;
@@ -99,6 +107,8 @@ public class ChangeService {
         this.assetService = assetService;
         this.complianceRequirementRepository = complianceRequirementRepository;
         this.approvalRequestRepository = approvalRequestRepository;
+        this.approvalGateService = approvalGateService;
+        this.appUserRepository = appUserRepository;
     }
 
     // ---------- create (API-CHG-002) ----------
@@ -156,6 +166,9 @@ public class ChangeService {
         ChangeStatus target = request.targetStatus();
         if (!ChangeStateMachine.isAllowed(change.getStatus(), target)) {
             throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION);
+        }
+        if (target == ChangeStatus.IMPLEMENTATION) {
+            approvalGateService.checkGate(DOMAIN, change.getType().name(), requesterIdOf(change), TT, id);
         }
         change.changeStatus(target);
         changeRequestRepository.save(change);
@@ -300,6 +313,11 @@ public class ChangeService {
                 sourceType, sourceId, targetType, targetId)) {
             ticketLinkRepository.save(new TicketLink(sourceType, sourceId, targetType, targetId, "RELATED"));
         }
+    }
+
+    /** 승인 게이트의 "요청자"는 RFC를 등록한 사용자(created_by, 이메일)로 판정한다. */
+    private Long requesterIdOf(ChangeRequest change) {
+        return appUserRepository.findByEmail(change.getCreatedBy()).map(AppUser::getId).orElse(null);
     }
 
     private String nextTicketKey() {

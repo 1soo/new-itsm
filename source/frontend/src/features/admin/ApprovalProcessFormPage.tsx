@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   ApprovalProcessFlow,
   type ApprovalRoleOption,
@@ -157,29 +160,47 @@ export function ApprovalProcessFormPage() {
   if (loading) return <FullscreenLoader />;
 
   return (
-    <ApprovalProcessFlow
-      domainOptions={domains.map((d) => ({ value: d.domain, label: d.label }))}
-      domain={domain}
-      onDomainChange={(v) => setDomain(v as ApprovalDomain)}
-      // 편집 시 domain·requestSubtypeKey는 식별 스코프라 변경을 허용하지 않는다(API-AUTH-028).
-      domainDisabled={isEdit}
-      requestSubtypeOptions={
-        hasRequestSubtype
-          ? [{ value: NO_SUBTYPE, label: "전체" }, ...subtypes.map((s) => ({ value: s.key, label: s.label }))]
-          : null
-      }
-      requestSubtype={requestSubtypeKey}
-      onRequestSubtypeChange={setRequestSubtypeKey}
-      requestSubtypeDisabled={isEdit}
-      roleOptions={roleOptions}
-      requester={requester}
-      onRequesterChange={setRequester}
-      approvers={approvers}
-      onApproversChange={setApprovers}
-      submitLabel={isEdit ? "저장" : "생성 완료"}
-      onSubmit={handleSubmit}
-      submitting={saving}
-      formError={formError}
-    />
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">규칙 정보</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="ap-name">규칙명</Label>
+            <Input id="ap-name" value={name} onChange={(e) => setName(e.target.value)} required />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="ap-desc">설명(선택)</Label>
+            <Input id="ap-desc" value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+        </CardContent>
+      </Card>
+
+      <ApprovalProcessFlow
+        domainOptions={domains.map((d) => ({ value: d.domain, label: d.label }))}
+        domain={domain}
+        onDomainChange={(v) => setDomain(v as ApprovalDomain)}
+        // 편집 시 domain·requestSubtypeKey는 식별 스코프라 변경을 허용하지 않는다(API-AUTH-028).
+        domainDisabled={isEdit}
+        requestSubtypeOptions={
+          hasRequestSubtype
+            ? [{ value: NO_SUBTYPE, label: "전체" }, ...subtypes.map((s) => ({ value: s.key, label: s.label }))]
+            : null
+        }
+        requestSubtype={requestSubtypeKey}
+        onRequestSubtypeChange={setRequestSubtypeKey}
+        requestSubtypeDisabled={isEdit}
+        roleOptions={roleOptions}
+        requester={requester}
+        onRequesterChange={setRequester}
+        approvers={approvers}
+        onApproversChange={setApprovers}
+        submitLabel={isEdit ? "저장" : "생성 완료"}
+        onSubmit={handleSubmit}
+        submitting={saving}
+        formError={formError}
+      />
+    </div>
   );
 }

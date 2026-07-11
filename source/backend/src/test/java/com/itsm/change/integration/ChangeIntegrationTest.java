@@ -15,6 +15,8 @@ import com.itsm.change.domain.ChangeStatus;
 import com.itsm.change.domain.ChangeType;
 import com.itsm.change.domain.LinkTargetType;
 import com.itsm.change.domain.Outcome;
+import com.itsm.common.approval.application.ApprovalInstanceService;
+import com.itsm.common.approval.domain.DecisionType;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.common.security.AuthPrincipal;
@@ -45,7 +47,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 실 PostgreSQL(Testcontainers)로 변경(change) 전체 흐름을 검증한다.
  * RFC 등록→6단계 전이(순서 위반 400)→분류(유형·위험)→구현결과→인시던트/문제/자산 양방향 연계→일정·템플릿·지표를
  * 실 트랜잭션·실 FK로 재현한다. 승인 경로 자동 라우팅·승인/반려는 승인 프로세스 커스텀 기능(2026-07-11)으로
- * 제거되었다(공용 승인 엔진이 대체, Stage 1은 게이트 없이 통과 — Stage 2에서 게이트 연동 테스트 추가 예정).
+ * 제거되었다(공용 승인 엔진이 대체). Stage 2에서 IMPLEMENTATION 전이의 실제 게이트 차단·승인 후 재시도 통과를
+ * 실 트랜잭션으로 재현한다(SRM과 동일 패턴, TC-ADM-006류 flush 회귀 방지 포함).
  * 실제 DDL(01/03/04/06/08/10/.../26)을 마운트한다.
  */
 @Testcontainers(disabledWithoutDocker = true)
@@ -97,6 +100,7 @@ class ChangeIntegrationTest {
 
     @Autowired ChangeService changeService;
     @Autowired AssetService assetService;
+    @Autowired ApprovalInstanceService approvalInstanceService;
     @Autowired JdbcTemplate jdbc;
 
     @AfterEach
@@ -133,8 +137,28 @@ class ChangeIntegrationTest {
         return jdbc.queryForObject("select id from change_template where name = ?", Long.class, name);
     }
 
+    private Long roleIdOf(String roleCode) {
+        jdbc.update("insert into role(role_code, role_name, created_by) values (?,?,?) on conflict (role_code) do nothing",
+                roleCode, roleCode, "test");
+        return jdbc.queryForObject("select id from role where role_code = ?", Long.class, roleCode);
+    }
+
+    /** 요청유형 전용(tier=2) 규칙 1건 + 1차 OR 승인(주어진 역할)을 CHANGE 유형별로 시딩한다(테스트 간 격리). */
+    private void seedSubtypeProcess(String requestSubtypeKey, String roleCode) {
+        jdbc.update("insert into approval_process(domain, request_subtype_key, priority_tier, name, created_by) values ('CHANGE',?,2,?,?)",
+                requestSubtypeKey, "요청유형 규칙", "test");
+        Long processId = jdbc.queryForObject(
+                "select id from approval_process where domain = 'CHANGE' and request_subtype_key = ?", Long.class, requestSubtypeKey);
+        jdbc.update("insert into approval_process_step(approval_process_id, step_no, decision_mode, created_by) values (?,1,'OR',?)",
+                processId, "test");
+        Long stepId = jdbc.queryForObject(
+                "select id from approval_process_step where approval_process_id = ? and step_no = 1", Long.class, processId);
+        jdbc.update("insert into approval_process_step_role(step_id, role_id, created_by) values (?,?,?)",
+                stepId, roleIdOf(roleCode), "test");
+    }
+
     @Test
-    void fullChangeLifecycleWithoutGate() {
+    void fullChangeLifecycleWithoutMatchingRule() {
         long ts = System.nanoTime();
         Long cmId = insertUser("cm" + ts + "@itsm.local");
         as(cmId, "CHANGE_MANAGER");
@@ -156,7 +180,7 @@ class ChangeIntegrationTest {
                         .isEqualTo(ErrorCode.INVALID_STATUS_TRANSITION));
 
         changeService.transition(id, new StatusTransitionRequest(ChangeStatus.APPROVAL, null));
-        // Stage 1(공용 승인 엔진 도입): 게이트 연동 전이라 승인 없이 구현 전이 통과(Stage 2에서 게이트 추가)
+        // 매칭되는 승인 프로세스가 없으면(NORMAL 유형에 대해 아무 규칙도 시딩하지 않음) 게이트 없이 통과
         var toImpl = changeService.transition(id, new StatusTransitionRequest(ChangeStatus.IMPLEMENTATION, null));
         assertThat(toImpl.status()).isEqualTo("IMPLEMENTATION");
 
@@ -166,6 +190,47 @@ class ChangeIntegrationTest {
 
         var detail = changeService.detail(id);
         assertThat(detail.status()).isEqualTo("CLOSED");
+    }
+
+    @Test
+    void implementationGateBlocksThenApprovedRetrySucceeds() {
+        long ts = System.nanoTime();
+        Long cmId = insertUser("cm" + ts + "@itsm.local");
+        Long approverId = insertUser("apr" + ts + "@itsm.local");
+        seedSubtypeProcess("EMERGENCY", "APPROVER");
+
+        as(cmId, "CHANGE_MANAGER");
+        var created = changeService.create(new CreateChangeRequest("긴급 보안 패치", null,
+                ChangeType.EMERGENCY, ChangeRisk.HIGH, null, null, null, null, null));
+        Long id = created.id();
+        changeService.transition(id, new StatusTransitionRequest(ChangeStatus.REVIEW, null));
+        changeService.transition(id, new StatusTransitionRequest(ChangeStatus.PLANNING, null));
+        changeService.transition(id, new StatusTransitionRequest(ChangeStatus.APPROVAL, null));
+
+        // 게이트 차단: 인스턴스 없음 → 스냅샷 생성 + 409(approvalRequestId 포함)
+        BusinessException blocked = (BusinessException) org.junit.jupiter.api.Assertions.assertThrows(
+                BusinessException.class,
+                () -> changeService.transition(id, new StatusTransitionRequest(ChangeStatus.IMPLEMENTATION, null)));
+        assertThat(blocked.getErrorCode()).isEqualTo(ErrorCode.APPROVAL_PENDING);
+        Long approvalRequestId = blocked.getApprovalRequestId();
+        assertThat(approvalRequestId).isNotNull();
+
+        // 상세 조회에 approval 필드로 노출
+        var detailPending = changeService.detail(id);
+        assertThat(detailPending.approval().approvalRequestId()).isEqualTo(approvalRequestId);
+        assertThat(detailPending.approval().status()).isEqualTo("IN_PROGRESS");
+
+        // 승인자 결정 → APPROVED
+        as(approverId, "APPROVER");
+        approvalInstanceService.decide(approvalRequestId, DecisionType.APPROVE, "ok");
+
+        // 재시도 시 게이트 통과
+        as(cmId, "CHANGE_MANAGER");
+        var toImpl = changeService.transition(id, new StatusTransitionRequest(ChangeStatus.IMPLEMENTATION, null));
+        assertThat(toImpl.status()).isEqualTo("IMPLEMENTATION");
+
+        var detailApproved = changeService.detail(id);
+        assertThat(detailApproved.approval().status()).isEqualTo("APPROVED");
     }
 
     @Test
