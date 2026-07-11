@@ -7,6 +7,8 @@ import com.itsm.auth.domain.AppUser;
 import com.itsm.auth.domain.Department;
 import com.itsm.auth.domain.UserStatus;
 import com.itsm.auth.domain.repository.AppUserRepository;
+import com.itsm.common.approval.application.ApprovalGateService;
+import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.common.security.AuthPrincipal;
@@ -51,6 +53,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -72,6 +76,8 @@ class EsmRequestServiceTest {
     @Mock AppUserRepository appUserRepository;
     @Mock CommentRepository commentRepository;
     @Mock TimelineEventRepository timelineRepository;
+    @Mock ApprovalGateService approvalGateService;
+    @Mock ApprovalRequestRepository approvalRequestRepository;
 
     EsmRequestService service;
 
@@ -79,7 +85,8 @@ class EsmRequestServiceTest {
     void setUp() {
         service = new EsmRequestService(requestRepository, formValueRepository, catalogItemRepository,
                 formFieldRepository, templateTaskRepository, checklistRepository, checklistTaskRepository,
-                assetRepository, appUserRepository, commentRepository, timelineRepository);
+                assetRepository, appUserRepository, commentRepository, timelineRepository,
+                approvalGateService, approvalRequestRepository);
         when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(requestRepository.countByTicketKeyStartingWith(any())).thenReturn(0L);
         when(checklistRepository.save(any())).thenAnswer(inv -> {
@@ -89,6 +96,8 @@ class EsmRequestServiceTest {
         });
         when(checklistTaskRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(formFieldRepository.findByCatalogItemIdOrderBySortOrderAsc(any())).thenReturn(List.of());
+        when(approvalRequestRepository.findTopByTicketTypeAndTicketIdOrderByIdDesc(any(), any()))
+                .thenReturn(Optional.empty());
     }
 
     @AfterEach
@@ -326,6 +335,34 @@ class EsmRequestServiceTest {
 
         assertThat(response.status()).isEqualTo("IN_PROGRESS");
         assertThat(request.getAssigneeId()).isEqualTo(3L);
+    }
+
+    @Test
+    void transitionToCompletedGatePassSucceeds() {
+        login(3L, "DEPT_COORDINATOR");
+        when(requestRepository.findById(1L)).thenReturn(Optional.of(esmRequest(2L, Department.LEGAL, EsmRequestStatus.IN_PROGRESS)));
+        when(appUserRepository.findById(3L)).thenReturn(Optional.of(userWithDepartment(Department.LEGAL)));
+        doNothing().when(approvalGateService).checkGate(any(), any(), any(), any(), any());
+
+        var response = service.transition(1L, new StatusTransitionRequest(EsmRequestStatus.COMPLETED, null));
+
+        assertThat(response.status()).isEqualTo("COMPLETED");
+    }
+
+    @Test
+    void transitionToCompletedGateBlockedPropagates409() {
+        login(3L, "DEPT_COORDINATOR");
+        when(requestRepository.findById(1L)).thenReturn(Optional.of(esmRequest(2L, Department.LEGAL, EsmRequestStatus.IN_PROGRESS)));
+        when(appUserRepository.findById(3L)).thenReturn(Optional.of(userWithDepartment(Department.LEGAL)));
+        doThrow(new BusinessException(ErrorCode.APPROVAL_PENDING, ErrorCode.APPROVAL_PENDING.getDefaultMessage(), 77L))
+                .when(approvalGateService).checkGate(any(), any(), any(), any(), any());
+
+        assertThatThrownBy(() -> service.transition(1L, new StatusTransitionRequest(EsmRequestStatus.COMPLETED, null)))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> {
+                    assertThat(codeOf(e)).isEqualTo(ErrorCode.APPROVAL_PENDING);
+                    assertThat(((BusinessException) e).getApprovalRequestId()).isEqualTo(77L);
+                });
     }
 
     // ---------- comment ----------

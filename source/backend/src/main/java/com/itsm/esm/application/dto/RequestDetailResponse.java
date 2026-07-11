@@ -18,9 +18,14 @@ public record RequestDetailResponse(
         String requester,
         String assignee,
         Long checklistId,
+        @Schema(description = "승인 정보(null=매칭되는 승인 프로세스 없음, 게이트 없이 진행)") ApprovalInfo approval,
         List<CommentResponse> comments,
         List<TimelineEntry> timeline
 ) {
+    @Schema(description = "승인 정보")
+    public record ApprovalInfo(Long approvalRequestId, String status) {
+    }
+
     @Schema(description = "타임라인 항목")
     public record TimelineEntry(String type, String message, OffsetDateTime at) {
     }

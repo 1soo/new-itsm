@@ -88,6 +88,12 @@ export interface EsmTimelineEvent {
   at: string;
 }
 
+/** 승인 프로세스 커스텀 기능(유지보수 요청) — approvalRequestId=null이면 매칭되는 승인 프로세스가 없어 게이트 없이 진행. */
+export interface EsmApproval {
+  approvalRequestId: number | null;
+  status: "IN_PROGRESS" | "APPROVED" | "REJECTED" | null;
+}
+
 export interface EsmRequestDetail {
   id: number;
   ticketKey: string;
@@ -97,6 +103,7 @@ export interface EsmRequestDetail {
   formValues: Record<string, unknown>;
   requester: string;
   assignee?: string;
+  approval: EsmApproval;
   checklistId: number | null;
   comments: EsmComment[];
   timeline: EsmTimelineEvent[];

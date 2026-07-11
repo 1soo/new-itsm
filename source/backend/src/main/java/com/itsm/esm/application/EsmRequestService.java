@@ -7,6 +7,9 @@ import com.itsm.auth.application.dto.PageResponse;
 import com.itsm.auth.domain.AppUser;
 import com.itsm.auth.domain.Department;
 import com.itsm.auth.domain.repository.AppUserRepository;
+import com.itsm.common.approval.application.ApprovalGateService;
+import com.itsm.common.approval.domain.ApprovalRequest;
+import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.common.security.AuthPrincipal;
@@ -59,6 +62,7 @@ public class EsmRequestService {
 
     private static final String DEPT_COORDINATOR = "DEPT_COORDINATOR";
     private static final TicketType TT = TicketType.ESM_REQUEST;
+    private static final String DOMAIN = "ESM";
     private static final OffsetDateTime EPOCH = OffsetDateTime.parse("1970-01-01T00:00:00Z");
 
     private final EsmRequestRepository requestRepository;
@@ -72,6 +76,8 @@ public class EsmRequestService {
     private final AppUserRepository appUserRepository;
     private final CommentRepository commentRepository;
     private final TimelineEventRepository timelineRepository;
+    private final ApprovalGateService approvalGateService;
+    private final ApprovalRequestRepository approvalRequestRepository;
 
     public EsmRequestService(EsmRequestRepository requestRepository,
                              EsmRequestFormValueRepository formValueRepository,
@@ -83,7 +89,9 @@ public class EsmRequestService {
                              AssetRepository assetRepository,
                              AppUserRepository appUserRepository,
                              CommentRepository commentRepository,
-                             TimelineEventRepository timelineRepository) {
+                             TimelineEventRepository timelineRepository,
+                             ApprovalGateService approvalGateService,
+                             ApprovalRequestRepository approvalRequestRepository) {
         this.requestRepository = requestRepository;
         this.formValueRepository = formValueRepository;
         this.catalogItemRepository = catalogItemRepository;
@@ -95,6 +103,8 @@ public class EsmRequestService {
         this.appUserRepository = appUserRepository;
         this.commentRepository = commentRepository;
         this.timelineRepository = timelineRepository;
+        this.approvalGateService = approvalGateService;
+        this.approvalRequestRepository = approvalRequestRepository;
     }
 
     // ---------- create (API-ESM-005) ----------
@@ -223,11 +233,17 @@ public class EsmRequestService {
                         .map(t -> new RequestDetailResponse.TimelineEntry(t.getEventType(), t.getMessage(), t.getOccurredAt()))
                         .toList();
 
+        ApprovalRequest latestApproval = approvalRequestRepository
+                .findTopByTicketTypeAndTicketIdOrderByIdDesc(TT, id).orElse(null);
+        RequestDetailResponse.ApprovalInfo approvalInfo = new RequestDetailResponse.ApprovalInfo(
+                latestApproval != null ? latestApproval.getId() : null,
+                latestApproval != null ? latestApproval.getStatus().name() : null);
+
         return new RequestDetailResponse(
                 request.getId(), request.getTicketKey(), item != null ? item.getName() : null,
                 request.getDepartment(), request.getStatus().name(), formValues,
                 userName(request.getRequesterId()), userName(request.getAssigneeId()),
-                request.getChecklistId(), comments, timeline);
+                request.getChecklistId(), approvalInfo, comments, timeline);
     }
 
     // ---------- transition (API-ESM-008) ----------
@@ -241,6 +257,9 @@ public class EsmRequestService {
         EsmRequestStatus target = request.targetStatus();
         if (!allowedTargets(esmRequest.getStatus()).contains(target)) {
             throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION);
+        }
+        if (target == EsmRequestStatus.COMPLETED) {
+            approvalGateService.checkGate(DOMAIN, null, esmRequest.getRequesterId(), TT, id);
         }
         if (esmRequest.getAssigneeId() == null) {
             esmRequest.assignTo(principal.userId());

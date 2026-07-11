@@ -92,7 +92,8 @@ public class EsmRequestController {
             @ApiResponse(responseCode = "200", description = "전이 성공"),
             @ApiResponse(responseCode = "400", description = "허용되지 않은 전이", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "403", description = "담당 부서 아님", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "404", description = "요청 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            @ApiResponse(responseCode = "404", description = "요청 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "승인 완료 전 COMPLETED 전이 시도", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PatchMapping("/{id}/status")
     public ResponseEntity<StatusResponse> transition(@PathVariable Long id,

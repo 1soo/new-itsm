@@ -6,9 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  ApprovalPanel,
   StatusBadge,
   TicketDetailLayout,
   Timeline,
+  type ApprovalStep,
   type TimelineItem,
   toast,
 } from "@/components/common";
@@ -24,6 +26,7 @@ import {
   requestStatusTone,
 } from "@/features/esm/status";
 import type { ChecklistDetail, EsmComment, EsmRequestDetail, EsmRequestTargetStatus } from "@/features/esm/types";
+import { commonApi } from "@/features/common/api";
 import { useAppSelector } from "@/store/hooks";
 import { extractErrorMessage } from "@/lib/apiClient";
 
@@ -45,6 +48,8 @@ export function EsmRequestDetailPage() {
   const isCoordinator = hasAnyRole(roles, [ROLE_DEPT_COORDINATOR]);
 
   const [detail, setDetail] = useState<EsmRequestDetail | null>(null);
+  const [approvalSteps, setApprovalSteps] = useState<ApprovalStep[]>([]);
+  const [approvalCurrentStepNo, setApprovalCurrentStepNo] = useState<number | null>(null);
   const [checklist, setChecklist] = useState<ChecklistDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -52,25 +57,45 @@ export function EsmRequestDetailPage() {
   const [commenting, setCommenting] = useState(false);
   const [transitioning, setTransitioning] = useState<EsmRequestTargetStatus | null>(null);
 
+  const refreshDetail = useCallback(
+    (silent: boolean) => {
+      if (!silent) setLoading(true);
+      return esmApi
+        .getRequest(id)
+        .then((d) => {
+          setDetail(d);
+          setNotFound(false);
+          if (d.checklistId) {
+            esmApi.getChecklist(d.checklistId).then(setChecklist).catch(() => setChecklist(null));
+          } else {
+            setChecklist(null);
+          }
+          if (d.approval.approvalRequestId == null) {
+            setApprovalSteps([]);
+            setApprovalCurrentStepNo(null);
+            return;
+          }
+          return commonApi.getApproval(d.approval.approvalRequestId).then((a) => {
+            setApprovalSteps(a.steps);
+            setApprovalCurrentStepNo(a.currentStepNo);
+          });
+        })
+        .catch((err) => {
+          if (!silent) {
+            toast.error(extractErrorMessage(err));
+            setNotFound(true);
+          }
+        })
+        .finally(() => {
+          if (!silent) setLoading(false);
+        });
+    },
+    [id],
+  );
+
   const load = useCallback(() => {
-    setLoading(true);
-    esmApi
-      .getRequest(id)
-      .then((d) => {
-        setDetail(d);
-        setNotFound(false);
-        if (d.checklistId) {
-          esmApi.getChecklist(d.checklistId).then(setChecklist).catch(() => setChecklist(null));
-        } else {
-          setChecklist(null);
-        }
-      })
-      .catch((err) => {
-        toast.error(extractErrorMessage(err));
-        setNotFound(true);
-      })
-      .finally(() => setLoading(false));
-  }, [id]);
+    void refreshDetail(false);
+  }, [refreshDetail]);
 
   useEffect(load, [load]);
 
@@ -82,6 +107,9 @@ export function EsmRequestDetailPage() {
       load();
     } catch (err) {
       toast.error(extractErrorMessage(err));
+      // 상태 전이가 게이트(409)로 거부된 경우 BE가 이미 승인 인스턴스를 생성했을 수 있으므로,
+      // 전체 로딩 화면 없이 조용히 다시 조회해 승인 패널에 반영한다.
+      refreshDetail(true);
     } finally {
       setTransitioning(null);
     }
@@ -113,6 +141,7 @@ export function EsmRequestDetailPage() {
   }
 
   const transitions = isCoordinator ? fallbackTransitions(detail.status) : [];
+  const approved = detail.approval.approvalRequestId == null || detail.approval.status === "APPROVED";
   const formEntries = Object.entries(detail.formValues ?? {});
   const timelineItems: TimelineItem[] = detail.timeline.map((t, i) => ({
     id: String(i),
@@ -130,16 +159,21 @@ export function EsmRequestDetailPage() {
           <StatusBadge tone={requestStatusTone(detail.status)} label={requestStatusLabel(detail.status)} />
         </>
       }
-      actions={transitions.map((t) => (
-        <Button
-          key={t}
-          variant={t === "REJECTED" ? "outline" : "default"}
-          loading={transitioning === t}
-          onClick={() => handleTransition(t)}
-        >
-          {requestStatusLabel(t)}
-        </Button>
-      ))}
+      actions={transitions.map((t) => {
+        const blocked = t === "COMPLETED" && !approved;
+        return (
+          <Button
+            key={t}
+            variant={t === "REJECTED" ? "outline" : "default"}
+            loading={transitioning === t}
+            disabled={blocked}
+            title={blocked ? "승인 완료 전에는 완료 상태로 전이할 수 없습니다" : undefined}
+            onClick={() => handleTransition(t)}
+          >
+            {requestStatusLabel(t)}
+          </Button>
+        );
+      })}
       meta={
         <>
           <Card>
@@ -151,6 +185,12 @@ export function EsmRequestDetailPage() {
               <MetaRow label="담당자" value={detail.assignee || "미배정"} />
             </CardContent>
           </Card>
+
+          <ApprovalPanel
+            matched={detail.approval.approvalRequestId != null}
+            steps={approvalSteps}
+            currentStepNo={approvalCurrentStepNo}
+          />
 
           {checklist ? (
             <Card

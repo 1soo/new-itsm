@@ -7,7 +7,7 @@
 - `Comment.java` — 티켓 댓글 엔티티(BaseEntity 상속)
 - `TimelineEvent.java` — 티켓 활동 타임라인 이벤트 엔티티
 - `TicketLink.java` — 티켓 간 연계 엔티티(예: 인시던트↔문제)
-- `TicketType.java` — 티켓 유형 enum(SERVICE_REQUEST, INCIDENT, PROBLEM, CHANGE, ASSET, CI, KNOWLEDGE, ESM_REQUEST, HR_CASE, VULNERABILITY, COMPLIANCE_REQUIREMENT)
+- `TicketType.java` — 티켓 유형 enum(SERVICE_REQUEST, INCIDENT, PROBLEM, CHANGE, ASSET, CI, KNOWLEDGE, ESM_REQUEST, HR_CASE, VULNERABILITY, COMPLIANCE_REQUIREMENT, CORRECTIVE_ACTION). `CORRECTIVE_ACTION`은 Stage 6(2026-07-12) 승인 게이트 연동 시 추가됨 — 시정조치 개별 항목(compliance.CorrectiveAction)이 요구사항(COMPLIANCE_REQUIREMENT)과 별개로 승인 인스턴스를 가지므로 전용 타입이 필요했다(approval_request.ticket_type 컬럼은 CHECK 제약 없는 VARCHAR라 DB 마이그레이션 불필요)
 - `Visibility.java` — 공개 범위 enum(INTERNAL, EXTERNAL)
 
 ## 하위 디렉토리

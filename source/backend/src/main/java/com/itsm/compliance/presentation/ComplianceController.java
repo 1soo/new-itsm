@@ -138,7 +138,8 @@ public class ComplianceController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "전이 성공"),
             @ApiResponse(responseCode = "400", description = "정의되지 않은 순서의 전이", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "404", description = "시정조치 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            @ApiResponse(responseCode = "404", description = "시정조치 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "승인 완료 전 RESOLVED 전이 시도", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PatchMapping("/corrective-actions/{actionId}/status")
     public ResponseEntity<CorrectiveActionStatusResponse> transitionCorrectiveAction(

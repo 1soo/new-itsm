@@ -18,7 +18,13 @@ public record RequirementDetailResponse(
         List<LinkedChange> linkedChanges
 ) {
     @Schema(description = "시정조치")
-    public record CorrectiveActionDto(Long id, String description, String status, OffsetDateTime updatedAt) {
+    public record CorrectiveActionDto(
+            Long id, String description, String status, OffsetDateTime updatedAt,
+            @Schema(description = "승인 정보(null=매칭되는 승인 프로세스 없음, 게이트 없이 진행)") ApprovalInfo approval
+    ) {
+        @Schema(description = "승인 정보")
+        public record ApprovalInfo(Long approvalRequestId, String status) {
+        }
     }
 
     @Schema(description = "연계 변경 요청")

@@ -29,7 +29,12 @@ export interface NotificationDismissalListResponse {
 
 /* 전 도메인 공용 승인 대기함/결정(SCR-COM-014) — API-COM-003~005 기준. */
 
-/** 승인 대상 티켓 유형(승인 프로세스 대상 9개 도메인과 동일 값 체계). */
+/**
+ * 승인 대상 티켓 유형. 승인 프로세스 대상 9개 도메인과 동일 값 체계를 기본으로 하되,
+ * ESM/COMPLIANCE는 승인 인스턴스(ApprovalRequest.ticketType)가 도메인보다 세분화된 값
+ * (ESM_REQUEST: 부서요청 단위 / CORRECTIVE_ACTION: 시정조치 단위)을 그대로 사용한다.
+ * 대기함 도메인 필터는 이 값이 아니라 approval_process.domain 기준이라 영향 없다.
+ */
 export type TicketType =
   | "SERVICE_REQUEST"
   | "CHANGE"
@@ -39,7 +44,9 @@ export type TicketType =
   | "ASSET"
   | "VULNERABILITY"
   | "COMPLIANCE"
-  | "ESM";
+  | "ESM"
+  | "ESM_REQUEST"
+  | "CORRECTIVE_ACTION";
 
 export interface ApprovalListItem {
   approvalRequestId: number;

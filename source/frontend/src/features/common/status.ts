@@ -12,6 +12,8 @@ const TICKET_TYPE_APPROVAL_LABEL: Record<TicketType, string> = {
   VULNERABILITY: "취약점 승인",
   COMPLIANCE: "컴플라이언스 승인",
   ESM: "부서 서비스 승인",
+  ESM_REQUEST: "부서 서비스 승인",
+  CORRECTIVE_ACTION: "컴플라이언스 시정조치 승인",
 };
 
 const TICKET_TYPE_LABEL: Record<TicketType, string> = {
@@ -24,6 +26,8 @@ const TICKET_TYPE_LABEL: Record<TicketType, string> = {
   VULNERABILITY: "취약점",
   COMPLIANCE: "컴플라이언스",
   ESM: "부서 서비스",
+  ESM_REQUEST: "부서 서비스",
+  CORRECTIVE_ACTION: "시정조치",
 };
 
 const TICKET_TYPE_DETAIL_PATH: Record<TicketType, (ticketId: number) => string> = {
@@ -36,6 +40,9 @@ const TICKET_TYPE_DETAIL_PATH: Record<TicketType, (ticketId: number) => string> 
   VULNERABILITY: (id) => `/vulnerabilities/${id}`,
   COMPLIANCE: (id) => `/compliance/requirements/${id}`,
   ESM: (id) => `/esm/requests/${id}`,
+  ESM_REQUEST: (id) => `/esm/requests/${id}`,
+  // ticketId가 시정조치 id라 소속 요구사항 id를 알 수 없어 요구사항 목록으로 연결한다.
+  CORRECTIVE_ACTION: () => `/compliance/requirements`,
 };
 
 /** 헤더 알림 드롭다운 1행 좌측 도메인 라벨(common.md SCR-COM-002 매핑표). */

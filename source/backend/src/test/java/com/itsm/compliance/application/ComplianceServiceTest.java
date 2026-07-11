@@ -7,6 +7,8 @@ import com.itsm.auth.domain.repository.AppUserRepository;
 import com.itsm.change.domain.ChangeRequest;
 import com.itsm.change.domain.ChangeType;
 import com.itsm.change.domain.repository.ChangeRequestRepository;
+import com.itsm.common.approval.application.ApprovalGateService;
+import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.common.security.AuthPrincipal;
@@ -41,6 +43,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -53,17 +57,21 @@ class ComplianceServiceTest {
     @Mock AppUserRepository appUserRepository;
     @Mock ChangeRequestRepository changeRequestRepository;
     @Mock AuditLogService auditLogService;
+    @Mock ApprovalGateService approvalGateService;
+    @Mock ApprovalRequestRepository approvalRequestRepository;
 
     ComplianceService service;
 
     @BeforeEach
     void setUp() {
         service = new ComplianceService(requirementRepository, correctiveActionRepository, ticketLinkRepository,
-                appUserRepository, changeRequestRepository, auditLogService);
+                appUserRepository, changeRequestRepository, auditLogService, approvalGateService, approvalRequestRepository);
         when(requirementRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(requirementRepository.countByRequirementKeyStartingWith(any())).thenReturn(0L);
         when(correctiveActionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(correctiveActionRepository.findByRequirementId(any())).thenReturn(List.of());
+        when(approvalRequestRepository.findTopByTicketTypeAndTicketIdOrderByIdDesc(any(), any()))
+                .thenReturn(Optional.empty());
     }
 
     @AfterEach
@@ -275,6 +283,36 @@ class ComplianceServiceTest {
                 new CorrectiveActionStatusTransitionRequest(CorrectiveActionStatus.IN_PROGRESS)))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.CORRECTIVE_ACTION_NOT_FOUND));
+    }
+
+    @Test
+    void transitionToResolvedGatePassSucceeds() {
+        login(1L, "COMPLIANCE_OFFICER");
+        CorrectiveAction action = correctiveAction(1L, CorrectiveActionStatus.IN_PROGRESS);
+        when(correctiveActionRepository.findById(1L)).thenReturn(Optional.of(action));
+        doNothing().when(approvalGateService).checkGate(any(), any(), any(), any(), any());
+
+        var response = service.transitionCorrectiveAction(1L,
+                new CorrectiveActionStatusTransitionRequest(CorrectiveActionStatus.RESOLVED));
+
+        assertThat(response.status()).isEqualTo("RESOLVED");
+    }
+
+    @Test
+    void transitionToResolvedGateBlockedPropagates409() {
+        login(1L, "COMPLIANCE_OFFICER");
+        CorrectiveAction action = correctiveAction(1L, CorrectiveActionStatus.IN_PROGRESS);
+        when(correctiveActionRepository.findById(1L)).thenReturn(Optional.of(action));
+        doThrow(new BusinessException(ErrorCode.APPROVAL_PENDING, ErrorCode.APPROVAL_PENDING.getDefaultMessage(), 77L))
+                .when(approvalGateService).checkGate(any(), any(), any(), any(), any());
+
+        assertThatThrownBy(() -> service.transitionCorrectiveAction(1L,
+                new CorrectiveActionStatusTransitionRequest(CorrectiveActionStatus.RESOLVED)))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> {
+                    assertThat(codeOf(e)).isEqualTo(ErrorCode.APPROVAL_PENDING);
+                    assertThat(((BusinessException) e).getApprovalRequestId()).isEqualTo(77L);
+                });
     }
 
     // ---------- metrics ----------

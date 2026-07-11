@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { StatusBadge, TicketDetailLayout, toast } from "@/components/common";
+import { ApprovalPanel, StatusBadge, TicketDetailLayout, toast } from "@/components/common";
+import type { ApprovalStep } from "@/components/common";
 import { FullscreenLoader } from "@/routes/FullscreenLoader";
 import { complianceApi } from "@/features/compliance/api";
 import { formatDateTime } from "@/features/compliance/format";
@@ -17,7 +18,11 @@ import {
   nextActionTransition,
 } from "@/features/compliance/status";
 import type { ComplianceAuditLog, RequirementDetail, UpdateRequirementInput } from "@/features/compliance/types";
+import { commonApi } from "@/features/common/api";
 import { extractErrorMessage } from "@/lib/apiClient";
+
+/** 시정조치 항목별 승인 진행 상태(approvalRequestId 기준, API-COM-004 조회 결과). */
+type ActionApprovalState = { steps: ApprovalStep[]; currentStepNo: number | null };
 
 /*
  * 요구사항 상세(SCR-COMP-003) — 책임자 지정·시정조치 등록/순서전이(탐지→조치중→해결)·
@@ -29,30 +34,61 @@ export function ComplianceDetailPage() {
   const id = Number(useParams().id);
 
   const [detail, setDetail] = useState<RequirementDetail | null>(null);
+  const [actionApprovals, setActionApprovals] = useState<Record<number, ActionApprovalState>>({});
   const [logs, setLogs] = useState<ComplianceAuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
 
+  const refreshDetail = useCallback(
+    (silent: boolean) => {
+      if (!silent) setLoading(true);
+      return Promise.all([complianceApi.get(id), complianceApi.auditLogs({ requirementId: id })])
+        .then(([d, l]) => {
+          setDetail(d);
+          setLogs(l);
+          setNotFound(false);
+          const matched = d.correctiveActions.filter((a) => a.approval.approvalRequestId != null);
+          if (matched.length === 0) {
+            setActionApprovals({});
+            return;
+          }
+          return Promise.all(
+            matched.map((a) => commonApi.getApproval(a.approval.approvalRequestId!).then((res) => [a.id, res] as const)),
+          ).then((entries) => {
+            setActionApprovals(
+              Object.fromEntries(
+                entries.map(([actionId, res]) => [actionId, { steps: res.steps, currentStepNo: res.currentStepNo }]),
+              ),
+            );
+          });
+        })
+        .catch((err) => {
+          if (!silent) {
+            toast.error(extractErrorMessage(err));
+            setNotFound(true);
+          }
+        })
+        .finally(() => {
+          if (!silent) setLoading(false);
+        });
+    },
+    [id],
+  );
+
   const load = useCallback(() => {
-    setLoading(true);
-    Promise.all([complianceApi.get(id), complianceApi.auditLogs({ requirementId: id })])
-      .then(([d, l]) => {
-        setDetail(d);
-        setLogs(l);
-        setNotFound(false);
-      })
-      .catch((err) => {
-        toast.error(extractErrorMessage(err));
-        setNotFound(true);
-      })
-      .finally(() => setLoading(false));
-  }, [id]);
+    void refreshDetail(false);
+  }, [refreshDetail]);
 
   useEffect(load, [load]);
 
-  const run = async (key: string, fn: () => Promise<unknown>, successMsg?: string) => {
+  const run = async (
+    key: string,
+    fn: () => Promise<unknown>,
+    successMsg?: string,
+    reloadOnError = false,
+  ) => {
     setBusy(key);
     try {
       await fn();
@@ -60,6 +96,9 @@ export function ComplianceDetailPage() {
       load();
     } catch (err) {
       toast.error(extractErrorMessage(err));
+      // 시정조치 전이가 게이트(409)로 거부된 경우 BE가 이미 승인 인스턴스를 생성했을 수 있으므로,
+      // 전체 로딩 화면 없이 조용히 다시 조회해 승인 패널에 반영한다.
+      if (reloadOnError) refreshDetail(true);
     } finally {
       setBusy(null);
     }
@@ -126,12 +165,18 @@ export function ComplianceDetailPage() {
 
       <CorrectiveActionCard
         detail={detail}
+        actionApprovals={actionApprovals}
         busy={busy}
         onAdd={(description) =>
           run("add-action", () => complianceApi.addCorrectiveAction(id, { description }), "시정조치가 등록되었습니다")
         }
         onTransition={(actionId, targetStatus) =>
-          run(`action-${actionId}`, () => complianceApi.transitionAction(actionId, targetStatus), "시정조치 상태가 변경되었습니다")
+          run(
+            `action-${actionId}`,
+            () => complianceApi.transitionAction(actionId, targetStatus),
+            "시정조치 상태가 변경되었습니다",
+            true,
+          )
         }
       />
 
@@ -302,11 +347,13 @@ function LinkCard({
 
 function CorrectiveActionCard({
   detail,
+  actionApprovals,
   busy,
   onAdd,
   onTransition,
 }: {
   detail: RequirementDetail;
+  actionApprovals: Record<number, { steps: ApprovalStep[]; currentStepNo: number | null }>;
   busy: string | null;
   onAdd: (description: string) => void;
   onTransition: (actionId: number, targetStatus: "IN_PROGRESS" | "RESOLVED") => void;
@@ -330,19 +377,33 @@ function CorrectiveActionCard({
           <ul className="space-y-2">
             {detail.correctiveActions.map((a) => {
               const next = nextActionTransition(a.status);
+              const approved = a.approval.approvalRequestId == null || a.approval.status === "APPROVED";
+              const blocked = next === "RESOLVED" && !approved;
+              const matched = a.approval.approvalRequestId != null;
               return (
-                <li key={a.id} className="flex items-center justify-between gap-2 rounded-md border border-border p-3 text-sm">
-                  <span className="min-w-0 flex-1">{a.description}</span>
-                  <StatusBadge tone={actionStatusTone(a.status)} label={actionStatusLabel(a.status)} />
-                  {next ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      loading={busy === `action-${a.id}`}
-                      onClick={() => onTransition(a.id, next)}
-                    >
-                      {actionStatusLabel(next)}로 전이
-                    </Button>
+                <li key={a.id} className="space-y-2 rounded-md border border-border p-3 text-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="min-w-0 flex-1">{a.description}</span>
+                    <StatusBadge tone={actionStatusTone(a.status)} label={actionStatusLabel(a.status)} />
+                    {next ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        loading={busy === `action-${a.id}`}
+                        disabled={blocked}
+                        title={blocked ? "승인 완료 전에는 해결 상태로 전이할 수 없습니다" : undefined}
+                        onClick={() => onTransition(a.id, next)}
+                      >
+                        {actionStatusLabel(next)}로 전이
+                      </Button>
+                    ) : null}
+                  </div>
+                  {matched ? (
+                    <ApprovalPanel
+                      matched
+                      steps={actionApprovals[a.id]?.steps ?? []}
+                      currentStepNo={actionApprovals[a.id]?.currentStepNo ?? null}
+                    />
                   ) : null}
                 </li>
               );

@@ -9,6 +9,9 @@ import com.itsm.auth.domain.EventType;
 import com.itsm.auth.domain.repository.AppUserRepository;
 import com.itsm.change.domain.ChangeRequest;
 import com.itsm.change.domain.repository.ChangeRequestRepository;
+import com.itsm.common.approval.application.ApprovalGateService;
+import com.itsm.common.approval.domain.ApprovalRequest;
+import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.common.security.AuthPrincipal;
@@ -55,6 +58,8 @@ import java.util.stream.Collectors;
 public class ComplianceService {
 
     private static final String CO = "COMPLIANCE_OFFICER";
+    private static final String DOMAIN = "COMPLIANCE";
+    private static final TicketType TT = TicketType.CORRECTIVE_ACTION;
     private static final OffsetDateTime EPOCH = OffsetDateTime.parse("1970-01-01T00:00:00Z");
     private static final Set<EventType> COMPLIANCE_EVENT_TYPES = Set.of(
             EventType.COMPLIANCE_REQ_CREATE, EventType.COMPLIANCE_REQ_UPDATE, EventType.COMPLIANCE_ACTION_STATUS_CHANGE);
@@ -67,19 +72,25 @@ public class ComplianceService {
     private final AppUserRepository appUserRepository;
     private final ChangeRequestRepository changeRequestRepository;
     private final AuditLogService auditLogService;
+    private final ApprovalGateService approvalGateService;
+    private final ApprovalRequestRepository approvalRequestRepository;
 
     public ComplianceService(ComplianceRequirementRepository requirementRepository,
                               CorrectiveActionRepository correctiveActionRepository,
                               TicketLinkRepository ticketLinkRepository,
                               AppUserRepository appUserRepository,
                               ChangeRequestRepository changeRequestRepository,
-                              AuditLogService auditLogService) {
+                              AuditLogService auditLogService,
+                              ApprovalGateService approvalGateService,
+                              ApprovalRequestRepository approvalRequestRepository) {
         this.requirementRepository = requirementRepository;
         this.correctiveActionRepository = correctiveActionRepository;
         this.ticketLinkRepository = ticketLinkRepository;
         this.appUserRepository = appUserRepository;
         this.changeRequestRepository = changeRequestRepository;
         this.auditLogService = auditLogService;
+        this.approvalGateService = approvalGateService;
+        this.approvalRequestRepository = approvalRequestRepository;
     }
 
     // ---------- create (API-COMP-002) ----------
@@ -181,6 +192,9 @@ public class ComplianceService {
         if (!CorrectiveActionStateMachine.isAllowed(action.getStatus(), target)) {
             throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION);
         }
+        if (target == CorrectiveActionStatus.RESOLVED) {
+            approvalGateService.checkGate(DOMAIN, null, requesterIdOf(action), TT, actionId);
+        }
         action.changeStatus(target);
         correctiveActionRepository.save(action);
         recordAudit(EventType.COMPLIANCE_ACTION_STATUS_CHANGE, correctiveActionTarget(actionId));
@@ -265,7 +279,7 @@ public class ComplianceService {
         List<CorrectiveAction> actions = correctiveActionRepository.findByRequirementId(r.getId());
         List<RequirementDetailResponse.CorrectiveActionDto> actionDtos = actions.stream()
                 .map(a -> new RequirementDetailResponse.CorrectiveActionDto(
-                        a.getId(), a.getDescription(), a.getStatus().name(), a.getUpdatedAt()))
+                        a.getId(), a.getDescription(), a.getStatus().name(), a.getUpdatedAt(), approvalInfoOf(a.getId())))
                 .toList();
 
         List<RequirementDetailResponse.LinkedChange> linkedChanges = ticketLinkRepository
@@ -282,6 +296,19 @@ public class ComplianceService {
     private void recordAudit(EventType eventType, String target) {
         AuthPrincipal principal = SecurityUtils.currentPrincipal();
         auditLogService.record(eventType, principal.userId(), principal.email(), target, AuditResult.SUCCESS);
+    }
+
+    /** 승인 게이트의 "요청자"는 시정조치를 등록한 사용자(created_by, 이메일)로 판정한다. */
+    private Long requesterIdOf(CorrectiveAction action) {
+        return appUserRepository.findByEmail(action.getCreatedBy()).map(AppUser::getId).orElse(null);
+    }
+
+    private RequirementDetailResponse.CorrectiveActionDto.ApprovalInfo approvalInfoOf(Long actionId) {
+        ApprovalRequest latestApproval = approvalRequestRepository
+                .findTopByTicketTypeAndTicketIdOrderByIdDesc(TT, actionId).orElse(null);
+        return new RequirementDetailResponse.CorrectiveActionDto.ApprovalInfo(
+                latestApproval != null ? latestApproval.getId() : null,
+                latestApproval != null ? latestApproval.getStatus().name() : null);
     }
 
     private String requirementTarget(Long id) {

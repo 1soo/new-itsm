@@ -22,11 +22,18 @@ export interface RequirementSummary {
   updatedAt: string;
 }
 
+/** 승인 프로세스 커스텀 기능(유지보수 요청) — approvalRequestId=null이면 매칭되는 승인 프로세스가 없어 게이트 없이 진행. 시정조치 개별로 붙는다(요구사항당 여러 건 가능). */
+export interface ComplianceApproval {
+  approvalRequestId: number | null;
+  status: "IN_PROGRESS" | "APPROVED" | "REJECTED" | null;
+}
+
 export interface CorrectiveAction {
   id: number;
   description: string;
   status: CorrectiveActionStatus;
   updatedAt: string;
+  approval: ComplianceApproval;
 }
 
 export interface LinkedChange {
