@@ -13,4 +13,5 @@
 
 | 일시 | 도메인 | 요약 | 경로 |
 |------|--------|------|------|
-| - | - | 아직 이력 없음 | - |
+| 20260711-140000 | auth | 역할-메뉴 동적 매핑(screen/screen_role 확장, 메뉴 관리 화면 신규) | docs/06_maintenance/20260711-140000/auth/report.md |
+| 20260711-140000 | common | 헤더 알림 확인처리(모두 지우기/개별 X, notification_dismissal 신규) | docs/06_maintenance/20260711-140000/common/report.md |
