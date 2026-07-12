@@ -1,10 +1,10 @@
 # 화면 설계서 — 공통 (Common)
 
-> 도메인: common · 버전: 0.12 · 작성일: 2026-07-11 · 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 전 도메인 공용 승인 대기함(SCR-COM-014) 신규, 기존 SCR-SRM-006/SCR-CHG-004/SCR-KM-004를 대체. 헤더 알림 드롭다운(SCR-COM-002)의 승인 대기 데이터 출처를 API-SRM-012/API-CHG-007에서 공용 API-COM-003으로 전환
+> 도메인: common · 버전: 0.13 · 작성일: 2026-07-12 · 다국어(i18n) 지원 + SweetAlert2 도입(유지보수 요청) 반영 — 헤더에 언어 선택(SCR-COM-015) 신규, 전 도메인 텍스트 번역 아키텍처(6절), 토스트·확인 다이얼로그(SCR-COM-009) 내부 구현을 SweetAlert2로 교체(범용 모달은 대상 제외)
 
 ## 0. 변경 이력(요약)
 
-이전 버전 변경 이력: 헤더 알림 5초 polling 전환, 대시보드 화면 코드 신규 부여(SCR-COM-013), 알림 확인처리(모두 지우기·개별 X), 사이드바 메뉴 Role-Menu 동적 매핑 전환(SCR-ADMIN-006 연동), 사용자 가이드 전용 화면(SCR-COM-012), 알림 드롭다운 2줄 레이아웃, UI/UX 개편(ADS 기반, REQ-UIX-001~013).
+이전 버전 변경 이력: 승인 프로세스 커스텀 기능(전 도메인 공용 승인 대기함 SCR-COM-014 신규, SCR-SRM-006/SCR-CHG-004/SCR-KM-004 대체), 헤더 알림 5초 polling 전환, 대시보드 화면 코드 신규 부여(SCR-COM-013), 알림 확인처리(모두 지우기·개별 X), 사이드바 메뉴 Role-Menu 동적 매핑 전환(SCR-ADMIN-006 연동), 사용자 가이드 전용 화면(SCR-COM-012), 알림 드롭다운 2줄 레이아웃, UI/UX 개편(ADS 기반, REQ-UIX-001~013).
 
 ## 1. 개요
 
@@ -145,6 +145,7 @@ lucide-react를 유지하며 기본 크기를 16px로 통일한다(좁은 공간
 | SCR-COM-012 | 사용자 가이드 | REQ-COM-002 | 헤더 "?" 아이콘 클릭 시 이동하는 전용 화면. 개요·도메인 및 원칙·역할별 수행 내용과 방법 |
 | SCR-COM-013 | 대시보드 | 전 도메인(Role-Menu 동적 매핑 개발 중 식별) | 로그인 후 기본 홈. 전 역할 공통 진입 화면 |
 | SCR-COM-014 | 승인 대기함(전 도메인 공용) | 유지보수 요청(2026-07-11, 승인 프로세스 커스텀) | 승인 프로세스 커스텀 기능 도입에 따라 SCR-SRM-006·SCR-CHG-004·SCR-KM-004를 대체하는 공용 승인 대기·결정 화면 |
+| SCR-COM-015 | 언어 선택(i18n) | 유지보수 요청(2026-07-12, 다국어 지원) | 헤더의 한국어/영어 전환 컨트롤, 선택 유지(6절 i18n 아키텍처 참조) |
 
 ## 4. 화면 상세
 
@@ -163,14 +164,15 @@ lucide-react를 유지하며 기본 크기를 16px로 통일한다(좁은 공간
 
 ### SCR-COM-002 · 글로벌 헤더
 
-- **목적**: 통합 검색(지식+티켓 교차 도메인)·사용자 가이드·알림·테마 전환·계정 접근 진입점.
-- **레이아웃**: 좌측 로고·현재 도메인 타이틀 / 중앙 통합 검색바(입력 시 드롭다운 미리보기) / 우측 "?" 사용자 가이드 아이콘·테마 토글·알림 벨·사용자 아바타 메뉴(이 순서로 배치).
+- **목적**: 통합 검색(지식+티켓 교차 도메인)·사용자 가이드·언어 전환·알림·테마 전환·계정 접근 진입점.
+- **레이아웃**: 좌측 로고·현재 도메인 타이틀 / 중앙 통합 검색바(입력 시 드롭다운 미리보기) / 우측 "?" 사용자 가이드 아이콘·지구본(언어 선택) 아이콘·테마 토글·알림 벨·사용자 아바타 메뉴(이 순서로 배치, 유지보수 요청 2026-07-12로 지구본 아이콘 신규 삽입 — "설정성" 토글인 언어·테마를 인접 배치하고 알림·계정 액션과 구분).
 - **구성 요소**:
   | 요소 | 유형 | 설명 | 색상 |
   |------|------|------|------|
   | 통합 검색바 | 입력 | 지식/서비스요청/인시던트/문제/변경 키워드 검색 진입(역할별 접근 가능 도메인만 노출) | `--border`/`--ring`(포커스) |
   | 검색 미리보기 드롭다운 | 오버레이 리스트 | 도메인 아이콘·제목·상태 배지 상위 5~8건 미리보기 | Overlay elevation(2.5절) |
-  | 사용자 가이드 아이콘 | 아이콘 버튼("?") | 클릭 시 사용자 가이드 전용 화면(SCR-COM-012)으로 이동, 테마 토글 왼쪽 배치 | `--foreground`, `aria-label`="사용자 가이드" |
+  | 사용자 가이드 아이콘 | 아이콘 버튼("?") | 클릭 시 사용자 가이드 전용 화면(SCR-COM-012)으로 이동, 지구본(언어) 아이콘 왼쪽 배치 | `--foreground`, `aria-label`="사용자 가이드" |
+  | 언어 선택 아이콘(신규, 2026-07-12) | 아이콘 버튼(지구본) | 클릭 시 아이콘 바로 아래 언어 선택 미니 팝업(SCR-COM-015), 사용자 가이드 아이콘과 테마 토글 사이 배치 | `--foreground`, `aria-label`="언어 선택" |
   | 테마 토글 | 아이콘 버튼 | 라이트/다크 전환(SCR-COM-010) | `--foreground`, `aria-label` 필수 |
   | 알림 벨 | 버튼+뱃지 | 만료·승인 대기 등 알림 카운트(확인처리(dismiss)된 알림은 제외한 전체 건수 합계), 클릭 시 알림 드롭다운 오픈 | `--warning`(뱃지) |
   | 알림 드롭다운 | 오버레이 리스트 | 역할별 승인 대기(전 도메인 공용, 승인 프로세스 커스텀 기능으로 서비스요청·변경 한정에서 확장)·자산 만료 임박 알림 중 확인처리되지 않은 항목(5초 polling으로 누적, 표시 상한 없음 — 유지보수 요청). 각 라인 2줄(1행: 도메인 라벨(Lozenge)+우측 시간/만료 표시+확인처리(X) 버튼, 2행: 제목 truncate)+"상세 보기" 버튼(REQ-COM-001/FEAT-COM-001), 헤더 우측 상단 "모두 지우기" 버튼(신규, 유지보수 요청) | Overlay elevation(2.5절) |
@@ -198,7 +200,7 @@ lucide-react를 유지하며 기본 크기를 16px로 통일한다(좁은 공간
   - 각 알림 라인의 "상세 보기" 버튼(또는 라인 클릭)을 클릭하면 위 매핑 표의 이동 경로로 이동하고 드롭다운을 닫는다.
   - 알림이 0건이면 드롭다운 내부에 "새로운 알림이 없습니다" 안내를 표시한다.
   - **알림 확인처리(신규, 유지보수 요청)**: "모두 지우기" 클릭 시 현재 드롭다운에 표시 중인 알림 전체(누적된 만큼, 상한 없음)를 확인처리 API(신규, `api_spec/common.md`)로 일괄 전송하고, 성공 시 목록을 즉시 비워 "새로운 알림이 없습니다"로 전환하며 뱃지 카운트에서도 확인처리된 건수만큼 차감한다. 개별 X 버튼 클릭 시 해당 알림 1건만 동일 API로 확인처리하고 목록에서 즉시 제거·뱃지 카운트 -1 한다(라인 클릭·"상세 보기" 이동과는 별개 동작이라 클릭 이벤트 전파를 막는다). 확인처리는 표시 여부에만 영향을 주며 원본 업무 데이터(승인 대기·자산 만료 상태)는 변경하지 않으므로 파괴적 동작이 아니다 — SCR-COM-009 확인 다이얼로그 없이 즉시 처리한다. 확인처리 이력은 사용자별로 영구 저장되어, 같은 알림(동일 승인 건·동일 자산)은 이후 재조회에서도 다시 나타나지 않는다.
-  - 사용자 메뉴 > 로그아웃 클릭 시 확인 후 토큰 무효화. 테마 토글 클릭 시 SCR-COM-010 동작 수행.
+  - 사용자 메뉴 > 로그아웃 클릭 시 확인 후 토큰 무효화. 테마 토글 클릭 시 SCR-COM-010 동작 수행. 언어 선택 아이콘 클릭 시 SCR-COM-015 동작 수행.
 - **연관 API**: `GET /api/v1/search?keyword=&size=`(미리보기), `POST /api/v1/auth/logout`, API-COM-003 `GET /api/v1/approvals?scope=mine`(전 도메인 공용 승인 대기, `api_spec/common.md`), API-ITAM-001 `GET /api/v1/assets?expiringWithinDays=&size=`, 알림 확인처리 API(API-COM-001, `api_spec/common.md`, "모두 지우기"·개별 X 공용), 확인처리 이력 조회 API(API-COM-002, `api_spec/common.md`, 알림 후보 필터링용, 5초 polling마다 재조회)
 
 ### SCR-COM-003 · 사이드바 내비게이션
@@ -285,6 +287,14 @@ lucide-react를 유지하며 기본 크기를 16px로 통일한다(좁은 공간
   | 오류 토스트 | 토스트 | 4xx/5xx 오류 메시지 | `--danger` |
   | 확인 다이얼로그 | 모달 | 파괴적 동작 확인 | `--danger`(확인 버튼) |
 - **상태 · 인터랙션**: 오류 응답의 표준 메시지를 토스트로 노출. 확인 다이얼로그는 확인 시에만 API 호출. 진입/퇴장 모션은 2.6절(토스트·모달) 토큰을 따른다.
+- **구현 참고(유지보수 요청, 2026-07-12 — SweetAlert2 도입)**:
+  - 토스트(`components/common/toast.ts`)와 확인 다이얼로그(`components/common/confirm-dialog.tsx`)의 내부 구현을 SweetAlert2로 교체한다. **범용 모달(`components/common/modal.tsx`, 폼/상세 등 비파괴 콘텐츠)은 대상에서 제외**하고 기존 Radix Dialog 그대로 유지한다(확정된 결정 1).
+  - 두 컴포넌트의 **외부 API(props/함수 시그니처)는 그대로 유지**한다 — `toast.success/error/info(message, description?)`, `<ConfirmDialog open onOpenChange title description confirmLabel cancelLabel destructive loading onConfirm />`를 바꾸지 않아 83개 이상의 기존 호출부를 수정하지 않는다. `ConfirmDialog`는 선언형 컴포넌트 API를 유지한 채, 내부에서 `open` prop 변화를 감지해 SweetAlert2를 명령형으로 호출(`Swal.fire(...).then(result => result.isConfirmed ? onConfirm() : onOpenChange(false))`)하는 래퍼 패턴으로 구현한다.
+  - 시각적 일관성: SweetAlert2 `customClass`(`popup`/`title`/`htmlContainer`/`confirmButton`/`cancelButton` 등)에 프로젝트 전용 CSS 클래스를 지정하고, 해당 클래스는 기존 시맨틱 토큰(`--card`/`--popover`/`--foreground`/`--primary`/`--destructive`/`--border`, 2.4절 Radius `radius.large`(토스트)·`radius.xlarge`(확인 다이얼로그), 2.5절 Overlay elevation)만 참조한다. `buttonsStyling: false`로 SweetAlert2 기본 버튼 스타일을 끄고 기존 `Button` 컴포넌트(variant=primary/destructive/ghost)와 동일한 시각 규격을 적용한다.
+  - 다크모드: 팝업은 `document.body` 하위(=`document.documentElement`의 자손)에 렌더링되므로, `theme-toggle.tsx`가 `documentElement`에 설정하는 `data-theme` 속성 기반 CSS 변수(`:root`/`[data-theme="dark"]`)가 별도 동기화 로직 없이 그대로 상속된다. 이 프로젝트는 OS 설정이 아니라 사용자가 직접 전환하는 명시적 라이트/다크 토글(SCR-COM-010)을 이미 갖고 있으므로, SweetAlert2 내장 `theme` 옵션(OS 설정 기반 `auto` 등)은 사용하지 않고 토큰 기반 커스텀 CSS로 다크모드를 반영한다.
+  - 토스트는 `Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, ... })` 패턴으로 구현해 기존 우상단 스택 레이아웃을 유지한다.
+  - 모션(2.6절)은 SweetAlert2 기본 애니메이션이 아니라 프로젝트 지정 duration/easing에 맞춰 `showClass`/`hideClass`(커스텀 CSS 애니메이션)로 재정의한다.
+  - 신규 의존성: `sweetalert2`(`package.json`).
 - **연관 API**: 없음(공통 UX)
 
 ### SCR-COM-010 · 테마 토글(라이트/다크)
@@ -337,6 +347,7 @@ lucide-react를 유지하며 기본 크기를 16px로 통일한다(좁은 공간
 - **구현 참고**:
   - 콘텐츠가 Markdown 형식으로 작성되어 있어 렌더링을 위해 Markdown 파서/렌더러가 필요하다(현재 frontend에 미도입 — FE 구현 시 라이브러리 도입 필요).
   - `docs/01_analyze/feature/user-guide-content.md`는 `source/frontend` 빌드에 포함되지 않는 위치이므로, 화면 구현 시 이 문서의 내용을 그대로(가공 없이) frontend 소스(`src/` 하위)로 옮겨와 사용한다. 이후 콘텐츠 문구가 바뀌면 analyzer가 원본 문서를 갱신하고 FE가 동일하게 재동기화한다.
+  - **다국어(유지보수 요청, 2026-07-12)**: 본문도 번역 대상에 포함되며(범위 확정, 6.1절), 문장 단위 키가 아닌 **문서 단위 병행 파일**로 관리한다. 한국어 원문과 절·아코디언 구조가 동일한 영어본 `docs/01_analyze/feature/user-guide-content.en.md`를 신규 작성하고, 두 문서 모두 가공 없이 frontend로 이관한다. 현재 선택된 언어(SCR-COM-015)에 따라 `UserGuideOverview`/`UserGuideDomainSection`/`UserGuideRoleSection`가 대응하는 언어의 콘텐츠 세트를 렌더링한다(6.3절 참조).
 - **연관 API**: 없음(정적 콘텐츠)
 
 ### SCR-COM-013 · 대시보드
@@ -365,8 +376,117 @@ lucide-react를 유지하며 기본 크기를 16px로 통일한다(좁은 공간
 - **상태 · 인터랙션**: 목록은 로그인 사용자가 현재 대기 차수에 필요한 역할을 보유하고 아직 해당 역할 슬롯을 결정하지 않은 건만 노출(역할 기반 공유 대기함). 이미 다른 사람이 처리해 종료된 건에 결정 시도 시 409 오류 토스트. 반려 사유 누락 시 400 인라인 오류. 결과 0건 시 빈 상태 안내("현재 대기 중인 승인이 없습니다"). 결정 성공 시 토스트 후 목록에서 제거.
 - **연관 API**: `GET /api/v1/approvals?scope=mine&domain=`(API-COM-003), `GET /api/v1/approvals/{approvalRequestId}`(API-COM-004), `POST /api/v1/approvals/{approvalRequestId}/decisions`(API-COM-005)
 
+### SCR-COM-015 · 언어 선택(i18n)
+
+- **목적**: 사용자가 화면 표시 언어(한국어/영어)를 전환하고 선택을 유지한다(유지보수 요청, 2026-07-12). 6절 i18n 아키텍처의 진입점.
+- **레이아웃**: 헤더 우측, "?" 사용자 가이드 아이콘과 테마 토글 사이에 배치되는 아이콘 버튼(지구본, lucide `Globe`). 클릭 시 버튼 바로 아래 우측 정렬(`align="end"`)로 Popover 미니 팝업을 오픈(알림 벨과 동일한 Popover 패턴 재사용, 외부 클릭/Esc로 닫힘)해 "한국어"/"English" 2개 항목을 노출하고, 현재 선택된 언어 항목에 체크 아이콘을 표시한다.
+- **구성 요소**:
+  | 요소 | 유형 | 설명 | 색상 |
+  |------|------|------|------|
+  | 언어 선택 버튼 | 아이콘 버튼(Globe) | 클릭 시 팝업 오픈 | `--foreground`, `aria-label`="언어 선택" |
+  | 언어 팝업 | 오버레이 리스트(Popover) | 한국어/English 2개 항목 | Overlay elevation(2.5절) |
+  | 언어 항목 | 리스트 아이템(버튼) | 클릭 시 즉시 전환 + 팝업 닫힘. 현재 선택 항목은 체크 아이콘으로 표시 | `--foreground`(기본 텍스트)/`--primary`(선택 체크 아이콘) |
+- **상태 · 인터랙션**:
+  - 최초 진입 시 저장된 언어 선호도를 `localStorage`(`itsm-language` 키)에서 로드해 즉시 적용, 저장된 값이 없거나 유효하지 않으면 한국어를 기본값으로 적용(`theme-toggle.tsx`와 동일한 자체 상태 관리 패턴 — 브라우저 언어 자동 감지 없음).
+  - 언어 항목 클릭 시 해당 언어로 즉시 전환(`i18next.changeLanguage`)하고 선택값을 저장, 팝업을 닫는다. 재방문 시에도 유지.
+  - 전환은 새로고침 없이 현재 화면의 모든 번역 텍스트에 즉시 반영된다(react-i18next 훅 기반 리렌더링, 6절 참조).
+  - 날짜/숫자 포맷(각 도메인 `format.ts`)은 언어 전환과 무관하게 기존 `ko-KR` 고정 포맷을 유지한다(확정된 결정 2 — 이번 범위에서 현지화하지 않음).
+- **연관 API**: 없음(클라이언트 로컬 저장)
+
 ## 5. 개별 화면 조정 필요 목록 (FEAT-UIX-013)
 
 2절 디자인 토큰과 공통 컴포넌트(`components/ui/*`, `components/common/*`, `components/layout/*`) 개편은 이를 조합해 구성된 화면에 자동 반영된다.
 
 > **정정(2026-07-10)**: 분석 단계에서 5개 화면(`LoginPage.tsx`, `UserCreatePage.tsx`, `UserDetailPage.tsx`, `PortalPage.tsx`, `IncidentDetailPage.tsx`)에 raw Tailwind 색상 클래스가 하드코딩되어 있다고 식별했으나(REQ-UIX-013/FEAT-UIX-013), 개발 착수 후 dev-lead·dev-frontend·designer·analyzer가 각각 `source/frontend/src` 전체를 재검증한 결과 raw 색상/hex 하드코딩이 발견되지 않았다(최초 분석 grep의 오탐으로 판단). 해당 5개 화면을 포함한 8개 전 도메인 모두 토큰·공통 컴포넌트 개편만으로 **자동 반영**되며, 개별 화면(feature 레이어) 수정이나 FE 담당자 추가 소집은 불필요하다. 근거는 `docs/01_analyze/prd/ui-revamp.md` REQ-UIX-013, `docs/01_analyze/feature/ui-revamp.md` FEAT-UIX-013/4절 정정 내용을 참고한다.
+
+## 6. 다국어(i18n) 아키텍처 (유지보수 요청, 2026-07-12)
+
+### 6.1 개요
+
+전 도메인(11개) 화면과 공통 레이아웃·알림 메시지에 한국어/영어 전환을 도입한다. 진입점은 헤더의 지구본 아이콘(SCR-COM-002/SCR-COM-015)이다. 이번 작업은 **화면 레이아웃·컴포넌트 구성을 변경하지 않고 표시 텍스트만 번역 키로 치환**하므로, 각 도메인 화면 설계서(`screen/{domain}.md`)의 레이아웃·구성 요소·상태·인터랙션·연관 API는 그대로 유지하며 갱신하지 않는다 — 이 6절이 전 도메인 공통 i18n 설계를 전담한다.
+
+> **범위 확정(Main, 2026-07-12)**: 사용자 가이드(SCR-COM-012) 본문(11개 도메인 설명 + 16개 역할 페르소나/수행 내용)도 번역 대상에 **포함**한다. 원문과 동일 분량의 영어 콘텐츠를 신규 작성해야 하고, 이후 원본이 갱신될 때마다 영어판도 함께 동기화해야 하는 지속적 유지보수 부담을 사용자가 인지하고 수용했다(6.3절 예외 구조 참조).
+
+### 6.2 라이브러리 선정
+
+| 항목 | 선택 | 근거 |
+|------|------|------|
+| 코어 | i18next | React 생태계 표준, 네임스페이스·보간(interpolation)·복수형(pluralization) 기본 지원 |
+| React 바인딩 | react-i18next | `useTranslation` 훅으로 함수형 컴포넌트에서 바로 사용, 기존 함수형 컴포넌트+Redux Toolkit 구조와 마찰 없음 |
+| 브라우저 언어 자동 감지(`i18next-browser-languagedetector`) | 미도입 | 확정된 결정 3("localStorage 저장, 기본값 한국어, `theme-toggle.tsx`와 동일한 자체 상태 관리 패턴")과 배치되므로, 자동 감지 대신 `theme-toggle.tsx`와 동일하게 직접 `localStorage` 읽기/쓰기로 구현한다(SCR-COM-015 참조) |
+
+신규 의존성(설치는 개발 단계에서 수행): `i18next`, `react-i18next`, `sweetalert2` — `source/frontend/package.json`.
+
+### 6.3 리소스 구조
+
+`source/frontend/src/i18n/` 신규 디렉토리(예시 구조):
+
+```
+src/i18n/
+├── index.ts             # i18next.init() 호출, i18next 인스턴스 export
+├── language.ts           # localStorage 읽기/쓰기(itsm-language 키, 기본 ko) — theme-toggle.tsx와 동일 패턴
+└── locales/
+    ├── ko/
+    │   ├── common.json
+    │   ├── auth.json
+    │   ├── service-request.json
+    │   ├── incident.json
+    │   ├── problem.json
+    │   ├── change.json
+    │   ├── knowledge.json
+    │   ├── asset.json
+    │   ├── esm.json
+    │   ├── vulnerability.json
+    │   ├── compliance.json
+    │   └── infra-monitoring.json
+    └── en/
+        └── (ko/와 동일한 12개 파일, 키 구조 동일)
+```
+
+- **네임스페이스** = `common` + 11개 업무 도메인 slug(`tech.md` 5절과 동일). `common` 네임스페이스는 특정 업무 도메인에 속하지 않는 레이아웃(헤더·사이드바·푸터)·토스트/확인 다이얼로그 공통 문구·알림 조립 라벨·통합 검색·사용자 가이드 chrome·대시보드·승인 대기함(SCR-COM-001~015, SCR-ERR-404)을 포괄한다. `admin.md`(SCR-ADMIN-*)는 REQ-AUTH-*에 연결되므로 `auth` 네임스페이스에 포함한다.
+- `defaultNS: "common"`. 각 도메인 화면은 `useTranslation(["{domain-ns}", "common"])`로 필요한 네임스페이스만 로드한다(12개 JSON 전체를 한 번에 로드하지 않아 번들 크기를 최소화).
+- **키 컨벤션**: `{section}.{itemKey}` 계층 구조(예: `list.title`, `list.createButton`, `status.PLANNING`, `type.HARDWARE`). 정확한 키 목록은 각 도메인 화면(`*Page.tsx`)·`status.ts`의 기존 하드코딩 한국어 문자열을 1:1로 옮기는 구현 단계 작업이며, 이 설계 문서는 네임스페이스 분리 기준과 키 계층 규칙만 정의한다.
+- **`status.ts` 라벨 매핑 전환 패턴**: 기존 `Record<Code, string>` 딕셔너리 기반 함수(예: `statusLabel(s: AssetStatus)`)는 `t: TFunction`을 첫 인자로 받도록 전환하고, `t(`status.${s}`, { ns: "{domain}", defaultValue: 기존 하드코딩 값 })`으로 조회한다. 호출부는 컴포넌트 내부의 `useTranslation`에서 얻은 `t`를 그대로 전달한다. `features/search/status.ts`처럼 다른 도메인 `status.ts`를 재사용하는 함수는 각 도메인 함수에 동일한 `t`(다중 네임스페이스로 획득)를 전달한다.
+- **예외 — 사용자 가이드(SCR-COM-012) 본문**: 장문 서술형 Markdown(11개 도메인 설명 + 16개 역할 페르소나/수행 내용)이라 문장 단위 JSON 키 분해에 적합하지 않으므로, 다른 화면과 달리 **문서 단위 병행 파일**로 관리한다. `docs/01_analyze/feature/user-guide-content.md`(한국어 원문)와 동일한 절·아코디언 구조를 갖는 영어본 `docs/01_analyze/feature/user-guide-content.en.md`를 신규 작성하고, 기존과 동일하게 두 문서 모두 가공 없이 `source/frontend/src/components/common/user-guide-content.tsx`로 그대로 이관한다(`UserGuideOverview`/`UserGuideDomainSection`/`UserGuideRoleSection`가 현재 언어에 맞는 콘텐츠 세트를 선택). 이후 원본 콘텐츠가 갱신되면 영어본도 함께 동기화한다(분석 단계 콘텐츠 변경 시 원문 갱신 담당자가 영어본도 동일하게 갱신). 영어본 최초 작성은 신규 요구사항 정의가 아닌 번역 작업이므로 analyzer 재소집 없이 개발 단계(dev-lead가 배정하는 담당자)에서 수행한다.
+
+### 6.4 알림 메시지 번역 처리 (`common` 네임스페이스)
+
+`routes/AppLayout.tsx`/`components/layout/header.tsx`가 조립하는 알림 관련 하드코딩 문자열은 `common` 네임스페이스 키로 전환한다(BE/DB 변경 없음, FE 조립 로직만 전환):
+
+| 현재 하드코딩 | 위치 | 전환 |
+|------|------|------|
+| `ticketTypeApprovalLabel()` 반환값(서비스요청 승인/변경 승인 등) | `features/common/status.ts` | `common:notification.domainLabel.{TICKET_TYPE}` |
+| `"자산 만료"` | `routes/AppLayout.tsx` | `common:notification.domainLabel.assetExpiry` |
+| `"방금 전"`/`"N분 전"`/`"N시간 전"`/`"N일 전"` | `routes/AppLayout.tsx` `formatRelativeTime` | `common:notification.relativeTime.{unit}`(count 보간) |
+| `"새로운 알림이 없습니다"`/`"모두 지우기"`/`"상세 보기"`/`"검색 결과가 없습니다"` 등 | `header.tsx` | `common:header.*` |
+| 아이콘 전용 버튼 `aria-label`(사이드바 토글·사용자 가이드·언어 선택·테마 전환·알림 등) | `header.tsx`/`theme-toggle.tsx`/신규 언어 선택 버튼 | `common:header.*Aria` |
+| 티켓 요약(`ticketSummary`)·자산명(`name`) | 서버 응답 원문 | 번역 대상 아님(사용자 입력 데이터) — 확정된 결정 2 "라벨·메시지 텍스트만 번역"에 따라 원문 그대로 유지 |
+
+### 6.5 언어 선택 UI
+
+SCR-COM-015(4절) 참조.
+
+### 6.6 SweetAlert2 도입
+
+SCR-COM-009(4절) "구현 참고" 참조. 요약: `ConfirmDialog`+`toast`만 SweetAlert2로 교체(외부 API 불변), `Modal`은 대상 제외, 커스텀 CSS는 기존 시맨틱 토큰만 참조.
+
+### 6.7 도메인별 번역 대상 인벤토리 (dev-lead 도메인별 개발 계획 분배 기준)
+
+| 도메인 | 네임스페이스 | 대상 화면 ID | status.ts |
+|------|------|------|------|
+| 인증/계정/권한 | `auth` | SCR-AUTH-001~003, SCR-ADMIN-001~008 | 없음(라벨 매핑 없음) |
+| 서비스 요청 | `service-request` | SCR-SRM-001~005, 007~008 | `features/service-request/status.ts` |
+| 인시던트 | `incident` | SCR-INC-001~005 | `features/incident/status.ts` |
+| 문제 | `problem` | SCR-PRB-001~004 | `features/problem/status.ts` |
+| 변경 | `change` | SCR-CHG-001~003, 005~006 | `features/change/status.ts` |
+| 지식 | `knowledge` | SCR-KM-001~003, 005 | `features/knowledge/status.ts` |
+| IT 자산/CMDB | `asset` | SCR-ITAM-001~005 | `features/asset/status.ts` |
+| ESM | `esm` | SCR-ESM-001~011 | `features/esm/status.ts` |
+| 취약점 | `vulnerability` | SCR-VULN-001~004 | `features/vulnerability/status.ts` |
+| 컴플라이언스 | `compliance` | SCR-COMP-001~004 | `features/compliance/status.ts` |
+| 인프라 모니터링 | `infra-monitoring` | SCR-IOM-001~005 | `features/infra-monitoring/status.ts` |
+| 공통(레이아웃·알림·검색·가이드·대시보드·승인 대기함·토스트/확인 다이얼로그) | `common` | SCR-COM-001~015, SCR-ERR-404 | `features/search/status.ts`(도메인 배지, 각 도메인 `status.ts` 재사용) |
+
+> SCR-COM-012(사용자 가이드) 본문은 위 JSON 키 방식이 아니라 6.3절 예외 구조(`user-guide-content.en.md` 신규 작성)를 따른다. `common` 네임스페이스 작업 범위에는 이 영어본 콘텐츠 작성도 포함된다.
+
+각 도메인 담당 개발자는 위 화면 ID에 해당하는 `*Page.tsx`와 `status.ts`(있는 경우)의 하드코딩 한국어 문자열을 6.3절 키 컨벤션에 따라 번역 키로 치환하고, `locales/ko/{ns}.json`·`locales/en/{ns}.json` 양쪽에 동일한 키 구조로 값을 채운다.

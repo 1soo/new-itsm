@@ -1,4 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,6 +52,7 @@ const DOMAIN_OPTIONS: TicketType[] = [
 type Decision = "APPROVE" | "REJECT";
 
 export function ApprovalInboxPage() {
+  const { t } = useTranslation("common");
   const [domain, setDomain] = useState(ALL);
   const [items, setItems] = useState<ApprovalListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,7 +94,7 @@ export function ApprovalInboxPage() {
     e.preventDefault();
     if (!target) return;
     if (decision === "REJECT" && !reason.trim()) {
-      setError("반려 사유를 입력하세요.");
+      setError(t("approvalInbox.reasonRequiredError", { defaultValue: "반려 사유를 입력하세요." }));
       return;
     }
     setSubmitting(true);
@@ -101,7 +103,11 @@ export function ApprovalInboxPage() {
         decision,
         reason: reason.trim() || undefined,
       });
-      toast.success(decision === "APPROVE" ? "승인되었습니다" : "반려되었습니다");
+      toast.success(
+        decision === "APPROVE"
+          ? t("approvalInbox.approveSuccess", { defaultValue: "승인되었습니다" })
+          : t("approvalInbox.rejectSuccess", { defaultValue: "반려되었습니다" }),
+      );
       setTarget(null);
       load();
     } catch (err) {
@@ -113,19 +119,25 @@ export function ApprovalInboxPage() {
 
   const columns: Column<ApprovalListItem>[] = [
     {
-      header: "티켓 유형",
-      cell: (a) => <StatusBadge tone="info" label={ticketTypeLabel(a.ticketType)} />,
+      header: t("approvalInbox.columnTicketType", { defaultValue: "티켓 유형" }),
+      cell: (a) => <StatusBadge tone="info" label={ticketTypeLabel(t, a.ticketType)} />,
     },
-    { header: "티켓", cell: (a) => `${a.ticketKey} · ${a.ticketSummary}` },
-    { header: "차수", cell: (a) => `${a.currentStepNo}차` },
-    { header: "요청자", cell: (a) => a.requester },
-    { header: "요청일", cell: (a) => formatDateTime(a.requestedAt) },
+    { header: t("approvalInbox.columnTicket", { defaultValue: "티켓" }), cell: (a) => `${a.ticketKey} · ${a.ticketSummary}` },
+    {
+      header: t("approvalInbox.columnStep", { defaultValue: "차수" }),
+      cell: (a) => t("approvalInbox.stepValue", { step: a.currentStepNo, defaultValue: `${a.currentStepNo}차` }),
+    },
+    { header: t("approvalInbox.columnRequester", { defaultValue: "요청자" }), cell: (a) => a.requester },
+    {
+      header: t("approvalInbox.columnRequestedAt", { defaultValue: "요청일" }),
+      cell: (a) => formatDateTime(a.requestedAt),
+    },
     {
       header: "",
       className: "text-right",
       cell: (a) => (
         <Button size="sm" variant="outline" onClick={() => openItem(a)}>
-          상세
+          {t("approvalInbox.detailButton", { defaultValue: "상세" })}
         </Button>
       ),
     },
@@ -133,20 +145,22 @@ export function ApprovalInboxPage() {
 
   return (
     <TicketListLayout
-      title="승인 대기함"
-      description="보유한 역할이 필요한 승인 건을 도메인 구분 없이 확인하고 승인/반려합니다."
+      title={t("approvalInbox.title", { defaultValue: "승인 대기함" })}
+      description={t("approvalInbox.description", {
+        defaultValue: "보유한 역할이 필요한 승인 건을 도메인 구분 없이 확인하고 승인/반려합니다.",
+      })}
       filters={
         <div className="space-y-1">
-          <Label>도메인</Label>
+          <Label>{t("approvalInbox.domainLabel", { defaultValue: "도메인" })}</Label>
           <Select value={domain} onValueChange={setDomain}>
             <SelectTrigger className="w-48">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>전체</SelectItem>
+              <SelectItem value={ALL}>{t("approvalInbox.domainAll", { defaultValue: "전체" })}</SelectItem>
               {DOMAIN_OPTIONS.map((d) => (
                 <SelectItem key={d} value={d}>
-                  {ticketTypeLabel(d)}
+                  {ticketTypeLabel(t, d)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -159,18 +173,20 @@ export function ApprovalInboxPage() {
         data={items}
         rowKey={(a) => a.approvalRequestId}
         loading={loading}
-        emptyTitle="현재 대기 중인 승인이 없습니다"
+        emptyTitle={t("approvalInbox.emptyTitle", { defaultValue: "현재 대기 중인 승인이 없습니다" })}
       />
 
       <Modal
         open={target !== null}
         onOpenChange={(o) => !o && setTarget(null)}
-        title="승인 처리"
+        title={t("approvalInbox.modalTitle", { defaultValue: "승인 처리" })}
         description={target ? `${target.ticketKey} · ${target.ticketSummary}` : undefined}
         className="sm:max-w-lg"
       >
         {detailLoading || !detail ? (
-          <p className="text-sm text-muted-foreground">불러오는 중...</p>
+          <p className="text-sm text-muted-foreground">
+            {t("approvalInbox.loading", { defaultValue: "불러오는 중..." })}
+          </p>
         ) : (
           <div className="space-y-4">
             <ApprovalStepProgress steps={detail.steps} currentStepNo={detail.currentStepNo} />
@@ -184,7 +200,7 @@ export function ApprovalInboxPage() {
                     className="flex-1"
                     onClick={() => setDecision("APPROVE")}
                   >
-                    승인
+                    {t("approvalInbox.approve", { defaultValue: "승인" })}
                   </Button>
                   <Button
                     type="button"
@@ -192,11 +208,15 @@ export function ApprovalInboxPage() {
                     className="flex-1"
                     onClick={() => setDecision("REJECT")}
                   >
-                    반려
+                    {t("approvalInbox.reject", { defaultValue: "반려" })}
                   </Button>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="reason">{decision === "APPROVE" ? "사유(선택)" : "반려 사유"}</Label>
+                  <Label htmlFor="reason">
+                    {decision === "APPROVE"
+                      ? t("approvalInbox.reasonOptional", { defaultValue: "사유(선택)" })
+                      : t("approvalInbox.reasonRequired", { defaultValue: "반려 사유" })}
+                  </Label>
                   <Input
                     id="reason"
                     value={reason}
@@ -212,14 +232,16 @@ export function ApprovalInboxPage() {
                 </div>
                 <div className="flex justify-end gap-2">
                   <Button type="button" variant="outline" onClick={() => setTarget(null)}>
-                    취소
+                    {t("approvalInbox.cancel", { defaultValue: "취소" })}
                   </Button>
                   <Button
                     type="submit"
                     variant={decision === "REJECT" ? "destructive" : "default"}
                     loading={submitting}
                   >
-                    {decision === "APPROVE" ? "승인" : "반려"}
+                    {decision === "APPROVE"
+                      ? t("approvalInbox.approve", { defaultValue: "승인" })
+                      : t("approvalInbox.reject", { defaultValue: "반려" })}
                   </Button>
                 </div>
               </form>

@@ -1,0 +1,164 @@
+{
+  "header": {
+    "sidebarToggleAria": "Toggle sidebar",
+    "searchPlaceholder": "Search knowledge & tickets",
+    "searchAria": "Universal search",
+    "noSearchResults": "No results found",
+    "guideAria": "User guide",
+    "themeToggleAria": "Toggle theme",
+    "notificationsAria": "Notifications",
+    "notificationsAriaWithCount": "Notifications, {{count}}",
+    "dismissAll": "Clear all",
+    "dismissAllAria": "Dismiss all notifications",
+    "noNotifications": "No new notifications",
+    "dismissOneAria": "Dismiss notification",
+    "viewDetail": "View details",
+    "userMenuAria": "User menu",
+    "myProfile": "My Profile",
+    "changePassword": "Change Password",
+    "logout": "Log out"
+  },
+  "languageToggle": {
+    "aria": "Select language"
+  },
+  "userGuide": {
+    "myRoleBadge": "My Role"
+  },
+  "dialog": {
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "close": "Close"
+  },
+  "forbidden": {
+    "title": "Access Denied",
+    "description": "You do not have permission to access this page.",
+    "backButton": "Go Back"
+  },
+  "notFound": {
+    "description": "The page you requested could not be found.",
+    "homeButton": "Go Home"
+  },
+  "notification": {
+    "domainLabel": {
+      "SERVICE_REQUEST": "Service Request Approval",
+      "CHANGE": "Change Approval",
+      "KNOWLEDGE": "Knowledge Approval",
+      "INCIDENT": "Incident Approval",
+      "PROBLEM": "Problem Approval",
+      "ASSET": "Asset Approval",
+      "VULNERABILITY": "Vulnerability Approval",
+      "COMPLIANCE": "Compliance Approval",
+      "ESM": "Department Service Approval",
+      "ESM_REQUEST": "Department Service Approval",
+      "CORRECTIVE_ACTION": "Corrective Action Approval",
+      "assetExpiry": "Asset Expiry"
+    },
+    "relativeTime": {
+      "justNow": "Just now",
+      "minutesAgo": "{{count}}m ago",
+      "hoursAgo": "{{count}}h ago",
+      "daysAgo": "{{count}}d ago"
+    },
+    "expiryLabel": "Expires {{date}}"
+  },
+  "approval": {
+    "domainOption": {
+      "SERVICE_REQUEST": "Service Request",
+      "CHANGE": "Change",
+      "KNOWLEDGE": "Knowledge",
+      "INCIDENT": "Incident",
+      "PROBLEM": "Problem",
+      "ASSET": "Asset",
+      "VULNERABILITY": "Vulnerability",
+      "COMPLIANCE": "Compliance",
+      "ESM": "Department Service",
+      "ESM_REQUEST": "Department Service",
+      "CORRECTIVE_ACTION": "Corrective Action"
+    },
+    "panelTitle": "Approval Status",
+    "stepOrdinal": "Step {{step}}",
+    "stepStatus": {
+      "completed": "Completed",
+      "rejected": "Rejected",
+      "current": "In Progress",
+      "pending": "Pending"
+    },
+    "decision": {
+      "pending": "Pending",
+      "approve": "Approved",
+      "reject": "Rejected"
+    },
+    "decisionMode": {
+      "and": "All roles required",
+      "or": "Any one role"
+    },
+    "roleDecisionTitle": "Step {{step}} Role Decisions ({{mode}})",
+    "rejectedNotice": "Step {{step}} rejected",
+    "rejectedNoticeWithReason": "Step {{step}} rejected — Reason: {{reason}}"
+  },
+  "approvalInbox": {
+    "title": "Approval Inbox",
+    "description": "Review and approve or reject pending approvals across all domains that require your role.",
+    "domainLabel": "Domain",
+    "domainAll": "All",
+    "columnTicketType": "Ticket Type",
+    "columnTicket": "Ticket",
+    "columnStep": "Step",
+    "stepValue": "Step {{step}}",
+    "columnRequester": "Requester",
+    "columnRequestedAt": "Requested At",
+    "detailButton": "Details",
+    "emptyTitle": "There are no pending approvals.",
+    "modalTitle": "Process Approval",
+    "loading": "Loading...",
+    "approve": "Approve",
+    "reject": "Reject",
+    "reasonOptional": "Reason (optional)",
+    "reasonRequired": "Rejection Reason",
+    "reasonRequiredError": "Please enter a rejection reason.",
+    "cancel": "Cancel",
+    "approveSuccess": "Approved.",
+    "rejectSuccess": "Rejected."
+  },
+  "search": {
+    "title": "Search Results",
+    "descriptionWithKeyword": "Results for \"{{keyword}}\"",
+    "descriptionEmpty": "Enter a search term.",
+    "placeholder": "Search knowledge & tickets",
+    "inputAriaLabel": "Search keyword",
+    "searchButton": "Search",
+    "columnDomain": "Domain",
+    "columnTitle": "Title",
+    "columnStatus": "Status",
+    "columnUpdatedAt": "Updated At",
+    "emptyTitle": "No search results.",
+    "emptyDescription": "Try a different search term.",
+    "domainLabel": {
+      "KNOWLEDGE": "Knowledge",
+      "SERVICE_REQUEST": "Service Request",
+      "INCIDENT": "Incident",
+      "PROBLEM": "Problem",
+      "CHANGE": "Change"
+    }
+  },
+  "dashboard": {
+    "welcomeTitle": "Welcome",
+    "welcomeTitleWithName": "Welcome, {{name}}",
+    "description": "You are logged in to the ITSM platform. Select a feature from the left menu."
+  },
+  "guide": {
+    "title": "User Guide",
+    "tocOverview": "Overview",
+    "tocDomains": "Domains & Principles",
+    "tocRoles": "Role Responsibilities",
+    "tocAriaLabel": "User Guide Table of Contents"
+  },
+  "session": {
+    "expired": "Your session has expired. Please log in again."
+  },
+  "appLayout": {
+    "logoutTitle": "Log Out",
+    "logoutDescription": "Are you sure you want to log out of your current session?",
+    "logoutConfirm": "Log Out"
+  }
+}

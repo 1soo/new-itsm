@@ -1,3 +1,5 @@
+import type { TFunction } from "i18next";
+
 import type { StatusTone } from "@/components/common";
 import type { SearchDomain } from "@/features/search/types";
 import { statusLabel as knowledgeStatusLabel, statusTone as knowledgeStatusTone } from "@/features/knowledge/status";
@@ -21,8 +23,10 @@ const DOMAIN_LABEL: Record<SearchDomain, string> = {
   CHANGE: "변경",
 };
 
-export function domainLabel(domain: SearchDomain): string {
-  return DOMAIN_LABEL[domain] ?? domain;
+/** 검색 결과 도메인 배지 라벨(신규 제안 키 `common:search.domainLabel.*`). */
+export function domainLabel(t: TFunction, domain: SearchDomain): string {
+  const defaultValue = DOMAIN_LABEL[domain] ?? domain;
+  return t(`search.domainLabel.${domain}`, { ns: "common", defaultValue });
 }
 
 /** 결과 상태 배지 — 도메인별 기존 statusLabel/statusTone 재사용(원문 상태값 매핑 실패 시 원문 그대로 표시). */

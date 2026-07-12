@@ -279,3 +279,136 @@
     scroll-behavior: auto !important;
   }
 }
+
+/*
+ * SweetAlert2 커스텀 스타일 — common.md SCR-COM-009(2026-07-12).
+ * buttonsStyling: false로 기본 버튼 스타일을 끄고 기존 Button 컴포넌트와 동일한 시각 규격을
+ * 시맨틱 토큰만 참조해 재현한다. data-theme 다크모드는 별도 동기화 없이 상속된다(문서 참조).
+ */
+.itsm-swal-popup {
+  border-radius: var(--radius-xl);
+  background: var(--color-popover);
+  color: var(--color-foreground);
+  box-shadow: var(--shadow-overlay);
+  border: 1px solid var(--color-border);
+  padding: 1.5rem;
+}
+.itsm-swal-title {
+  font-size: var(--text-heading-medium);
+  line-height: var(--text-heading-medium--line-height);
+  font-weight: 700;
+  color: var(--color-foreground);
+}
+.itsm-swal-html {
+  font-size: var(--text-body);
+  line-height: var(--text-body--line-height);
+  color: var(--color-muted-foreground);
+}
+.itsm-swal-actions {
+  gap: 0.5rem;
+}
+.itsm-swal-btn {
+  border-radius: var(--radius-md);
+  font-size: var(--text-body);
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  transition-property: color, background-color, border-color;
+}
+.itsm-swal-btn--primary {
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
+}
+.itsm-swal-btn--primary:hover {
+  background: var(--primary-hover);
+}
+.itsm-swal-btn--destructive {
+  background: var(--color-destructive);
+  color: var(--color-destructive-foreground);
+}
+.itsm-swal-btn--destructive:hover {
+  opacity: 0.9;
+}
+.itsm-swal-btn--outline {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  border: 1px solid var(--color-input);
+}
+
+.itsm-swal-toast {
+  border-radius: var(--radius-lg);
+  background: var(--color-popover);
+  color: var(--color-popover-foreground);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-overlay);
+  padding: 0.75rem 1rem;
+}
+.itsm-swal-toast--success {
+  color: var(--color-success);
+  border-color: var(--color-success);
+}
+.itsm-swal-toast--danger {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+.itsm-swal-toast-title {
+  font-size: var(--text-body);
+  font-weight: 600;
+}
+.itsm-swal-toast-description {
+  font-size: var(--text-body-small);
+  color: var(--color-muted-foreground);
+}
+
+@keyframes itsm-swal-modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes itsm-swal-modal-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+@keyframes itsm-swal-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes itsm-swal-toast-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+
+.itsm-swal-modal-show {
+  animation: itsm-swal-modal-in var(--motion-modal-enter-duration) var(--motion-modal-enter-easing);
+}
+.itsm-swal-modal-hide {
+  animation: itsm-swal-modal-out var(--motion-modal-exit-duration) var(--motion-modal-exit-easing);
+}
+.itsm-swal-toast-show {
+  animation: itsm-swal-toast-in var(--motion-toast-enter-duration) var(--motion-toast-enter-easing);
+}
+.itsm-swal-toast-hide {
+  animation: itsm-swal-toast-out var(--motion-toast-exit-duration) var(--motion-toast-exit-easing);
+}

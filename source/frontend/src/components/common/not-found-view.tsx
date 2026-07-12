@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +13,7 @@ export interface NotFoundViewProps {
 }
 
 export function NotFoundView({ onHome, className }: NotFoundViewProps) {
+  const { t } = useTranslation("common");
   return (
     <div
       className={cn(
@@ -19,9 +22,9 @@ export function NotFoundView({ onHome, className }: NotFoundViewProps) {
       )}
     >
       <p className="text-7xl font-bold text-muted-foreground">404</p>
-      <p className="text-sm text-foreground">요청하신 페이지를 찾을 수 없습니다.</p>
+      <p className="text-sm text-foreground">{t("notFound.description")}</p>
       {onHome ? (
-        <Button onClick={onHome}>홈으로</Button>
+        <Button onClick={onHome}>{t("notFound.homeButton")}</Button>
       ) : null}
     </div>
   );

@@ -1,4 +1,5 @@
 import { ShieldAlert } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -13,6 +14,7 @@ export interface ForbiddenViewProps {
 }
 
 export function ForbiddenView({ onBack, className }: ForbiddenViewProps) {
+  const { t } = useTranslation("common");
   return (
     <div
       className={cn(
@@ -22,13 +24,13 @@ export function ForbiddenView({ onBack, className }: ForbiddenViewProps) {
     >
       <ShieldAlert className="size-14 text-danger" aria-hidden="true" />
       <div className="space-y-1">
-        <h1 className="text-heading-large font-bold text-foreground">접근 권한이 없습니다</h1>
+        <h1 className="text-heading-large font-bold text-foreground">{t("forbidden.title")}</h1>
         <p className="text-sm text-muted-foreground">
-          이 페이지에 접근할 권한이 없습니다.
+          {t("forbidden.description")}
         </p>
       </div>
       {onBack ? (
-        <Button onClick={onBack}>이전으로</Button>
+        <Button onClick={onBack}>{t("forbidden.backButton")}</Button>
       ) : null}
     </div>
   );

@@ -1,0 +1,164 @@
+{
+  "header": {
+    "sidebarToggleAria": "사이드바 토글",
+    "searchPlaceholder": "지식·티켓 검색",
+    "searchAria": "통합 검색",
+    "noSearchResults": "검색 결과가 없습니다",
+    "guideAria": "사용자 가이드",
+    "themeToggleAria": "테마 전환",
+    "notificationsAria": "알림",
+    "notificationsAriaWithCount": "알림 {{count}}건",
+    "dismissAll": "모두 지우기",
+    "dismissAllAria": "모든 알림 확인처리",
+    "noNotifications": "새로운 알림이 없습니다",
+    "dismissOneAria": "알림 확인처리",
+    "viewDetail": "상세 보기",
+    "userMenuAria": "사용자 메뉴",
+    "myProfile": "내 프로필",
+    "changePassword": "비밀번호 변경",
+    "logout": "로그아웃"
+  },
+  "languageToggle": {
+    "aria": "언어 선택"
+  },
+  "userGuide": {
+    "myRoleBadge": "내 역할"
+  },
+  "dialog": {
+    "confirm": "확인",
+    "cancel": "취소",
+    "close": "닫기"
+  },
+  "forbidden": {
+    "title": "접근 권한이 없습니다",
+    "description": "이 페이지에 접근할 권한이 없습니다.",
+    "backButton": "이전으로"
+  },
+  "notFound": {
+    "description": "요청하신 페이지를 찾을 수 없습니다.",
+    "homeButton": "홈으로"
+  },
+  "notification": {
+    "domainLabel": {
+      "SERVICE_REQUEST": "서비스요청 승인",
+      "CHANGE": "변경 승인",
+      "KNOWLEDGE": "지식 승인",
+      "INCIDENT": "인시던트 승인",
+      "PROBLEM": "문제 승인",
+      "ASSET": "자산 승인",
+      "VULNERABILITY": "취약점 승인",
+      "COMPLIANCE": "컴플라이언스 승인",
+      "ESM": "부서 서비스 승인",
+      "ESM_REQUEST": "부서 서비스 승인",
+      "CORRECTIVE_ACTION": "컴플라이언스 시정조치 승인",
+      "assetExpiry": "자산 만료"
+    },
+    "relativeTime": {
+      "justNow": "방금 전",
+      "minutesAgo": "{{count}}분 전",
+      "hoursAgo": "{{count}}시간 전",
+      "daysAgo": "{{count}}일 전"
+    },
+    "expiryLabel": "{{date}} 만료"
+  },
+  "approval": {
+    "domainOption": {
+      "SERVICE_REQUEST": "서비스요청",
+      "CHANGE": "변경",
+      "KNOWLEDGE": "지식",
+      "INCIDENT": "인시던트",
+      "PROBLEM": "문제",
+      "ASSET": "자산",
+      "VULNERABILITY": "취약점",
+      "COMPLIANCE": "컴플라이언스",
+      "ESM": "부서 서비스",
+      "ESM_REQUEST": "부서 서비스",
+      "CORRECTIVE_ACTION": "시정조치"
+    },
+    "panelTitle": "승인 현황",
+    "stepOrdinal": "{{step}}차",
+    "stepStatus": {
+      "completed": "완료",
+      "rejected": "반려",
+      "current": "대기중",
+      "pending": "대기"
+    },
+    "decision": {
+      "pending": "대기",
+      "approve": "승인",
+      "reject": "반려"
+    },
+    "decisionMode": {
+      "and": "전체 승인 필요",
+      "or": "역할 중 하나"
+    },
+    "roleDecisionTitle": "{{step}}차 역할별 결정 현황 ({{mode}})",
+    "rejectedNotice": "{{step}}차 반려",
+    "rejectedNoticeWithReason": "{{step}}차 반려 사유: {{reason}}"
+  },
+  "approvalInbox": {
+    "title": "승인 대기함",
+    "description": "보유한 역할이 필요한 승인 건을 도메인 구분 없이 확인하고 승인/반려합니다.",
+    "domainLabel": "도메인",
+    "domainAll": "전체",
+    "columnTicketType": "티켓 유형",
+    "columnTicket": "티켓",
+    "columnStep": "차수",
+    "stepValue": "{{step}}차",
+    "columnRequester": "요청자",
+    "columnRequestedAt": "요청일",
+    "detailButton": "상세",
+    "emptyTitle": "현재 대기 중인 승인이 없습니다",
+    "modalTitle": "승인 처리",
+    "loading": "불러오는 중...",
+    "approve": "승인",
+    "reject": "반려",
+    "reasonOptional": "사유(선택)",
+    "reasonRequired": "반려 사유",
+    "reasonRequiredError": "반려 사유를 입력하세요.",
+    "cancel": "취소",
+    "approveSuccess": "승인되었습니다",
+    "rejectSuccess": "반려되었습니다"
+  },
+  "search": {
+    "title": "통합 검색 결과",
+    "descriptionWithKeyword": "\"{{keyword}}\" 검색 결과",
+    "descriptionEmpty": "검색어를 입력하세요.",
+    "placeholder": "지식·티켓 검색",
+    "inputAriaLabel": "검색어",
+    "searchButton": "검색",
+    "columnDomain": "도메인",
+    "columnTitle": "제목",
+    "columnStatus": "상태",
+    "columnUpdatedAt": "갱신일",
+    "emptyTitle": "검색 결과가 없습니다",
+    "emptyDescription": "다른 검색어로 다시 시도해보세요.",
+    "domainLabel": {
+      "KNOWLEDGE": "지식",
+      "SERVICE_REQUEST": "서비스 요청",
+      "INCIDENT": "인시던트",
+      "PROBLEM": "문제",
+      "CHANGE": "변경"
+    }
+  },
+  "dashboard": {
+    "welcomeTitle": "환영합니다",
+    "welcomeTitleWithName": "환영합니다, {{name}}님",
+    "description": "ITSM 플랫폼에 로그인했습니다. 좌측 메뉴에서 이용할 기능을 선택하세요."
+  },
+  "guide": {
+    "title": "사용자 가이드",
+    "tocOverview": "개요",
+    "tocDomains": "도메인 및 원칙",
+    "tocRoles": "역할별 수행 내용과 방법",
+    "tocAriaLabel": "사용자 가이드 목차"
+  },
+  "session": {
+    "expired": "세션이 만료되어 다시 로그인해주세요"
+  },
+  "appLayout": {
+    "logoutTitle": "로그아웃",
+    "logoutDescription": "현재 세션에서 로그아웃하시겠습니까?",
+    "logoutConfirm": "로그아웃"
+  }
+}

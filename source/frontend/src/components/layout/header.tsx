@@ -1,4 +1,5 @@
 import { type FormEvent, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Bell, HelpCircle, Menu, Search, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { LanguageToggle } from "@/components/layout/language-toggle";
 import { StatusBadge } from "@/components/common";
 import { cn } from "@/lib/utils";
 
@@ -100,6 +102,7 @@ export function Header({
   onOpenGuide,
   className,
 }: HeaderProps) {
+  const { t } = useTranslation("common");
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
@@ -143,7 +146,7 @@ export function Header({
           variant="ghost"
           size="icon"
           onClick={onToggleSidebar}
-          aria-label="사이드바 토글"
+          aria-label={t("header.sidebarToggleAria")}
         >
           <Menu />
         </Button>
@@ -165,9 +168,9 @@ export function Header({
               value={query}
               onChange={(e) => handleQueryChange(e.target.value)}
               onFocus={() => setSearchOpen(query.trim().length > 0)}
-              placeholder="지식·티켓 검색"
+              placeholder={t("header.searchPlaceholder")}
               className="pl-9"
-              aria-label="통합 검색"
+              aria-label={t("header.searchAria")}
             />
           </form>
         </PopoverAnchor>
@@ -178,7 +181,7 @@ export function Header({
         >
           <ul className="max-h-72 overflow-auto">
             {searchResults && searchResults.length === 0 ? (
-              <li className="px-2 py-1.5 text-sm text-muted-foreground">검색 결과가 없습니다</li>
+              <li className="px-2 py-1.5 text-sm text-muted-foreground">{t("header.noSearchResults")}</li>
             ) : (
               searchResults?.map((r) => (
                 <li key={r.key}>
@@ -202,17 +205,22 @@ export function Header({
           variant="ghost"
           size="icon"
           onClick={onOpenGuide}
-          aria-label="사용자 가이드"
+          aria-label={t("header.guideAria")}
         >
           <HelpCircle />
         </Button>
+        <LanguageToggle />
         <ThemeToggle />
         <Popover open={notificationOpen} onOpenChange={handleNotificationOpenChange}>
           <PopoverTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              aria-label={`알림${notificationCount > 0 ? ` ${notificationCount}건` : ""}`}
+              aria-label={
+                notificationCount > 0
+                  ? t("header.notificationsAriaWithCount", { count: notificationCount })
+                  : t("header.notificationsAria")
+              }
               className="relative"
             >
               <Bell />
@@ -231,17 +239,17 @@ export function Header({
                   variant="link"
                   size="sm"
                   className="h-auto p-0 text-xs"
-                  aria-label="모든 알림 확인처리"
+                  aria-label={t("header.dismissAllAria")}
                   onClick={onDismissAllNotifications}
                 >
-                  모두 지우기
+                  {t("header.dismissAll")}
                 </Button>
               </div>
             ) : null}
             <ul className="max-h-80 overflow-auto">
               {notifications && notifications.length === 0 ? (
                 <li className="px-2 py-1.5 text-sm text-muted-foreground">
-                  새로운 알림이 없습니다
+                  {t("header.noNotifications")}
                 </li>
               ) : (
                 notifications?.map((n) => (
@@ -257,7 +265,7 @@ export function Header({
                         {onDismissNotification ? (
                           <button
                             type="button"
-                            aria-label="알림 확인처리"
+                            aria-label={t("header.dismissOneAria")}
                             onClick={(e) => {
                               e.stopPropagation();
                               onDismissNotification(n);
@@ -278,7 +286,7 @@ export function Header({
                         className="h-auto shrink-0 p-0 text-xs"
                         onClick={() => handleSelectNotification(n)}
                       >
-                        상세 보기
+                        {t("header.viewDetail")}
                       </Button>
                     </div>
                   </li>
@@ -295,7 +303,7 @@ export function Header({
                 variant="ghost"
                 size="icon"
                 className="rounded-full"
-                aria-label="사용자 메뉴"
+                aria-label={t("header.userMenuAria")}
               >
                 <Avatar className="size-8">
                   <AvatarFallback>{initials(user.name)}</AvatarFallback>
@@ -312,13 +320,13 @@ export function Header({
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={onProfile}>내 프로필</DropdownMenuItem>
+              <DropdownMenuItem onSelect={onProfile}>{t("header.myProfile")}</DropdownMenuItem>
               <DropdownMenuItem onSelect={onChangePassword}>
-                비밀번호 변경
+                {t("header.changePassword")}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={onLogout} className="text-destructive">
-                로그아웃
+                {t("header.logout")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

@@ -1,4 +1,6 @@
 import { Check, CircleDashed, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -7,7 +9,7 @@ import type { ApprovalStep, ApprovalStepStatus } from "@/components/common/appro
 /**
  * 승인 차수 진행 현황(순수 프레젠테이션) — API-COM-004 응답을 그대로 렌더링한다.
  * common.md SCR-COM-014(승인 대기함 상세)·도메인 상세 화면 공용 패널(`approval-panel.tsx`)이 함께 사용.
- * 승인/반려 액션·반려 사유 입력은 담당하지 않는다(FE가 별도로 조립).
+ * 승인/반려 액션·반려 사유 입력은 담당하지 않는다(FE가 별도로 조립). 문구는 `common:approval.*` 키(2026-07-12 다국어 지원).
  */
 export interface ApprovalStepProgressProps {
   /** 전체 차수(1차부터 순서대로) */
@@ -19,7 +21,11 @@ export interface ApprovalStepProgressProps {
   className?: string;
 }
 
-const ROLE_DECISION_LABEL = { PENDING: "대기", APPROVE: "승인", REJECT: "반려" } as const;
+const ROLE_DECISION_KEY = {
+  PENDING: "approval.decision.pending",
+  APPROVE: "approval.decision.approve",
+  REJECT: "approval.decision.reject",
+} as const;
 const ROLE_DECISION_TONE = { PENDING: "muted", APPROVE: "success", REJECT: "danger" } as const;
 
 function stepTone(step: ApprovalStep, currentStepNo?: number | null) {
@@ -29,11 +35,11 @@ function stepTone(step: ApprovalStep, currentStepNo?: number | null) {
   return step.stepNo === currentStepNo ? ("warning" as const) : ("muted" as const);
 }
 
-const STEP_LABEL: Record<ReturnType<typeof stepTone>, string> = {
-  success: "완료",
-  danger: "반려",
-  warning: "대기중",
-  muted: "대기",
+const STEP_STATUS_KEY: Record<ReturnType<typeof stepTone>, string> = {
+  success: "approval.stepStatus.completed",
+  danger: "approval.stepStatus.rejected",
+  warning: "approval.stepStatus.current",
+  muted: "approval.stepStatus.pending",
 };
 
 function StepDot({ status }: { status: ApprovalStepStatus }) {
@@ -60,6 +66,7 @@ export function ApprovalStepProgress({
   compact = false,
   className,
 }: ApprovalStepProgressProps) {
+  const { t } = useTranslation("common");
   const currentStep = currentStepNo != null ? steps.find((s) => s.stepNo === currentStepNo) : undefined;
   const rejectedStep = steps.find((s) => s.status === "REJECTED");
   const rejectedReason = rejectedStep?.roles.find((r) => r.decision === "REJECT")?.reason;
@@ -70,9 +77,9 @@ export function ApprovalStepProgress({
         {steps.map((step) => (
           <li key={step.stepNo} className="flex items-center gap-2">
             <StepDot status={step.status} />
-            <span className="text-sm text-foreground">{step.stepNo}차</span>
+            <span className="text-sm text-foreground">{t("approval.stepOrdinal", { step: step.stepNo })}</span>
             <Badge variant={stepTone(step, currentStepNo)} className="ml-auto">
-              {STEP_LABEL[stepTone(step, currentStepNo)]}
+              {t(STEP_STATUS_KEY[stepTone(step, currentStepNo)])}
             </Badge>
           </li>
         ))}
@@ -81,8 +88,12 @@ export function ApprovalStepProgress({
       {!compact && currentStep ? (
         <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3">
           <p className="text-xs font-medium text-muted-foreground">
-            {currentStep.stepNo}차 역할별 결정 현황 (
-            {currentStep.decisionMode === "AND" ? "전체 승인 필요" : "역할 중 하나"})
+            {t("approval.roleDecisionTitle", {
+              step: currentStep.stepNo,
+              mode: t(
+                currentStep.decisionMode === "AND" ? "approval.decisionMode.and" : "approval.decisionMode.or",
+              ),
+            })}
           </p>
           {currentStep.decisionMode === "AND" ? (
             <ul className="flex flex-col gap-1.5">
@@ -90,7 +101,7 @@ export function ApprovalStepProgress({
                 <li key={r.roleCode} className="flex flex-col gap-0.5 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-foreground">{r.roleName}</span>
-                    <Badge variant={ROLE_DECISION_TONE[r.decision]}>{ROLE_DECISION_LABEL[r.decision]}</Badge>
+                    <Badge variant={ROLE_DECISION_TONE[r.decision]}>{t(ROLE_DECISION_KEY[r.decision])}</Badge>
                   </div>
                   {r.decision !== "PENDING" ? (
                     <p className="text-xs text-muted-foreground">
@@ -101,7 +112,7 @@ export function ApprovalStepProgress({
               ))}
             </ul>
           ) : (
-            <OrStepSummary roles={currentStep.roles} />
+            <OrStepSummary roles={currentStep.roles} t={t} />
           )}
         </div>
       ) : null}
@@ -110,7 +121,9 @@ export function ApprovalStepProgress({
         <p className="flex items-start gap-1.5 text-xs text-destructive">
           <X className="size-3.5 shrink-0 translate-y-0.5" aria-hidden="true" />
           <span>
-            {rejectedStep.stepNo}차 반려{rejectedReason ? ` 사유: ${rejectedReason}` : ""}
+            {rejectedReason
+              ? t("approval.rejectedNoticeWithReason", { step: rejectedStep.stepNo, reason: rejectedReason })
+              : t("approval.rejectedNotice", { step: rejectedStep.stepNo })}
           </span>
         </p>
       ) : null}
@@ -118,14 +131,14 @@ export function ApprovalStepProgress({
   );
 }
 
-function OrStepSummary({ roles }: { roles: ApprovalStep["roles"] }) {
+function OrStepSummary({ roles, t }: { roles: ApprovalStep["roles"]; t: TFunction }) {
   const decided = roles.find((r) => r.decision !== "PENDING");
   const decision = decided?.decision ?? "PENDING";
   return (
     <div className="flex flex-col gap-0.5 text-sm">
       <div className="flex items-center justify-between">
-        <span className="text-foreground">역할 중 하나</span>
-        <Badge variant={ROLE_DECISION_TONE[decision]}>{ROLE_DECISION_LABEL[decision]}</Badge>
+        <span className="text-foreground">{t("approval.decisionMode.or")}</span>
+        <Badge variant={ROLE_DECISION_TONE[decision]}>{t(ROLE_DECISION_KEY[decision])}</Badge>
       </div>
       {decided ? (
         <p className="text-xs text-muted-foreground">

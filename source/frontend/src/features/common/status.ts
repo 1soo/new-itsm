@@ -1,3 +1,5 @@
+import type { TFunction } from "i18next";
+
 import type { TicketType } from "@/features/common/types";
 
 /* 승인 대상 티켓 유형(TicketType) 표시 라벨·상세 경로 매핑 — 헤더 알림(SCR-COM-002)·공용 승인 대기함(SCR-COM-014) 공유. */
@@ -45,14 +47,16 @@ const TICKET_TYPE_DETAIL_PATH: Record<TicketType, (ticketId: number) => string> 
   CORRECTIVE_ACTION: () => `/compliance/requirements`,
 };
 
-/** 헤더 알림 드롭다운 1행 좌측 도메인 라벨(common.md SCR-COM-002 매핑표). */
-export function ticketTypeApprovalLabel(type: TicketType): string {
-  return TICKET_TYPE_APPROVAL_LABEL[type] ?? type;
+/** 헤더 알림 드롭다운 1행 좌측 도메인 라벨(common.md SCR-COM-002 매핑표, 6.4절 `common:notification.domainLabel.*`). */
+export function ticketTypeApprovalLabel(t: TFunction, type: TicketType): string {
+  const defaultValue = TICKET_TYPE_APPROVAL_LABEL[type] ?? type;
+  return t(`notification.domainLabel.${type}`, { ns: "common", defaultValue });
 }
 
-/** SCR-COM-014 목록/필터의 티켓 유형 표시 라벨. */
-export function ticketTypeLabel(type: TicketType): string {
-  return TICKET_TYPE_LABEL[type] ?? type;
+/** SCR-COM-014 목록/필터의 티켓 유형 표시 라벨(신규 제안 키 `common:approval.domainOption.*`). */
+export function ticketTypeLabel(t: TFunction, type: TicketType): string {
+  const defaultValue = TICKET_TYPE_LABEL[type] ?? type;
+  return t(`approval.domainOption.${type}`, { ns: "common", defaultValue });
 }
 
 /** 승인 항목 클릭·"상세 보기" 이동 경로. */

@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { ApprovalStepProgress } from "@/components/common/approval-step-progress";
@@ -28,12 +30,13 @@ export function ApprovalPanel({
   emptyMessage,
   className,
 }: ApprovalPanelProps) {
+  const { t } = useTranslation("common");
   if (!matched) {
     if (!emptyMessage) return null;
     return (
       <Card className={cn(className)}>
         <CardHeader>
-          <CardTitle>승인 현황</CardTitle>
+          <CardTitle>{t("approval.panelTitle")}</CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
           <p className="text-sm text-muted-foreground">{emptyMessage}</p>
@@ -45,7 +48,7 @@ export function ApprovalPanel({
   return (
     <Card className={cn(className)}>
       <CardHeader>
-        <CardTitle>승인 현황</CardTitle>
+        <CardTitle>{t("approval.panelTitle")}</CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
         <ApprovalStepProgress steps={steps} currentStepNo={currentStepNo} compact />

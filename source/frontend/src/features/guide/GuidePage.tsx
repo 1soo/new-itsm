@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   UserGuideDomainSection,
@@ -8,19 +9,21 @@ import {
 import { cn } from "@/lib/utils";
 import { useAppSelector } from "@/store/hooks";
 
-/** 좌측 TOC 3개 링크(common.md v0.8) — 도메인/역할 개별 하위 링크 없음. */
-const SECTIONS = [
-  { id: "overview", label: "개요" },
-  { id: "domains", label: "도메인 및 원칙" },
-  { id: "roles", label: "역할별 수행 내용과 방법" },
-] as const;
-
 /**
  * 사용자 가이드 전용 화면(SCR-COM-012 v0.8) — Confluence 문서 스타일.
  * 좌측 sticky TOC + 우측 본문(개요/도메인/역할 순). 신규 API 없음, 전부 정적 콘텐츠.
  */
 export function GuidePage() {
+  const { t } = useTranslation("common");
   const user = useAppSelector((s) => s.auth.user);
+
+  /** 좌측 TOC 3개 링크(common.md v0.8) — 도메인/역할 개별 하위 링크 없음(신규 제안 키 `common:guide.toc*`). */
+  const SECTIONS = [
+    { id: "overview", label: t("guide.tocOverview", { defaultValue: "개요" }) },
+    { id: "domains", label: t("guide.tocDomains", { defaultValue: "도메인 및 원칙" }) },
+    { id: "roles", label: t("guide.tocRoles", { defaultValue: "역할별 수행 내용과 방법" }) },
+  ] as const;
+
   const [activeId, setActiveId] = useState<string>(SECTIONS[0].id);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
 
@@ -51,7 +54,7 @@ export function GuidePage() {
     <div className="mx-auto flex max-w-5xl gap-8">
       <nav
         className="sticky top-6 hidden h-fit w-48 shrink-0 md:block"
-        aria-label="사용자 가이드 목차"
+        aria-label={t("guide.tocAriaLabel", { defaultValue: "사용자 가이드 목차" })}
       >
         <ul className="space-y-1 text-sm">
           {SECTIONS.map((section) => (
@@ -72,7 +75,9 @@ export function GuidePage() {
       </nav>
 
       <div className="min-w-0 flex-1 space-y-10">
-        <h1 className="text-heading-large font-bold text-foreground">사용자 가이드</h1>
+        <h1 className="text-heading-large font-bold text-foreground">
+          {t("guide.title", { defaultValue: "사용자 가이드" })}
+        </h1>
 
         <section
           id="overview"
@@ -80,7 +85,9 @@ export function GuidePage() {
             sectionRefs.current.overview = el;
           }}
         >
-          <h2 className="mb-3 text-heading-medium font-bold text-foreground">개요</h2>
+          <h2 className="mb-3 text-heading-medium font-bold text-foreground">
+            {t("guide.tocOverview", { defaultValue: "개요" })}
+          </h2>
           <UserGuideOverview />
         </section>
 
@@ -90,7 +97,9 @@ export function GuidePage() {
             sectionRefs.current.domains = el;
           }}
         >
-          <h2 className="mb-3 text-heading-medium font-bold text-foreground">도메인 및 원칙</h2>
+          <h2 className="mb-3 text-heading-medium font-bold text-foreground">
+            {t("guide.tocDomains", { defaultValue: "도메인 및 원칙" })}
+          </h2>
           <UserGuideDomainSection />
         </section>
 
@@ -101,7 +110,7 @@ export function GuidePage() {
           }}
         >
           <h2 className="mb-3 text-heading-medium font-bold text-foreground">
-            역할별 수행 내용과 방법
+            {t("guide.tocRoles", { defaultValue: "역할별 수행 내용과 방법" })}
           </h2>
           <UserGuideRoleSection myRoles={user?.roles} />
         </section>

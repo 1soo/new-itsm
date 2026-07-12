@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Moon, Sun } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ function applyTheme(theme: Theme) {
 }
 
 export function ThemeToggle() {
+  const { t } = useTranslation("common");
   const [theme, setTheme] = useState<Theme>(() => {
     const initial = readStoredTheme();
     applyTheme(initial);
@@ -41,7 +43,7 @@ export function ThemeToggle() {
   };
 
   return (
-    <Button variant="ghost" size="icon" onClick={toggle} aria-label="테마 전환">
+    <Button variant="ghost" size="icon" onClick={toggle} aria-label={t("header.themeToggleAria")}>
       {theme === "dark" ? <Sun /> : <Moon />}
     </Button>
   );

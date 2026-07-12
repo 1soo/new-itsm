@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 import { AppShell } from "@/components/layout/app-shell";
 import type { HeaderNotificationItem, HeaderSearchResult } from "@/components/layout/header";
@@ -14,7 +16,7 @@ import { searchApi } from "@/features/search/api";
 import { domainLabel } from "@/features/search/status";
 import { commonApi } from "@/features/common/api";
 import { ticketDetailPath, ticketTypeApprovalLabel } from "@/features/common/status";
-import type { DismissalItem, NotificationType } from "@/features/common/types";
+import type { DismissalItem, NotificationType, TicketType } from "@/features/common/types";
 import { resolveIcon } from "@/lib/icon";
 import { extractErrorMessage } from "@/lib/apiClient";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -30,7 +32,8 @@ const NOTIFICATION_POLL_INTERVAL_MS = 5_000;
 /** 알림 항목 본문 표시 최대 길이(초과 시 말줄임표). */
 const NOTIFICATION_TEXT_MAX_LENGTH = 40;
 
-function truncateNotificationText(text: string): string {
+function truncateNotificationText(text: string | null | undefined): string {
+  if (!text) return "";
   return text.length > NOTIFICATION_TEXT_MAX_LENGTH
     ? `${text.slice(0, NOTIFICATION_TEXT_MAX_LENGTH)}…`
     : text;
@@ -41,25 +44,37 @@ const RELATIVE_TIME_HOUR_MS = 60 * RELATIVE_TIME_MINUTE_MS;
 const RELATIVE_TIME_DAY_MS = 24 * RELATIVE_TIME_HOUR_MS;
 const RELATIVE_TIME_WEEK_MS = 7 * RELATIVE_TIME_DAY_MS;
 
-/** 승인 대기 항목의 상대 시간 표시(common.md v2). 7일 이상은 절대 날짜로 대체. */
-function formatRelativeTime(iso: string, now: number): string {
+/** 승인 대기 항목의 상대 시간 표시(common.md v2/6.4절 `common:notification.relativeTime.*`, count 보간). 7일 이상은 절대 날짜로 대체. */
+function formatRelativeTime(t: TFunction, iso: string, now: number): string {
   const diff = now - new Date(iso).getTime();
-  if (diff < RELATIVE_TIME_MINUTE_MS) return "방금 전";
-  if (diff < RELATIVE_TIME_HOUR_MS) return `${Math.floor(diff / RELATIVE_TIME_MINUTE_MS)}분 전`;
-  if (diff < RELATIVE_TIME_DAY_MS) return `${Math.floor(diff / RELATIVE_TIME_HOUR_MS)}시간 전`;
-  if (diff < RELATIVE_TIME_WEEK_MS) return `${Math.floor(diff / RELATIVE_TIME_DAY_MS)}일 전`;
+  if (diff < RELATIVE_TIME_MINUTE_MS) {
+    return t("notification.relativeTime.justNow", { ns: "common", defaultValue: "방금 전" });
+  }
+  if (diff < RELATIVE_TIME_HOUR_MS) {
+    const count = Math.floor(diff / RELATIVE_TIME_MINUTE_MS);
+    return t("notification.relativeTime.minutesAgo", { ns: "common", count, defaultValue: "{{count}}분 전" });
+  }
+  if (diff < RELATIVE_TIME_DAY_MS) {
+    const count = Math.floor(diff / RELATIVE_TIME_HOUR_MS);
+    return t("notification.relativeTime.hoursAgo", { ns: "common", count, defaultValue: "{{count}}시간 전" });
+  }
+  if (diff < RELATIVE_TIME_WEEK_MS) {
+    const count = Math.floor(diff / RELATIVE_TIME_DAY_MS);
+    return t("notification.relativeTime.daysAgo", { ns: "common", count, defaultValue: "{{count}}일 전" });
+  }
   return formatDate(iso);
 }
 
-/** 알림 항목의 원본 데이터 — timeLabel을 팝오버 오픈 시점 기준으로 재계산하기 위해 raw 시각을 보관한다. */
+/** 알림 항목의 원본 데이터 — timeLabel/domainLabel을 팝오버 오픈 시점 기준으로 최신 언어에 맞춰 재계산하기 위해 raw 값을 보관한다. */
 interface NotificationSource {
   key: string;
-  domainLabel: string;
+  /** 승인 대기 항목의 티켓 유형(도메인 라벨을 언어 전환에 반응하도록 렌더 시점에 t()로 계산). 자산 만료 항목은 undefined. */
+  ticketType?: TicketType;
   title: string;
   /** 상대 시간 계산 기준 ISO 시각(자산 만료처럼 상대 시간이 아니면 null). */
   atIso: string | null;
-  /** atIso가 null일 때 사용할 고정 시간/만료 텍스트. */
-  fixedTimeLabel?: string;
+  /** atIso가 null(자산 만료)일 때 사용할 만료일(ko-KR 고정 포맷, 확정된 결정 2). */
+  expiryDateLabel?: string;
   href: string;
   /** 확인처리(API-COM-001) 대상 식별. */
   notificationType: NotificationType;
@@ -83,6 +98,7 @@ const SEARCH_DEBOUNCE_MS = 300;
  * 주입·로그아웃 확인은 FE가 담당한다.
  */
 export function AppLayout() {
+  const { t } = useTranslation("common");
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useAppDispatch();
@@ -162,13 +178,24 @@ export function AppLayout() {
   const notificationSources = useRef<NotificationSource[]>([]);
   const notificationHrefByKey = useRef<Map<string, string>>(new Map());
   const notificationDismissTargetByKey = useRef<Map<string, DismissalItem>>(new Map());
+  // polling 이펙트(deps=[roles])가 언어 전환 이후에도 최신 t를 사용하도록 ref로 최신값을 유지한다.
+  const tRef = useRef(t);
+  tRef.current = t;
 
-  const buildNotificationItems = (now: number): HeaderNotificationItem[] =>
+  const buildNotificationItems = (tFn: TFunction, now: number): HeaderNotificationItem[] =>
     notificationSources.current.map((s) => ({
       key: s.key,
-      domainLabel: s.domainLabel,
+      domainLabel: s.ticketType
+        ? ticketTypeApprovalLabel(tFn, s.ticketType)
+        : tFn("notification.domainLabel.assetExpiry", { ns: "common", defaultValue: "자산 만료" }),
       text: truncateNotificationText(s.title),
-      timeLabel: s.atIso ? formatRelativeTime(s.atIso, now) : (s.fixedTimeLabel ?? ""),
+      timeLabel: s.atIso
+        ? formatRelativeTime(tFn, s.atIso, now)
+        : tFn("notification.expiryLabel", {
+            ns: "common",
+            date: s.expiryDateLabel,
+            defaultValue: `${s.expiryDateLabel} 만료`,
+          }),
     }));
 
   useEffect(() => {
@@ -199,7 +226,7 @@ export function AppLayout() {
       for (const a of approvalsVisible) {
         candidates.push({
           key: `approval-${a.approvalRequestId}`,
-          domainLabel: ticketTypeApprovalLabel(a.ticketType),
+          ticketType: a.ticketType,
           title: a.ticketSummary,
           atIso: a.requestedAt,
           href: ticketDetailPath(a.ticketType, a.ticketId),
@@ -224,10 +251,9 @@ export function AppLayout() {
         for (const asset of visibleAssets) {
           candidates.push({
             key: `asset-${asset.id}`,
-            domainLabel: "자산 만료",
             title: asset.name,
             atIso: null,
-            fixedTimeLabel: `${formatDate(asset.expiryDate)} 만료`,
+            expiryDateLabel: formatDate(asset.expiryDate),
             href: `/assets/${asset.id}`,
             notificationType: "ASSET_EXPIRY",
             sourceId: asset.id,
@@ -258,7 +284,7 @@ export function AppLayout() {
 
       hasLoadedOnce.current = true;
       setNotificationCount(count);
-      setNotificationItems(buildNotificationItems(Date.now()));
+      setNotificationItems(buildNotificationItems(tRef.current, Date.now()));
     };
 
     const runPoll = () => {
@@ -315,7 +341,7 @@ export function AppLayout() {
   /** 팝오버가 열릴 때마다 그 시점 기준으로 timeLabel을 다시 계산(common.md v2 — 데이터 로딩 시점 고정 방지). */
   const handleNotificationsOpenChange = (open: boolean) => {
     if (!open) return;
-    setNotificationItems(buildNotificationItems(Date.now()));
+    setNotificationItems(buildNotificationItems(t, Date.now()));
   };
 
   // 알림 확인처리(API-COM-001) — 원본 승인 대기·자산 만료 데이터는 변경하지 않고 표시 여부만 낙관적으로 갱신한다.
@@ -346,7 +372,7 @@ export function AppLayout() {
       notificationHrefByKey.current.delete(item.key);
       notificationDismissTargetByKey.current.delete(item.key);
       setNotificationCount((c) => Math.max(0, c - 1));
-      setNotificationItems(buildNotificationItems(Date.now()));
+      setNotificationItems(buildNotificationItems(t, Date.now()));
     } catch (err) {
       toast.error(extractErrorMessage(err));
     }
@@ -378,7 +404,7 @@ export function AppLayout() {
             res.content.map((r) => ({
               key: `${r.domain}-${r.key}`,
               title: r.title,
-              subtitle: `${domainLabel(r.domain)} · ${r.key}`,
+              subtitle: `${domainLabel(t, r.domain)} · ${r.key}`,
             })),
           );
         })
@@ -435,9 +461,11 @@ export function AppLayout() {
       <ConfirmDialog
         open={logoutOpen}
         onOpenChange={setLogoutOpen}
-        title="로그아웃"
-        description="현재 세션에서 로그아웃하시겠습니까?"
-        confirmLabel="로그아웃"
+        title={t("appLayout.logoutTitle", { defaultValue: "로그아웃" })}
+        description={t("appLayout.logoutDescription", {
+          defaultValue: "현재 세션에서 로그아웃하시겠습니까?",
+        })}
+        confirmLabel={t("appLayout.logoutConfirm", { defaultValue: "로그아웃" })}
         loading={loggingOut}
         onConfirm={handleLogout}
       />

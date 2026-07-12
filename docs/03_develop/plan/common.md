@@ -52,6 +52,51 @@
 - 기존 `onNotifications`(즉시 navigate) 콜백 제거.
 - 역할 조건(`ROLE_APPROVER`, `ROLE_ASSET_MANAGER`)은 기존 로직 그대로 유지 — 권한 없는 사용자는 해당 소스의 항목이 리스트에 포함되지 않음.
 
+## v3 — 다국어(i18n) 지원 + SweetAlert2 도입 (유지보수 요청, 2026-07-12)
+
+### 설계 근거
+- `docs/02_plan/screen/common.md` v0.13. SCR-COM-002(헤더 지구본 아이콘), SCR-COM-009(SweetAlert2), SCR-COM-012(가이드 다국어), SCR-COM-015(언어 선택 신규), 6절 "i18n 아키텍처"(라이브러리·리소스 구조·전환 패턴·도메인별 인벤토리).
+- 이번 "common" phase는 i18n 인프라 부트스트랩 + common 네임스페이스 전체(SCR-COM-001~015, SCR-ERR-404) + SweetAlert2 도입을 다룬다. 이후 11개 도메인 phase는 각 도메인 `*Page.tsx`/`status.ts` 텍스트만 번역 키로 치환(레이아웃 변경 없음).
+- BE/DB 변경 없음(전 phase 공통).
+
+### 신규 의존성
+`i18next`, `react-i18next`, `sweetalert2` — `source/frontend/package.json`. 설치·버전 확정은 dev-ui가 수행(다른 팀원 작업과 충돌 없는 최초 1회 작업이므로 진행 전 dev-lead에게 알리고 진행).
+
+### 파일 충돌 방지를 위한 담당 분리 (이번 common phase 한정)
+
+**locales 리소스 파일(`source/frontend/src/i18n/locales/**`)은 이번 phase 동안 dev-ui가 단독 소유·편집**한다(dev-fe는 이 경로를 직접 편집하지 않는다). dev-fe가 담당 파일(`routes/AppLayout.tsx` 등)에서 필요한 번역 키를 정할 때:
+- 6.4절 표에 이미 지정된 키(`common:notification.domainLabel.*`, `common:notification.relativeTime.*`, `common:header.*`)는 그대로 `t()` 호출에 사용하고, 각 호출에 기존 하드코딩 한국어 문자열을 `defaultValue`로 함께 전달한다(`t("notification.domainLabel.assetExpiry", { ns: "common", defaultValue: "자산 만료" })`) — 이렇게 하면 dev-ui가 아직 해당 키를 json에 채우지 않은 시점에도 화면은 기존 한국어 그대로 정상 동작한다.
+- 6.4절 표에 없는 신규 문자열(대시보드 환영 문구, 403/404 안내, 검색 결과 화면, 승인 대기함 화면 등)은 dev-fe가 키 이름을 제안(`common:{section}.{itemKey}` 컨벤션)하고 한국어 원문 그대로 `defaultValue`로 넣어 코드에 반영한 뒤, 제안 키·한국어·영어 번역 후보를 SendMessage로 dev-ui에게 전달한다. dev-ui가 최종 키 확정 후 `locales/ko/common.json`·`locales/en/common.json`에 반영한다.
+- 이 규칙으로 dev-fe는 locales json을 직접 건드리지 않고도 즉시 개발·검증 가능하다(defaultValue가 폴백 역할).
+
+### dev-ui 담당 범위
+
+1. **i18n 코어 인프라** (`source/frontend/src/i18n/` 신규):
+   - `index.ts` — `i18next.use(initReactI18next).init({ resources, lng: 저장된 언어 또는 "ko", fallbackLng: "ko", defaultNS: "common", ns: [12개 네임스페이스] })`. Provider 불필요(default 인스턴스 사용, `main.tsx`에서 `import "@/i18n"`만 추가 — 이 한 줄은 dev-ui가 직접 추가하고 dev-fe에게 통보).
+   - `language.ts` — `itsm-language` 키로 `localStorage` 읽기/쓰기, 기본값 "ko"(`theme-toggle.tsx`와 동일 패턴).
+   - `locales/ko/*.json`, `locales/en/*.json` — 12개 네임스페이스(common + 11개 도메인) 파일 생성. 이번 phase는 `common.json` 양쪽 언어를 채우고, 나머지 11개 도메인 파일은 빈 객체(`{}`)로 스캐폴딩만 해둔다(각 도메인 phase 담당 개발자가 채움).
+2. **`components/layout/language-toggle.tsx` 신규**: `theme-toggle.tsx`와 동일한 자체 상태 관리 패턴(자체 컴포넌트, Popover 사용)으로 SCR-COM-015 구현 — Globe 아이콘 버튼, 클릭 시 팝업(한국어/English, 현재 선택 체크 아이콘), `i18next.changeLanguage()` + `language.ts` 저장.
+3. **`components/layout/header.tsx`**: `HelpCircle`(가이드)와 `ThemeToggle` 사이에 `LanguageToggle` 삽입(SCR-COM-002 순서). 헤더 자체의 하드코딩 문자열(사용자 가이드/사이드바 토글/통합 검색 placeholder·aria-label/검색 결과 없음/알림 aria-label/모두 지우기/새로운 알림이 없습니다/상세 보기/사용자 메뉴/내 프로필/비밀번호 변경/로그아웃 aria-label 등)을 `useTranslation("common")`의 `t()`로 전환, `common.json`에 `header.*` 키로 채움.
+4. **SweetAlert2 도입**: `components/common/toast.ts`·`components/common/confirm-dialog.tsx` 내부 구현 교체(외부 API 불변, SCR-COM-009 구현 참고 그대로). `ConfirmDialog`의 기본 `confirmLabel="확인"`/`cancelLabel="취소"`도 `common:dialog.confirm`/`common:dialog.cancel` 키로 전환(호출부가 명시적으로 넘기지 않는 경우의 폴백). 커스텀 CSS 클래스는 기존 시맨틱 토큰만 참조(`index.css` 또는 신규 CSS 파일에 추가, 형식은 dev-ui 재량).
+5. **`components/common/user-guide-content.tsx` + 영어 콘텐츠**: `docs/01_analyze/feature/user-guide-content.en.md` 신규 작성(원문 `user-guide-content.md`, 258줄과 절·아코디언 구조 1:1 동일하게 번역, 가공 없이 그대로). 이후 `user-guide-content.tsx`에 영어 콘텐츠 세트를 추가하고 `i18n.language`(또는 `useTranslation`의 `i18n`)에 따라 `UserGuideOverview`/`UserGuideDomainSection`/`UserGuideRoleSection`가 언어별 세트를 선택하도록 전환.
+6. 위 자신의 컴포넌트(`header.tsx`/`language-toggle.tsx`/`toast.ts`/`confirm-dialog.tsx`/`user-guide-content.tsx`) 안에서 사용하는 모든 `common.json` 키는 dev-ui가 직접 채운다.
+
+### dev-fe 담당 범위
+
+1. **`routes/AppLayout.tsx`**: 6.4절 표 그대로 전환 — `ticketTypeApprovalLabel()` 결과·`"자산 만료"`·`formatRelativeTime`의 4개 상대시간 문자열을 `common:notification.*` 키(`t()` + `defaultValue`)로 치환. `useTranslation("common")` 훅 사용.
+2. **`features/common/status.ts`**: `ticketTypeApprovalLabel(t: TFunction, ...)` 형태로 6.3절 전환 패턴 적용(`t` 인자를 받아 `t(\`notification.domainLabel.${ticketType}\`, { ns: "common", defaultValue: 기존값 })`). 호출부(`AppLayout.tsx`, `ApprovalInboxPage.tsx` 등) 모두 `t` 전달하도록 수정.
+3. **`features/common/ApprovalInboxPage.tsx`**(SCR-COM-014), **`features/search/SearchResultsPage.tsx`/`features/search/status.ts`**(SCR-COM-011), **`routes/DashboardPage.tsx`**(SCR-COM-013), **`routes/ForbiddenPage.tsx`**(SCR-COM-006)/**`routes/NotFoundPage.tsx`**(SCR-ERR-404), 세션 만료 토스트 문구("세션이 만료되어 다시 로그인해주세요", `AuthGuard.tsx`/`SessionBridge.tsx`/apiClient 인터셉터 위치 확인 후 처리) — 하드코딩 한국어 문자열을 `useTranslation("common")`+`t()`(6.4절에 없는 키는 위 "파일 충돌 방지" 규칙대로 제안)로 전환.
+4. **`features/guide/GuidePage.tsx`**: 페이지 chrome(문서 헤더 타이틀 "사용자 가이드", TOC 3개 링크 라벨, "내 역할" 배지 라벨 등, 본문 콘텐츠 자체는 dev-ui 소관)을 번역 키로 전환.
+5. 위 항목에서 필요한 신규 키(6.4절 미포함분)는 한국어 원문+영어 번역 후보와 함께 SendMessage로 dev-ui에게 전달, dev-ui가 `common.json` 반영 후 회신하면 코드의 `defaultValue`는 그대로 두어도 무방(실제 값은 json이 우선).
+
+### 완료 기준(공통 phase)
+- 헤더에 지구본 아이콘이 "?"와 테마 토글 사이에 노출되고, 클릭 시 한국어/English 팝업에서 전환 시 새로고침 없이 화면 텍스트가 즉시 바뀐다.
+- 새로고침/재방문 시 `itsm-language` 저장값이 유지된다(기본값 한국어).
+- 토스트·확인 다이얼로그가 SweetAlert2로 렌더링되며 기존 호출부(83개+) 수정 없이 동작, 라이트/다크 테마에 맞춰 스타일이 반영된다.
+- `Modal`(`components/common/modal.tsx`)은 변경되지 않고 기존 Radix Dialog 그대로 유지된다.
+- `/guide` 진입 시 언어 전환에 따라 본문(11개 도메인+16개 역할 포함)이 영어로도 정상 렌더링된다.
+- 날짜/숫자 포맷은 언어 전환과 무관하게 기존 `ko-KR` 그대로 유지된다(회귀 없음).
+
 ## 테스트 관점 (v1, 참고)
 
 - 알림 없음(모든 역할 대기 0건) → 벨 뱃지 숨김, 팝오버 열면 빈 상태 문구.
