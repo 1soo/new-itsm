@@ -27,3 +27,4 @@
 | 20260712-020000 | vulnerability | PRIORITIZATION→REMEDIATION 전이 신규 승인 게이트 추가 | docs/06_maintenance/20260712-020000/vulnerability/report.md |
 | 20260712-020000 | compliance | 시정조치 상태전이 신규 승인 게이트 추가(TicketType.CORRECTIVE_ACTION으로 항목별 독립 승인) | docs/06_maintenance/20260712-020000/compliance/report.md |
 | 20260712-020000 | esm | 부서요청 상태전이 신규 승인 게이트 추가(HR 케이스·체크리스트 제외) | docs/06_maintenance/20260712-020000/esm/report.md |
+| 20260712-030000 | auth | Access Token sessionStorage→Client Memory 전환 및 XSRF 더블서밋 쿠키 기반 CSRF 방지 | docs/06_maintenance/20260712-030000/auth/report.md |
