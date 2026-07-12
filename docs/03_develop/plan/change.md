@@ -64,3 +64,20 @@
 ## 7. 특이사항
 - approval·ticket_link는 srm 단계 도입분 재사용. APPROVER 역할이 이미 SRM 승인 대기함(SCR-SRM-006)에 매핑되어 있으므로, change 단계에서는 화면/API 매핑만 증분(CAB=APPROVER, 별도 역할 신설 아님 — approver.md 기준 단일 APPROVER 역할).
 - problem 단계에서 연기했던 CHANGE 연계 스텁을 이번 단계에서 실구현으로 대체(교차 표기 완료 처리).
+
+## i18n 다국어 전환 (유지보수 요청, 2026-07-12)
+
+> i18n 인프라·SweetAlert2·언어 선택은 common phase에서 완료됨(`docs/03_develop/plan/common.md` v3절). 레이아웃/컴포넌트 변경 없이 텍스트만 번역 키로 치환(`docs/02_plan/screen/common.md` 6절). BE/DB 변경 없음. SCR-CHG-004(CAB 승인 대기함)는 SCR-COM-014로 대체·제거되어 이번 phase 대상 아님.
+
+### 담당 범위 — dev-fe 단독(UI 미소집)
+
+- 대상 화면(`docs/02_plan/screen/change.md` 3절): `ChangeListPage.tsx`(SCR-CHG-001), `ChangeCreatePage.tsx`(002), `ChangeDetailPage.tsx`(003), `ChangeSchedulePage.tsx`(005), `ChangeMetricsPage.tsx`(006).
+- `features/change/status.ts` — `t` 인자를 받도록 전환, 호출부(각 Page.tsx, `features/search/status.ts`의 CHANGE 분기) 갱신.
+- `format.ts` 확인 필수 — 라벨이 섞여 있으면(incident phase처럼) 라벨만 번역 키로 전환, ko-KR 날짜/숫자 포맷 자체는 유지.
+- `useTranslation(["change", "common"])` 사용. `locales/{ko,en}/change.json`(현재 `{}` 스캐폴딩) 단독 소유, 직접 채운다.
+- 값이 비어있는 레거시/옵셔널 필드 라벨 조회 시 problem phase에서 발견된 것과 같은 "원시 키 노출" 회귀가 없는지 미리 점검(해당 라벨 함수에 falsy 가드 적용).
+- 타임라인 메시지 등 BE 하드코딩 데이터는 번역 대상 아님.
+
+### 완료 기준
+- English 전환 시 목록/RFC 생성/상세/일정 캘린더/지표 대시보드 전체 텍스트(상태·유형·위험도 라벨 포함) 영어 전환.
+- CAB 승인(공용 패널)·구현결과·인시던트/문제 연계 등 기존 기능 회귀 없음(텍스트만 치환).

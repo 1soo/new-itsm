@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,6 @@ import type { ScheduleItem } from "@/features/change/types";
 import { extractErrorMessage } from "@/lib/apiClient";
 
 const ALL = "ALL";
-const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
 function toDateKey(iso: string): string {
   const d = new Date(iso);
@@ -31,6 +31,7 @@ function toDateKey(iso: string): string {
  * 기능 전용 최소 구현(공용 캘린더 컴포넌트 미도입 — 재사용 필요 시 추후 공용화).
  */
 export function ChangeSchedulePage() {
+  const { t } = useTranslation("change");
   const navigate = useNavigate();
   const [month, setMonth] = useState(() => {
     const now = new Date();
@@ -80,19 +81,31 @@ export function ChangeSchedulePage() {
     return result;
   }, [month, monthStart, monthEnd]);
 
+  const weekdays = [
+    t("changeSchedule.weekdaySun", { defaultValue: "일" }),
+    t("changeSchedule.weekdayMon", { defaultValue: "월" }),
+    t("changeSchedule.weekdayTue", { defaultValue: "화" }),
+    t("changeSchedule.weekdayWed", { defaultValue: "수" }),
+    t("changeSchedule.weekdayThu", { defaultValue: "목" }),
+    t("changeSchedule.weekdayFri", { defaultValue: "금" }),
+    t("changeSchedule.weekdaySat", { defaultValue: "토" }),
+  ];
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold text-foreground">변경 일정</h1>
+        <h1 className="text-xl font-semibold text-foreground">
+          {t("changeSchedule.title", { defaultValue: "변경 일정" })}
+        </h1>
         <div className="flex items-center gap-2">
           <div className="space-y-1">
-            <Label>유형</Label>
+            <Label>{t("changeList.columnType", { defaultValue: "유형" })}</Label>
             <Select value={type} onValueChange={setType}>
               <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>전체</SelectItem>
-                {CHANGE_TYPES.map((t) => (
-                  <SelectItem key={t} value={t}>{typeLabel(t)}</SelectItem>
+                <SelectItem value={ALL}>{t("changeList.filterAll", { defaultValue: "전체" })}</SelectItem>
+                {CHANGE_TYPES.map((ty) => (
+                  <SelectItem key={ty} value={ty}>{typeLabel(t, ty)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -101,19 +114,33 @@ export function ChangeSchedulePage() {
       </div>
 
       <div className="flex items-center justify-center gap-3 rounded-lg border border-border bg-card p-3">
-        <Button variant="outline" size="icon" onClick={() => setMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))} aria-label="이전 달">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
+          aria-label={t("changeSchedule.prevMonth", { defaultValue: "이전 달" })}
+        >
           <ChevronLeft />
         </Button>
         <span className="min-w-32 text-center font-medium text-foreground">
-          {month.getFullYear()}년 {month.getMonth() + 1}월
+          {t("changeSchedule.monthLabel", {
+            year: month.getFullYear(),
+            month: month.getMonth() + 1,
+            defaultValue: `${month.getFullYear()}년 ${month.getMonth() + 1}월`,
+          })}
         </span>
-        <Button variant="outline" size="icon" onClick={() => setMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))} aria-label="다음 달">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
+          aria-label={t("changeSchedule.nextMonth", { defaultValue: "다음 달" })}
+        >
           <ChevronRight />
         </Button>
       </div>
 
       <div className="grid grid-cols-7 gap-px overflow-hidden rounded-lg border border-border bg-border">
-        {WEEKDAYS.map((w) => (
+        {weekdays.map((w) => (
           <div key={w} className="bg-muted p-2 text-center text-xs font-medium text-muted-foreground">
             {w}
           </div>
@@ -143,7 +170,9 @@ export function ChangeSchedulePage() {
       </div>
 
       {!loading && items.length === 0 ? (
-        <p className="text-center text-sm text-muted-foreground">예정된 변경이 없습니다.</p>
+        <p className="text-center text-sm text-muted-foreground">
+          {t("changeSchedule.empty", { defaultValue: "예정된 변경이 없습니다." })}
+        </p>
       ) : null}
     </div>
   );

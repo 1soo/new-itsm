@@ -41,7 +41,7 @@ export function resultStatusLabel(t: TFunction, domain: SearchDomain, status: st
     case "PROBLEM":
       return problemStatusLabel(t, status as ProblemStatus);
     case "CHANGE":
-      return changeStatusLabel(status as ChangeStatus);
+      return changeStatusLabel(t, status as ChangeStatus);
     default:
       return status;
   }

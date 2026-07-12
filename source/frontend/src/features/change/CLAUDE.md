@@ -5,7 +5,7 @@
 ## 파일
 - `api.ts` — CHG API 호출(`changeApi`: 목록/RFC 생성/상세, 6단계 상태 전이, 유형·위험 변경, 구현 결과 기록, 인시던트/문제 연계, 일정 조회, 표준 변경 템플릿 목록, 지표). 승인 관련 API(구 API-CHG-006/007)는 공용 승인 API(`features/common/api.ts`)로 대체되어 제거.
 - `types.ts` — CHG 도메인 타입(6단계 `ChangeStatus`, `ChangeType`/`Risk`, `ChangeSummary`/`ChangeDetail`/`ChangeMetrics` 등). `ChangeDetail.approval`(`ChangeApproval`)은 `approvalRequestId`/`status`만 보유(진행 상태 조회는 공용 API-COM-004). `ApprovalRoute`/`ChangeApprovalRecord`/`ApprovalQueueItem`은 제거됨.
-- `status.ts` — 상태·유형·위험도 라벨/tone 매핑, 6단계 순서 전이 fallback(`fallbackTransitions`), 상수 목록.
+- `status.ts` — 상태·유형·위험도 라벨/tone 매핑, 연계 항목 유형 라벨(`linkTargetLabel`, ChangeDetailPage 드롭다운·나열 패널 공용), 6단계 순서 전이 fallback(`fallbackTransitions`), 상수 목록.
 - `format.ts` — 날짜·일시 표시 포맷터.
 - `ChangeListPage.tsx` — 변경 목록(SCR-CHG-001).
 - `ChangeCreatePage.tsx` — 변경 요청(RFC) 생성(SCR-CHG-002). 표준 변경 선택 시 템플릿 조회·승인 생략 안내.

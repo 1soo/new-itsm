@@ -1,8 +1,11 @@
+import type { TFunction } from "i18next";
+
 import type { StatusTone } from "@/components/common";
 import type {
   ChangeStatus,
   ChangeTargetStatus,
   ChangeType,
+  LinkedItemType,
   Risk,
 } from "@/features/change/types";
 
@@ -27,8 +30,10 @@ const STATUS_TONE: Record<ChangeStatus, StatusTone> = {
   CLOSED: "success",
 };
 
-export function statusLabel(s: ChangeStatus): string {
-  return STATUS_LABEL[s] ?? s;
+/** 변경 상태 라벨(`change:status.*`, 6.3절 전환 패턴). */
+export function statusLabel(t: TFunction, s: ChangeStatus | null | undefined): string {
+  if (!s) return "";
+  return t(`status.${s}`, { ns: "change", defaultValue: STATUS_LABEL[s] ?? s });
 }
 export function statusTone(s: ChangeStatus): StatusTone {
   return STATUS_TONE[s] ?? "muted";
@@ -46,11 +51,13 @@ const TYPE_TONE: Record<ChangeType, StatusTone> = {
   EMERGENCY: "warning",
 };
 
-export function typeLabel(t: ChangeType): string {
-  return TYPE_LABEL[t] ?? t;
+/** 변경 유형 라벨(`change:type.*`). */
+export function typeLabel(t: TFunction, ty: ChangeType | null | undefined): string {
+  if (!ty) return "";
+  return t(`type.${ty}`, { ns: "change", defaultValue: TYPE_LABEL[ty] ?? ty });
 }
-export function typeTone(t: ChangeType): StatusTone {
-  return TYPE_TONE[t] ?? "muted";
+export function typeTone(ty: ChangeType): StatusTone {
+  return TYPE_TONE[ty] ?? "muted";
 }
 
 const RISK_LABEL: Record<Risk, string> = {
@@ -65,11 +72,33 @@ const RISK_TONE: Record<Risk, StatusTone> = {
   LOW: "muted",
 };
 
-export function riskLabel(r: Risk): string {
-  return RISK_LABEL[r] ?? r;
+/** 위험도 라벨(`change:risk.*`). */
+export function riskLabel(t: TFunction, r: Risk | null | undefined): string {
+  if (!r) return "";
+  return t(`risk.${r}`, { ns: "change", defaultValue: RISK_LABEL[r] ?? r });
 }
 export function riskTone(r: Risk): StatusTone {
   return RISK_TONE[r] ?? "muted";
+}
+
+const LINK_TARGET_LABEL: Record<LinkedItemType, string> = {
+  INCIDENT: "인시던트",
+  PROBLEM: "문제",
+  ASSET: "자산",
+  COMPLIANCE_REQUIREMENT: "컴플라이언스 요구사항",
+};
+
+const LINK_TARGET_KEY: Record<LinkedItemType, string> = {
+  INCIDENT: "changeDetail.linkTargetIncident",
+  PROBLEM: "changeDetail.linkTargetProblem",
+  ASSET: "changeDetail.linkTargetAsset",
+  COMPLIANCE_REQUIREMENT: "changeDetail.linkTargetComplianceRequirement",
+};
+
+/** 연계 항목 유형 라벨(`change:changeDetail.linkTarget*`, ChangeDetailPage 연계 대상 드롭다운·나열 패널 공용). */
+export function linkTargetLabel(t: TFunction, ty: LinkedItemType | null | undefined): string {
+  if (!ty) return "";
+  return t(LINK_TARGET_KEY[ty], { defaultValue: LINK_TARGET_LABEL[ty] ?? ty });
 }
 
 export const CHANGE_TYPES: ChangeType[] = ["STANDARD", "NORMAL", "EMERGENCY"];

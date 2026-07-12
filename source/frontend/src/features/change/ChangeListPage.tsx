@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,7 @@ interface Filters {
 const EMPTY: Filters = { type: ALL, status: ALL, risk: ALL, from: "", to: "" };
 
 export function ChangeListPage() {
+  const { t } = useTranslation("change");
   const navigate = useNavigate();
   const [inputs, setInputs] = useState<Filters>(EMPTY);
   const [applied, setApplied] = useState<Filters>(EMPTY);
@@ -95,80 +97,94 @@ export function ChangeListPage() {
   };
 
   const columns: Column<ChangeSummary>[] = [
-    { header: "식별키", cell: (c) => c.ticketKey },
-    { header: "요약", cell: (c) => <span className="line-clamp-1">{c.summary}</span> },
-    { header: "유형", cell: (c) => <StatusBadge tone={typeTone(c.type)} label={typeLabel(c.type)} /> },
-    { header: "상태", cell: (c) => <StatusBadge tone={statusTone(c.status)} label={statusLabel(c.status)} /> },
+    { header: t("changeList.columnTicketKey", { defaultValue: "식별키" }), cell: (c) => c.ticketKey },
     {
-      header: "위험도",
+      header: t("changeList.columnSummary", { defaultValue: "요약" }),
+      cell: (c) => <span className="line-clamp-1">{c.summary}</span>,
+    },
+    {
+      header: t("changeList.columnType", { defaultValue: "유형" }),
+      cell: (c) => <StatusBadge tone={typeTone(c.type)} label={typeLabel(t, c.type)} />,
+    },
+    {
+      header: t("changeList.columnStatus", { defaultValue: "상태" }),
+      cell: (c) => <StatusBadge tone={statusTone(c.status)} label={statusLabel(t, c.status)} />,
+    },
+    {
+      header: t("changeList.columnRisk", { defaultValue: "위험도" }),
       cell: (c) =>
         c.risk ? (
-          <StatusBadge tone={riskTone(c.risk)} label={riskLabel(c.risk)} />
+          <StatusBadge tone={riskTone(c.risk)} label={riskLabel(t, c.risk)} />
         ) : (
-          <span className="text-sm text-muted-foreground">미평가</span>
+          <span className="text-sm text-muted-foreground">
+            {t("changeList.riskNotAssessed", { defaultValue: "미평가" })}
+          </span>
         ),
     },
-    { header: "예정일", cell: (c) => (c.scheduledAt ? formatDate(c.scheduledAt) : "-") },
+    {
+      header: t("changeList.columnScheduledAt", { defaultValue: "예정일" }),
+      cell: (c) => (c.scheduledAt ? formatDate(c.scheduledAt) : "-"),
+    },
   ];
 
   const totalPages = data ? Math.ceil(data.totalElements / PAGE_SIZE) : 0;
 
   return (
     <TicketListLayout
-      title="변경"
+      title={t("changeList.title", { defaultValue: "변경" })}
       actions={
         <Button onClick={() => navigate("/changes/new")}>
           <Plus />
-          변경 요청 생성
+          {t("changeList.createButton", { defaultValue: "변경 요청 생성" })}
         </Button>
       }
       filters={
         <form onSubmit={handleSearch} className="flex flex-wrap items-end gap-2">
           <div className="space-y-1">
-            <Label>유형</Label>
+            <Label>{t("changeList.columnType", { defaultValue: "유형" })}</Label>
             <Select value={inputs.type} onValueChange={(v) => setInputs((f) => ({ ...f, type: v }))}>
               <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>전체</SelectItem>
-                {CHANGE_TYPES.map((t) => (
-                  <SelectItem key={t} value={t}>{typeLabel(t)}</SelectItem>
+                <SelectItem value={ALL}>{t("changeList.filterAll", { defaultValue: "전체" })}</SelectItem>
+                {CHANGE_TYPES.map((ty) => (
+                  <SelectItem key={ty} value={ty}>{typeLabel(t, ty)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1">
-            <Label>상태</Label>
+            <Label>{t("changeList.columnStatus", { defaultValue: "상태" })}</Label>
             <Select value={inputs.status} onValueChange={(v) => setInputs((f) => ({ ...f, status: v }))}>
               <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>전체</SelectItem>
+                <SelectItem value={ALL}>{t("changeList.filterAll", { defaultValue: "전체" })}</SelectItem>
                 {CHANGE_STATUSES.map((s) => (
-                  <SelectItem key={s} value={s}>{statusLabel(s)}</SelectItem>
+                  <SelectItem key={s} value={s}>{statusLabel(t, s)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1">
-            <Label>위험도</Label>
+            <Label>{t("changeList.columnRisk", { defaultValue: "위험도" })}</Label>
             <Select value={inputs.risk} onValueChange={(v) => setInputs((f) => ({ ...f, risk: v }))}>
               <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>전체</SelectItem>
+                <SelectItem value={ALL}>{t("changeList.filterAll", { defaultValue: "전체" })}</SelectItem>
                 {RISKS.map((r) => (
-                  <SelectItem key={r} value={r}>{riskLabel(r)}</SelectItem>
+                  <SelectItem key={r} value={r}>{riskLabel(t, r)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1">
-            <Label htmlFor="from">시작일</Label>
+            <Label htmlFor="from">{t("changeList.filterFrom", { defaultValue: "시작일" })}</Label>
             <Input id="from" type="date" value={inputs.from} onChange={(e) => setInputs((f) => ({ ...f, from: e.target.value }))} />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="to">종료일</Label>
+            <Label htmlFor="to">{t("changeList.filterTo", { defaultValue: "종료일" })}</Label>
             <Input id="to" type="date" value={inputs.to} onChange={(e) => setInputs((f) => ({ ...f, to: e.target.value }))} />
           </div>
-          <Button type="submit">검색</Button>
+          <Button type="submit">{t("changeList.searchButton", { defaultValue: "검색" })}</Button>
         </form>
       }
     >
@@ -178,8 +194,8 @@ export function ChangeListPage() {
         rowKey={(c) => c.id}
         loading={loading}
         onRowClick={(c) => navigate(`/changes/${c.id}`)}
-        emptyTitle="변경이 없습니다"
-        emptyDescription="조건에 맞는 변경이 없습니다."
+        emptyTitle={t("changeList.emptyTitle", { defaultValue: "변경이 없습니다" })}
+        emptyDescription={t("changeList.emptyDescription", { defaultValue: "조건에 맞는 변경이 없습니다." })}
       />
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </TicketListLayout>

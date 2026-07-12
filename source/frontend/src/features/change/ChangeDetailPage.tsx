@@ -1,5 +1,7 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +22,7 @@ import { FullscreenLoader } from "@/routes/FullscreenLoader";
 import { changeApi } from "@/features/change/api";
 import {
   fallbackTransitions,
+  linkTargetLabel,
   riskLabel,
   riskTone,
   statusLabel,
@@ -36,6 +39,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 구현 결과 기록·인시던트/문제 연계.
  */
 export function ChangeDetailPage() {
+  const { t } = useTranslation("change");
   const navigate = useNavigate();
   const id = Number(useParams().id);
 
@@ -108,8 +112,10 @@ export function ChangeDetailPage() {
   if (notFound || !detail) {
     return (
       <div className="mx-auto max-w-lg space-y-4 text-center">
-        <p className="text-sm text-muted-foreground">변경 요청을 찾을 수 없습니다.</p>
-        <Button onClick={() => navigate(-1)}>이전으로</Button>
+        <p className="text-sm text-muted-foreground">
+          {t("changeDetail.notFound", { defaultValue: "변경 요청을 찾을 수 없습니다." })}
+        </p>
+        <Button onClick={() => navigate(-1)}>{t("changeDetail.back", { defaultValue: "이전으로" })}</Button>
       </div>
     );
   }
@@ -123,38 +129,52 @@ export function ChangeDetailPage() {
       title={detail.summary}
       badges={
         <>
-          <StatusBadge tone={typeTone(detail.type)} label={typeLabel(detail.type)} />
-          <StatusBadge tone={statusTone(detail.status)} label={statusLabel(detail.status)} />
+          <StatusBadge tone={typeTone(detail.type)} label={typeLabel(t, detail.type)} />
+          <StatusBadge tone={statusTone(detail.status)} label={statusLabel(t, detail.status)} />
           {detail.risk ? (
-            <StatusBadge tone={riskTone(detail.risk)} label={riskLabel(detail.risk)} />
+            <StatusBadge tone={riskTone(detail.risk)} label={riskLabel(t, detail.risk)} />
           ) : (
-            <StatusBadge tone="muted" label="위험도 미평가" />
+            <StatusBadge tone="muted" label={t("changeDetail.riskNotAssessed", { defaultValue: "위험도 미평가" })} />
           )}
         </>
       }
-      actions={transitions.map((t) => {
-        const blocked = t === "IMPLEMENTATION" && !approved;
+      actions={transitions.map((target) => {
+        const blocked = target === "IMPLEMENTATION" && !approved;
         return (
           <Button
-            key={t}
-            loading={busy === `st-${t}`}
+            key={target}
+            loading={busy === `st-${target}`}
             disabled={blocked}
-            title={blocked ? "승인 완료 전에는 구현 단계로 전이할 수 없습니다" : undefined}
+            title={
+              blocked
+                ? t("changeDetail.implementationBlockedTooltip", {
+                    defaultValue: "승인 완료 전에는 구현 단계로 전이할 수 없습니다",
+                  })
+                : undefined
+            }
             onClick={() =>
-              run(`st-${t}`, () => changeApi.transition(id, t), `상태가 '${statusLabel(t)}'로 변경되었습니다`, true)
+              run(
+                `st-${target}`,
+                () => changeApi.transition(id, target),
+                t("changeDetail.transitionSuccess", {
+                  status: statusLabel(t, target),
+                  defaultValue: `상태가 '${statusLabel(t, target)}'로 변경되었습니다`,
+                }),
+                true,
+              )
             }
           >
-            {statusLabel(t)}
+            {statusLabel(t, target)}
           </Button>
         );
       })}
       meta={
         <>
           <Card>
-            <CardHeader><CardTitle className="text-base">구현·롤백 계획</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">{t("changeDetail.plansTitle", { defaultValue: "구현·롤백 계획" })}</CardTitle></CardHeader>
             <CardContent className="space-y-1.5 text-sm">
-              <MetaRow label="구현 계획" value={detail.implementationPlan || "-"} />
-              <MetaRow label="롤백 계획" value={detail.rollbackPlan || "-"} />
+              <MetaRow label={t("changeDetail.implementationPlan", { defaultValue: "구현 계획" })} value={detail.implementationPlan || "-"} />
+              <MetaRow label={t("changeDetail.rollbackPlan", { defaultValue: "롤백 계획" })} value={detail.rollbackPlan || "-"} />
             </CardContent>
           </Card>
 
@@ -162,17 +182,17 @@ export function ChangeDetailPage() {
             matched={detail.approval.approvalRequestId != null}
             steps={approvalSteps}
             currentStepNo={approvalCurrentStepNo}
-            emptyMessage="이 변경에는 승인 절차가 없습니다"
+            emptyMessage={t("changeDetail.noApproval", { defaultValue: "이 변경에는 승인 절차가 없습니다" })}
           />
 
           <Card>
-            <CardHeader><CardTitle className="text-base">연계 항목</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">{t("changeDetail.linksTitle", { defaultValue: "연계 항목" })}</CardTitle></CardHeader>
             <CardContent className="space-y-1.5 text-sm">
               {detail.links.length === 0 ? (
-                <p className="text-muted-foreground">연결 없음</p>
+                <p className="text-muted-foreground">{t("changeDetail.noLinks", { defaultValue: "연결 없음" })}</p>
               ) : (
                 detail.links.map((l, i) => (
-                  <span key={i} className="block text-foreground">{l.type} · {l.targetKey}</span>
+                  <span key={i} className="block text-foreground">{linkTargetLabel(t, l.type)} · {l.targetKey}</span>
                 ))
               )}
             </CardContent>
@@ -181,23 +201,37 @@ export function ChangeDetailPage() {
       }
     >
       <Card>
-        <CardHeader><CardTitle className="text-base">설명</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">{t("changeDetail.descriptionTitle", { defaultValue: "설명" })}</CardTitle></CardHeader>
         <CardContent>
-          <p className="whitespace-pre-wrap text-sm text-foreground">{detail.description || "설명 없음"}</p>
+          <p className="whitespace-pre-wrap text-sm text-foreground">
+            {detail.description || t("changeDetail.noDescription", { defaultValue: "설명 없음" })}
+          </p>
         </CardContent>
       </Card>
 
       <ResultCard
+        t={t}
         detail={detail}
         approved={approved}
         busy={busy === "result"}
-        onSubmit={(body) => run("result", () => changeApi.recordResult(id, body), "구현 결과가 기록되었습니다")}
+        onSubmit={(body) =>
+          run(
+            "result",
+            () => changeApi.recordResult(id, body),
+            t("changeDetail.resultRecorded", { defaultValue: "구현 결과가 기록되었습니다" }),
+          )
+        }
       />
 
       <LinkCard
+        t={t}
         busy={busy === "link"}
         onLink={(targetType, targetId) =>
-          run("link", () => changeApi.link(id, { targetType, targetId }), "연계되었습니다")
+          run(
+            "link",
+            () => changeApi.link(id, { targetType, targetId }),
+            t("changeDetail.linked", { defaultValue: "연계되었습니다" }),
+          )
         }
       />
     </TicketDetailLayout>
@@ -214,11 +248,13 @@ function MetaRow({ label, value }: { label: string; value: string }) {
 }
 
 function ResultCard({
+  t,
   detail,
   approved,
   busy,
   onSubmit,
 }: {
+  t: TFunction;
   detail: ChangeDetail;
   approved: boolean;
   busy: boolean;
@@ -235,34 +271,38 @@ function ResultCard({
 
   return (
     <Card>
-      <CardHeader><CardTitle className="text-base">구현 결과 기록</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="text-base">{t("changeDetail.resultTitle", { defaultValue: "구현 결과 기록" })}</CardTitle></CardHeader>
       <CardContent>
         {!approved ? (
-          <p className="mb-3 text-sm text-muted-foreground">승인 완료 전에는 구현 결과를 기록할 수 없습니다.</p>
+          <p className="mb-3 text-sm text-muted-foreground">
+            {t("changeDetail.resultBlockedHint", { defaultValue: "승인 완료 전에는 구현 결과를 기록할 수 없습니다." })}
+          </p>
         ) : null}
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>결과</Label>
+              <Label>{t("changeDetail.outcome", { defaultValue: "결과" })}</Label>
               <Select value={outcome} onValueChange={(v) => setOutcome(v as Outcome)} disabled={!approved}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="SUCCESS">성공</SelectItem>
-                  <SelectItem value="FAILURE">실패</SelectItem>
+                  <SelectItem value="SUCCESS">{t("changeDetail.outcomeSuccess", { defaultValue: "성공" })}</SelectItem>
+                  <SelectItem value="FAILURE">{t("changeDetail.outcomeFailure", { defaultValue: "실패" })}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="flex items-end gap-2 pb-2">
               <Checkbox id="rb" checked={rolledBack} onCheckedChange={(v) => setRolledBack(!!v)} disabled={!approved} />
-              <Label htmlFor="rb">롤백 여부</Label>
+              <Label htmlFor="rb">{t("changeDetail.rolledBack", { defaultValue: "롤백 여부" })}</Label>
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="rn">비고</Label>
+            <Label htmlFor="rn">{t("changeDetail.note", { defaultValue: "비고" })}</Label>
             <Textarea id="rn" value={note} onChange={(e) => setNote(e.target.value)} rows={2} disabled={!approved} />
           </div>
           <div className="flex justify-end">
-            <Button type="submit" loading={busy} disabled={!approved}>결과 저장</Button>
+            <Button type="submit" loading={busy} disabled={!approved}>
+              {t("changeDetail.resultSave", { defaultValue: "결과 저장" })}
+            </Button>
           </div>
         </form>
       </CardContent>
@@ -271,9 +311,11 @@ function ResultCard({
 }
 
 function LinkCard({
+  t,
   busy,
   onLink,
 }: {
+  t: TFunction;
   busy: boolean;
   onLink: (targetType: LinkTargetType, targetId: number) => void;
 }) {
@@ -282,7 +324,7 @@ function LinkCard({
 
   return (
     <Card>
-      <CardHeader><CardTitle className="text-base">인시던트 / 문제 연계</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="text-base">{t("changeDetail.linkCardTitle", { defaultValue: "인시던트 / 문제 연계" })}</CardTitle></CardHeader>
       <CardContent>
         <form
           className="flex flex-wrap items-end gap-2"
@@ -294,20 +336,22 @@ function LinkCard({
           }}
         >
           <div className="space-y-1.5">
-            <Label>연계 대상</Label>
+            <Label>{t("changeDetail.linkTargetType", { defaultValue: "연계 대상" })}</Label>
             <Select value={targetType} onValueChange={(v) => setTargetType(v as LinkTargetType)}>
               <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="INCIDENT">인시던트</SelectItem>
-                <SelectItem value="PROBLEM">문제</SelectItem>
+                <SelectItem value="INCIDENT">{t("changeDetail.linkTargetIncident", { defaultValue: "인시던트" })}</SelectItem>
+                <SelectItem value="PROBLEM">{t("changeDetail.linkTargetProblem", { defaultValue: "문제" })}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="tid">대상 ID</Label>
+            <Label htmlFor="tid">{t("changeDetail.linkTargetId", { defaultValue: "대상 ID" })}</Label>
             <Input id="tid" type="number" className="w-40" value={targetId} onChange={(e) => setTargetId(e.target.value)} />
           </div>
-          <Button type="submit" loading={busy} disabled={!targetId}>연계</Button>
+          <Button type="submit" loading={busy} disabled={!targetId}>
+            {t("changeDetail.link", { defaultValue: "연계" })}
+          </Button>
         </form>
       </CardContent>
     </Card>
