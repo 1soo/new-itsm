@@ -1,3 +1,5 @@
+import type { TFunction } from "i18next";
+
 import type { StatusTone } from "@/components/common";
 import type { ComplianceStatus, CorrectiveActionStatus, CorrectiveActionTargetStatus } from "@/features/compliance/types";
 
@@ -13,8 +15,10 @@ const COMPLIANCE_STATUS_TONE: Record<ComplianceStatus, StatusTone> = {
   NON_COMPLIANT: "danger",
 };
 
-export function complianceStatusLabel(s: ComplianceStatus): string {
-  return COMPLIANCE_STATUS_LABEL[s] ?? s;
+/** 준수 상태 라벨(`compliance:complianceStatus.*`). */
+export function complianceStatusLabel(t: TFunction, s: ComplianceStatus | null | undefined): string {
+  if (!s) return "";
+  return t(`complianceStatus.${s}`, { ns: "compliance", defaultValue: COMPLIANCE_STATUS_LABEL[s] ?? s });
 }
 export function complianceStatusTone(s: ComplianceStatus): StatusTone {
   return COMPLIANCE_STATUS_TONE[s] ?? "muted";
@@ -32,11 +36,26 @@ const ACTION_STATUS_TONE: Record<CorrectiveActionStatus, StatusTone> = {
   RESOLVED: "success",
 };
 
-export function actionStatusLabel(s: CorrectiveActionStatus): string {
-  return ACTION_STATUS_LABEL[s] ?? s;
+/** 시정조치 상태 라벨(`compliance:actionStatus.*`). */
+export function actionStatusLabel(t: TFunction, s: CorrectiveActionStatus | null | undefined): string {
+  if (!s) return "";
+  return t(`actionStatus.${s}`, { ns: "compliance", defaultValue: ACTION_STATUS_LABEL[s] ?? s });
 }
 export function actionStatusTone(s: CorrectiveActionStatus): StatusTone {
   return ACTION_STATUS_TONE[s] ?? "muted";
+}
+
+/** 감사 로그 이벤트 코드(api_spec/compliance.md 기준 3종, `audit_log.event_type`). */
+const AUDIT_EVENT_TYPE_LABEL: Record<string, string> = {
+  COMPLIANCE_REQ_CREATE: "요구사항 등록",
+  COMPLIANCE_REQ_UPDATE: "요구사항 수정",
+  COMPLIANCE_ACTION_STATUS_CHANGE: "시정조치 상태 변경",
+};
+
+/** 감사 로그 이벤트 유형 라벨(`compliance:auditEventType.*`, 미지정 코드는 원문 그대로 표시). */
+export function auditEventTypeLabel(t: TFunction, eventType: string | null | undefined): string {
+  if (!eventType) return "";
+  return t(`auditEventType.${eventType}`, { ns: "compliance", defaultValue: AUDIT_EVENT_TYPE_LABEL[eventType] ?? eventType });
 }
 
 export const COMPLIANCE_STATUSES: ComplianceStatus[] = ["COMPLIANT", "NON_COMPLIANT"];

@@ -5,7 +5,7 @@
 ## 파일
 - `api.ts` — COMP API 호출(`complianceApi`: 목록/등록/상세/수정, 변경 연계, 책임자 지정, 시정조치 등록·상태 전이, 컴플라이언스 감사 로그 조회, 준수 현황 지표).
 - `types.ts` — COMP 도메인 타입(`ComplianceStatus`/`CorrectiveActionStatus`, `RequirementSummary`/`RequirementDetail`/`CorrectiveAction`/`ComplianceAuditLog`/`ComplianceMetrics`, 입력·쿼리 타입 등). `CorrectiveAction.approval`(`ComplianceApproval`)은 시정조치 항목별로 `approvalRequestId`/`status`만 보유(진행 상태 조회는 공용 API-COM-004, 항목마다 개별 조회).
-- `status.ts` — 준수 상태·시정조치 상태 라벨/tone 매핑, 시정조치 순서 전이(탐지→조치중→해결) 다음 단계 계산(`nextActionTransition`).
+- `status.ts` — 준수 상태·시정조치 상태 라벨(`complianceStatusLabel`/`actionStatusLabel`, `(t, value)` 시그니처)/tone 매핑, 감사 로그 이벤트 유형 라벨(`auditEventTypeLabel`, api_spec 3종 코드 + 미지정 코드는 원문 표시), 시정조치 순서 전이(탐지→조치중→해결) 다음 단계 계산(`nextActionTransition`).
 - `format.ts` — 날짜·일시 표시 포맷터.
 - `ComplianceListPage.tsx` — 요구사항 목록(SCR-COMP-001). 필터: 준수 상태·책임자 지정 여부.
 - `ComplianceCreatePage.tsx` — 요구사항 등록(SCR-COMP-002). 이름·근거(필수)·적용범위(선택).

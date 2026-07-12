@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,7 @@ interface Filters {
 const EMPTY: Filters = { complianceStatus: ALL, ownerAssigned: ALL };
 
 export function ComplianceListPage() {
+  const { t } = useTranslation("compliance");
   const navigate = useNavigate();
   const [inputs, setInputs] = useState<Filters>(EMPTY);
   const [applied, setApplied] = useState<Filters>(EMPTY);
@@ -81,65 +83,65 @@ export function ComplianceListPage() {
   };
 
   const columns: Column<RequirementSummary>[] = [
-    { header: "식별키", cell: (r) => r.requirementKey },
-    { header: "이름", cell: (r) => <span className="line-clamp-1">{r.name}</span> },
-    { header: "근거", cell: (r) => <span className="line-clamp-1">{r.basis}</span> },
+    { header: t("complianceList.columnRequirementKey", { defaultValue: "식별키" }), cell: (r) => r.requirementKey },
+    { header: t("complianceList.columnName", { defaultValue: "이름" }), cell: (r) => <span className="line-clamp-1">{r.name}</span> },
+    { header: t("complianceList.columnBasis", { defaultValue: "근거" }), cell: (r) => <span className="line-clamp-1">{r.basis}</span> },
     {
-      header: "책임자",
-      cell: (r) => (r.owner ? r.owner : <StatusBadge tone="danger" label="책임자 미지정" />),
+      header: t("complianceList.columnOwner", { defaultValue: "책임자" }),
+      cell: (r) => (r.owner ? r.owner : <StatusBadge tone="danger" label={t("complianceList.ownerUnassigned", { defaultValue: "책임자 미지정" })} />),
     },
     {
-      header: "준수 상태",
+      header: t("complianceList.columnComplianceStatus", { defaultValue: "준수 상태" }),
       cell: (r) => (
-        <StatusBadge tone={complianceStatusTone(r.complianceStatus)} label={complianceStatusLabel(r.complianceStatus)} />
+        <StatusBadge tone={complianceStatusTone(r.complianceStatus)} label={complianceStatusLabel(t, r.complianceStatus)} />
       ),
     },
-    { header: "갱신일", cell: (r) => formatDate(r.updatedAt) },
+    { header: t("complianceList.columnUpdatedAt", { defaultValue: "갱신일" }), cell: (r) => formatDate(r.updatedAt) },
   ];
 
   const totalPages = data ? Math.ceil(data.totalElements / PAGE_SIZE) : 0;
 
   return (
     <TicketListLayout
-      title="컴플라이언스 요구사항"
+      title={t("complianceList.title", { defaultValue: "컴플라이언스 요구사항" })}
       actions={
         <Button onClick={() => navigate("/compliance/requirements/new")}>
           <Plus />
-          요구사항 등록
+          {t("complianceList.createButton", { defaultValue: "요구사항 등록" })}
         </Button>
       }
       filters={
         <form onSubmit={handleSearch} className="flex flex-wrap items-end gap-2">
           <div className="space-y-1">
-            <Label>준수 상태</Label>
+            <Label>{t("complianceList.filterComplianceStatus", { defaultValue: "준수 상태" })}</Label>
             <Select
               value={inputs.complianceStatus}
               onValueChange={(v) => setInputs((f) => ({ ...f, complianceStatus: v }))}
             >
               <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>전체</SelectItem>
+                <SelectItem value={ALL}>{t("complianceList.filterAll", { defaultValue: "전체" })}</SelectItem>
                 {COMPLIANCE_STATUSES.map((s) => (
-                  <SelectItem key={s} value={s}>{complianceStatusLabel(s)}</SelectItem>
+                  <SelectItem key={s} value={s}>{complianceStatusLabel(t, s)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1">
-            <Label>책임자 지정 여부</Label>
+            <Label>{t("complianceList.filterOwnerAssigned", { defaultValue: "책임자 지정 여부" })}</Label>
             <Select
               value={inputs.ownerAssigned}
               onValueChange={(v) => setInputs((f) => ({ ...f, ownerAssigned: v }))}
             >
               <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>전체</SelectItem>
-                <SelectItem value="true">지정됨</SelectItem>
-                <SelectItem value="false">미지정</SelectItem>
+                <SelectItem value={ALL}>{t("complianceList.filterAll", { defaultValue: "전체" })}</SelectItem>
+                <SelectItem value="true">{t("complianceList.filterAssigned", { defaultValue: "지정됨" })}</SelectItem>
+                <SelectItem value="false">{t("complianceList.filterUnassigned", { defaultValue: "미지정" })}</SelectItem>
               </SelectContent>
             </Select>
           </div>
-          <Button type="submit">검색</Button>
+          <Button type="submit">{t("complianceList.searchButton", { defaultValue: "검색" })}</Button>
         </form>
       }
     >
@@ -149,8 +151,8 @@ export function ComplianceListPage() {
         rowKey={(r) => r.id}
         loading={loading}
         onRowClick={(r) => navigate(`/compliance/requirements/${r.id}`)}
-        emptyTitle="요구사항이 없습니다"
-        emptyDescription="조건에 맞는 컴플라이언스 요구사항이 없습니다."
+        emptyTitle={t("complianceList.emptyTitle", { defaultValue: "요구사항이 없습니다" })}
+        emptyDescription={t("complianceList.emptyDescription", { defaultValue: "조건에 맞는 컴플라이언스 요구사항이 없습니다." })}
       />
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </TicketListLayout>

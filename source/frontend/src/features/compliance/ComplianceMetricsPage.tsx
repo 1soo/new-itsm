@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +25,7 @@ function toEndOfDay(date: string): string {
 }
 
 export function ComplianceMetricsPage() {
+  const { t } = useTranslation("compliance");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [applied, setApplied] = useState<{ from: string; to: string }>({ from: "", to: "" });
@@ -59,48 +61,51 @@ export function ComplianceMetricsPage() {
   };
 
   const columns: Column<RequirementSummary>[] = [
-    { header: "요구사항", cell: (r) => <span className="line-clamp-1">{r.name}</span> },
-    { header: "책임자", cell: (r) => r.owner ?? "미지정" },
+    { header: t("complianceMetrics.columnRequirement", { defaultValue: "요구사항" }), cell: (r) => <span className="line-clamp-1">{r.name}</span> },
     {
-      header: "준수 상태",
+      header: t("complianceMetrics.columnOwner", { defaultValue: "책임자" }),
+      cell: (r) => r.owner ?? t("complianceMetrics.ownerUnassigned", { defaultValue: "미지정" }),
+    },
+    {
+      header: t("complianceMetrics.columnComplianceStatus", { defaultValue: "준수 상태" }),
       cell: (r) => (
-        <StatusBadge tone={complianceStatusTone(r.complianceStatus)} label={complianceStatusLabel(r.complianceStatus)} />
+        <StatusBadge tone={complianceStatusTone(r.complianceStatus)} label={complianceStatusLabel(t, r.complianceStatus)} />
       ),
     },
   ];
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold text-foreground">준수 현황</h1>
+      <h1 className="text-xl font-semibold text-foreground">{t("complianceMetrics.title", { defaultValue: "준수 현황" })}</h1>
 
       <form onSubmit={handleSearch} className="flex flex-wrap items-end gap-2 rounded-lg border border-border bg-card p-3">
         <div className="space-y-1">
-          <Label htmlFor="from">시작일</Label>
+          <Label htmlFor="from">{t("complianceMetrics.filterFrom", { defaultValue: "시작일" })}</Label>
           <Input id="from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="to">종료일</Label>
+          <Label htmlFor="to">{t("complianceMetrics.filterTo", { defaultValue: "종료일" })}</Label>
           <Input id="to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         </div>
-        <Button type="submit">조회</Button>
+        <Button type="submit">{t("complianceMetrics.searchButton", { defaultValue: "조회" })}</Button>
       </form>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <KpiCard
-          label="준수율"
+          label={t("complianceMetrics.complianceRate", { defaultValue: "준수율" })}
           value={loading ? "-" : Math.round((metrics?.complianceRate ?? 0) * 100)}
           unit="%"
         />
         <KpiCard
-          label="미해결 시정조치 건수"
+          label={t("complianceMetrics.openActionCount", { defaultValue: "미해결 시정조치 건수" })}
           value={loading ? "-" : (metrics?.openCorrectiveActionCount ?? 0)}
-          unit="건"
+          unit={t("complianceMetrics.countUnit", { defaultValue: "건" })}
         />
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">요구사항별 상태</CardTitle>
+          <CardTitle className="text-base">{t("complianceMetrics.tableTitle", { defaultValue: "요구사항별 상태" })}</CardTitle>
         </CardHeader>
         <CardContent>
           <DataTable
@@ -108,8 +113,8 @@ export function ComplianceMetricsPage() {
             data={requirements}
             rowKey={(r) => r.id}
             loading={loading}
-            emptyTitle="요구사항이 없습니다"
-            emptyDescription="등록된 컴플라이언스 요구사항이 없습니다."
+            emptyTitle={t("complianceMetrics.emptyTitle", { defaultValue: "요구사항이 없습니다" })}
+            emptyDescription={t("complianceMetrics.emptyDescription", { defaultValue: "등록된 컴플라이언스 요구사항이 없습니다." })}
           />
         </CardContent>
       </Card>

@@ -66,3 +66,19 @@
 ## 7. 특이사항
 - 감사 로그 기록은 **원본 작업과 같은 트랜잭션**이어야 하므로 `AuditLogService.record()`(REQUIRES_NEW 아닌 기본 전파)를 사용해야 합니다. `recordSeparately()`(REQUIRES_NEW, 로그인 실패 등 별도 보존용)를 쓰면 요구사항(0절)에 어긋나니 주의.
 - `AuditLogService.search()`는 단일 `EventType`만 받는 기존 시그니처라 컴플라이언스 전용 다중 이벤트타입 조회에는 신규 리포지토리 메서드가 필요합니다(위 BE 항목 참고).
+
+## i18n 다국어 전환 (유지보수 요청, 2026-07-12)
+
+> i18n 인프라·SweetAlert2·언어 선택은 common phase에서 완료됨(`docs/03_develop/plan/common.md` v3절). 레이아웃/컴포넌트 변경 없이 텍스트만 번역 키로 치환(`docs/02_plan/screen/common.md` 6절). BE/DB 변경 없음.
+
+### 담당 범위 — dev-fe 단독(UI 미소집)
+
+- 대상 화면(`docs/02_plan/screen/compliance.md` 3절): `ComplianceListPage.tsx`(SCR-COMP-001), `ComplianceCreatePage.tsx`(002), `ComplianceDetailPage.tsx`(003), `ComplianceMetricsPage.tsx`(004).
+- `features/compliance/status.ts` — `t` 인자를 받도록 전환, 호출부 갱신. compliance는 통합검색 대상 아님(`features/search/status.ts` 변경 불필요).
+- `format.ts` 확인 필수 — 라벨 섞여 있으면 전환.
+- `useTranslation(["compliance", "common"])` 사용. `locales/{ko,en}/compliance.json`(현재 `{}` 스캐폴딩) 단독 소유, 직접 채운다.
+- 감사 로그 이벤트 유형 표시, 변경 연계, 시정조치 상태 등에서 지금까지 반복된 원시값 노출 패턴 점검.
+
+### 완료 기준
+- English 전환 시 목록/등록/상세(책임자·시정조치·변경 연계·감사 로그)/준수 현황 대시보드 전체 텍스트(준수 상태 라벨 포함) 영어 전환.
+- 시정조치 등록·변경 연계·감사 로그 조회 등 기존 기능 회귀 없음(텍스트만 치환).

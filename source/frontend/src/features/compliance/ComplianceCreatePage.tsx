@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +15,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 성공 시 상세 이동.
  */
 export function ComplianceCreatePage() {
+  const { t } = useTranslation("compliance");
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [basis, setBasis] = useState("");
@@ -25,7 +27,7 @@ export function ComplianceCreatePage() {
     e.preventDefault();
     setError(null);
     if (!name.trim() || !basis.trim()) {
-      setError("이름과 근거는 필수입니다.");
+      setError(t("complianceCreate.requiredError", { defaultValue: "이름과 근거는 필수입니다." }));
       return;
     }
     setSubmitting(true);
@@ -35,10 +37,15 @@ export function ComplianceCreatePage() {
         basis: basis.trim(),
         scope: scope.trim() || undefined,
       });
-      toast.success(`요구사항이 등록되었습니다 (${created.requirementKey})`);
+      toast.success(
+        t("complianceCreate.success", {
+          requirementKey: created.requirementKey,
+          defaultValue: `요구사항이 등록되었습니다 (${created.requirementKey})`,
+        }),
+      );
       navigate(`/compliance/requirements/${created.id}`);
     } catch (err) {
-      setError(extractErrorMessage(err, "등록에 실패했습니다."));
+      setError(extractErrorMessage(err, t("complianceCreate.failed", { defaultValue: "등록에 실패했습니다." })));
     } finally {
       setSubmitting(false);
     }
@@ -46,23 +53,23 @@ export function ComplianceCreatePage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-4">
-      <h1 className="text-xl font-semibold text-foreground">요구사항 등록</h1>
+      <h1 className="text-xl font-semibold text-foreground">{t("complianceCreate.title", { defaultValue: "요구사항 등록" })}</h1>
       <Card>
         <CardHeader>
-          <CardTitle>새 컴플라이언스 요구사항</CardTitle>
+          <CardTitle>{t("complianceCreate.cardTitle", { defaultValue: "새 컴플라이언스 요구사항" })}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div className="space-y-1.5">
-              <Label htmlFor="name">이름</Label>
+              <Label htmlFor="name">{t("complianceCreate.nameLabel", { defaultValue: "이름" })}</Label>
               <Input id="name" value={name} onChange={(e) => setName(e.target.value)} aria-invalid={!!error && !name.trim()} required />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="basis">근거 (규제 조항/내부 정책)</Label>
+              <Label htmlFor="basis">{t("complianceCreate.basisLabel", { defaultValue: "근거 (규제 조항/내부 정책)" })}</Label>
               <Input id="basis" value={basis} onChange={(e) => setBasis(e.target.value)} aria-invalid={!!error && !basis.trim()} required />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="scope">적용 범위</Label>
+              <Label htmlFor="scope">{t("complianceCreate.scopeLabel", { defaultValue: "적용 범위" })}</Label>
               <Input id="scope" value={scope} onChange={(e) => setScope(e.target.value)} />
             </div>
 
@@ -71,8 +78,10 @@ export function ComplianceCreatePage() {
             ) : null}
 
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => navigate("/compliance/requirements")}>취소</Button>
-              <Button type="submit" loading={submitting}>등록</Button>
+              <Button type="button" variant="outline" onClick={() => navigate("/compliance/requirements")}>
+                {t("complianceCreate.cancelButton", { defaultValue: "취소" })}
+              </Button>
+              <Button type="submit" loading={submitting}>{t("complianceCreate.submitButton", { defaultValue: "등록" })}</Button>
             </div>
           </form>
         </CardContent>

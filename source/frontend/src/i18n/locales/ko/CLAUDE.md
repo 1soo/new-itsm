@@ -13,4 +13,5 @@
 - `asset.json` — asset phase에서 채워짐. 목록·등록/수정·상세·CI/CMDB 관계·지표(SCR-ITAM-001~005) 전체 텍스트 + 유형/상태/만료/연계 티켓 유형/CI 관계 유형 라벨(`type.*`/`status.*`/`expiry.*`/`ticketType.*`/`relationType.*`).
 - `esm.json` — esm phase에서 채워짐. 부서 포털/요청 제출·목록·큐·상세/카탈로그 관리/HR 케이스 목록·상세/체크리스트 상세·내 하위 작업/지표(SCR-ESM-001~011) 전체 텍스트 + 부서/요청 상태/HR 케이스 상태/체크리스트 상태·유형/하위 작업 상태 라벨(`department.*`/`requestStatus.*`/`hrCaseStatus.*`/`checklistStatus.*`/`checklistType.*`/`checklistTemplateType.*`/`checklistTaskStatus.*`).
 - `vulnerability.json` — vulnerability phase에서 채워짐. 목록·등록·상세(라이프사이클·리스크·담당자·개선·검증·자산/CI 연계)·지표(SCR-VULN-001~004) 전체 텍스트 + 상태/심각도/악용가능성/조치유형/검증결과 라벨(`status.*`/`severity.*`/`exploitability.*`/`actionType.*`/`verificationResult.*`).
-- `compliance.json` / `infra-monitoring.json` — 각 업무 도메인 네임스페이스. 담당 개발자가 채우기 전까지 `{}`.
+- `compliance.json` — compliance phase에서 채워짐. 목록·등록·상세(책임자·시정조치·변경 연계·감사 로그)·준수 현황(SCR-COMP-001~004) 전체 텍스트 + 준수 상태/시정조치 상태/감사 로그 이벤트 유형 라벨(`complianceStatus.*`/`actionStatus.*`/`auditEventType.*`).
+- `infra-monitoring.json` — 각 업무 도메인 네임스페이스. 담당 개발자가 채우기 전까지 `{}`.
