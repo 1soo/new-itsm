@@ -1,1 +1,73 @@
-{}
+{
+  "status": {
+    "DRAFT": "초안",
+    "IN_REVIEW": "검토",
+    "PUBLISHED": "게시"
+  },
+  "knowledgeList": {
+    "title": "지식베이스",
+    "createButton": "기사 작성",
+    "columnTitle": "제목",
+    "columnSummary": "요약",
+    "columnCategory": "카테고리",
+    "columnStatus": "상태",
+    "columnHelpfulRate": "유용성",
+    "filterKeyword": "키워드",
+    "filterLabel": "라벨",
+    "filterAll": "전체",
+    "searchButton": "검색",
+    "emptyTitle": "기사가 없습니다",
+    "emptyDescription": "조건에 맞는 지식 기사가 없습니다."
+  },
+  "articleView": {
+    "notFound": "기사를 찾을 수 없습니다.",
+    "back": "이전으로",
+    "editButton": "편집",
+    "helpfulQuestion": "도움이 되었나요?",
+    "helpfulCount": "도움됨 {{helpful}} · 도움 안 됨 {{notHelpful}}",
+    "commentLabel": "코멘트(선택)",
+    "helpfulButton": "도움됨",
+    "notHelpfulButton": "도움 안 됨",
+    "feedbackSaved": "평가가 저장되었습니다"
+  },
+  "articleEdit": {
+    "titleCreate": "기사 작성",
+    "titleEdit": "기사 편집",
+    "notFound": "기사를 찾을 수 없습니다.",
+    "backToList": "목록으로",
+    "contentCardTitle": "내용",
+    "titleLabel": "제목",
+    "bodyLabel": "본문",
+    "requiredError": "제목과 본문은 필수입니다.",
+    "saveButton": "저장",
+    "saveSuccess": "기사가 저장되었습니다",
+    "createSuccess": "기사가 작성되었습니다",
+    "saveFailed": "저장에 실패했습니다.",
+    "classificationCardTitle": "분류",
+    "categoryLabel": "카테고리",
+    "categoryPlaceholder": "카테고리 선택",
+    "labelsLabel": "라벨 (쉼표로 구분)",
+    "labelsPlaceholder": "예: 네트워크, VPN",
+    "actionsCardTitle": "작업",
+    "requestReviewButton": "검토 요청",
+    "publishedWithoutApproval": "승인 절차 없이 게시되었습니다",
+    "reviewRequested": "검토가 요청되었습니다. 승인 대기 중입니다.",
+    "deleteButton": "삭제",
+    "deleteConfirmTitle": "기사를 삭제하시겠습니까?",
+    "deleteConfirmDescription": "삭제된 기사는 복구할 수 없습니다.",
+    "deleteSuccess": "기사가 삭제되었습니다"
+  },
+  "knowledgeMetrics": {
+    "title": "지식 지표",
+    "filterFrom": "시작일",
+    "filterTo": "종료일",
+    "searchButton": "조회",
+    "usageCount": "사용량",
+    "noResultSearchCount": "무결과 검색",
+    "helpfulRate": "유용성",
+    "deflectionRate": "티켓 차단율",
+    "countUnit": "건",
+    "noResultKeywordsTitle": "무결과 검색 키워드",
+    "noData": "데이터가 없습니다."
+  }
+}

@@ -1,5 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,6 +31,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 없으면(approvalRequestId=null) "검토 요청" 즉시 게시되어 패널이 렌더링되지 않는다.
  */
 export function ArticleEditPage() {
+  const { t } = useTranslation("knowledge");
   const navigate = useNavigate();
   const params = useParams();
   const id = params.id ? Number(params.id) : null;
@@ -96,7 +98,7 @@ export function ArticleEditPage() {
     e.preventDefault();
     setError(null);
     if (!title.trim() || !body.trim()) {
-      setError("제목과 본문은 필수입니다.");
+      setError(t("articleEdit.requiredError", { defaultValue: "제목과 본문은 필수입니다." }));
       return;
     }
     const payload = {
@@ -109,15 +111,15 @@ export function ArticleEditPage() {
     try {
       if (id) {
         await knowledgeApi.update(id, payload);
-        toast.success("기사가 저장되었습니다");
+        toast.success(t("articleEdit.saveSuccess", { defaultValue: "기사가 저장되었습니다" }));
         load();
       } else {
         const created = await knowledgeApi.create(payload);
-        toast.success("기사가 작성되었습니다");
+        toast.success(t("articleEdit.createSuccess", { defaultValue: "기사가 작성되었습니다" }));
         navigate(`/knowledge/${created.id}/edit`);
       }
     } catch (err) {
-      setError(extractErrorMessage(err, "저장에 실패했습니다."));
+      setError(extractErrorMessage(err, t("articleEdit.saveFailed", { defaultValue: "저장에 실패했습니다." })));
     } finally {
       setSaving(false);
     }
@@ -130,8 +132,8 @@ export function ArticleEditPage() {
       const result = await knowledgeApi.transition(id, "IN_REVIEW");
       toast.success(
         result.status === "PUBLISHED"
-          ? "승인 절차 없이 게시되었습니다"
-          : "검토가 요청되었습니다. 승인 대기 중입니다.",
+          ? t("articleEdit.publishedWithoutApproval", { defaultValue: "승인 절차 없이 게시되었습니다" })
+          : t("articleEdit.reviewRequested", { defaultValue: "검토가 요청되었습니다. 승인 대기 중입니다." }),
       );
       load();
     } catch (err) {
@@ -146,7 +148,7 @@ export function ArticleEditPage() {
     setBusy("delete");
     try {
       await knowledgeApi.remove(id);
-      toast.success("기사가 삭제되었습니다");
+      toast.success(t("articleEdit.deleteSuccess", { defaultValue: "기사가 삭제되었습니다" }));
       navigate("/knowledge");
     } catch (err) {
       toast.error(extractErrorMessage(err));
@@ -160,8 +162,8 @@ export function ArticleEditPage() {
   if (id && (notFound || !detail)) {
     return (
       <div className="mx-auto max-w-lg space-y-4 text-center">
-        <p className="text-sm text-muted-foreground">기사를 찾을 수 없습니다.</p>
-        <Button onClick={() => navigate("/knowledge")}>목록으로</Button>
+        <p className="text-sm text-muted-foreground">{t("articleEdit.notFound", { defaultValue: "기사를 찾을 수 없습니다." })}</p>
+        <Button onClick={() => navigate("/knowledge")}>{t("articleEdit.backToList", { defaultValue: "목록으로" })}</Button>
       </div>
     );
   }
@@ -170,28 +172,32 @@ export function ArticleEditPage() {
     <>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-foreground">{id ? "기사 편집" : "기사 작성"}</h1>
-          {detail ? <StatusBadge tone={statusTone(detail.status)} label={statusLabel(detail.status)} /> : null}
+          <h1 className="text-xl font-semibold text-foreground">
+            {id
+              ? t("articleEdit.titleEdit", { defaultValue: "기사 편집" })
+              : t("articleEdit.titleCreate", { defaultValue: "기사 작성" })}
+          </h1>
+          {detail ? <StatusBadge tone={statusTone(detail.status)} label={statusLabel(t, detail.status)} /> : null}
         </div>
 
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
           <Card>
-            <CardHeader><CardTitle className="text-base">내용</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">{t("articleEdit.contentCardTitle", { defaultValue: "내용" })}</CardTitle></CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                 <div className="space-y-1.5">
-                  <Label htmlFor="title">제목</Label>
+                  <Label htmlFor="title">{t("articleEdit.titleLabel", { defaultValue: "제목" })}</Label>
                   <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} aria-invalid={!!error && !title.trim()} required />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="body">본문</Label>
+                  <Label htmlFor="body">{t("articleEdit.bodyLabel", { defaultValue: "본문" })}</Label>
                   <Textarea id="body" value={body} onChange={(e) => setBody(e.target.value)} rows={12} aria-invalid={!!error && !body.trim()} required />
                 </div>
                 {error ? (
                   <p role="alert" className="text-sm text-danger">{error}</p>
                 ) : null}
                 <div className="flex justify-end">
-                  <Button type="submit" loading={saving}>저장</Button>
+                  <Button type="submit" loading={saving}>{t("articleEdit.saveButton", { defaultValue: "저장" })}</Button>
                 </div>
               </form>
             </CardContent>
@@ -199,12 +205,12 @@ export function ArticleEditPage() {
 
           <div className="space-y-4">
             <Card>
-              <CardHeader><CardTitle className="text-base">분류</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">{t("articleEdit.classificationCardTitle", { defaultValue: "분류" })}</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 <div className="space-y-1.5">
-                  <Label>카테고리</Label>
+                  <Label>{t("articleEdit.categoryLabel", { defaultValue: "카테고리" })}</Label>
                   <Select value={categoryId} onValueChange={setCategoryId}>
-                    <SelectTrigger><SelectValue placeholder="카테고리 선택" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder={t("articleEdit.categoryPlaceholder", { defaultValue: "카테고리 선택" })} /></SelectTrigger>
                     <SelectContent>
                       {categories.map((c) => (
                         <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
@@ -213,15 +219,20 @@ export function ArticleEditPage() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="labels">라벨 (쉼표로 구분)</Label>
-                  <Input id="labels" value={labels} onChange={(e) => setLabels(e.target.value)} placeholder="예: 네트워크, VPN" />
+                  <Label htmlFor="labels">{t("articleEdit.labelsLabel", { defaultValue: "라벨 (쉼표로 구분)" })}</Label>
+                  <Input
+                    id="labels"
+                    value={labels}
+                    onChange={(e) => setLabels(e.target.value)}
+                    placeholder={t("articleEdit.labelsPlaceholder", { defaultValue: "예: 네트워크, VPN" })}
+                  />
                 </div>
               </CardContent>
             </Card>
 
             {id ? (
               <Card>
-                <CardHeader><CardTitle className="text-base">작업</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="text-base">{t("articleEdit.actionsCardTitle", { defaultValue: "작업" })}</CardTitle></CardHeader>
                 <CardContent className="space-y-2">
                   {detail?.status === "DRAFT" ? (
                     <Button
@@ -229,7 +240,7 @@ export function ArticleEditPage() {
                       loading={busy === "review"}
                       onClick={handleRequestReview}
                     >
-                      검토 요청
+                      {t("articleEdit.requestReviewButton", { defaultValue: "검토 요청" })}
                     </Button>
                   ) : null}
                   <Button
@@ -237,7 +248,7 @@ export function ArticleEditPage() {
                     className="w-full"
                     onClick={() => setConfirmDelete(true)}
                   >
-                    삭제
+                    {t("articleEdit.deleteButton", { defaultValue: "삭제" })}
                   </Button>
                 </CardContent>
               </Card>
@@ -257,9 +268,9 @@ export function ArticleEditPage() {
       <ConfirmDialog
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
-        title="기사를 삭제하시겠습니까?"
-        description="삭제된 기사는 복구할 수 없습니다."
-        confirmLabel="삭제"
+        title={t("articleEdit.deleteConfirmTitle", { defaultValue: "기사를 삭제하시겠습니까?" })}
+        description={t("articleEdit.deleteConfirmDescription", { defaultValue: "삭제된 기사는 복구할 수 없습니다." })}
+        confirmLabel={t("articleEdit.deleteButton", { defaultValue: "삭제" })}
         loading={busy === "delete"}
         onConfirm={handleDelete}
       />

@@ -1,3 +1,5 @@
+import type { TFunction } from "i18next";
+
 import type { StatusTone } from "@/components/common";
 import type { ArticleStatus } from "@/features/knowledge/types";
 
@@ -15,8 +17,10 @@ const STATUS_TONE: Record<ArticleStatus, StatusTone> = {
   PUBLISHED: "success",
 };
 
-export function statusLabel(s: ArticleStatus): string {
-  return STATUS_LABEL[s] ?? s;
+/** 기사 상태 라벨(`knowledge:status.*`). */
+export function statusLabel(t: TFunction, s: ArticleStatus | null | undefined): string {
+  if (!s) return "";
+  return t(`status.${s}`, { ns: "knowledge", defaultValue: STATUS_LABEL[s] ?? s });
 }
 export function statusTone(s: ArticleStatus): StatusTone {
   return STATUS_TONE[s] ?? "muted";

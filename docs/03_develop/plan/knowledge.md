@@ -63,3 +63,20 @@
 
 ## 7. 특이사항
 - ticket_link는 기존 공통 테이블 재사용. deflectionRate 정의가 설계 문서에 명시적 산식이 없어 dev-backend 구현 전 애매하면 designer에게 확인 후 진행.
+
+## i18n 다국어 전환 (유지보수 요청, 2026-07-12)
+
+> i18n 인프라·SweetAlert2·언어 선택은 common phase에서 완료됨(`docs/03_develop/plan/common.md` v3절). 레이아웃/컴포넌트 변경 없이 텍스트만 번역 키로 치환(`docs/02_plan/screen/common.md` 6절). BE/DB 변경 없음. SCR-KM-004(검토·게시 승인함)는 SCR-COM-014로 대체되어 이번 phase 대상 아님.
+
+### 담당 범위 — dev-fe 단독(UI 미소집)
+
+- 대상 화면(`docs/02_plan/screen/knowledge.md` 3절): `KnowledgeListPage.tsx`(SCR-KM-001), `ArticleViewPage.tsx`(002), `ArticleEditPage.tsx`(003), `KnowledgeMetricsPage.tsx`(005).
+- `features/knowledge/status.ts` — `t` 인자를 받도록 전환, 호출부(각 Page.tsx, `features/search/status.ts`의 KNOWLEDGE 분기) 갱신. 통합 검색 결과(SCR-COM-011)에서 지식 도메인 상태 배지도 이 시점에 정상 전환됨(problem/incident phase에서 이미 전환된 다른 도메인처럼 검증).
+- `format.ts` 확인 필수 — 라벨이 섞여 있으면 그 라벨만 전환.
+- `useTranslation(["knowledge", "common"])` 사용. `locales/{ko,en}/knowledge.json`(현재 `{}` 스캐폴딩) 단독 소유, 직접 채운다.
+- 값이 비어있는 값에 대한 라벨 조회 시 원시 키 노출 회귀 없는지 라벨 함수에 falsy 가드 확인(problem phase 패턴).
+- 링크/연계 타입 등 열거형 값을 그대로 노출하는 부분이 있으면(change phase에서 발견된 것과 같은 유형) 함께 점검.
+
+### 완료 기준
+- English 전환 시 검색/목록·기사 열람·작성/편집·지표 대시보드 전체 텍스트(상태·분류 라벨 포함) 영어 전환.
+- 검토 요청·유용성 평가·통합검색 연동 등 기존 기능 회귀 없음(텍스트만 치환).

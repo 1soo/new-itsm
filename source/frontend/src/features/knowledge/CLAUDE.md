@@ -5,7 +5,7 @@
 ## 파일
 - `api.ts` — KM API 호출(`knowledgeApi`: 검색/목록/상세, 작성/수정/삭제, 상태 전이(검토 요청), 유용성 평가, 카테고리 목록, KCS 티켓 연계, 지표). 검토 승인/반려·대기 목록 API(구 API-KM-007/008)는 공용 승인 API(`features/common/api.ts`)로 대체되어 제거.
 - `types.ts` — KM 도메인 타입(`ArticleStatus`, `ArticleSummary`/`ArticleDetail`(`approval: ArticleApproval` 포함, API-KM-002 v0.3)/`ArticleApproval`/`ArticleTransitionResult`(API-KM-006 응답)/`Category`/`KnowledgeMetrics` 등).
-- `status.ts` — 상태(초안/검토/게시) 라벨/tone 매핑, 상수 목록(`ARTICLE_STATUSES`).
+- `status.ts` — 상태(초안/검토/게시) 라벨(`statusLabel(t, s)`, `knowledge:status.*`)/tone 매핑, 상수 목록(`ARTICLE_STATUSES`).
 - `format.ts` — 일시 표시 포맷터.
 - `KnowledgeListPage.tsx` — 지식베이스 검색/목록(SCR-KM-001).
 - `ArticleViewPage.tsx` — 기사 열람·유용성 평가(SCR-KM-002).

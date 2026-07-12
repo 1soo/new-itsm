@@ -33,7 +33,7 @@ export function domainLabel(t: TFunction, domain: SearchDomain): string {
 export function resultStatusLabel(t: TFunction, domain: SearchDomain, status: string): string {
   switch (domain) {
     case "KNOWLEDGE":
-      return knowledgeStatusLabel(status as ArticleStatus);
+      return knowledgeStatusLabel(t, status as ArticleStatus);
     case "SERVICE_REQUEST":
       return srStatusLabel(t, status as SrStatus);
     case "INCIDENT":

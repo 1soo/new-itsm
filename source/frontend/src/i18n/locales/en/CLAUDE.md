@@ -9,4 +9,5 @@
 - `incident.json` — incident phase에서 채워짐. `ko/incident.json`과 키 구조 1:1 대응.
 - `problem.json` — problem phase에서 채워짐. `ko/problem.json`과 키 구조 1:1 대응.
 - `change.json` — change phase에서 채워짐. `ko/change.json`과 키 구조 1:1 대응.
-- `knowledge.json` / `asset.json` / `esm.json` / `vulnerability.json` / `compliance.json` / `infra-monitoring.json` — 각 업무 도메인 네임스페이스. 담당 개발자가 채우기 전까지 `{}`.
+- `knowledge.json` — knowledge phase에서 채워짐. `ko/knowledge.json`과 키 구조 1:1 대응.
+- `asset.json` / `esm.json` / `vulnerability.json` / `compliance.json` / `infra-monitoring.json` — 각 업무 도메인 네임스페이스. 담당 개발자가 채우기 전까지 `{}`.

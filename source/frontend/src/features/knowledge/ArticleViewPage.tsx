@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ThumbsDown, ThumbsUp } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 미게시 기사에 최종 사용자 접근 시 BE 403.
  */
 export function ArticleViewPage() {
+  const { t } = useTranslation("knowledge");
   const navigate = useNavigate();
   const id = Number(useParams().id);
   const roles = useAppSelector((s) => s.auth.user?.roles);
@@ -52,7 +54,7 @@ export function ArticleViewPage() {
     setBusy(true);
     try {
       await knowledgeApi.submitFeedback(id, { helpful, comment: comment.trim() || undefined });
-      toast.success("평가가 저장되었습니다");
+      toast.success(t("articleView.feedbackSaved", { defaultValue: "평가가 저장되었습니다" }));
       setComment("");
       load();
     } catch (err) {
@@ -66,8 +68,8 @@ export function ArticleViewPage() {
   if (notFound || !detail) {
     return (
       <div className="mx-auto max-w-lg space-y-4 text-center">
-        <p className="text-sm text-muted-foreground">기사를 찾을 수 없습니다.</p>
-        <Button onClick={() => navigate(-1)}>이전으로</Button>
+        <p className="text-sm text-muted-foreground">{t("articleView.notFound", { defaultValue: "기사를 찾을 수 없습니다." })}</p>
+        <Button onClick={() => navigate(-1)}>{t("articleView.back", { defaultValue: "이전으로" })}</Button>
       </div>
     );
   }
@@ -76,11 +78,11 @@ export function ArticleViewPage() {
     <div className="mx-auto max-w-2xl space-y-4">
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge tone={statusTone(detail.status)} label={statusLabel(detail.status)} />
+          <StatusBadge tone={statusTone(detail.status)} label={statusLabel(t, detail.status)} />
           <span className="text-sm text-muted-foreground">{detail.category}</span>
           {canEdit ? (
             <Button size="sm" variant="outline" className="ml-auto" onClick={() => navigate(`/knowledge/${id}/edit`)}>
-              편집
+              {t("articleView.editButton", { defaultValue: "편집" })}
             </Button>
           ) : null}
         </div>
@@ -101,13 +103,17 @@ export function ArticleViewPage() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">도움이 되었나요?</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">{t("articleView.helpfulQuestion", { defaultValue: "도움이 되었나요?" })}</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            도움됨 {detail.helpful} · 도움 안 됨 {detail.notHelpful}
+            {t("articleView.helpfulCount", {
+              helpful: detail.helpful,
+              notHelpful: detail.notHelpful,
+              defaultValue: `도움됨 ${detail.helpful} · 도움 안 됨 ${detail.notHelpful}`,
+            })}
           </p>
           <div className="space-y-1.5">
-            <Label htmlFor="comment">코멘트(선택)</Label>
+            <Label htmlFor="comment">{t("articleView.commentLabel", { defaultValue: "코멘트(선택)" })}</Label>
             <Input id="comment" value={comment} onChange={(e) => setComment(e.target.value)} />
           </div>
           <div className="flex gap-2">
@@ -117,11 +123,11 @@ export function ArticleViewPage() {
               onClick={() => handleFeedback(true)}
             >
               <ThumbsUp />
-              도움됨
+              {t("articleView.helpfulButton", { defaultValue: "도움됨" })}
             </Button>
             <Button variant="outline" loading={busy} onClick={() => handleFeedback(false)}>
               <ThumbsDown />
-              도움 안 됨
+              {t("articleView.notHelpfulButton", { defaultValue: "도움 안 됨" })}
             </Button>
           </div>
         </CardContent>

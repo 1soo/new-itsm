@@ -1,1 +1,73 @@
-{}
+{
+  "status": {
+    "DRAFT": "Draft",
+    "IN_REVIEW": "In Review",
+    "PUBLISHED": "Published"
+  },
+  "knowledgeList": {
+    "title": "Knowledge Base",
+    "createButton": "Write Article",
+    "columnTitle": "Title",
+    "columnSummary": "Summary",
+    "columnCategory": "Category",
+    "columnStatus": "Status",
+    "columnHelpfulRate": "Helpfulness",
+    "filterKeyword": "Keyword",
+    "filterLabel": "Label",
+    "filterAll": "All",
+    "searchButton": "Search",
+    "emptyTitle": "No articles",
+    "emptyDescription": "No knowledge articles match the criteria."
+  },
+  "articleView": {
+    "notFound": "Article not found.",
+    "back": "Back",
+    "editButton": "Edit",
+    "helpfulQuestion": "Was this helpful?",
+    "helpfulCount": "Helpful {{helpful}} · Not helpful {{notHelpful}}",
+    "commentLabel": "Comment (optional)",
+    "helpfulButton": "Helpful",
+    "notHelpfulButton": "Not Helpful",
+    "feedbackSaved": "Feedback saved"
+  },
+  "articleEdit": {
+    "titleCreate": "Write Article",
+    "titleEdit": "Edit Article",
+    "notFound": "Article not found.",
+    "backToList": "Back to List",
+    "contentCardTitle": "Content",
+    "titleLabel": "Title",
+    "bodyLabel": "Body",
+    "requiredError": "Title and body are required.",
+    "saveButton": "Save",
+    "saveSuccess": "Article saved",
+    "createSuccess": "Article created",
+    "saveFailed": "Failed to save.",
+    "classificationCardTitle": "Classification",
+    "categoryLabel": "Category",
+    "categoryPlaceholder": "Select category",
+    "labelsLabel": "Labels (comma-separated)",
+    "labelsPlaceholder": "e.g., Network, VPN",
+    "actionsCardTitle": "Actions",
+    "requestReviewButton": "Request Review",
+    "publishedWithoutApproval": "Published without approval process",
+    "reviewRequested": "Review requested. Awaiting approval.",
+    "deleteButton": "Delete",
+    "deleteConfirmTitle": "Delete this article?",
+    "deleteConfirmDescription": "Deleted articles cannot be recovered.",
+    "deleteSuccess": "Article deleted"
+  },
+  "knowledgeMetrics": {
+    "title": "Knowledge Metrics",
+    "filterFrom": "From",
+    "filterTo": "To",
+    "searchButton": "Search",
+    "usageCount": "Usage",
+    "noResultSearchCount": "No-result Searches",
+    "helpfulRate": "Helpfulness",
+    "deflectionRate": "Ticket Deflection Rate",
+    "countUnit": "",
+    "noResultKeywordsTitle": "No-result Search Keywords",
+    "noData": "No data available."
+  }
+}
