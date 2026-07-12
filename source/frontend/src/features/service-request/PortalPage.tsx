@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Search } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +19,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 카드 클릭 시 요청 제출(SCR-SRM-002)로 이동. 검색 시 관련 지식 기사 추천 배너(있을 때만) 노출.
  */
 export function PortalPage() {
+  const { t } = useTranslation("service-request");
   const navigate = useNavigate();
   const [keywordInput, setKeywordInput] = useState("");
   const [keyword, setKeyword] = useState("");
@@ -61,8 +63,12 @@ export function PortalPage() {
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <h1 className="text-xl font-semibold text-foreground">서비스 포털</h1>
-        <p className="text-sm text-muted-foreground">필요한 서비스 유형을 선택해 요청을 제출하세요.</p>
+        <h1 className="text-xl font-semibold text-foreground">
+          {t("portal.title", { defaultValue: "서비스 포털" })}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {t("portal.description", { defaultValue: "필요한 서비스 유형을 선택해 요청을 제출하세요." })}
+        </p>
       </div>
 
       <form onSubmit={handleSearch} className="relative max-w-md">
@@ -70,16 +76,18 @@ export function PortalPage() {
         <Input
           value={keywordInput}
           onChange={(e) => setKeywordInput(e.target.value)}
-          placeholder="요청 유형·키워드 검색"
+          placeholder={t("portal.searchPlaceholder", { defaultValue: "요청 유형·키워드 검색" })}
           className="pl-9"
-          aria-label="카탈로그 검색"
+          aria-label={t("portal.searchAriaLabel", { defaultValue: "카탈로그 검색" })}
         />
       </form>
 
       {suggestions.length > 0 ? (
         <Card className="border-l-4 border-l-[color:var(--info)]">
           <CardHeader>
-            <CardTitle className="text-base">관련 지식 기사</CardTitle>
+            <CardTitle className="text-base">
+              {t("portal.relatedArticlesTitle", { defaultValue: "관련 지식 기사" })}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-1">
             {suggestions.map((s) => (
@@ -103,7 +111,10 @@ export function PortalPage() {
           ))}
         </div>
       ) : items.length === 0 ? (
-        <EmptyState title="카탈로그 항목이 없습니다" description="등록된 요청 유형이 없습니다." />
+        <EmptyState
+          title={t("portal.emptyTitle", { defaultValue: "카탈로그 항목이 없습니다" })}
+          description={t("portal.emptyDescription", { defaultValue: "등록된 요청 유형이 없습니다." })}
+        />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => (

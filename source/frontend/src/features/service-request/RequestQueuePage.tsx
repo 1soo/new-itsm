@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,12 +28,14 @@ const PAGE_SIZE = 10;
 const ALL_QUEUE = "__ALL__";
 
 function QueueButton({
+  t,
   label,
   count,
   active,
   isDefault,
   onClick,
 }: {
+  t: TFunction;
   label: string;
   count?: number;
   active: boolean;
@@ -49,7 +53,11 @@ function QueueButton({
     >
       <span className="flex items-center gap-1.5 truncate">
         {label}
-        {isDefault ? <Badge variant="outline" className="shrink-0">기본</Badge> : null}
+        {isDefault ? (
+          <Badge variant="outline" className="shrink-0">
+            {t("requestQueue.defaultBadge", { defaultValue: "기본" })}
+          </Badge>
+        ) : null}
       </span>
       {count != null ? (
         <Badge variant="secondary" className="shrink-0">
@@ -61,6 +69,7 @@ function QueueButton({
 }
 
 export function RequestQueuePage() {
+  const { t } = useTranslation("service-request");
   const navigate = useNavigate();
   const [queues, setQueues] = useState<Queue[]>([]);
   const [selected, setSelected] = useState<string>(ALL_QUEUE);
@@ -107,7 +116,7 @@ export function RequestQueuePage() {
     setAssigningId(id);
     try {
       await srmApi.assign(id);
-      toast.success("본인에게 배정되었습니다");
+      toast.success(t("requestQueue.assignSuccess", { defaultValue: "본인에게 배정되었습니다" }));
       loadRequests();
       loadQueues();
     } catch (err) {
@@ -118,12 +127,21 @@ export function RequestQueuePage() {
   };
 
   const columns: Column<RequestSummary>[] = [
-    { header: "접수번호", cell: (r) => r.ticketKey },
-    { header: "유형", cell: (r) => r.catalogItemName },
-    { header: "상태", cell: (r) => <StatusBadge tone={statusTone(r.status)} label={statusLabel(r.status)} /> },
-    { header: "SLA", cell: (r) => <StatusBadge tone={slaTone(r.slaStatus)} label={slaLabel(r.slaStatus)} /> },
-    { header: "담당자", cell: (r) => r.assignee || "미배정" },
-    { header: "갱신일", cell: (r) => formatDate(r.updatedAt) },
+    { header: t("requestList.columnTicketKey", { defaultValue: "접수번호" }), cell: (r) => r.ticketKey },
+    { header: t("requestList.columnCatalogItem", { defaultValue: "유형" }), cell: (r) => r.catalogItemName },
+    {
+      header: t("requestList.columnStatus", { defaultValue: "상태" }),
+      cell: (r) => <StatusBadge tone={statusTone(r.status)} label={statusLabel(t, r.status)} />,
+    },
+    {
+      header: "SLA",
+      cell: (r) => <StatusBadge tone={slaTone(r.slaStatus)} label={slaLabel(t, r.slaStatus)} />,
+    },
+    {
+      header: t("requestList.columnAssignee", { defaultValue: "담당자" }),
+      cell: (r) => r.assignee || t("requestQueue.unassigned", { defaultValue: "미배정" }),
+    },
+    { header: t("requestList.columnUpdatedAt", { defaultValue: "갱신일" }), cell: (r) => formatDate(r.updatedAt) },
     {
       header: "",
       className: "text-right",
@@ -137,7 +155,7 @@ export function RequestQueuePage() {
             handleAssign(r.id);
           }}
         >
-          나에게 배정
+          {t("requestQueue.assignToMe", { defaultValue: "나에게 배정" })}
         </Button>
       ),
     },
@@ -147,18 +165,22 @@ export function RequestQueuePage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold text-foreground">요청 큐</h1>
+      <h1 className="text-xl font-semibold text-foreground">
+        {t("requestQueue.title", { defaultValue: "요청 큐" })}
+      </h1>
 
       <div className="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
         <aside className="space-y-1 rounded-lg border border-border bg-card p-2">
           <QueueButton
-            label="전체"
+            t={t}
+            label={t("requestQueue.allQueues", { defaultValue: "전체" })}
             active={selected === ALL_QUEUE}
             onClick={() => selectQueue(ALL_QUEUE)}
           />
           {queues.map((q) => (
             <QueueButton
               key={q.id}
+              t={t}
               label={q.name}
               count={q.openCount}
               isDefault={q.isDefault}
@@ -175,8 +197,10 @@ export function RequestQueuePage() {
             rowKey={(r) => r.id}
             loading={loading}
             onRowClick={(r) => navigate(`/service-requests/${r.id}`)}
-            emptyTitle="요청이 없습니다"
-            emptyDescription="이 큐에 처리할 요청이 없습니다."
+            emptyTitle={t("requestQueue.emptyTitle", { defaultValue: "요청이 없습니다" })}
+            emptyDescription={t("requestQueue.emptyDescription", {
+              defaultValue: "이 큐에 처리할 요청이 없습니다.",
+            })}
           />
           <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </div>

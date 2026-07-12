@@ -1,3 +1,5 @@
+import type { TFunction } from "i18next";
+
 import type { StatusTone } from "@/components/common";
 import type { SlaStatus, SrStatus } from "@/features/service-request/types";
 
@@ -25,8 +27,12 @@ const STATUS_TONE: Record<SrStatus, StatusTone> = {
   REJECTED: "danger",
 };
 
-export function statusLabel(status: SrStatus): string {
-  return STATUS_LABEL[status] ?? status;
+/** 요청 상태 라벨(`service-request:status.*`, 6.3절 전환 패턴). */
+export function statusLabel(t: TFunction, status: SrStatus): string {
+  return t(`status.${status}`, {
+    ns: "service-request",
+    defaultValue: STATUS_LABEL[status] ?? status,
+  });
 }
 
 export function statusTone(status: SrStatus): StatusTone {
@@ -45,8 +51,9 @@ const SLA_TONE: Record<SlaStatus, StatusTone> = {
   BREACHED: "danger",
 };
 
-export function slaLabel(sla: SlaStatus): string {
-  return SLA_LABEL[sla] ?? sla;
+/** SLA 상태 라벨(`service-request:sla.*`). */
+export function slaLabel(t: TFunction, sla: SlaStatus): string {
+  return t(`sla.${sla}`, { ns: "service-request", defaultValue: SLA_LABEL[sla] ?? sla });
 }
 
 export function slaTone(sla: SlaStatus): StatusTone {

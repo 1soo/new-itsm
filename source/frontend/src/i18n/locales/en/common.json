@@ -160,5 +160,42 @@
     "logoutTitle": "Log Out",
     "logoutDescription": "Are you sure you want to log out of your current session?",
     "logoutConfirm": "Log Out"
+  },
+  "pagination": {
+    "nav": "Pagination",
+    "previous": "Previous page",
+    "next": "Next page"
+  },
+  "multiSelect": {
+    "defaultPlaceholder": "Select",
+    "selectedCount": "{{count}} selected",
+    "deselectAria": "Clear selection",
+    "noOptions": "No options"
+  },
+  "fieldBuilder": {
+    "emptyTitle": "No fields defined",
+    "emptyDescription": "Use the button below to add a form field.",
+    "labelLabel": "Label",
+    "labelPlaceholder": "Field label",
+    "typeLabel": "Type",
+    "removeFieldAria": "Remove field",
+    "optionsLabel": "Options (comma-separated)",
+    "optionsPlaceholder": "e.g. Low, Medium, High",
+    "requiredLabel": "Required",
+    "addField": "Add Field",
+    "fieldType": {
+      "text": "Single-line Text",
+      "number": "Number",
+      "select": "Single Select",
+      "date": "Date",
+      "file": "Attachment"
+    }
+  },
+  "rating": {
+    "overallAria": "Rating {{value}} / {{max}}",
+    "starAria": "{{value}} star"
+  },
+  "validation": {
+    "required": "{{label}} is required."
   }
 }

@@ -160,5 +160,42 @@
     "logoutTitle": "로그아웃",
     "logoutDescription": "현재 세션에서 로그아웃하시겠습니까?",
     "logoutConfirm": "로그아웃"
+  },
+  "pagination": {
+    "nav": "페이지네이션",
+    "previous": "이전 페이지",
+    "next": "다음 페이지"
+  },
+  "multiSelect": {
+    "defaultPlaceholder": "선택",
+    "selectedCount": "{{count}}개 선택됨",
+    "deselectAria": "선택 해제",
+    "noOptions": "항목 없음"
+  },
+  "fieldBuilder": {
+    "emptyTitle": "정의된 필드가 없습니다",
+    "emptyDescription": "아래 버튼으로 양식 필드를 추가하세요.",
+    "labelLabel": "라벨",
+    "labelPlaceholder": "필드 라벨",
+    "typeLabel": "유형",
+    "removeFieldAria": "필드 삭제",
+    "optionsLabel": "옵션 (쉼표로 구분)",
+    "optionsPlaceholder": "예: 낮음, 보통, 높음",
+    "requiredLabel": "필수 입력",
+    "addField": "필드 추가",
+    "fieldType": {
+      "text": "한 줄 텍스트",
+      "number": "숫자",
+      "select": "단일 선택",
+      "date": "날짜",
+      "file": "첨부파일"
+    }
+  },
+  "rating": {
+    "overallAria": "별점 {{value}} / {{max}}",
+    "starAria": "{{value}}점"
+  },
+  "validation": {
+    "required": "{{label}}은(는) 필수 항목입니다."
   }
 }

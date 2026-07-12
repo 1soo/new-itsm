@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,7 @@ export function Pagination({
   onPageChange,
   className,
 }: PaginationProps) {
+  const { t } = useTranslation("common");
   if (totalPages <= 1) return null;
 
   const pages = pageWindow(page, totalPages);
@@ -36,14 +38,14 @@ export function Pagination({
   return (
     <nav
       className={cn("flex items-center justify-center gap-1", className)}
-      aria-label="페이지네이션"
+      aria-label={t("pagination.nav")}
     >
       <Button
         variant="outline"
         size="icon"
         onClick={() => onPageChange(page - 1)}
         disabled={page <= 0}
-        aria-label="이전 페이지"
+        aria-label={t("pagination.previous")}
       >
         <ChevronLeft />
       </Button>
@@ -63,7 +65,7 @@ export function Pagination({
         size="icon"
         onClick={() => onPageChange(page + 1)}
         disabled={page >= totalPages - 1}
-        aria-label="다음 페이지"
+        aria-label={t("pagination.next")}
       >
         <ChevronRight />
       </Button>

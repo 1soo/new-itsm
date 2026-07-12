@@ -29,13 +29,13 @@ export function domainLabel(t: TFunction, domain: SearchDomain): string {
   return t(`search.domainLabel.${domain}`, { ns: "common", defaultValue });
 }
 
-/** 결과 상태 배지 — 도메인별 기존 statusLabel/statusTone 재사용(원문 상태값 매핑 실패 시 원문 그대로 표시). */
-export function resultStatusLabel(domain: SearchDomain, status: string): string {
+/** 결과 상태 배지 — 도메인별 기존 statusLabel/statusTone 재사용(원문 상태값 매핑 실패 시 원문 그대로 표시). 각 도메인 status.ts가 i18n 전환될 때마다 해당 분기에 t를 전달한다(6.3절). */
+export function resultStatusLabel(t: TFunction, domain: SearchDomain, status: string): string {
   switch (domain) {
     case "KNOWLEDGE":
       return knowledgeStatusLabel(status as ArticleStatus);
     case "SERVICE_REQUEST":
-      return srStatusLabel(status as SrStatus);
+      return srStatusLabel(t, status as SrStatus);
     case "INCIDENT":
       return incidentStatusLabel(status as IncidentStatus);
     case "PROBLEM":

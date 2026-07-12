@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ const EMPTY_FORM: FormState = {
 };
 
 export function CatalogManagePage() {
+  const { t } = useTranslation("service-request");
   const [items, setItems] = useState<CatalogItemSummary[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -82,11 +84,11 @@ export function CatalogManagePage() {
     setError(null);
 
     if (!form.name.trim()) {
-      setError("이름은 필수입니다.");
+      setError(t("catalogManage.nameRequiredError", { defaultValue: "이름은 필수입니다." }));
       return;
     }
     if (form.formSchema.length === 0) {
-      setError("양식 필드를 하나 이상 정의하세요.");
+      setError(t("catalogManage.schemaRequiredError", { defaultValue: "양식 필드를 하나 이상 정의하세요." }));
       return;
     }
 
@@ -103,16 +105,16 @@ export function CatalogManagePage() {
     try {
       if (selectedId == null) {
         const created = await srmApi.createCatalogItem(payload);
-        toast.success("카탈로그 항목이 생성되었습니다");
+        toast.success(t("catalogManage.createSuccess", { defaultValue: "카탈로그 항목이 생성되었습니다" }));
         loadList();
         selectItem(created.id);
       } else {
         await srmApi.updateCatalogItem(selectedId, payload);
-        toast.success("카탈로그 항목이 수정되었습니다");
+        toast.success(t("catalogManage.updateSuccess", { defaultValue: "카탈로그 항목이 수정되었습니다" }));
         loadList();
       }
     } catch (err) {
-      setError(extractErrorMessage(err, "저장에 실패했습니다."));
+      setError(extractErrorMessage(err, t("catalogManage.saveFailed", { defaultValue: "저장에 실패했습니다." })));
     } finally {
       setSaving(false);
     }
@@ -121,17 +123,21 @@ export function CatalogManagePage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-foreground">서비스 카탈로그 관리</h1>
+        <h1 className="text-xl font-semibold text-foreground">
+          {t("catalogManage.title", { defaultValue: "서비스 카탈로그 관리" })}
+        </h1>
         <Button onClick={startNew}>
           <Plus />
-          새 항목
+          {t("catalogManage.newItem", { defaultValue: "새 항목" })}
         </Button>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
         <aside className="space-y-1">
           {items.length === 0 ? (
-            <p className="text-sm text-muted-foreground">등록된 항목이 없습니다.</p>
+            <p className="text-sm text-muted-foreground">
+              {t("catalogManage.emptyList", { defaultValue: "등록된 항목이 없습니다." })}
+            </p>
           ) : (
             items.map((it) => (
               <button
@@ -152,13 +158,15 @@ export function CatalogManagePage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">
-              {selectedId == null ? "새 요청 유형" : "요청 유형 편집"}
+              {selectedId == null
+                ? t("catalogManage.newItemTitle", { defaultValue: "새 요청 유형" })
+                : t("catalogManage.editItemTitle", { defaultValue: "요청 유형 편집" })}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               <div className="space-y-1.5">
-                <Label htmlFor="name">이름</Label>
+                <Label htmlFor="name">{t("catalogManage.name", { defaultValue: "이름" })}</Label>
                 <Input
                   id="name"
                   value={form.name}
@@ -167,7 +175,7 @@ export function CatalogManagePage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="desc">설명</Label>
+                <Label htmlFor="desc">{t("catalogManage.description", { defaultValue: "설명" })}</Label>
                 <Input
                   id="desc"
                   value={form.description}
@@ -176,7 +184,9 @@ export function CatalogManagePage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="sla-res">응답 SLA(분)</Label>
+                  <Label htmlFor="sla-res">
+                    {t("catalogManage.slaResponseMinutes", { defaultValue: "응답 SLA(분)" })}
+                  </Label>
                   <Input
                     id="sla-res"
                     type="number"
@@ -185,7 +195,9 @@ export function CatalogManagePage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="sla-rsv">해결 SLA(분)</Label>
+                  <Label htmlFor="sla-rsv">
+                    {t("catalogManage.slaResolveMinutes", { defaultValue: "해결 SLA(분)" })}
+                  </Label>
                   <Input
                     id="sla-rsv"
                     type="number"
@@ -195,7 +207,7 @@ export function CatalogManagePage() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="queue">담당 큐 ID(선택)</Label>
+                <Label htmlFor="queue">{t("catalogManage.queueId", { defaultValue: "담당 큐 ID(선택)" })}</Label>
                 <Input
                   id="queue"
                   type="number"
@@ -204,7 +216,7 @@ export function CatalogManagePage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>양식 필드</Label>
+                <Label>{t("catalogManage.formSchema", { defaultValue: "양식 필드" })}</Label>
                 <FieldBuilder
                   value={form.formSchema}
                   onChange={(fields) => setForm((f) => ({ ...f, formSchema: fields }))}
@@ -219,7 +231,7 @@ export function CatalogManagePage() {
 
               <div className="flex justify-end">
                 <Button type="submit" loading={saving}>
-                  저장
+                  {t("catalogManage.save", { defaultValue: "저장" })}
                 </Button>
               </div>
             </form>

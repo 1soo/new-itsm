@@ -1,5 +1,7 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,10 +49,10 @@ import { extractErrorMessage } from "@/lib/apiClient";
  */
 const SLA_STATUS_SET = new Set(["OK", "WARNING", "BREACHED"]);
 
-function slaBadgeProps(value: string) {
+function slaBadgeProps(t: TFunction, value: string) {
   if (SLA_STATUS_SET.has(value)) {
     const v = value as SlaStatus;
-    return { tone: slaTone(v), label: slaLabel(v) };
+    return { tone: slaTone(v), label: slaLabel(t, v) };
   }
   return { tone: "muted" as const, label: value };
 }
@@ -74,6 +76,7 @@ function fallbackTransitions(detail: RequestDetail, isAgent: boolean, isEndUser:
 }
 
 export function RequestDetailPage() {
+  const { t } = useTranslation("service-request");
   const params = useParams();
   const navigate = useNavigate();
   const id = Number(params.id);
@@ -138,7 +141,12 @@ export function RequestDetailPage() {
     setTransitioning(target);
     try {
       await srmApi.transition(id, target);
-      toast.success(`상태가 '${statusLabel(target)}'로 변경되었습니다`);
+      toast.success(
+        t("requestDetail.transitionSuccess", {
+          status: statusLabel(t, target),
+          defaultValue: `상태가 '${statusLabel(t, target)}'로 변경되었습니다`,
+        }),
+      );
       load();
     } catch (err) {
       toast.error(extractErrorMessage(err));
@@ -167,13 +175,13 @@ export function RequestDetailPage() {
 
   const handleCsat = async () => {
     if (csatScore < 1) {
-      toast.error("별점을 선택하세요.");
+      toast.error(t("requestDetail.csatRatingRequired", { defaultValue: "별점을 선택하세요." }));
       return;
     }
     setCsatSubmitting(true);
     try {
       await srmApi.submitCsat(id, csatScore, csatComment.trim() || undefined);
-      toast.success("평가가 제출되었습니다. 감사합니다.");
+      toast.success(t("requestDetail.csatSuccess", { defaultValue: "평가가 제출되었습니다. 감사합니다." }));
       setCsatDone(true);
     } catch (err) {
       toast.error(extractErrorMessage(err));
@@ -186,8 +194,10 @@ export function RequestDetailPage() {
   if (notFound || !detail) {
     return (
       <div className="mx-auto max-w-lg space-y-4 text-center">
-        <p className="text-sm text-muted-foreground">요청을 찾을 수 없습니다.</p>
-        <Button onClick={() => navigate(-1)}>이전으로</Button>
+        <p className="text-sm text-muted-foreground">
+          {t("requestDetail.notFound", { defaultValue: "요청을 찾을 수 없습니다." })}
+        </p>
+        <Button onClick={() => navigate(-1)}>{t("requestDetail.back", { defaultValue: "이전으로" })}</Button>
       </div>
     );
   }
@@ -196,14 +206,14 @@ export function RequestDetailPage() {
   // allowedTransitions에도 승인 게이트가 반영되지 않을 수 있어 FE에서 한 번 더 걸러낸다).
   const approvalPending = detail.approval.status === "IN_PROGRESS";
   const transitions = (detail.allowedTransitions ?? fallbackTransitions(detail, isAgent, isEndUser)).filter(
-    (t) => !(t === "IN_FULFILLMENT" && approvalPending),
+    (target) => !(target === "IN_FULFILLMENT" && approvalPending),
   );
   const showCsat = detail.status === "CLOSED" && isEndUser;
 
-  const timelineItems: TimelineItem[] = detail.timeline.map((t, i) => ({
+  const timelineItems: TimelineItem[] = detail.timeline.map((entry, i) => ({
     id: String(i),
-    title: t.message,
-    timestamp: formatDateTime(t.at),
+    title: entry.message,
+    timestamp: formatDateTime(entry.at),
   }));
 
   const formEntries = Object.entries(detail.formValues ?? {});
@@ -212,27 +222,30 @@ export function RequestDetailPage() {
     <TicketDetailLayout
       ticketKey={detail.ticketKey}
       title={detail.catalogItemName}
-      badges={<StatusBadge tone={statusTone(detail.status)} label={statusLabel(detail.status)} />}
-      actions={transitions.map((t) => (
+      badges={<StatusBadge tone={statusTone(detail.status)} label={statusLabel(t, detail.status)} />}
+      actions={transitions.map((target) => (
         <Button
-          key={t}
-          variant={t === "CLOSED" ? "outline" : "default"}
-          loading={transitioning === t}
-          onClick={() => handleTransition(t)}
+          key={target}
+          variant={target === "CLOSED" ? "outline" : "default"}
+          loading={transitioning === target}
+          onClick={() => handleTransition(target)}
         >
-          {statusLabel(t)}
+          {statusLabel(t, target)}
         </Button>
       ))}
       meta={
         <>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">정보</CardTitle>
+              <CardTitle className="text-base">{t("requestDetail.infoTitle", { defaultValue: "정보" })}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              <MetaRow label="요청자" value={detail.requester} />
-              <MetaRow label="담당자" value={detail.assignee || "미배정"} />
-              <MetaRow label="큐" value={detail.queue || "-"} />
+              <MetaRow label={t("requestDetail.requester", { defaultValue: "요청자" })} value={detail.requester} />
+              <MetaRow
+                label={t("requestDetail.assignee", { defaultValue: "담당자" })}
+                value={detail.assignee || t("requestQueue.unassigned", { defaultValue: "미배정" })}
+              />
+              <MetaRow label={t("requestDetail.queue", { defaultValue: "큐" })} value={detail.queue || "-"} />
             </CardContent>
           </Card>
 
@@ -240,7 +253,7 @@ export function RequestDetailPage() {
             matched={detail.approval.approvalRequestId != null}
             steps={approvalSteps}
             currentStepNo={approvalCurrentStepNo}
-            emptyMessage="이 요청에는 승인 절차가 없습니다"
+            emptyMessage={t("requestDetail.noApproval", { defaultValue: "이 요청에는 승인 절차가 없습니다" })}
           />
 
           <Card>
@@ -249,23 +262,31 @@ export function RequestDetailPage() {
             </CardHeader>
             <CardContent className="flex flex-col gap-2 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">응답</span>
-                <StatusBadge {...slaBadgeProps(detail.sla.responseStatus)} />
+                <span className="text-muted-foreground">
+                  {t("requestDetail.slaResponse", { defaultValue: "응답" })}
+                </span>
+                <StatusBadge {...slaBadgeProps(t, detail.sla.responseStatus)} />
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">해결</span>
-                <StatusBadge {...slaBadgeProps(detail.sla.resolveStatus)} />
+                <span className="text-muted-foreground">
+                  {t("requestDetail.slaResolve", { defaultValue: "해결" })}
+                </span>
+                <StatusBadge {...slaBadgeProps(t, detail.sla.resolveStatus)} />
               </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">연결 자산</CardTitle>
+              <CardTitle className="text-base">
+                {t("requestDetail.linkedAssetsTitle", { defaultValue: "연결 자산" })}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-1.5 text-sm">
               {detail.linkedAssets.length === 0 ? (
-                <p className="text-muted-foreground">연결 없음</p>
+                <p className="text-muted-foreground">
+                  {t("requestDetail.noLinkedAssets", { defaultValue: "연결 없음" })}
+                </p>
               ) : (
                 detail.linkedAssets.map((a) => (
                   <span key={a.id} className="block text-foreground">{a.assetKey}</span>
@@ -279,11 +300,13 @@ export function RequestDetailPage() {
       {/* 요청 양식 값 */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">요청 내용</CardTitle>
+          <CardTitle className="text-base">{t("requestDetail.formValuesTitle", { defaultValue: "요청 내용" })}</CardTitle>
         </CardHeader>
         <CardContent>
           {formEntries.length === 0 ? (
-            <p className="text-sm text-muted-foreground">입력된 값이 없습니다.</p>
+            <p className="text-sm text-muted-foreground">
+              {t("requestDetail.noFormValues", { defaultValue: "입력된 값이 없습니다." })}
+            </p>
           ) : (
             <dl className="grid grid-cols-[8rem_1fr] gap-y-2 text-sm">
               {formEntries.map(([k, v]) => (
@@ -301,21 +324,23 @@ export function RequestDetailPage() {
       {showCsat ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">만족도 평가</CardTitle>
+            <CardTitle className="text-base">{t("requestDetail.csatTitle", { defaultValue: "만족도 평가" })}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {csatDone ? (
-              <p className="text-sm text-success">평가해 주셔서 감사합니다.</p>
+              <p className="text-sm text-success">
+                {t("requestDetail.csatThanks", { defaultValue: "평가해 주셔서 감사합니다." })}
+              </p>
             ) : (
               <>
                 <Rating value={csatScore} onChange={setCsatScore} size="lg" />
                 <Input
                   value={csatComment}
                   onChange={(e) => setCsatComment(e.target.value)}
-                  placeholder="의견(선택)"
+                  placeholder={t("requestDetail.csatCommentPlaceholder", { defaultValue: "의견(선택)" })}
                 />
                 <Button onClick={handleCsat} loading={csatSubmitting}>
-                  평가 제출
+                  {t("requestDetail.csatSubmit", { defaultValue: "평가 제출" })}
                 </Button>
               </>
             )}
@@ -326,11 +351,13 @@ export function RequestDetailPage() {
       {/* 코멘트 */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">코멘트</CardTitle>
+          <CardTitle className="text-base">{t("requestDetail.commentsTitle", { defaultValue: "코멘트" })}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {detail.comments.length === 0 ? (
-            <p className="text-sm text-muted-foreground">코멘트가 없습니다.</p>
+            <p className="text-sm text-muted-foreground">
+              {t("requestDetail.noComments", { defaultValue: "코멘트가 없습니다." })}
+            </p>
           ) : (
             <ul className="space-y-3">
               {detail.comments.map((c) => (
@@ -346,16 +373,16 @@ export function RequestDetailPage() {
           )}
           <form onSubmit={handleComment} className="flex items-end gap-2">
             <div className="flex-1 space-y-1">
-              <Label htmlFor="comment">코멘트 작성</Label>
+              <Label htmlFor="comment">{t("requestDetail.commentWrite", { defaultValue: "코멘트 작성" })}</Label>
               <Input
                 id="comment"
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                placeholder="메시지를 입력하세요"
+                placeholder={t("requestDetail.commentPlaceholder", { defaultValue: "메시지를 입력하세요" })}
               />
             </div>
             <Button type="submit" loading={commenting} disabled={!comment.trim()}>
-              등록
+              {t("requestDetail.commentSubmit", { defaultValue: "등록" })}
             </Button>
           </form>
         </CardContent>
@@ -364,11 +391,13 @@ export function RequestDetailPage() {
       {/* 타임라인 */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">타임라인</CardTitle>
+          <CardTitle className="text-base">{t("requestDetail.timelineTitle", { defaultValue: "타임라인" })}</CardTitle>
         </CardHeader>
         <CardContent>
           {timelineItems.length === 0 ? (
-            <p className="text-sm text-muted-foreground">이력이 없습니다.</p>
+            <p className="text-sm text-muted-foreground">
+              {t("requestDetail.noTimeline", { defaultValue: "이력이 없습니다." })}
+            </p>
           ) : (
             <Timeline items={timelineItems} />
           )}

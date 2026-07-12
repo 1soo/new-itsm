@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,7 @@ function roundOr0(n: number | undefined, digits = 0): string {
 }
 
 export function MetricsPage() {
+  const { t } = useTranslation("service-request");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [applied, setApplied] = useState<{ from: string; to: string }>({ from: "", to: "" });
@@ -44,25 +46,43 @@ export function MetricsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold text-foreground">요청 지표</h1>
+      <h1 className="text-xl font-semibold text-foreground">
+        {t("metrics.title", { defaultValue: "요청 지표" })}
+      </h1>
 
       <form onSubmit={handleSearch} className="flex flex-wrap items-end gap-2 rounded-lg border border-border bg-card p-3">
         <div className="space-y-1">
-          <Label htmlFor="from">시작일</Label>
+          <Label htmlFor="from">{t("metrics.filterFrom", { defaultValue: "시작일" })}</Label>
           <Input id="from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="to">종료일</Label>
+          <Label htmlFor="to">{t("metrics.filterTo", { defaultValue: "종료일" })}</Label>
           <Input id="to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         </div>
-        <Button type="submit">조회</Button>
+        <Button type="submit">{t("metrics.searchButton", { defaultValue: "조회" })}</Button>
       </form>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="CSAT 평균" value={loading ? "-" : roundOr0(metrics?.csatAvg, 1)} unit="/ 5" />
-        <KpiCard label="평균 응답 시간" value={loading ? "-" : roundOr0(metrics?.avgResponseMinutes)} unit="분" />
-        <KpiCard label="평균 해결 시간" value={loading ? "-" : roundOr0(metrics?.avgResolveMinutes)} unit="분" />
-        <KpiCard label="SLA 준수율" value={loading ? "-" : roundOr0(metrics?.slaComplianceRate, 1)} unit="%" />
+        <KpiCard
+          label={t("metrics.csatAvg", { defaultValue: "CSAT 평균" })}
+          value={loading ? "-" : roundOr0(metrics?.csatAvg, 1)}
+          unit="/ 5"
+        />
+        <KpiCard
+          label={t("metrics.avgResponseTime", { defaultValue: "평균 응답 시간" })}
+          value={loading ? "-" : roundOr0(metrics?.avgResponseMinutes)}
+          unit={t("metrics.minutesUnit", { defaultValue: "분" })}
+        />
+        <KpiCard
+          label={t("metrics.avgResolveTime", { defaultValue: "평균 해결 시간" })}
+          value={loading ? "-" : roundOr0(metrics?.avgResolveMinutes)}
+          unit={t("metrics.minutesUnit", { defaultValue: "분" })}
+        />
+        <KpiCard
+          label={t("metrics.slaComplianceRate", { defaultValue: "SLA 준수율" })}
+          value={loading ? "-" : roundOr0(metrics?.slaComplianceRate, 1)}
+          unit="%"
+        />
       </div>
     </div>
   );

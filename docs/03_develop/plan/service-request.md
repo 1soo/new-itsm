@@ -58,3 +58,19 @@
 ## 7. 특이사항
 
 - 지식 도메인(KM) 미구축: 추천·linkedArticles는 빈 배열. KM 단계에서 연동(양쪽 계획에 교차 표기).
+
+## i18n 다국어 전환 (유지보수 요청, 2026-07-12)
+
+> i18n 인프라·SweetAlert2·언어 선택은 common phase에서 완료됨(`docs/03_develop/plan/common.md` v3절). 이번 phase는 레이아웃/컴포넌트 변경 없이 텍스트만 번역 키로 치환한다(`docs/02_plan/screen/common.md` 6절). BE/DB 변경 없음.
+
+### 담당 범위 — dev-fe 단독(UI 미소집)
+
+- 대상 화면(`docs/02_plan/screen/service-request.md` 3절): `PortalPage.tsx`(SCR-SRM-001), `RequestSubmitPage.tsx`(002), `RequestListPage.tsx`(003), `RequestQueuePage.tsx`(004), `RequestDetailPage.tsx`(005), `CatalogManagePage.tsx`(007), `MetricsPage.tsx`(008).
+- `features/service-request/status.ts` — 6.3절 전환 패턴대로 `statusLabel(t, status)` 등 라벨 매핑 함수를 `t: TFunction` 인자를 받도록 전환, 호출부(각 Page.tsx, `features/search/status.ts`의 재사용부 포함) 모두 `t` 전달.
+- `useTranslation(["service-request", "common"])` 사용(공용 승인 패널·토스트 등 common 텍스트 참조 시).
+- `locales/{ko,en}/service-request.json`(현재 `{}` 스캐폴딩) — 이번 phase 단독 소유, 직접 채운다.
+- `format.ts`(날짜/숫자 포맷)는 변경하지 않는다(ko-KR 고정 유지, 확정된 결정 2).
+
+### 완료 기준
+- English 전환 시 서비스 포털·요청 제출·내 요청 목록·요청 큐·요청 상세·카탈로그 관리·지표 대시보드 전체 텍스트(상태 라벨 포함) 영어 전환.
+- 기존 요청 제출/승인/이행/CSAT 등 기능 회귀 없음(텍스트만 치환).

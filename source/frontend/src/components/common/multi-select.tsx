@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Check, ChevronDown, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,11 +33,13 @@ export function MultiSelect({
   options,
   value,
   onChange,
-  placeholder = "선택",
+  placeholder,
   className,
   disabled,
 }: MultiSelectProps) {
+  const { t } = useTranslation("common");
   const [open, setOpen] = useState(false);
+  const resolvedPlaceholder = placeholder ?? t("multiSelect.defaultPlaceholder");
 
   const toggle = (v: string) => {
     onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value, v]);
@@ -61,7 +64,7 @@ export function MultiSelect({
         >
           <span className="flex flex-1 flex-wrap items-center gap-1 overflow-hidden">
             {selectedLabels.length === 0 ? (
-              placeholder
+              resolvedPlaceholder
             ) : selectedLabels.length <= 2 ? (
               selectedLabels.map((o) => (
                 <Badge key={o.value} variant="secondary" className="rounded-sm">
@@ -70,7 +73,7 @@ export function MultiSelect({
               ))
             ) : (
               <Badge variant="secondary" className="rounded-sm">
-                {selectedLabels.length}개 선택됨
+                {t("multiSelect.selectedCount", { count: selectedLabels.length })}
               </Badge>
             )}
           </span>
@@ -78,7 +81,7 @@ export function MultiSelect({
             <X
               className="size-4 shrink-0 opacity-60 hover:opacity-100"
               role="button"
-              aria-label="선택 해제"
+              aria-label={t("multiSelect.deselectAria")}
               onClick={(e) => {
                 e.stopPropagation();
                 onChange([]);
@@ -92,7 +95,7 @@ export function MultiSelect({
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-1" align="start">
         <ul role="listbox" aria-multiselectable="true" className="max-h-60 overflow-auto">
           {options.length === 0 ? (
-            <li className="px-2 py-1.5 text-sm text-muted-foreground">항목 없음</li>
+            <li className="px-2 py-1.5 text-sm text-muted-foreground">{t("multiSelect.noOptions")}</li>
           ) : (
             options.map((o) => {
               const selected = value.includes(o.value);

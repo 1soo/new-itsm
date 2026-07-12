@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +26,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 제출 성공 시 접수번호 토스트 + 상세 이동.
  */
 export function RequestSubmitPage() {
+  const { t } = useTranslation("service-request");
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const itemId = Number(searchParams.get("item"));
@@ -74,7 +76,7 @@ export function RequestSubmitPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!catalog) return;
-    const validation = validateForm(schema, values);
+    const validation = validateForm(schema, values, t);
     setErrors(validation);
     if (Object.keys(validation).length > 0) return;
 
@@ -86,7 +88,12 @@ export function RequestSubmitPage() {
     setSubmitting(true);
     try {
       const created = await srmApi.createRequest({ catalogItemId: catalog.id, formValues });
-      toast.success(`요청이 접수되었습니다 (${created.ticketKey})`);
+      toast.success(
+        t("requestSubmit.success", {
+          ticketKey: created.ticketKey,
+          defaultValue: `요청이 접수되었습니다 (${created.ticketKey})`,
+        }),
+      );
       navigate(`/service-requests/${created.id}`);
     } catch (err) {
       toast.error(extractErrorMessage(err));
@@ -110,17 +117,19 @@ export function RequestSubmitPage() {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">요청 양식</CardTitle>
+            <CardTitle className="text-base">
+              {t("requestSubmit.formTitle", { defaultValue: "요청 양식" })}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6" noValidate>
               <DynamicForm schema={schema} values={values} onChange={setValues} errors={errors} />
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => navigate("/portal")}>
-                  취소
+                  {t("requestSubmit.cancel", { defaultValue: "취소" })}
                 </Button>
                 <Button type="submit" loading={submitting}>
-                  제출
+                  {t("requestSubmit.submit", { defaultValue: "제출" })}
                 </Button>
               </div>
             </form>
@@ -131,7 +140,9 @@ export function RequestSubmitPage() {
           <aside>
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">관련 지식 기사</CardTitle>
+                <CardTitle className="text-base">
+                  {t("portal.relatedArticlesTitle", { defaultValue: "관련 지식 기사" })}
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-1">
                 {suggestions.map((s) => (

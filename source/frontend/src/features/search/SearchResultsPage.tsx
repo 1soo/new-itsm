@@ -80,7 +80,9 @@ export function SearchResultsPage() {
     },
     {
       header: t("search.columnStatus", { defaultValue: "상태" }),
-      cell: (r) => <StatusBadge tone={resultStatusTone(r.domain, r.status)} label={resultStatusLabel(r.domain, r.status)} />,
+      cell: (r) => (
+        <StatusBadge tone={resultStatusTone(r.domain, r.status)} label={resultStatusLabel(t, r.domain, r.status)} />
+      ),
     },
     { header: t("search.columnUpdatedAt", { defaultValue: "갱신일" }), cell: (r) => formatDateTime(r.updatedAt) },
   ];

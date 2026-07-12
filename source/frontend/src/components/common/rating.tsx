@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Star } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
 
 /**
  * 별점 — SCR-SRM-005 CSAT 위젯. 종료 시 요청자에게 노출.
  * 읽기 전용(readOnly) 또는 입력용(onChange). 채워진 별은 Success 톤.
+ * aria-label은 `common:rating.*` 키(2026-07-12 다국어 지원).
  */
 export interface RatingProps {
   value: number;
@@ -30,6 +32,7 @@ export function Rating({
   size = "md",
   className,
 }: RatingProps) {
+  const { t } = useTranslation("common");
   const [hover, setHover] = useState<number | null>(null);
   const interactive = !readOnly && !!onChange;
   const shown = hover ?? value;
@@ -38,7 +41,7 @@ export function Rating({
     <div
       className={cn("inline-flex items-center gap-1", className)}
       role={interactive ? "radiogroup" : "img"}
-      aria-label={`별점 ${value} / ${max}`}
+      aria-label={t("rating.overallAria", { value, max })}
       onMouseLeave={() => setHover(null)}
     >
       {Array.from({ length: max }).map((_, i) => {
@@ -64,7 +67,7 @@ export function Rating({
             type="button"
             role="radio"
             aria-checked={starValue === value}
-            aria-label={`${starValue}점`}
+            aria-label={t("rating.starAria", { value: starValue })}
             className="rounded outline-none transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => onChange?.(starValue)}
             onMouseEnter={() => setHover(starValue)}
