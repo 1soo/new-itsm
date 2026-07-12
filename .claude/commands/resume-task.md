@@ -22,7 +22,7 @@ disable-model-invocation: true
 - `docs/02_plan/` — 화면/API/DB/보안/역할 설계 존재 여부(설계 완료 여부).
 - `docs/03_develop/plan/` — 도메인별 개발 계획 파일. 어떤 도메인까지 계획이 세워졌는지.
 - `source/frontend/`, `source/backend/`, `source/db/` — 실제 구현된 도메인과 각 디렉토리의 `CLAUDE.md`.
-- `docs/04_test/{domain}/{yyyyMMdd-HHmmss}/` — 해당 도메인의 가장 최근 타임스탬프 폴더의 `scenario/`·`result/`. 실패 항목이 남아있는지.
+- `docs/04_test/{yyyyMMdd-HHmmss}/{domain}/` — 해당 도메인의 가장 최근 타임스탬프 폴더의 `scenario/`·`result/`. 실패 항목이 남아있는지.
 - `git log`, `git status`, `git diff` — 마지막으로 커밋(=완료)된 도메인과, 커밋되지 않은 변경사항(=진행 중이던 작업).
 
 위 조사로 다음을 판단한다: **① 현재 단계**(분석/설계/개발/테스트) **② 진행 중이던 도메인** **③ 그 도메인의 상태**(계획만 있음 / 개발 중 / 테스트 실패 대기 중 / 재테스트 대기 중).

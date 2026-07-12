@@ -60,7 +60,7 @@ npm run dev
 - `docs/01_analyze/` — 요구사항 정의서(PRD)·기능 명세서·기술스택 정의서
 - `docs/02_plan/` — 화면/API/DB/보안/역할/인프라 설계
 - `docs/03_develop/plan/` — 도메인별 개발 계획
-- `docs/04_test/{domain}/{yyyyMMdd-HHmmss}/` — 도메인별 통합 테스트 시나리오·결과
+- `docs/04_test/{yyyyMMdd-HHmmss}/{domain}/` — 도메인별 통합 테스트 시나리오·결과
 - `docs/06_maintenance/{yyyyMMdd-HHmmss}/{domain}/report.md` — 개발 완료 후 추가 요구사항(유지보수) 이력. 인덱스는 `docs/06_maintenance/CLAUDE.md`
 
 ---
