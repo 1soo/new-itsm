@@ -22,6 +22,7 @@ public enum ErrorCode {
     // 403
     ACCOUNT_INACTIVE(HttpStatus.FORBIDDEN, "비활성화된 계정입니다."),
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
+    CSRF_TOKEN_MISMATCH(HttpStatus.FORBIDDEN, "CSRF 토큰이 누락되었거나 일치하지 않습니다."),
 
     // 404
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "계정을 찾을 수 없습니다."),

@@ -17,7 +17,7 @@ export interface LoginError {
 
 /*
  * 인증 전역 상태 — 앱 전역에서 공유하는 사용자·역할·세션 상태만 보관한다.
- * Access Token 자체는 Session Storage(apiClient)가 단일 원천이며, 여기서는
+ * Access Token 자체는 Client Memory(apiClient)가 단일 원천이며, 여기서는
  * 인증 여부(status)와 사용자/역할(user)만 다룬다.
  */
 

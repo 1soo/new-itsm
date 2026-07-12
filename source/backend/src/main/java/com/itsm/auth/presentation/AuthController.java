@@ -10,6 +10,8 @@ import com.itsm.auth.application.dto.PasswordChangeRequest;
 import com.itsm.auth.application.dto.RefreshRequest;
 import com.itsm.auth.application.dto.TokenResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.itsm.common.exception.BusinessException;
+import com.itsm.common.exception.ErrorCode;
 import com.itsm.common.exception.ErrorResponse;
 import com.itsm.common.security.AuthPrincipal;
 import com.itsm.common.security.JwtTokenProvider;
@@ -33,9 +35,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Tag(name = "Auth", description = "인증/세션 API")
@@ -44,6 +48,8 @@ import java.util.stream.Collectors;
 public class AuthController {
 
     private static final String REFRESH_COOKIE = "refreshToken";
+    private static final String CSRF_COOKIE = "XSRF-TOKEN";
+    private static final String CSRF_HEADER = "X-CSRF-Token";
     private static final String COOKIE_PATH = "/";
 
     private final AuthService authService;
@@ -56,7 +62,7 @@ public class AuthController {
         this.refreshMaxAgeSeconds = tokenProvider.getRefreshTokenValiditySeconds();
     }
 
-    @Operation(summary = "로그인", description = "이메일/비밀번호로 토큰을 발급한다. Refresh Token은 httpOnly Cookie로도 내려간다.")
+    @Operation(summary = "로그인", description = "이메일/비밀번호로 토큰을 발급한다. Refresh Token은 httpOnly Cookie로, CSRF 토큰은 읽기 가능한 XSRF-TOKEN 쿠키로 함께 내려간다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "로그인 성공"),
             @ApiResponse(responseCode = "400", description = "입력 형식 오류", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
@@ -68,20 +74,28 @@ public class AuthController {
         LoginResponse response = authService.login(request);
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, refreshCookie(response.refreshToken(), refreshMaxAgeSeconds).toString())
+                .header(HttpHeaders.SET_COOKIE, csrfCookie(UUID.randomUUID().toString(), refreshMaxAgeSeconds).toString())
                 .body(response);
     }
 
     @Operation(summary = "토큰 재발급",
             description = "httpOnly Cookie의 Refresh Token(우선) 또는 Body의 Refresh Token으로 Access Token을 재발급한다. "
+                    + "요청 헤더 X-CSRF-Token과 XSRF-TOKEN 쿠키 값 검증(불일치·누락 시 403)을 Refresh Token 검증보다 먼저 수행한다. "
                     + "Content-Type 무관·빈 body 허용(쿠키 자동 전송 전제).")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "재발급 성공"),
-            @ApiResponse(responseCode = "401", description = "Refresh Token 만료·무효·무효화", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            @ApiResponse(responseCode = "401", description = "Refresh Token 만료·무효·무효화", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "X-CSRF-Token 헤더 누락 또는 XSRF-TOKEN 쿠키 값과 불일치", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping("/refresh")
     public ResponseEntity<TokenResponse> refresh(
             @CookieValue(value = REFRESH_COOKIE, required = false) String cookieToken,
+            @CookieValue(value = CSRF_COOKIE, required = false) String csrfCookie,
+            @RequestHeader(value = CSRF_HEADER, required = false) String csrfHeader,
             HttpServletRequest httpRequest) {
+        if (!StringUtils.hasText(csrfHeader) || !StringUtils.hasText(csrfCookie) || !csrfHeader.equals(csrfCookie)) {
+            throw new BusinessException(ErrorCode.CSRF_TOKEN_MISMATCH);
+        }
         // 쿠키 우선(FE 방식). 없으면 body에서 tolerant하게 추출(Content-Type 무관, 빈/비-JSON 허용).
         String token = StringUtils.hasText(cookieToken) ? cookieToken : extractRefreshFromBody(httpRequest);
         return ResponseEntity.ok(authService.refresh(token));
@@ -123,6 +137,7 @@ public class AuthController {
         authService.logout(principal, token);
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, refreshCookie("", 0).toString())
+                .header(HttpHeaders.SET_COOKIE, csrfCookie("", 0).toString())
                 .body(new MessageResponse("로그아웃 완료"));
     }
 
@@ -156,7 +171,17 @@ public class AuthController {
                 .secure(false) // local(HTTP). 운영은 인프라/보안 설계에 따라 true.
                 .path(COOKIE_PATH)
                 .maxAge(maxAgeSeconds)
-                .sameSite("Lax")
+                .sameSite("Strict")
+                .build();
+    }
+
+    private ResponseCookie csrfCookie(String value, long maxAgeSeconds) {
+        return ResponseCookie.from(CSRF_COOKIE, value)
+                .httpOnly(false) // FE가 값을 읽어 X-CSRF-Token 헤더로 재전송해야 함(더블서밋 쿠키 방식).
+                .secure(false) // local(HTTP). 운영은 인프라/보안 설계에 따라 true(refreshCookie와 동일 정책).
+                .path(COOKIE_PATH)
+                .maxAge(maxAgeSeconds)
+                .sameSite("Strict")
                 .build();
     }
 }

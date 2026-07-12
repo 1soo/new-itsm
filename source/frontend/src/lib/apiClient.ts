@@ -8,7 +8,9 @@ import axios, {
 /*
  * 공통 apiClient — react 컨벤션/인증 설계(authentication.md) 준수.
  * - Base: VITE_API_BASE_URL(기본 "/api/v1", Vite dev proxy로 same-origin 처리).
- * - Access Token은 Session Storage에 저장, 요청 시 Authorization: Bearer 자동 주입.
+ * - Access Token은 Client Memory(모듈 스코프 변수)에 보관, 요청 시 Authorization: Bearer 자동 주입.
+ *   새로고침 시 소실되며, 앱 부트스트랩(authSlice.ts bootstrapAuth)의 /auth/me 조회 및
+ *   401 시 refresh 흐름으로 세션을 복구한다.
  * - 401 응답 시 POST /auth/refresh(httpOnly Cookie)로 1회 재발급 재시도 → 실패 시
  *   세션 종료 핸들러 호출(로그인 이동 + 토스트). (SCR-COM-005)
  * - Refresh Token은 httpOnly Cookie로만 전송하므로 withCredentials로 요청한다.
@@ -16,22 +18,28 @@ import axios, {
 
 const baseURL = import.meta.env.VITE_API_BASE_URL || "/api/v1";
 
-const ACCESS_TOKEN_KEY = "itsm.accessToken";
-
 /** 재발급을 시도하지 않는 인증 엔드포인트(무한 루프 방지). */
 const AUTH_SKIP_REFRESH = ["/auth/login", "/auth/refresh", "/auth/logout"];
 
-// --- Access Token 저장소 (Session Storage) ---
+// --- Access Token 저장소 (Client Memory) ---
+let accessToken: string | null = null;
+
 export function getAccessToken(): string | null {
-  return sessionStorage.getItem(ACCESS_TOKEN_KEY);
+  return accessToken;
 }
 
 export function setAccessToken(token: string): void {
-  sessionStorage.setItem(ACCESS_TOKEN_KEY, token);
+  accessToken = token;
 }
 
 export function clearAccessToken(): void {
-  sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+  accessToken = null;
+}
+
+/** document.cookie에서 name 쿠키 값을 읽는다(XSRF-TOKEN은 HttpOnly가 아니므로 읽기 가능). */
+function readCookie(name: string): string | null {
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
 }
 
 // --- 세션 만료 핸들러 (앱이 등록: 로그인 이동 + 토스트) ---
@@ -85,10 +93,14 @@ let refreshPromise: Promise<string> | null = null;
 
 async function doRefresh(): Promise<string> {
   // 인터셉터 재귀를 피하기 위해 apiClient가 아닌 bare axios로 호출.
+  const csrfToken = readCookie("XSRF-TOKEN");
   const res = await axios.post<{ accessToken: string }>(
     `${baseURL}/auth/refresh`,
     null,
-    { withCredentials: true },
+    {
+      withCredentials: true,
+      headers: csrfToken ? { "X-CSRF-Token": csrfToken } : undefined,
+    },
   );
   const token = res.data.accessToken;
   setAccessToken(token);

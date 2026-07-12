@@ -1,6 +1,6 @@
 # API 명세서 — 인증/계정/권한 (Auth & RBAC)
 
-> 도메인: auth · 버전: 0.3 · 작성일: 2026-07-11 · Role-Menu 동적 매핑(유지보수 요청) API 추가(API-AUTH-016~022, 기존 screen/screen_role 재사용) · 승인 프로세스 커스텀 기능(유지보수 요청) 관리자 CRUD API 추가(API-AUTH-023~029, SYSTEM_ADMIN 전용)
+> 도메인: auth · 버전: 0.4 · 작성일: 2026-07-12 · Role-Menu 동적 매핑(유지보수 요청) API 추가(API-AUTH-016~022, 기존 screen/screen_role 재사용) · 승인 프로세스 커스텀 기능(유지보수 요청) 관리자 CRUD API 추가(API-AUTH-023~029, SYSTEM_ADMIN 전용) · 토큰 저장 방식 Client Memory 전환 및 /auth/refresh CSRF 토큰 검증 추가(유지보수 요청)
 
 ## 공통 규약
 
@@ -67,6 +67,7 @@
     "user": { "id": "number", "email": "string", "name": "string", "roles": ["string"] }
   }
   ```
+  > 응답 시 `Set-Cookie`로 Refresh Token(`HttpOnly`, `Secure`, `SameSite=Strict`)과 **CSRF 토큰 쿠키**(`XSRF-TOKEN`, `Secure`, `SameSite=Strict`, `HttpOnly` 아님)를 함께 발급한다. 상세는 [security/authentication.md](../security/authentication.md) 4절 참조.
 - **Response Code**:
   | Code | 의미 |
   |------|------|
@@ -78,8 +79,8 @@
 ### API-AUTH-002 · 토큰 재발급
 
 - **Endpoint**: `POST /api/v1/auth/refresh`
-- **인증**: 불필요(Body 또는 HttpOnly Cookie의 Refresh Token 검증)
-- **Header**: `Content-Type: application/json`
+- **인증**: 불필요(HttpOnly Cookie의 Refresh Token + CSRF 토큰 검증)
+- **Header**: `Content-Type: application/json`, `X-CSRF-Token: {XSRF-TOKEN 쿠키 값}` (필수)
 - **Request Body**:
   ```json
   { "refreshToken": "string · Refresh Token" }
@@ -93,6 +94,7 @@
   |------|------|
   | 200 | 재발급 성공 |
   | 401 | Refresh Token 만료·무효·무효화됨 → 재로그인 필요 |
+  | 403 | `X-CSRF-Token` 헤더 누락 또는 `XSRF-TOKEN` 쿠키 값과 불일치 |
 
 ### API-AUTH-003 · 로그아웃
 
@@ -104,6 +106,7 @@
   { "refreshToken": "string · 무효화 대상(선택, 세션 식별)" }
   ```
 - **Response Body** (200): `{ "message": "로그아웃 완료" }`
+  > Refresh Token 쿠키와 `XSRF-TOKEN` 쿠키를 함께 만료 처리(`Set-Cookie`로 즉시 만료).
 - **Response Code**:
   | Code | 의미 |
   |------|------|
