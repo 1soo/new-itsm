@@ -1,4 +1,5 @@
 import { type FormEvent, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +23,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 입력 후 등록. 임계치 초과로 알림이 생성되면 토스트로 안내한다.
  */
 export function InfraMetricRegisterPage() {
+  const { t } = useTranslation("infra-monitoring");
   const [assetId, setAssetId] = useState("");
   const [metricType, setMetricType] = useState<MetricType | "">("");
   const [value, setValue] = useState("");
@@ -33,7 +35,7 @@ export function InfraMetricRegisterPage() {
     e.preventDefault();
     setError(null);
     if (!assetId || !metricType || !value) {
-      setError("자산·지표 항목·값은 필수입니다.");
+      setError(t("infraMetricRegister.requiredError", { defaultValue: "자산·지표 항목·값은 필수입니다." }));
       return;
     }
     setSubmitting(true);
@@ -44,14 +46,14 @@ export function InfraMetricRegisterPage() {
         value: Number(value),
         measuredAt: measuredAt ? new Date(measuredAt).toISOString() : undefined,
       });
-      toast.success("지표가 등록되었습니다");
+      toast.success(t("infraMetricRegister.success", { defaultValue: "지표가 등록되었습니다" }));
       if (created.alertGenerated) {
-        toast.error("임계치 초과 알림이 생성되었습니다");
+        toast.error(t("infraMetricRegister.alertGenerated", { defaultValue: "임계치 초과 알림이 생성되었습니다" }));
       }
       setValue("");
       setMeasuredAt("");
     } catch (err) {
-      setError(extractErrorMessage(err, "등록에 실패했습니다."));
+      setError(extractErrorMessage(err, t("infraMetricRegister.failed", { defaultValue: "등록에 실패했습니다." })));
     } finally {
       setSubmitting(false);
     }
@@ -59,15 +61,15 @@ export function InfraMetricRegisterPage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-4">
-      <h1 className="text-xl font-semibold text-foreground">인프라 지표 등록</h1>
+      <h1 className="text-xl font-semibold text-foreground">{t("infraMetricRegister.title", { defaultValue: "인프라 지표 등록" })}</h1>
       <Card>
         <CardHeader>
-          <CardTitle>지표 입력</CardTitle>
+          <CardTitle>{t("infraMetricRegister.cardTitle", { defaultValue: "지표 입력" })}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div className="space-y-1.5">
-              <Label htmlFor="assetId">자산 ID</Label>
+              <Label htmlFor="assetId">{t("infraMetricRegister.assetIdLabel", { defaultValue: "자산 ID" })}</Label>
               <Input
                 id="assetId"
                 type="number"
@@ -78,20 +80,23 @@ export function InfraMetricRegisterPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>지표 항목</Label>
+                <Label>{t("infraMetricRegister.metricTypeLabel", { defaultValue: "지표 항목" })}</Label>
                 <Select value={metricType} onValueChange={(v) => setMetricType(v as MetricType)}>
                   <SelectTrigger aria-invalid={!!error && !metricType}>
-                    <SelectValue placeholder="지표 항목 선택" />
+                    <SelectValue placeholder={t("infraMetricRegister.metricTypePlaceholder", { defaultValue: "지표 항목 선택" })} />
                   </SelectTrigger>
                   <SelectContent>
-                    {METRIC_TYPES.map((t) => (
-                      <SelectItem key={t} value={t}>{metricTypeLabel(t)}</SelectItem>
+                    {METRIC_TYPES.map((ty) => (
+                      <SelectItem key={ty} value={ty}>{metricTypeLabel(t, ty)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="value">값{metricType ? ` (${metricTypeUnit(metricType)})` : ""}</Label>
+                <Label htmlFor="value">
+                  {t("infraMetricRegister.valueLabel", { defaultValue: "값" })}
+                  {metricType ? ` (${metricTypeUnit(metricType)})` : ""}
+                </Label>
                 <Input
                   id="value"
                   type="number"
@@ -102,7 +107,7 @@ export function InfraMetricRegisterPage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="measuredAt">측정 시각 (선택, 미입력 시 현재 시각)</Label>
+              <Label htmlFor="measuredAt">{t("infraMetricRegister.measuredAtLabel", { defaultValue: "측정 시각 (선택, 미입력 시 현재 시각)" })}</Label>
               <Input
                 id="measuredAt"
                 type="datetime-local"
@@ -116,7 +121,7 @@ export function InfraMetricRegisterPage() {
             ) : null}
 
             <div className="flex justify-end">
-              <Button type="submit" loading={submitting}>등록</Button>
+              <Button type="submit" loading={submitting}>{t("infraMetricRegister.submitButton", { defaultValue: "등록" })}</Button>
             </div>
           </form>
         </CardContent>

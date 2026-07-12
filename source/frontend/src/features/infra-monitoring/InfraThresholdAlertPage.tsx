@@ -1,4 +1,5 @@
 import { type FormEvent, type ReactNode, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +27,7 @@ const ALL = "ALL";
  * 임계치가 설정되지 않은 항목은 알림이 생성되지 않음을 폼에 안내한다.
  */
 export function InfraThresholdAlertPage() {
+  const { t } = useTranslation("infra-monitoring");
   const [metricType, setMetricType] = useState<MetricType>("UPTIME");
   const [upperLimit, setUpperLimit] = useState("");
   const [lowerLimit, setLowerLimit] = useState("");
@@ -79,7 +81,7 @@ export function InfraThresholdAlertPage() {
         upperLimit: upperLimit ? Number(upperLimit) : null,
         lowerLimit: lowerLimit ? Number(lowerLimit) : null,
       });
-      toast.success("임계치가 설정되었습니다");
+      toast.success(t("infraThresholdAlert.thresholdSaveSuccess", { defaultValue: "임계치가 설정되었습니다" }));
     } catch (err) {
       toast.error(extractErrorMessage(err));
     } finally {
@@ -96,7 +98,7 @@ export function InfraThresholdAlertPage() {
     setBusyId(id);
     try {
       await infraApi.acknowledgeAlert(id);
-      toast.success("알림을 확인 처리했습니다");
+      toast.success(t("infraThresholdAlert.acknowledgeSuccess", { defaultValue: "알림을 확인 처리했습니다" }));
       loadAlerts();
     } catch (err) {
       toast.error(extractErrorMessage(err));
@@ -110,18 +112,18 @@ export function InfraThresholdAlertPage() {
   );
 
   const columns: Column<MetricAlert>[] = [
-    { header: "자산", cell: (a) => dim(a, a.assetKey) },
-    { header: "지표", cell: (a) => dim(a, metricTypeLabel(a.metricType)) },
-    { header: "초과값", cell: (a) => dim(a, a.value) },
-    { header: "초과 유형", cell: (a) => dim(a, thresholdTypeLabel(a.thresholdType)) },
-    { header: "발생시각", cell: (a) => dim(a, formatDateTime(a.occurredAt)) },
+    { header: t("infraThresholdAlert.columnAsset", { defaultValue: "자산" }), cell: (a) => dim(a, a.assetKey) },
+    { header: t("infraThresholdAlert.columnMetric", { defaultValue: "지표" }), cell: (a) => dim(a, metricTypeLabel(t, a.metricType)) },
+    { header: t("infraThresholdAlert.columnExceedValue", { defaultValue: "초과값" }), cell: (a) => dim(a, a.value) },
+    { header: t("infraThresholdAlert.columnExceedType", { defaultValue: "초과 유형" }), cell: (a) => dim(a, thresholdTypeLabel(t, a.thresholdType)) },
+    { header: t("infraThresholdAlert.columnOccurredAt", { defaultValue: "발생시각" }), cell: (a) => dim(a, formatDateTime(a.occurredAt)) },
     {
-      header: "확인 여부",
+      header: t("infraThresholdAlert.columnAcknowledged", { defaultValue: "확인 여부" }),
       cell: (a) =>
         a.acknowledged ? (
-          <StatusBadge tone="muted" label="확인됨" />
+          <StatusBadge tone="muted" label={t("infraThresholdAlert.acknowledgedLabel", { defaultValue: "확인됨" })} />
         ) : (
-          <StatusBadge tone="danger" label="미확인" />
+          <StatusBadge tone="danger" label={t("infraThresholdAlert.unacknowledgedLabel", { defaultValue: "미확인" })} />
         ),
     },
     {
@@ -129,7 +131,7 @@ export function InfraThresholdAlertPage() {
       cell: (a) =>
         a.acknowledged ? null : (
           <Button size="sm" loading={busyId === a.id} onClick={() => handleAcknowledge(a.id)}>
-            확인 처리
+            {t("infraThresholdAlert.acknowledgeButton", { defaultValue: "확인 처리" })}
           </Button>
         ),
     },
@@ -137,71 +139,73 @@ export function InfraThresholdAlertPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold text-foreground">임계치 설정·알림 목록</h1>
+      <h1 className="text-xl font-semibold text-foreground">{t("infraThresholdAlert.title", { defaultValue: "임계치 설정·알림 목록" })}</h1>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">지표 항목별 임계치 설정</CardTitle>
+          <CardTitle className="text-base">{t("infraThresholdAlert.thresholdCardTitle", { defaultValue: "지표 항목별 임계치 설정" })}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleThresholdSubmit} className="flex flex-wrap items-end gap-3">
             <div className="space-y-1.5">
-              <Label>지표 항목</Label>
+              <Label>{t("infraThresholdAlert.metricTypeLabel", { defaultValue: "지표 항목" })}</Label>
               <Select value={metricType} onValueChange={(v) => setMetricType(v as MetricType)}>
                 <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {METRIC_TYPES.map((t) => (
-                    <SelectItem key={t} value={t}>{metricTypeLabel(t)}</SelectItem>
+                  {METRIC_TYPES.map((ty) => (
+                    <SelectItem key={ty} value={ty}>{metricTypeLabel(t, ty)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="upper">상한</Label>
+              <Label htmlFor="upper">{t("infraThresholdAlert.upperLabel", { defaultValue: "상한" })}</Label>
               <Input id="upper" type="number" value={upperLimit} onChange={(e) => setUpperLimit(e.target.value)} className="w-32" />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="lower">하한</Label>
+              <Label htmlFor="lower">{t("infraThresholdAlert.lowerLabel", { defaultValue: "하한" })}</Label>
               <Input id="lower" type="number" value={lowerLimit} onChange={(e) => setLowerLimit(e.target.value)} className="w-32" />
             </div>
-            <Button type="submit" loading={savingThreshold}>저장</Button>
+            <Button type="submit" loading={savingThreshold}>{t("infraThresholdAlert.saveButton", { defaultValue: "저장" })}</Button>
           </form>
           <p className="mt-2 text-xs text-muted-foreground">
-            상한·하한을 비워두면 해당 조건은 임계치 비교에서 제외됩니다. 항목 전체가 미설정이면 알림이 생성되지 않습니다.
+            {t("infraThresholdAlert.thresholdHint", {
+              defaultValue: "상한·하한을 비워두면 해당 조건은 임계치 비교에서 제외됩니다. 항목 전체가 미설정이면 알림이 생성되지 않습니다.",
+            })}
           </p>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">임계치 초과 알림</CardTitle>
+          <CardTitle className="text-base">{t("infraThresholdAlert.alertsCardTitle", { defaultValue: "임계치 초과 알림" })}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <form onSubmit={handleAlertSearch} className="flex flex-wrap items-end gap-2">
             <div className="space-y-1">
-              <Label htmlFor="assetIdFilter">자산 ID</Label>
+              <Label htmlFor="assetIdFilter">{t("infraThresholdAlert.assetIdFilterLabel", { defaultValue: "자산 ID" })}</Label>
               <Input id="assetIdFilter" type="number" value={assetIdFilter} onChange={(e) => setAssetIdFilter(e.target.value)} className="w-32" />
             </div>
             <div className="space-y-1">
-              <Label>확인 여부</Label>
+              <Label>{t("infraThresholdAlert.acknowledgedFilterLabel", { defaultValue: "확인 여부" })}</Label>
               <Select value={acknowledgedFilter} onValueChange={setAcknowledgedFilter}>
                 <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={ALL}>전체</SelectItem>
-                  <SelectItem value="false">미확인</SelectItem>
-                  <SelectItem value="true">확인됨</SelectItem>
+                  <SelectItem value={ALL}>{t("infraThresholdAlert.filterAll", { defaultValue: "전체" })}</SelectItem>
+                  <SelectItem value="false">{t("infraThresholdAlert.filterUnacknowledged", { defaultValue: "미확인" })}</SelectItem>
+                  <SelectItem value="true">{t("infraThresholdAlert.filterAcknowledged", { defaultValue: "확인됨" })}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <Button type="submit">검색</Button>
+            <Button type="submit">{t("infraThresholdAlert.searchButton", { defaultValue: "검색" })}</Button>
           </form>
           <DataTable
             columns={columns}
             data={alerts}
             rowKey={(a) => a.id}
             loading={loadingAlerts}
-            emptyTitle="알림이 없습니다"
-            emptyDescription="조건에 맞는 임계치 초과 알림이 없습니다."
+            emptyTitle={t("infraThresholdAlert.emptyTitle", { defaultValue: "알림이 없습니다" })}
+            emptyDescription={t("infraThresholdAlert.emptyDescription", { defaultValue: "조건에 맞는 임계치 초과 알림이 없습니다." })}
           />
         </CardContent>
       </Card>

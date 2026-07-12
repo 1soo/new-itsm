@@ -61,3 +61,20 @@
 ## 7. 특이사항
 - 실시간 모니터링 도구 연동은 범위 밖(analyzer/designer 단계에서 이미 수동입력·더미데이터 기반으로 축소 확정됨, `docs/01_analyze/tech.md` 5절 참고). 자동 수집 기능을 임의로 추가 구현하지 않는다.
 - 시계열 차트 구현 방식(신규 라이브러리 vs 표/스파크라인)은 dev-ui 검토 결과를 최우선으로 따른다.
+
+## i18n 다국어 전환 (유지보수 요청, 2026-07-12) — 마지막 도메인
+
+> i18n 인프라·SweetAlert2·언어 선택은 common phase에서 완료됨(`docs/03_develop/plan/common.md` v3절). 레이아웃/컴포넌트 변경 없이 텍스트만 번역 키로 치환(`docs/02_plan/screen/common.md` 6절). BE/DB 변경 없음. 이 도메인이 유지보수 요청의 **마지막 도메인**이다.
+
+### 담당 범위 — dev-fe 단독(UI 미소집)
+
+- 대상 화면(`docs/02_plan/screen/infra-monitoring.md` 3절): `InfraMetricRegisterPage.tsx`(SCR-IOM-001), `InfraMetricDashboardPage.tsx`(002), `InfraThresholdAlertPage.tsx`(003), `InfraCapacityPlanPage.tsx`(004), `InfraReportPage.tsx`(005).
+- `features/infra-monitoring/status.ts` — `t` 인자를 받도록 전환, 호출부 갱신. 통합검색 대상 아님(`features/search/status.ts` 변경 불필요).
+- `format.ts` 확인 필수 — 라벨 섞여 있으면 전환.
+- `useTranslation(["infra-monitoring", "common"])` 사용. `locales/{ko,en}/infra-monitoring.json`(현재 `{}` 스캐폴딩) 단독 소유, 직접 채운다.
+- 임계치 알림 상태, 지표 항목 유형, 용량 계획 상태 등에서 지금까지 반복된 원시값 노출 패턴 점검.
+
+### 완료 기준
+- English 전환 시 지표 등록/대시보드/임계치 설정·알림/용량 계획/리포팅 전체 텍스트(지표 항목·임계치 상태 라벨 포함) 영어 전환.
+- 지표 등록·임계치 초과 알림·용량 계획 등 기존 기능 회귀 없음(텍스트만 치환).
+- **모든 도메인(common + 11개) 완료** — 완료되면 dev-lead에게 알려라, 전체 완료 보고를 준비하겠다.

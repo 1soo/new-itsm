@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +24,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 실제 가동률 카드. 시계열 차트는 신규 라이브러리 없이 기존 SVG 라인 차트(TrendChart)를 재사용한다.
  */
 export function InfraMetricDashboardPage() {
+  const { t } = useTranslation("infra-monitoring");
   const [assetId, setAssetId] = useState("");
   const [metricType, setMetricType] = useState<MetricType>("UPTIME");
   const [from, setFrom] = useState("");
@@ -83,7 +85,7 @@ export function InfraMetricDashboardPage() {
         to: applied.to ? new Date(`${applied.to}T23:59:59`).toISOString() : undefined,
       });
       setUptime(status);
-      toast.success("가동률 목표가 설정되었습니다");
+      toast.success(t("infraMetricDashboard.targetSaveSuccess", { defaultValue: "가동률 목표가 설정되었습니다" }));
     } catch (err) {
       toast.error(extractErrorMessage(err));
     } finally {
@@ -93,85 +95,93 @@ export function InfraMetricDashboardPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold text-foreground">지표 대시보드</h1>
+      <h1 className="text-xl font-semibold text-foreground">{t("infraMetricDashboard.title", { defaultValue: "지표 대시보드" })}</h1>
 
       <form onSubmit={handleSearch} className="flex flex-wrap items-end gap-2 rounded-lg border border-border bg-card p-3">
         <div className="space-y-1">
-          <Label htmlFor="assetId">자산 ID</Label>
+          <Label htmlFor="assetId">{t("infraMetricDashboard.assetIdLabel", { defaultValue: "자산 ID" })}</Label>
           <Input id="assetId" type="number" value={assetId} onChange={(e) => setAssetId(e.target.value)} className="w-32" />
         </div>
         <div className="space-y-1">
-          <Label>지표 항목</Label>
+          <Label>{t("infraMetricDashboard.metricTypeLabel", { defaultValue: "지표 항목" })}</Label>
           <Select value={metricType} onValueChange={(v) => setMetricType(v as MetricType)}>
             <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {METRIC_TYPES.map((t) => (
-                <SelectItem key={t} value={t}>{metricTypeLabel(t)}</SelectItem>
+              {METRIC_TYPES.map((ty) => (
+                <SelectItem key={ty} value={ty}>{metricTypeLabel(t, ty)}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-1">
-          <Label htmlFor="from">시작일</Label>
+          <Label htmlFor="from">{t("infraMetricDashboard.filterFrom", { defaultValue: "시작일" })}</Label>
           <Input id="from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="to">종료일</Label>
+          <Label htmlFor="to">{t("infraMetricDashboard.filterTo", { defaultValue: "종료일" })}</Label>
           <Input id="to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         </div>
-        <Button type="submit" disabled={!assetId}>조회</Button>
+        <Button type="submit" disabled={!assetId}>{t("infraMetricDashboard.searchButton", { defaultValue: "조회" })}</Button>
       </form>
 
       {applied ? (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <Card className="lg:col-span-2">
             <CardHeader>
-              <CardTitle className="text-base">{metricTypeLabel(applied.metricType)} 시계열</CardTitle>
+              <CardTitle className="text-base">
+                {t("infraMetricDashboard.timeSeriesTitle", {
+                  metric: metricTypeLabel(t, applied.metricType),
+                  defaultValue: `${metricTypeLabel(t, applied.metricType)} 시계열`,
+                })}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <TrendChart
                 data={points}
                 valueFormatter={(v) => `${v}${metricTypeUnit(applied.metricType)}`}
-                ariaLabel={`${metricTypeLabel(applied.metricType)} 시계열 차트`}
+                ariaLabel={t("infraMetricDashboard.timeSeriesAria", {
+                  metric: metricTypeLabel(t, applied.metricType),
+                  defaultValue: `${metricTypeLabel(t, applied.metricType)} 시계열 차트`,
+                })}
               />
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">SLA 대비 가동률</CardTitle>
+              <CardTitle className="text-base">{t("infraMetricDashboard.slaTitle", { defaultValue: "SLA 대비 가동률" })}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">목표</span>
+                <span className="text-muted-foreground">{t("infraMetricDashboard.targetLabel", { defaultValue: "목표" })}</span>
                 <span className="text-foreground">
-                  {loading ? "-" : uptime?.targetPercentage != null ? `${uptime.targetPercentage}%` : "미설정"}
+                  {loading ? "-" : uptime?.targetPercentage != null ? `${uptime.targetPercentage}%` : t("infraMetricDashboard.targetNotSet", { defaultValue: "미설정" })}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">실제</span>
+                <span className="text-muted-foreground">{t("infraMetricDashboard.actualLabel", { defaultValue: "실제" })}</span>
                 <span className="text-foreground">
                   {loading ? "-" : uptime?.actualPercentage != null ? `${uptime.actualPercentage}%` : "-"}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">달성 여부</span>
+                <span className="text-muted-foreground">{t("infraMetricDashboard.metLabel", { defaultValue: "달성 여부" })}</span>
                 <StatusBadge
                   tone={slaMetTone(uptime?.met ?? null)}
                   label={
                     uptime?.targetPercentage == null
-                      ? "목표 미설정"
+                      ? t("infraMetricDashboard.metNotSet", { defaultValue: "목표 미설정" })
                       : uptime.actualPercentage == null
-                        ? "가동률 데이터 없음"
+                        ? t("infraMetricDashboard.noActualData", { defaultValue: "가동률 데이터 없음" })
                         : uptime.met
-                          ? "달성"
-                          : "미달성"
+                          ? t("infraMetricDashboard.metAchieved", { defaultValue: "달성" })
+                          : t("infraMetricDashboard.metNotAchieved", { defaultValue: "미달성" })
                   }
                 />
               </div>
               <form onSubmit={handleTargetSubmit} className="flex items-end gap-2 border-t border-border pt-3">
                 <div className="flex-1 space-y-1.5">
-                  <Label htmlFor="targetPercentage">목표 가동률 설정 (%)</Label>
+                  <Label htmlFor="targetPercentage">{t("infraMetricDashboard.targetInputLabel", { defaultValue: "목표 가동률 설정 (%)" })}</Label>
                   <Input
                     id="targetPercentage"
                     type="number"
@@ -179,7 +189,9 @@ export function InfraMetricDashboardPage() {
                     onChange={(e) => setTargetInput(e.target.value)}
                   />
                 </div>
-                <Button type="submit" size="sm" loading={savingTarget} disabled={!targetInput}>저장</Button>
+                <Button type="submit" size="sm" loading={savingTarget} disabled={!targetInput}>
+                  {t("infraMetricDashboard.saveButton", { defaultValue: "저장" })}
+                </Button>
               </form>
             </CardContent>
           </Card>

@@ -1,3 +1,5 @@
+import type { TFunction } from "i18next";
+
 import type { StatusTone } from "@/components/common";
 import type { MetricType, ThresholdType } from "@/features/infra-monitoring/types";
 
@@ -12,8 +14,10 @@ const METRIC_TYPE_LABEL: Record<MetricType, string> = {
   RESPONSE_TIME: "응답시간",
 };
 
-export function metricTypeLabel(t: string): string {
-  return METRIC_TYPE_LABEL[t as MetricType] ?? t;
+/** 지표 항목 라벨(`infra-monitoring:metricType.*`). */
+export function metricTypeLabel(t: TFunction, ty: string | null | undefined): string {
+  if (!ty) return "";
+  return t(`metricType.${ty}`, { ns: "infra-monitoring", defaultValue: METRIC_TYPE_LABEL[ty as MetricType] ?? ty });
 }
 
 const METRIC_TYPE_UNIT: Record<MetricType, string> = {
@@ -23,12 +27,20 @@ const METRIC_TYPE_UNIT: Record<MetricType, string> = {
   RESPONSE_TIME: "ms",
 };
 
-export function metricTypeUnit(t: string): string {
-  return METRIC_TYPE_UNIT[t as MetricType] ?? "";
+/** 지표 항목 단위(%, ms) — 기호이므로 번역하지 않는다. */
+export function metricTypeUnit(ty: string): string {
+  return METRIC_TYPE_UNIT[ty as MetricType] ?? "";
 }
 
-export function thresholdTypeLabel(t: ThresholdType): string {
-  return t === "UPPER" ? "상한 초과" : "하한 미달";
+const THRESHOLD_TYPE_LABEL: Record<ThresholdType, string> = {
+  UPPER: "상한 초과",
+  LOWER: "하한 미달",
+};
+
+/** 임계치 초과 유형 라벨(`infra-monitoring:thresholdType.*`). */
+export function thresholdTypeLabel(t: TFunction, ty: ThresholdType | null | undefined): string {
+  if (!ty) return "";
+  return t(`thresholdType.${ty}`, { ns: "infra-monitoring", defaultValue: THRESHOLD_TYPE_LABEL[ty] ?? ty });
 }
 
 /** 용량 활용률 배지 tone — 100% 초과 Danger, 80% 이상 Warning, 그 외 Success. */

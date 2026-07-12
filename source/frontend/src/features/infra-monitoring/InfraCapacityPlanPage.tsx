@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +16,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 활용률(demand/capacity)은 조회 시점 계산값을 BE가 내려준다.
  */
 export function InfraCapacityPlanPage() {
+  const { t } = useTranslation("infra-monitoring");
   const [teamOrService, setTeamOrService] = useState("");
   const [capacity, setCapacity] = useState("");
   const [demand, setDemand] = useState("");
@@ -39,7 +41,7 @@ export function InfraCapacityPlanPage() {
     e.preventDefault();
     setError(null);
     if (!teamOrService.trim() || !capacity || !demand) {
-      setError("팀/서비스명·역량·예상 수요는 필수입니다.");
+      setError(t("infraCapacityPlan.requiredError", { defaultValue: "팀/서비스명·역량·예상 수요는 필수입니다." }));
       return;
     }
     setSubmitting(true);
@@ -49,24 +51,24 @@ export function InfraCapacityPlanPage() {
         capacity: Number(capacity),
         demand: Number(demand),
       });
-      toast.success("용량 계획이 등록되었습니다");
+      toast.success(t("infraCapacityPlan.success", { defaultValue: "용량 계획이 등록되었습니다" }));
       setTeamOrService("");
       setCapacity("");
       setDemand("");
       load();
     } catch (err) {
-      setError(extractErrorMessage(err, "등록에 실패했습니다."));
+      setError(extractErrorMessage(err, t("infraCapacityPlan.failed", { defaultValue: "등록에 실패했습니다." })));
     } finally {
       setSubmitting(false);
     }
   };
 
   const columns: Column<CapacityPlan>[] = [
-    { header: "팀/서비스", cell: (p) => p.teamOrService },
-    { header: "역량", cell: (p) => p.capacity },
-    { header: "예상 수요", cell: (p) => p.demand },
+    { header: t("infraCapacityPlan.columnTeamOrService", { defaultValue: "팀/서비스" }), cell: (p) => p.teamOrService },
+    { header: t("infraCapacityPlan.columnCapacity", { defaultValue: "역량" }), cell: (p) => p.capacity },
+    { header: t("infraCapacityPlan.columnDemand", { defaultValue: "예상 수요" }), cell: (p) => p.demand },
     {
-      header: "활용률",
+      header: t("infraCapacityPlan.columnUtilization", { defaultValue: "활용률" }),
       cell: (p) => {
         const percent = p.utilizationRate * 100;
         return <StatusBadge tone={utilizationTone(percent)} label={`${Math.round(percent)}%`} />;
@@ -76,27 +78,27 @@ export function InfraCapacityPlanPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold text-foreground">용량 계획 관리</h1>
+      <h1 className="text-xl font-semibold text-foreground">{t("infraCapacityPlan.title", { defaultValue: "용량 계획 관리" })}</h1>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">용량 계획 등록</CardTitle>
+          <CardTitle className="text-base">{t("infraCapacityPlan.registerCardTitle", { defaultValue: "용량 계획 등록" })}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
             <div className="flex-1 min-w-[160px] space-y-1.5">
-              <Label htmlFor="teamOrService">팀/서비스명</Label>
+              <Label htmlFor="teamOrService">{t("infraCapacityPlan.teamOrServiceLabel", { defaultValue: "팀/서비스명" })}</Label>
               <Input id="teamOrService" value={teamOrService} onChange={(e) => setTeamOrService(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="capacity">역량</Label>
+              <Label htmlFor="capacity">{t("infraCapacityPlan.capacityLabel", { defaultValue: "역량" })}</Label>
               <Input id="capacity" type="number" value={capacity} onChange={(e) => setCapacity(e.target.value)} className="w-32" />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="demand">예상 수요</Label>
+              <Label htmlFor="demand">{t("infraCapacityPlan.demandLabel", { defaultValue: "예상 수요" })}</Label>
               <Input id="demand" type="number" value={demand} onChange={(e) => setDemand(e.target.value)} className="w-32" />
             </div>
-            <Button type="submit" loading={submitting}>등록</Button>
+            <Button type="submit" loading={submitting}>{t("infraCapacityPlan.submitButton", { defaultValue: "등록" })}</Button>
           </form>
           {error ? <p role="alert" className="mt-2 text-sm text-danger">{error}</p> : null}
         </CardContent>
@@ -107,8 +109,8 @@ export function InfraCapacityPlanPage() {
         data={plans}
         rowKey={(p) => p.id}
         loading={loading}
-        emptyTitle="용량 계획이 없습니다"
-        emptyDescription="등록된 팀/서비스 용량 계획이 없습니다."
+        emptyTitle={t("infraCapacityPlan.emptyTitle", { defaultValue: "용량 계획이 없습니다" })}
+        emptyDescription={t("infraCapacityPlan.emptyDescription", { defaultValue: "등록된 팀/서비스 용량 계획이 없습니다." })}
       />
     </div>
   );
