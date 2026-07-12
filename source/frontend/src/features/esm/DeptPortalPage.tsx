@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Search } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +20,7 @@ const ALL = "__ALL__";
  * 카드 클릭 시 요청 제출(SCR-ESM-002)로 이동. Tabs 공통 컴포넌트가 없어 버튼형 토글로 구현.
  */
 export function DeptPortalPage() {
+  const { t } = useTranslation("esm");
   const navigate = useNavigate();
   const [department, setDepartment] = useState<string>(ALL);
   const [keywordInput, setKeywordInput] = useState("");
@@ -50,14 +52,14 @@ export function DeptPortalPage() {
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <h1 className="text-xl font-semibold text-foreground">부서 서비스 포털</h1>
-        <p className="text-sm text-muted-foreground">부서별 요청 유형을 탐색해 요청을 제출하세요.</p>
+        <h1 className="text-xl font-semibold text-foreground">{t("deptPortal.title", { defaultValue: "부서 서비스 포털" })}</h1>
+        <p className="text-sm text-muted-foreground">{t("deptPortal.description", { defaultValue: "부서별 요청 유형을 탐색해 요청을 제출하세요." })}</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-1 rounded-lg border border-border bg-card p-1">
-        <DeptTab label="전체" active={department === ALL} onClick={() => setDepartment(ALL)} />
+        <DeptTab label={t("deptPortal.tabAll", { defaultValue: "전체" })} active={department === ALL} onClick={() => setDepartment(ALL)} />
         {DEPARTMENTS.map((d) => (
-          <DeptTab key={d} label={departmentLabel(d)} active={department === d} onClick={() => setDepartment(d)} />
+          <DeptTab key={d} label={departmentLabel(t, d)} active={department === d} onClick={() => setDepartment(d)} />
         ))}
       </div>
 
@@ -66,9 +68,9 @@ export function DeptPortalPage() {
         <Input
           value={keywordInput}
           onChange={(e) => setKeywordInput(e.target.value)}
-          placeholder="요청 유형·키워드 검색"
+          placeholder={t("deptPortal.searchPlaceholder", { defaultValue: "요청 유형·키워드 검색" })}
           className="pl-9"
-          aria-label="카탈로그 검색"
+          aria-label={t("deptPortal.searchAriaLabel", { defaultValue: "카탈로그 검색" })}
         />
       </form>
 
@@ -79,7 +81,10 @@ export function DeptPortalPage() {
           ))}
         </div>
       ) : items.length === 0 ? (
-        <EmptyState title="카탈로그 항목이 없습니다" description="등록된 요청 유형이 없습니다." />
+        <EmptyState
+          title={t("deptPortal.emptyTitle", { defaultValue: "카탈로그 항목이 없습니다" })}
+          description={t("deptPortal.emptyDescription", { defaultValue: "등록된 요청 유형이 없습니다." })}
+        />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => (
@@ -98,7 +103,7 @@ export function DeptPortalPage() {
               </CardHeader>
               <CardContent className="space-y-2 text-sm text-muted-foreground">
                 <p className="line-clamp-2">{item.description}</p>
-                <Badge variant="info">{departmentLabel(item.department)}</Badge>
+                <Badge variant="info">{departmentLabel(t, item.department)}</Badge>
               </CardContent>
             </Card>
           ))}

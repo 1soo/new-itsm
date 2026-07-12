@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +23,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 연결 항목 패널은 민감정보 특성상 제외(TicketDetailLayout meta에 대상자·상태만).
  */
 export function HrCaseDetailPage() {
+  const { t } = useTranslation("esm");
   const params = useParams();
   const navigate = useNavigate();
   const id = Number(params.id);
@@ -55,7 +57,12 @@ export function HrCaseDetailPage() {
     setTransitioning(true);
     try {
       await esmApi.transitionHrCase(id, next);
-      toast.success(`상태가 '${hrCaseStatusLabel(next)}'로 변경되었습니다`);
+      toast.success(
+        t("hrCaseDetail.transitionSuccess", {
+          status: hrCaseStatusLabel(t, next),
+          defaultValue: `상태가 '${hrCaseStatusLabel(t, next)}'로 변경되었습니다`,
+        }),
+      );
       load();
     } catch (err) {
       toast.error(extractErrorMessage(err));
@@ -68,8 +75,8 @@ export function HrCaseDetailPage() {
   if (notFound || !detail) {
     return (
       <div className="mx-auto max-w-lg space-y-4 text-center">
-        <p className="text-sm text-muted-foreground">케이스를 찾을 수 없습니다.</p>
-        <Button onClick={() => navigate(-1)}>이전으로</Button>
+        <p className="text-sm text-muted-foreground">{t("hrCaseDetail.notFound", { defaultValue: "케이스를 찾을 수 없습니다." })}</p>
+        <Button onClick={() => navigate(-1)}>{t("hrCaseDetail.back", { defaultValue: "이전으로" })}</Button>
       </div>
     );
   }
@@ -77,7 +84,7 @@ export function HrCaseDetailPage() {
   const next = hrCaseNextStatus(detail.status);
   const historyItems: TimelineItem[] = detail.history.map((h, i) => ({
     id: String(i),
-    title: `${hrCaseStatusLabel(h.status)} · ${h.changedBy}`,
+    title: `${hrCaseStatusLabel(t, h.status)} · ${h.changedBy}`,
     timestamp: formatDateTime(h.at),
   }));
 
@@ -85,22 +92,22 @@ export function HrCaseDetailPage() {
     <TicketDetailLayout
       ticketKey={`HR-${detail.id}`}
       title={detail.title}
-      badges={<StatusBadge tone={hrCaseStatusTone(detail.status)} label={hrCaseStatusLabel(detail.status)} />}
+      badges={<StatusBadge tone={hrCaseStatusTone(detail.status)} label={hrCaseStatusLabel(t, detail.status)} />}
       actions={
         next ? (
           <Button loading={transitioning} onClick={handleTransition}>
-            {hrCaseStatusLabel(next)}
+            {hrCaseStatusLabel(t, next)}
           </Button>
         ) : undefined
       }
       meta={
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">정보</CardTitle>
+            <CardTitle className="text-base">{t("hrCaseDetail.infoTitle", { defaultValue: "정보" })}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-muted-foreground">대상자</span>
+              <span className="text-muted-foreground">{t("hrCaseDetail.subjectLabel", { defaultValue: "대상자" })}</span>
               <span className="text-right text-foreground">{detail.subjectUserName || "-"}</span>
             </div>
           </CardContent>
@@ -109,20 +116,22 @@ export function HrCaseDetailPage() {
     >
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">내용</CardTitle>
+          <CardTitle className="text-base">{t("hrCaseDetail.descriptionTitle", { defaultValue: "내용" })}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="whitespace-pre-wrap text-sm text-foreground">{detail.description || "내용 없음"}</p>
+          <p className="whitespace-pre-wrap text-sm text-foreground">
+            {detail.description || t("hrCaseDetail.noDescription", { defaultValue: "내용 없음" })}
+          </p>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">상태 이력</CardTitle>
+          <CardTitle className="text-base">{t("hrCaseDetail.historyTitle", { defaultValue: "상태 이력" })}</CardTitle>
         </CardHeader>
         <CardContent>
           {historyItems.length === 0 ? (
-            <p className="text-sm text-muted-foreground">이력이 없습니다.</p>
+            <p className="text-sm text-muted-foreground">{t("hrCaseDetail.noHistory", { defaultValue: "이력이 없습니다." })}</p>
           ) : (
             <Timeline items={historyItems} />
           )}

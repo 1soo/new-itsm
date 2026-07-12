@@ -5,7 +5,7 @@
 ## 파일
 - `api.ts` — ESM API 호출(`esmApi`: 카탈로그 목록/상세/생성/수정, 요청 제출/목록/상세/상태전이/코멘트, HR 케이스 접수/목록/상세/상태전이, 체크리스트 상세, 내 하위 작업 목록/완료 처리, 지표).
 - `types.ts` — ESM 도메인 타입(`Department`/`ChecklistTemplateType`/`EsmRequestStatus`/`HrCaseStatus`/`ChecklistStatus`/`ChecklistTaskStatus` 등, `CatalogItemDetail`/`EsmRequestDetail`/`HrCaseDetail`/`ChecklistDetail`/`MyChecklistTask`/`EsmMetrics`). `EsmRequestDetail.approval`(`EsmApproval`)은 `approvalRequestId`/`status`만 보유(진행 상태 조회는 공용 API-COM-004).
-- `status.ts` — 부서 라벨(`departmentLabel`, `DEPARTMENTS`=카탈로그용 4개/`TASK_DEPARTMENTS`=+IT 5개), 각 상태 라벨/tone 매핑, HR 케이스 4단계 순차 다음 상태(`hrCaseNextStatus`).
+- `status.ts` — 부서 라벨(`departmentLabel(t, ...)`, `DEPARTMENTS`=카탈로그용 4개/`TASK_DEPARTMENTS`=+IT 5개), 각 상태 라벨(`requestStatusLabel`/`hrCaseStatusLabel`/`checklistStatusLabel`/`checklistTaskStatusLabel`, 모두 `(t, value)` 시그니처)/tone 매핑, 체크리스트 유형 라벨(`checklistTypeLabel`, ChecklistDetailPage·MyChecklistTasksPage 공용)·카탈로그 템플릿 유형 라벨(`checklistTemplateTypeLabel`, EsmCatalogManagePage 전용), HR 케이스 4단계 순차 다음 상태(`hrCaseNextStatus`).
 - `format.ts` — 날짜·일시 표시 포맷터.
 - `DeptPortalPage.tsx` — 부서 서비스 포털(SCR-ESM-001). 부서 탭(Tabs 공통 컴포넌트 없어 버튼형 토글로 구현)+검색+카탈로그 카드.
 - `DeptRequestSubmitPage.tsx` — 부서 요청 제출(SCR-ESM-002). 동적 양식(DynamicForm 재사용) + 온보딩/오프보딩 유형이면 대상자명 필수 입력, 체크리스트 자동 생성 안내 토스트.

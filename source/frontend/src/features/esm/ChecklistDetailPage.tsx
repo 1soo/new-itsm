@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +16,7 @@ import {
   checklistStatusTone,
   checklistTaskStatusLabel,
   checklistTaskStatusTone,
+  checklistTypeLabel,
   departmentLabel,
 } from "@/features/esm/status";
 import type { ChecklistDetail, ChecklistTask } from "@/features/esm/types";
@@ -25,6 +27,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 하위 작업 완료 처리는 내 하위 작업 목록(SCR-ESM-010)에서 수행한다.
  */
 export function ChecklistDetailPage() {
+  const { t } = useTranslation("esm");
   const params = useParams();
   const navigate = useNavigate();
   const id = Number(params.id);
@@ -52,31 +55,34 @@ export function ChecklistDetailPage() {
   if (notFound || !detail) {
     return (
       <div className="mx-auto max-w-lg space-y-4 text-center">
-        <p className="text-sm text-muted-foreground">체크리스트를 찾을 수 없습니다.</p>
-        <Button onClick={() => navigate(-1)}>이전으로</Button>
+        <p className="text-sm text-muted-foreground">{t("checklistDetail.notFound", { defaultValue: "체크리스트를 찾을 수 없습니다." })}</p>
+        <Button onClick={() => navigate(-1)}>{t("checklistDetail.back", { defaultValue: "이전으로" })}</Button>
       </div>
     );
   }
 
-  const doneCount = detail.tasks.filter((t) => t.status === "DONE").length;
+  const doneCount = detail.tasks.filter((task) => task.status === "DONE").length;
 
   const columns: Column<ChecklistTask>[] = [
-    { header: "담당 부서", cell: (t) => <StatusBadge tone="info" label={departmentLabel(t.department)} /> },
-    { header: "설명", cell: (t) => t.description },
     {
-      header: "상태",
-      cell: (t) => <StatusBadge tone={checklistTaskStatusTone(t.status)} label={checklistTaskStatusLabel(t.status)} />,
+      header: t("checklistDetail.columnDepartment", { defaultValue: "담당 부서" }),
+      cell: (task) => <StatusBadge tone="info" label={departmentLabel(t, task.department)} />,
+    },
+    { header: t("checklistDetail.columnDescription", { defaultValue: "설명" }), cell: (task) => task.description },
+    {
+      header: t("checklistDetail.columnStatus", { defaultValue: "상태" }),
+      cell: (task) => <StatusBadge tone={checklistTaskStatusTone(task.status)} label={checklistTaskStatusLabel(t, task.status)} />,
     },
     {
-      header: "회수 자산",
-      cell: (t) =>
-        t.relatedAssetKey ? (
+      header: t("checklistDetail.columnRecoveredAsset", { defaultValue: "회수 자산" }),
+      cell: (task) =>
+        task.relatedAssetKey ? (
           <button
             type="button"
             className="text-primary hover:underline"
-            onClick={() => navigate(`/assets/${t.relatedAssetId}`)}
+            onClick={() => navigate(`/assets/${task.relatedAssetId}`)}
           >
-            {t.relatedAssetKey}
+            {task.relatedAssetKey}
           </button>
         ) : (
           "-"
@@ -89,13 +95,20 @@ export function ChecklistDetailPage() {
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
         <div className="space-y-1.5">
           <p className="text-xs font-medium text-muted-foreground">
-            {detail.type === "ONBOARDING" ? "온보딩" : "오프보딩"} 체크리스트
+            {t("checklistDetail.typeSuffix", {
+              type: checklistTypeLabel(t, detail.type),
+              defaultValue: `${checklistTypeLabel(t, detail.type)} 체크리스트`,
+            })}
           </p>
           <h1 className="text-heading-large font-bold text-foreground">{detail.targetUserName}</h1>
           <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge tone={checklistStatusTone(detail.status)} label={checklistStatusLabel(detail.status)} />
+            <StatusBadge tone={checklistStatusTone(detail.status)} label={checklistStatusLabel(t, detail.status)} />
             <span className="text-sm text-muted-foreground">
-              전체 진행률 {doneCount} / {detail.tasks.length}
+              {t("checklistDetail.overallProgress", {
+                done: doneCount,
+                total: detail.tasks.length,
+                defaultValue: `전체 진행률 ${doneCount} / ${detail.tasks.length}`,
+              })}
             </span>
           </div>
         </div>
@@ -104,9 +117,9 @@ export function ChecklistDetailPage() {
       <DataTable
         columns={columns}
         data={detail.tasks}
-        rowKey={(t) => t.id}
-        emptyTitle="하위 작업이 없습니다"
-        emptyDescription="정의된 하위 작업이 없습니다."
+        rowKey={(task) => task.id}
+        emptyTitle={t("checklistDetail.emptyTitle", { defaultValue: "하위 작업이 없습니다" })}
+        emptyDescription={t("checklistDetail.emptyDescription", { defaultValue: "정의된 하위 작업이 없습니다." })}
       />
     </div>
   );

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -19,7 +20,7 @@ import {
   toast,
 } from "@/components/common";
 import { esmApi } from "@/features/esm/api";
-import { checklistTaskStatusLabel, checklistTaskStatusTone } from "@/features/esm/status";
+import { checklistTaskStatusLabel, checklistTaskStatusTone, checklistTypeLabel } from "@/features/esm/status";
 import type { ChecklistTaskStatus, MyChecklistTask, PageResponse } from "@/features/esm/types";
 import { extractErrorMessage } from "@/lib/apiClient";
 
@@ -33,6 +34,7 @@ const ALL = "ALL";
 const STATUS_OPTIONS: ChecklistTaskStatus[] = ["PENDING", "DONE"];
 
 export function MyChecklistTasksPage() {
+  const { t } = useTranslation("esm");
   const navigate = useNavigate();
   const [status, setStatus] = useState(ALL);
   const [page, setPage] = useState(0);
@@ -59,7 +61,7 @@ export function MyChecklistTasksPage() {
     setCompletingId(taskId);
     try {
       await esmApi.completeChecklistTask(taskId);
-      toast.success("완료 처리되었습니다");
+      toast.success(t("myChecklistTasks.completeSuccess", { defaultValue: "완료 처리되었습니다" }));
       load();
     } catch (err) {
       toast.error(extractErrorMessage(err));
@@ -69,27 +71,30 @@ export function MyChecklistTasksPage() {
   };
 
   const columns: Column<MyChecklistTask>[] = [
-    { header: "체크리스트 유형", cell: (t) => (t.checklistType === "ONBOARDING" ? "온보딩" : "오프보딩") },
-    { header: "대상자", cell: (t) => t.targetUserName },
-    { header: "작업 설명", cell: (t) => t.description },
     {
-      header: "상태",
-      cell: (t) => <StatusBadge tone={checklistTaskStatusTone(t.status)} label={checklistTaskStatusLabel(t.status)} />,
+      header: t("myChecklistTasks.columnChecklistType", { defaultValue: "체크리스트 유형" }),
+      cell: (task) => checklistTypeLabel(t, task.checklistType),
+    },
+    { header: t("myChecklistTasks.columnTargetUser", { defaultValue: "대상자" }), cell: (task) => task.targetUserName },
+    { header: t("myChecklistTasks.columnDescription", { defaultValue: "작업 설명" }), cell: (task) => task.description },
+    {
+      header: t("myChecklistTasks.columnStatus", { defaultValue: "상태" }),
+      cell: (task) => <StatusBadge tone={checklistTaskStatusTone(task.status)} label={checklistTaskStatusLabel(t, task.status)} />,
     },
     {
       header: "",
       className: "text-right",
-      cell: (t) =>
-        t.status === "PENDING" ? (
+      cell: (task) =>
+        task.status === "PENDING" ? (
           <Button
             size="sm"
-            loading={completingId === t.id}
+            loading={completingId === task.id}
             onClick={(e) => {
               e.stopPropagation();
-              handleComplete(t.id);
+              handleComplete(task.id);
             }}
           >
-            완료 처리
+            {t("myChecklistTasks.completeButton", { defaultValue: "완료 처리" })}
           </Button>
         ) : null,
     },
@@ -99,20 +104,20 @@ export function MyChecklistTasksPage() {
 
   return (
     <TicketListLayout
-      title="내 하위 작업"
-      description="소속 부서에 배정된 온보딩/오프보딩 하위 작업을 처리합니다."
+      title={t("myChecklistTasks.title", { defaultValue: "내 하위 작업" })}
+      description={t("myChecklistTasks.description", { defaultValue: "소속 부서에 배정된 온보딩/오프보딩 하위 작업을 처리합니다." })}
       filters={
         <div className="space-y-1">
-          <Label>상태</Label>
+          <Label>{t("myChecklistTasks.columnStatus", { defaultValue: "상태" })}</Label>
           <Select value={status} onValueChange={(v) => { setPage(0); setStatus(v); }}>
             <SelectTrigger className="w-32">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>전체</SelectItem>
+              <SelectItem value={ALL}>{t("myChecklistTasks.filterAll", { defaultValue: "전체" })}</SelectItem>
               {STATUS_OPTIONS.map((s) => (
                 <SelectItem key={s} value={s}>
-                  {checklistTaskStatusLabel(s)}
+                  {checklistTaskStatusLabel(t, s)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -123,11 +128,11 @@ export function MyChecklistTasksPage() {
       <DataTable
         columns={columns}
         data={data?.content ?? []}
-        rowKey={(t) => t.id}
+        rowKey={(task) => task.id}
         loading={loading}
-        onRowClick={(t) => navigate(`/esm/checklists/${t.checklistId}`)}
-        emptyTitle="하위 작업이 없습니다"
-        emptyDescription="배정된 하위 작업이 없습니다."
+        onRowClick={(task) => navigate(`/esm/checklists/${task.checklistId}`)}
+        emptyTitle={t("myChecklistTasks.emptyTitle", { defaultValue: "하위 작업이 없습니다" })}
+        emptyDescription={t("myChecklistTasks.emptyDescription", { defaultValue: "배정된 하위 작업이 없습니다." })}
       />
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </TicketListLayout>

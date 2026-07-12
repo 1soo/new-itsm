@@ -1,1 +1,198 @@
-{}
+{
+  "department": {
+    "HR": "HR",
+    "LEGAL": "Legal",
+    "FACILITIES": "Facilities",
+    "FINANCE": "Finance",
+    "IT": "IT"
+  },
+  "requestStatus": {
+    "SUBMITTED": "Submitted",
+    "IN_PROGRESS": "In Progress",
+    "COMPLETED": "Completed",
+    "REJECTED": "Rejected"
+  },
+  "hrCaseStatus": {
+    "INTAKE": "Intake",
+    "DOCUMENTATION": "Documentation",
+    "INVESTIGATION": "Investigation",
+    "RESOLUTION": "Resolution"
+  },
+  "checklistStatus": {
+    "IN_PROGRESS": "In Progress",
+    "COMPLETED": "Completed"
+  },
+  "checklistTaskStatus": {
+    "PENDING": "Pending",
+    "DONE": "Done"
+  },
+  "checklistType": {
+    "ONBOARDING": "Onboarding",
+    "OFFBOARDING": "Offboarding"
+  },
+  "checklistTemplateType": {
+    "NONE": "None",
+    "ONBOARDING": "Onboarding",
+    "OFFBOARDING": "Offboarding"
+  },
+  "deptPortal": {
+    "title": "Department Service Portal",
+    "description": "Browse request types by department and submit a request.",
+    "tabAll": "All",
+    "searchPlaceholder": "Search request type or keyword",
+    "searchAriaLabel": "Catalog search",
+    "emptyTitle": "No catalog items",
+    "emptyDescription": "No request types registered."
+  },
+  "deptRequestSubmit": {
+    "formCardTitle": "Request Form",
+    "targetUserNameLabel": "Target User Name",
+    "targetUserNamePlaceholder": "Name of onboarding/offboarding target",
+    "targetUserNameRequiredError": "Target user name is required.",
+    "cancelButton": "Cancel",
+    "submitButton": "Submit",
+    "successWithChecklist": "Request submitted ({{ticketKey}}). A checklist has been generated automatically.",
+    "successWithoutChecklist": "Request submitted ({{ticketKey}})"
+  },
+  "myEsmRequests": {
+    "title": "My Department Requests",
+    "description": "Track department requests you have submitted.",
+    "columnTicketKey": "Ticket Key",
+    "columnDepartment": "Department",
+    "columnType": "Type",
+    "columnStatus": "Status",
+    "columnUpdatedAt": "Updated",
+    "filterAll": "All",
+    "filterFrom": "From",
+    "filterTo": "To",
+    "searchButton": "Search",
+    "emptyTitle": "No requests",
+    "emptyDescription": "No requests match the criteria."
+  },
+  "esmRequestQueue": {
+    "title": "Department Request Queue",
+    "description": "Process requests submitted to your department.",
+    "emptyTitle": "No requests",
+    "emptyDescription": "No department requests to process."
+  },
+  "esmRequestDetail": {
+    "notFound": "Request not found.",
+    "back": "Back",
+    "transitionBlockedTooltip": "Cannot transition to completed before approval is complete",
+    "transitionSuccess": "Status changed to '{{status}}'",
+    "infoTitle": "Information",
+    "requesterLabel": "Requester",
+    "assigneeLabel": "Assignee",
+    "assigneeUnassigned": "Unassigned",
+    "linkedChecklistTitle": "Linked Checklist",
+    "progressLabel": "Progress",
+    "requestContentTitle": "Request Content",
+    "noFormValues": "No values entered.",
+    "commentsTitle": "Comments",
+    "noComments": "No comments.",
+    "commentLabel": "Write Comment",
+    "commentPlaceholder": "Enter a message",
+    "commentSubmit": "Post",
+    "timelineTitle": "Timeline",
+    "noTimeline": "No history."
+  },
+  "esmCatalogManage": {
+    "title": "Department Catalog Management",
+    "newItemButton": "New Item",
+    "noItems": "No items registered.",
+    "newItemCardTitle": "New Request Type",
+    "editItemCardTitle": "Edit Request Type",
+    "nameLabel": "Name",
+    "descriptionLabel": "Description",
+    "departmentLabel": "Department",
+    "departmentPlaceholder": "Select",
+    "checklistTypeLabel": "Checklist Type",
+    "checklistTemplateLabel": "Checklist Template (Subtasks)",
+    "checklistEmptyWarning": "No subtasks defined. Saving is allowed, but submitting an actual request of this type will be rejected.",
+    "formFieldsLabel": "Form Fields",
+    "saveButton": "Save",
+    "nameRequiredError": "Name is required.",
+    "departmentRequiredError": "Department is required.",
+    "saveFailed": "Failed to save.",
+    "createSuccess": "Catalog item created",
+    "updateSuccess": "Catalog item updated",
+    "taskDescriptionLabel": "Task Description",
+    "taskDescriptionPlaceholder": "e.g., Issue employee badge",
+    "removeTaskAria": "Remove subtask",
+    "addTaskButton": "Add Subtask",
+    "noTasksTitle": "No subtasks defined",
+    "noTasksDescription": "Use the button below to add a subtask."
+  },
+  "hrCaseList": {
+    "title": "HR Cases",
+    "description": "Intake and process sensitive HR issues.",
+    "createButton": "Intake Case",
+    "columnCaseId": "Case ID",
+    "columnTitle": "Title",
+    "columnStatus": "Status",
+    "columnUpdatedAt": "Last Updated",
+    "filterAll": "All",
+    "emptyTitle": "No cases",
+    "emptyDescription": "No HR cases have been submitted.",
+    "createModalTitle": "Intake Case",
+    "createModalDescription": "This is sensitive information — only HR case managers can view or process it.",
+    "subjectLabel": "Subject",
+    "titleLabel": "Title",
+    "descriptionLabel": "Description",
+    "titleRequiredError": "Title is required.",
+    "createFailed": "Failed to submit.",
+    "createSuccess": "Case submitted",
+    "cancelButton": "Cancel",
+    "submitButton": "Submit"
+  },
+  "hrCaseDetail": {
+    "notFound": "Case not found.",
+    "back": "Back",
+    "transitionSuccess": "Status changed to '{{status}}'",
+    "infoTitle": "Information",
+    "subjectLabel": "Subject",
+    "descriptionTitle": "Description",
+    "noDescription": "No description",
+    "historyTitle": "Status History",
+    "noHistory": "No history."
+  },
+  "checklistDetail": {
+    "notFound": "Checklist not found.",
+    "back": "Back",
+    "typeSuffix": "{{type}} Checklist",
+    "columnDepartment": "Department",
+    "columnDescription": "Description",
+    "columnStatus": "Status",
+    "columnRecoveredAsset": "Recovered Asset",
+    "overallProgress": "Overall progress {{done}} / {{total}}",
+    "emptyTitle": "No subtasks",
+    "emptyDescription": "No subtasks defined."
+  },
+  "myChecklistTasks": {
+    "title": "My Subtasks",
+    "description": "Process onboarding/offboarding subtasks assigned to your department.",
+    "columnChecklistType": "Checklist Type",
+    "columnTargetUser": "Target User",
+    "columnDescription": "Task Description",
+    "columnStatus": "Status",
+    "completeButton": "Complete",
+    "completeSuccess": "Marked as complete",
+    "filterAll": "All",
+    "emptyTitle": "No subtasks",
+    "emptyDescription": "No subtasks assigned."
+  },
+  "esmMetrics": {
+    "title": "ESM Metrics",
+    "departmentLabel": "Department",
+    "filterAll": "All",
+    "filterFrom": "From",
+    "filterTo": "To",
+    "searchButton": "Search",
+    "requestCount": "Request Count",
+    "avgProcessingTime": "Avg. Processing Time",
+    "onboardingCompletionRate": "Onboarding Completion Rate",
+    "offboardingCompletionRate": "Offboarding Completion Rate",
+    "countUnit": "",
+    "minutesUnit": "min"
+  }
+}

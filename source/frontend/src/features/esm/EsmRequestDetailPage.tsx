@@ -1,5 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,6 +42,7 @@ function fallbackTransitions(status: EsmRequestDetail["status"]): EsmRequestTarg
 }
 
 export function EsmRequestDetailPage() {
+  const { t } = useTranslation("esm");
   const params = useParams();
   const navigate = useNavigate();
   const id = Number(params.id);
@@ -103,7 +105,12 @@ export function EsmRequestDetailPage() {
     setTransitioning(target);
     try {
       await esmApi.transition(id, target);
-      toast.success(`상태가 '${requestStatusLabel(target)}'로 변경되었습니다`);
+      toast.success(
+        t("esmRequestDetail.transitionSuccess", {
+          status: requestStatusLabel(t, target),
+          defaultValue: `상태가 '${requestStatusLabel(t, target)}'로 변경되었습니다`,
+        }),
+      );
       load();
     } catch (err) {
       toast.error(extractErrorMessage(err));
@@ -134,8 +141,8 @@ export function EsmRequestDetailPage() {
   if (notFound || !detail) {
     return (
       <div className="mx-auto max-w-lg space-y-4 text-center">
-        <p className="text-sm text-muted-foreground">요청을 찾을 수 없습니다.</p>
-        <Button onClick={() => navigate(-1)}>이전으로</Button>
+        <p className="text-sm text-muted-foreground">{t("esmRequestDetail.notFound", { defaultValue: "요청을 찾을 수 없습니다." })}</p>
+        <Button onClick={() => navigate(-1)}>{t("esmRequestDetail.back", { defaultValue: "이전으로" })}</Button>
       </div>
     );
   }
@@ -143,10 +150,10 @@ export function EsmRequestDetailPage() {
   const transitions = isCoordinator ? fallbackTransitions(detail.status) : [];
   const approved = detail.approval.approvalRequestId == null || detail.approval.status === "APPROVED";
   const formEntries = Object.entries(detail.formValues ?? {});
-  const timelineItems: TimelineItem[] = detail.timeline.map((t, i) => ({
+  const timelineItems: TimelineItem[] = detail.timeline.map((ev, i) => ({
     id: String(i),
-    title: t.message,
-    timestamp: formatDateTime(t.at),
+    title: ev.message,
+    timestamp: formatDateTime(ev.at),
   }));
 
   return (
@@ -155,22 +162,22 @@ export function EsmRequestDetailPage() {
       title={detail.catalogItemName}
       badges={
         <>
-          <StatusBadge tone="info" label={departmentLabel(detail.department)} />
-          <StatusBadge tone={requestStatusTone(detail.status)} label={requestStatusLabel(detail.status)} />
+          <StatusBadge tone="info" label={departmentLabel(t, detail.department)} />
+          <StatusBadge tone={requestStatusTone(detail.status)} label={requestStatusLabel(t, detail.status)} />
         </>
       }
-      actions={transitions.map((t) => {
-        const blocked = t === "COMPLETED" && !approved;
+      actions={transitions.map((target) => {
+        const blocked = target === "COMPLETED" && !approved;
         return (
           <Button
-            key={t}
-            variant={t === "REJECTED" ? "outline" : "default"}
-            loading={transitioning === t}
+            key={target}
+            variant={target === "REJECTED" ? "outline" : "default"}
+            loading={transitioning === target}
             disabled={blocked}
-            title={blocked ? "승인 완료 전에는 완료 상태로 전이할 수 없습니다" : undefined}
-            onClick={() => handleTransition(t)}
+            title={blocked ? t("esmRequestDetail.transitionBlockedTooltip", { defaultValue: "승인 완료 전에는 완료 상태로 전이할 수 없습니다" }) : undefined}
+            onClick={() => handleTransition(target)}
           >
-            {requestStatusLabel(t)}
+            {requestStatusLabel(t, target)}
           </Button>
         );
       })}
@@ -178,11 +185,14 @@ export function EsmRequestDetailPage() {
         <>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">정보</CardTitle>
+              <CardTitle className="text-base">{t("esmRequestDetail.infoTitle", { defaultValue: "정보" })}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              <MetaRow label="요청자" value={detail.requester} />
-              <MetaRow label="담당자" value={detail.assignee || "미배정"} />
+              <MetaRow label={t("esmRequestDetail.requesterLabel", { defaultValue: "요청자" })} value={detail.requester} />
+              <MetaRow
+                label={t("esmRequestDetail.assigneeLabel", { defaultValue: "담당자" })}
+                value={detail.assignee || t("esmRequestDetail.assigneeUnassigned", { defaultValue: "미배정" })}
+              />
             </CardContent>
           </Card>
 
@@ -203,16 +213,16 @@ export function EsmRequestDetailPage() {
               className="cursor-pointer border-l-4 border-l-[color:var(--info)] transition-colors hover:border-primary"
             >
               <CardHeader>
-                <CardTitle className="text-base">연계 체크리스트</CardTitle>
+                <CardTitle className="text-base">{t("esmRequestDetail.linkedChecklistTitle", { defaultValue: "연계 체크리스트" })}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">진행률</span>
+                  <span className="text-muted-foreground">{t("esmRequestDetail.progressLabel", { defaultValue: "진행률" })}</span>
                   <span className="text-foreground">
-                    {checklist.tasks.filter((t) => t.status === "DONE").length} / {checklist.tasks.length}
+                    {checklist.tasks.filter((task) => task.status === "DONE").length} / {checklist.tasks.length}
                   </span>
                 </div>
-                <StatusBadge tone={checklistStatusTone(checklist.status)} label={checklistStatusLabel(checklist.status)} />
+                <StatusBadge tone={checklistStatusTone(checklist.status)} label={checklistStatusLabel(t, checklist.status)} />
               </CardContent>
             </Card>
           ) : null}
@@ -221,11 +231,11 @@ export function EsmRequestDetailPage() {
     >
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">요청 내용</CardTitle>
+          <CardTitle className="text-base">{t("esmRequestDetail.requestContentTitle", { defaultValue: "요청 내용" })}</CardTitle>
         </CardHeader>
         <CardContent>
           {formEntries.length === 0 ? (
-            <p className="text-sm text-muted-foreground">입력된 값이 없습니다.</p>
+            <p className="text-sm text-muted-foreground">{t("esmRequestDetail.noFormValues", { defaultValue: "입력된 값이 없습니다." })}</p>
           ) : (
             <dl className="grid grid-cols-[8rem_1fr] gap-y-2 text-sm">
               {formEntries.map(([k, v]) => (
@@ -241,11 +251,11 @@ export function EsmRequestDetailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">코멘트</CardTitle>
+          <CardTitle className="text-base">{t("esmRequestDetail.commentsTitle", { defaultValue: "코멘트" })}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {detail.comments.length === 0 ? (
-            <p className="text-sm text-muted-foreground">코멘트가 없습니다.</p>
+            <p className="text-sm text-muted-foreground">{t("esmRequestDetail.noComments", { defaultValue: "코멘트가 없습니다." })}</p>
           ) : (
             <ul className="space-y-3">
               {detail.comments.map((c) => (
@@ -261,16 +271,16 @@ export function EsmRequestDetailPage() {
           )}
           <form onSubmit={handleComment} className="flex items-end gap-2">
             <div className="flex-1 space-y-1">
-              <Label htmlFor="comment">코멘트 작성</Label>
+              <Label htmlFor="comment">{t("esmRequestDetail.commentLabel", { defaultValue: "코멘트 작성" })}</Label>
               <Input
                 id="comment"
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                placeholder="메시지를 입력하세요"
+                placeholder={t("esmRequestDetail.commentPlaceholder", { defaultValue: "메시지를 입력하세요" })}
               />
             </div>
             <Button type="submit" loading={commenting} disabled={!comment.trim()}>
-              등록
+              {t("esmRequestDetail.commentSubmit", { defaultValue: "등록" })}
             </Button>
           </form>
         </CardContent>
@@ -278,11 +288,11 @@ export function EsmRequestDetailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">타임라인</CardTitle>
+          <CardTitle className="text-base">{t("esmRequestDetail.timelineTitle", { defaultValue: "타임라인" })}</CardTitle>
         </CardHeader>
         <CardContent>
           {timelineItems.length === 0 ? (
-            <p className="text-sm text-muted-foreground">이력이 없습니다.</p>
+            <p className="text-sm text-muted-foreground">{t("esmRequestDetail.noTimeline", { defaultValue: "이력이 없습니다." })}</p>
           ) : (
             <Timeline items={timelineItems} />
           )}

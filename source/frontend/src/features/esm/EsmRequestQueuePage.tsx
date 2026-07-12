@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -35,6 +36,7 @@ const ALL = "ALL";
 const STATUS_OPTIONS: EsmRequestStatus[] = ["SUBMITTED", "IN_PROGRESS", "COMPLETED", "REJECTED"];
 
 export function EsmRequestQueuePage() {
+  const { t } = useTranslation("esm");
   const navigate = useNavigate();
   const [statusInput, setStatusInput] = useState(ALL);
   const [status, setStatus] = useState(ALL);
@@ -67,41 +69,44 @@ export function EsmRequestQueuePage() {
   };
 
   const columns: Column<EsmRequestSummary>[] = [
-    { header: "접수번호", cell: (r) => r.ticketKey },
-    { header: "부서", cell: (r) => <StatusBadge tone="info" label={departmentLabel(r.department)} /> },
-    { header: "유형", cell: (r) => r.catalogItemName },
+    { header: t("myEsmRequests.columnTicketKey", { defaultValue: "접수번호" }), cell: (r) => r.ticketKey },
     {
-      header: "상태",
-      cell: (r) => <StatusBadge tone={requestStatusTone(r.status)} label={requestStatusLabel(r.status)} />,
+      header: t("myEsmRequests.columnDepartment", { defaultValue: "부서" }),
+      cell: (r) => <StatusBadge tone="info" label={departmentLabel(t, r.department)} />,
     },
-    { header: "갱신일", cell: (r) => formatDate(r.updatedAt) },
+    { header: t("myEsmRequests.columnType", { defaultValue: "유형" }), cell: (r) => r.catalogItemName },
+    {
+      header: t("myEsmRequests.columnStatus", { defaultValue: "상태" }),
+      cell: (r) => <StatusBadge tone={requestStatusTone(r.status)} label={requestStatusLabel(t, r.status)} />,
+    },
+    { header: t("myEsmRequests.columnUpdatedAt", { defaultValue: "갱신일" }), cell: (r) => formatDate(r.updatedAt) },
   ];
 
   const totalPages = data ? Math.ceil(data.totalElements / PAGE_SIZE) : 0;
 
   return (
     <TicketListLayout
-      title="부서 요청 처리 큐"
-      description="소속 부서로 접수된 요청을 처리합니다."
+      title={t("esmRequestQueue.title", { defaultValue: "부서 요청 처리 큐" })}
+      description={t("esmRequestQueue.description", { defaultValue: "소속 부서로 접수된 요청을 처리합니다." })}
       filters={
         <form onSubmit={handleSearch} className="flex flex-wrap items-end gap-2">
           <div className="space-y-1">
-            <Label>상태</Label>
+            <Label>{t("myEsmRequests.columnStatus", { defaultValue: "상태" })}</Label>
             <Select value={statusInput} onValueChange={setStatusInput}>
               <SelectTrigger className="w-36">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>전체</SelectItem>
+                <SelectItem value={ALL}>{t("myEsmRequests.filterAll", { defaultValue: "전체" })}</SelectItem>
                 {STATUS_OPTIONS.map((s) => (
                   <SelectItem key={s} value={s}>
-                    {requestStatusLabel(s)}
+                    {requestStatusLabel(t, s)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          <Button type="submit">검색</Button>
+          <Button type="submit">{t("myEsmRequests.searchButton", { defaultValue: "검색" })}</Button>
         </form>
       }
     >
@@ -111,8 +116,8 @@ export function EsmRequestQueuePage() {
         rowKey={(r) => r.id}
         loading={loading}
         onRowClick={(r) => navigate(`/esm/requests/${r.id}`)}
-        emptyTitle="요청이 없습니다"
-        emptyDescription="처리할 부서 요청이 없습니다."
+        emptyTitle={t("esmRequestQueue.emptyTitle", { defaultValue: "요청이 없습니다" })}
+        emptyDescription={t("esmRequestQueue.emptyDescription", { defaultValue: "처리할 부서 요청이 없습니다." })}
       />
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </TicketListLayout>

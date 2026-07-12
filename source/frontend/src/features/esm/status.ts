@@ -1,7 +1,11 @@
+import type { TFunction } from "i18next";
+
 import type { StatusTone } from "@/components/common";
 import type {
   ChecklistStatus,
   ChecklistTaskStatus,
+  ChecklistTemplateType,
+  ChecklistType,
   Department,
   EsmRequestStatus,
   HrCaseStatus,
@@ -24,8 +28,10 @@ const DEPARTMENT_LABEL: Record<Department, string> = {
   IT: "IT",
 };
 
-export function departmentLabel(department: Department | string): string {
-  return DEPARTMENT_LABEL[department as Department] ?? department;
+/** 부서 라벨(`esm:department.*`). */
+export function departmentLabel(t: TFunction, department: Department | string | null | undefined): string {
+  if (!department) return "";
+  return t(`department.${department}`, { ns: "esm", defaultValue: DEPARTMENT_LABEL[department as Department] ?? department });
 }
 
 const REQUEST_STATUS_LABEL: Record<EsmRequestStatus, string> = {
@@ -42,8 +48,10 @@ const REQUEST_STATUS_TONE: Record<EsmRequestStatus, StatusTone> = {
   REJECTED: "danger",
 };
 
-export function requestStatusLabel(status: EsmRequestStatus): string {
-  return REQUEST_STATUS_LABEL[status] ?? status;
+/** 부서 요청 상태 라벨(`esm:requestStatus.*`). */
+export function requestStatusLabel(t: TFunction, status: EsmRequestStatus | null | undefined): string {
+  if (!status) return "";
+  return t(`requestStatus.${status}`, { ns: "esm", defaultValue: REQUEST_STATUS_LABEL[status] ?? status });
 }
 
 export function requestStatusTone(status: EsmRequestStatus): StatusTone {
@@ -64,8 +72,10 @@ const HR_CASE_STATUS_TONE: Record<HrCaseStatus, StatusTone> = {
   RESOLUTION: "success",
 };
 
-export function hrCaseStatusLabel(status: HrCaseStatus | string): string {
-  return HR_CASE_STATUS_LABEL[status as HrCaseStatus] ?? status;
+/** HR 케이스 상태 라벨(`esm:hrCaseStatus.*`). */
+export function hrCaseStatusLabel(t: TFunction, status: HrCaseStatus | string | null | undefined): string {
+  if (!status) return "";
+  return t(`hrCaseStatus.${status}`, { ns: "esm", defaultValue: HR_CASE_STATUS_LABEL[status as HrCaseStatus] ?? status });
 }
 
 export function hrCaseStatusTone(status: HrCaseStatus | string): StatusTone {
@@ -94,8 +104,10 @@ const CHECKLIST_STATUS_TONE: Record<ChecklistStatus, StatusTone> = {
   COMPLETED: "success",
 };
 
-export function checklistStatusLabel(status: ChecklistStatus): string {
-  return CHECKLIST_STATUS_LABEL[status] ?? status;
+/** 체크리스트 상태 라벨(`esm:checklistStatus.*`). */
+export function checklistStatusLabel(t: TFunction, status: ChecklistStatus | null | undefined): string {
+  if (!status) return "";
+  return t(`checklistStatus.${status}`, { ns: "esm", defaultValue: CHECKLIST_STATUS_LABEL[status] ?? status });
 }
 
 export function checklistStatusTone(status: ChecklistStatus): StatusTone {
@@ -112,10 +124,35 @@ const CHECKLIST_TASK_STATUS_TONE: Record<ChecklistTaskStatus, StatusTone> = {
   DONE: "success",
 };
 
-export function checklistTaskStatusLabel(status: ChecklistTaskStatus): string {
-  return CHECKLIST_TASK_STATUS_LABEL[status] ?? status;
+/** 체크리스트 하위 작업 상태 라벨(`esm:checklistTaskStatus.*`). */
+export function checklistTaskStatusLabel(t: TFunction, status: ChecklistTaskStatus | null | undefined): string {
+  if (!status) return "";
+  return t(`checklistTaskStatus.${status}`, { ns: "esm", defaultValue: CHECKLIST_TASK_STATUS_LABEL[status] ?? status });
 }
 
 export function checklistTaskStatusTone(status: ChecklistTaskStatus): StatusTone {
   return CHECKLIST_TASK_STATUS_TONE[status] ?? "muted";
+}
+
+const CHECKLIST_TYPE_LABEL: Record<ChecklistType, string> = {
+  ONBOARDING: "온보딩",
+  OFFBOARDING: "오프보딩",
+};
+
+/** 체크리스트 유형 라벨(`esm:checklistType.*`, ChecklistDetailPage·MyChecklistTasksPage 공용). */
+export function checklistTypeLabel(t: TFunction, ty: ChecklistType | null | undefined): string {
+  if (!ty) return "";
+  return t(`checklistType.${ty}`, { ns: "esm", defaultValue: CHECKLIST_TYPE_LABEL[ty] ?? ty });
+}
+
+const CHECKLIST_TEMPLATE_TYPE_LABEL: Record<ChecklistTemplateType, string> = {
+  NONE: "없음",
+  ONBOARDING: "온보딩",
+  OFFBOARDING: "오프보딩",
+};
+
+/** 카탈로그 체크리스트 템플릿 유형 라벨(`esm:checklistTemplateType.*`, EsmCatalogManagePage 전용). */
+export function checklistTemplateTypeLabel(t: TFunction, ty: ChecklistTemplateType | null | undefined): string {
+  if (!ty) return "";
+  return t(`checklistTemplateType.${ty}`, { ns: "esm", defaultValue: CHECKLIST_TEMPLATE_TYPE_LABEL[ty] ?? ty });
 }

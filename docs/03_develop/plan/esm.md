@@ -62,3 +62,20 @@
 ## 7. 특이사항
 - `app_user.department`는 auth 도메인 테이블 증분이라 DB가 담당하되, BE의 auth 관련 조회/응답(예: `MeResponse`)에 department 노출이 필요한지는 설계에 명시 없음 — 필요 여부(FE가 로그인 사용자 department를 알아야 "내 하위 작업" 등에서 필터 UI를 구성할지) 확인 필요하면 저에게 질문.
 - 온보딩/오프보딩 체크리스트 생성은 서비스 요청(SRM) 도메인이 아닌 ESM 자체 로직이며, 자산 조회만 asset 도메인을 내부적으로 참조한다(HTTP 재호출이 아니라 동일 애플리케이션 내 리포지토리 재사용을 권장 — BE 재량이나 방식 확정되면 이 문서에 기록).
+
+## i18n 다국어 전환 (유지보수 요청, 2026-07-12)
+
+> i18n 인프라·SweetAlert2·언어 선택은 common phase에서 완료됨(`docs/03_develop/plan/common.md` v3절). 레이아웃/컴포넌트 변경 없이 텍스트만 번역 키로 치환(`docs/02_plan/screen/common.md` 6절). BE/DB 변경 없음.
+
+### 담당 범위 — dev-fe 단독(UI 미소집)
+
+- 대상 화면(`docs/02_plan/screen/esm.md` 3절, 11개): `DeptPortalPage.tsx`(SCR-ESM-001), `DeptRequestSubmitPage.tsx`(002), `MyEsmRequestsPage.tsx`(003), `EsmRequestQueuePage.tsx`(004), `EsmRequestDetailPage.tsx`(005), `EsmCatalogManagePage.tsx`(006), `HrCaseListPage.tsx`(007), `HrCaseDetailPage.tsx`(008), `ChecklistDetailPage.tsx`(009), `MyChecklistTasksPage.tsx`(010), `EsmMetricsPage.tsx`(011).
+- `features/esm/status.ts` — `t` 인자를 받도록 전환, 호출부 갱신. esm은 통합검색 대상 아님(`features/search/status.ts` 변경 불필요, asset과 동일하게 확인만 하면 됨).
+- **`DeptRequestSubmitPage.tsx`의 `validateForm(schema, values)` 호출에 세 번째 인자로 `t`를 추가**해라(`validateForm(schema, values, t)`) — service-request phase에서 이미 `form-schema.ts`에 선택적 `t` 인자가 추가돼 있고, esm은 그때 미루기로 했던 도메인이다(필수 항목 오류 메시지 번역 적용).
+- `format.ts` 확인 필수 — 라벨 섞여 있으면 전환.
+- `useTranslation(["esm", "common"])` 사용. `locales/{ko,en}/esm.json`(현재 `{}` 스캐폴딩) 단독 소유, 직접 채운다.
+- 화면 수가 많으니(11개) change/asset phase에서 반복 발견된 "열거형 원시값 나열 노출"·"값 없을 때 원시 키 노출" 두 패턴을 특히 유의해서 점검해라(체크리스트 하위 작업 상태, HR 케이스 4단계 상태, 부서명 등).
+
+### 완료 기준
+- English 전환 시 11개 화면 전체 텍스트(부서·상태·체크리스트 라벨 포함) 영어 전환.
+- 부서 요청 제출/처리/체크리스트 완료·HR 케이스 상태 전이 등 기존 기능 회귀 없음(텍스트만 치환).

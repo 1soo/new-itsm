@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +25,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 제출 성공 시(checklistId 존재) 체크리스트 자동 생성 안내 토스트를 노출한다.
  */
 export function DeptRequestSubmitPage() {
+  const { t } = useTranslation("esm");
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const itemId = Number(searchParams.get("item"));
@@ -64,10 +66,14 @@ export function DeptRequestSubmitPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!catalog) return;
-    const validation = validateForm(schema, values);
+    const validation = validateForm(schema, values, t);
     setErrors(validation);
     const targetUserNameInvalid = needsTargetUser && !targetUserName.trim();
-    setTargetUserNameError(targetUserNameInvalid ? "대상자명은 필수 항목입니다." : null);
+    setTargetUserNameError(
+      targetUserNameInvalid
+        ? t("deptRequestSubmit.targetUserNameRequiredError", { defaultValue: "대상자명은 필수 항목입니다." })
+        : null,
+    );
     if (Object.keys(validation).length > 0 || targetUserNameInvalid) return;
 
     const formValues = Object.fromEntries(
@@ -83,8 +89,14 @@ export function DeptRequestSubmitPage() {
       });
       toast.success(
         created.checklistId
-          ? `요청이 접수되었습니다 (${created.ticketKey}). 체크리스트가 자동 생성되었습니다.`
-          : `요청이 접수되었습니다 (${created.ticketKey})`,
+          ? t("deptRequestSubmit.successWithChecklist", {
+              ticketKey: created.ticketKey,
+              defaultValue: `요청이 접수되었습니다 (${created.ticketKey}). 체크리스트가 자동 생성되었습니다.`,
+            })
+          : t("deptRequestSubmit.successWithoutChecklist", {
+              ticketKey: created.ticketKey,
+              defaultValue: `요청이 접수되었습니다 (${created.ticketKey})`,
+            }),
       );
       navigate(`/esm/requests/${created.id}`);
     } catch (err) {
@@ -106,14 +118,14 @@ export function DeptRequestSubmitPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">요청 양식</CardTitle>
+          <CardTitle className="text-base">{t("deptRequestSubmit.formCardTitle", { defaultValue: "요청 양식" })}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6" noValidate>
             {needsTargetUser ? (
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="targetUserName">
-                  대상자명
+                  {t("deptRequestSubmit.targetUserNameLabel", { defaultValue: "대상자명" })}
                   <span className="ml-0.5 text-destructive" aria-hidden="true">*</span>
                 </Label>
                 <Input
@@ -121,7 +133,7 @@ export function DeptRequestSubmitPage() {
                   value={targetUserName}
                   onChange={(e) => setTargetUserName(e.target.value)}
                   aria-invalid={!!targetUserNameError}
-                  placeholder="온보딩/오프보딩 대상자 이름"
+                  placeholder={t("deptRequestSubmit.targetUserNamePlaceholder", { defaultValue: "온보딩/오프보딩 대상자 이름" })}
                 />
                 {targetUserNameError ? (
                   <p className="text-xs text-destructive">{targetUserNameError}</p>
@@ -133,10 +145,10 @@ export function DeptRequestSubmitPage() {
 
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => navigate("/esm/portal")}>
-                취소
+                {t("deptRequestSubmit.cancelButton", { defaultValue: "취소" })}
               </Button>
               <Button type="submit" loading={submitting}>
-                제출
+                {t("deptRequestSubmit.submitButton", { defaultValue: "제출" })}
               </Button>
             </div>
           </form>

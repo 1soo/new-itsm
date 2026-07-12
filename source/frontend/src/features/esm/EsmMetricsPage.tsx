@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,7 @@ function toEndOfDay(date: string): string {
 }
 
 export function EsmMetricsPage() {
+  const { t } = useTranslation("esm");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [departmentInput, setDepartmentInput] = useState(ALL);
@@ -71,41 +73,57 @@ export function EsmMetricsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold text-foreground">ESM 지표</h1>
+      <h1 className="text-xl font-semibold text-foreground">{t("esmMetrics.title", { defaultValue: "ESM 지표" })}</h1>
 
       <form onSubmit={handleSearch} className="flex flex-wrap items-end gap-2 rounded-lg border border-border bg-card p-3">
         <div className="space-y-1">
-          <Label>부서</Label>
+          <Label>{t("esmMetrics.departmentLabel", { defaultValue: "부서" })}</Label>
           <Select value={departmentInput} onValueChange={setDepartmentInput}>
             <SelectTrigger className="w-36">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>전체</SelectItem>
+              <SelectItem value={ALL}>{t("esmMetrics.filterAll", { defaultValue: "전체" })}</SelectItem>
               {DEPARTMENTS.map((d) => (
                 <SelectItem key={d} value={d}>
-                  {departmentLabel(d)}
+                  {departmentLabel(t, d)}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-1">
-          <Label htmlFor="from">시작일</Label>
+          <Label htmlFor="from">{t("esmMetrics.filterFrom", { defaultValue: "시작일" })}</Label>
           <Input id="from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="to">종료일</Label>
+          <Label htmlFor="to">{t("esmMetrics.filterTo", { defaultValue: "종료일" })}</Label>
           <Input id="to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         </div>
-        <Button type="submit">조회</Button>
+        <Button type="submit">{t("esmMetrics.searchButton", { defaultValue: "조회" })}</Button>
       </form>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="처리 건수" value={loading ? "-" : String(metrics?.requestCount ?? 0)} unit="건" />
-        <KpiCard label="평균 처리 시간" value={loading ? "-" : roundOr0(metrics?.avgProcessingMinutes)} unit="분" />
-        <KpiCard label="온보딩 완료율" value={loading ? "-" : roundOr0(metrics?.onboardingCompletionRate, 1)} unit="%" />
-        <KpiCard label="오프보딩 완료율" value={loading ? "-" : roundOr0(metrics?.offboardingCompletionRate, 1)} unit="%" />
+        <KpiCard
+          label={t("esmMetrics.requestCount", { defaultValue: "처리 건수" })}
+          value={loading ? "-" : String(metrics?.requestCount ?? 0)}
+          unit={t("esmMetrics.countUnit", { defaultValue: "건" })}
+        />
+        <KpiCard
+          label={t("esmMetrics.avgProcessingTime", { defaultValue: "평균 처리 시간" })}
+          value={loading ? "-" : roundOr0(metrics?.avgProcessingMinutes)}
+          unit={t("esmMetrics.minutesUnit", { defaultValue: "분" })}
+        />
+        <KpiCard
+          label={t("esmMetrics.onboardingCompletionRate", { defaultValue: "온보딩 완료율" })}
+          value={loading ? "-" : roundOr0(metrics?.onboardingCompletionRate, 1)}
+          unit="%"
+        />
+        <KpiCard
+          label={t("esmMetrics.offboardingCompletionRate", { defaultValue: "오프보딩 완료율" })}
+          value={loading ? "-" : roundOr0(metrics?.offboardingCompletionRate, 1)}
+          unit="%"
+        />
       </div>
     </div>
   );

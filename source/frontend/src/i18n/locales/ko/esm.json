@@ -1,1 +1,198 @@
-{}
+{
+  "department": {
+    "HR": "인사",
+    "LEGAL": "법무",
+    "FACILITIES": "시설",
+    "FINANCE": "재무",
+    "IT": "IT"
+  },
+  "requestStatus": {
+    "SUBMITTED": "제출됨",
+    "IN_PROGRESS": "처리중",
+    "COMPLETED": "완료",
+    "REJECTED": "반려"
+  },
+  "hrCaseStatus": {
+    "INTAKE": "접수",
+    "DOCUMENTATION": "기록",
+    "INVESTIGATION": "조사",
+    "RESOLUTION": "해결"
+  },
+  "checklistStatus": {
+    "IN_PROGRESS": "진행중",
+    "COMPLETED": "완료"
+  },
+  "checklistTaskStatus": {
+    "PENDING": "대기",
+    "DONE": "완료"
+  },
+  "checklistType": {
+    "ONBOARDING": "온보딩",
+    "OFFBOARDING": "오프보딩"
+  },
+  "checklistTemplateType": {
+    "NONE": "없음",
+    "ONBOARDING": "온보딩",
+    "OFFBOARDING": "오프보딩"
+  },
+  "deptPortal": {
+    "title": "부서 서비스 포털",
+    "description": "부서별 요청 유형을 탐색해 요청을 제출하세요.",
+    "tabAll": "전체",
+    "searchPlaceholder": "요청 유형·키워드 검색",
+    "searchAriaLabel": "카탈로그 검색",
+    "emptyTitle": "카탈로그 항목이 없습니다",
+    "emptyDescription": "등록된 요청 유형이 없습니다."
+  },
+  "deptRequestSubmit": {
+    "formCardTitle": "요청 양식",
+    "targetUserNameLabel": "대상자명",
+    "targetUserNamePlaceholder": "온보딩/오프보딩 대상자 이름",
+    "targetUserNameRequiredError": "대상자명은 필수 항목입니다.",
+    "cancelButton": "취소",
+    "submitButton": "제출",
+    "successWithChecklist": "요청이 접수되었습니다 ({{ticketKey}}). 체크리스트가 자동 생성되었습니다.",
+    "successWithoutChecklist": "요청이 접수되었습니다 ({{ticketKey}})"
+  },
+  "myEsmRequests": {
+    "title": "내 부서 요청",
+    "description": "본인이 제출한 부서 요청을 추적합니다.",
+    "columnTicketKey": "접수번호",
+    "columnDepartment": "부서",
+    "columnType": "유형",
+    "columnStatus": "상태",
+    "columnUpdatedAt": "갱신일",
+    "filterAll": "전체",
+    "filterFrom": "시작일",
+    "filterTo": "종료일",
+    "searchButton": "검색",
+    "emptyTitle": "요청이 없습니다",
+    "emptyDescription": "조건에 맞는 요청이 없습니다."
+  },
+  "esmRequestQueue": {
+    "title": "부서 요청 처리 큐",
+    "description": "소속 부서로 접수된 요청을 처리합니다.",
+    "emptyTitle": "요청이 없습니다",
+    "emptyDescription": "처리할 부서 요청이 없습니다."
+  },
+  "esmRequestDetail": {
+    "notFound": "요청을 찾을 수 없습니다.",
+    "back": "이전으로",
+    "transitionBlockedTooltip": "승인 완료 전에는 완료 상태로 전이할 수 없습니다",
+    "transitionSuccess": "상태가 '{{status}}'로 변경되었습니다",
+    "infoTitle": "정보",
+    "requesterLabel": "요청자",
+    "assigneeLabel": "담당자",
+    "assigneeUnassigned": "미배정",
+    "linkedChecklistTitle": "연계 체크리스트",
+    "progressLabel": "진행률",
+    "requestContentTitle": "요청 내용",
+    "noFormValues": "입력된 값이 없습니다.",
+    "commentsTitle": "코멘트",
+    "noComments": "코멘트가 없습니다.",
+    "commentLabel": "코멘트 작성",
+    "commentPlaceholder": "메시지를 입력하세요",
+    "commentSubmit": "등록",
+    "timelineTitle": "타임라인",
+    "noTimeline": "이력이 없습니다."
+  },
+  "esmCatalogManage": {
+    "title": "부서별 카탈로그 관리",
+    "newItemButton": "새 항목",
+    "noItems": "등록된 항목이 없습니다.",
+    "newItemCardTitle": "새 요청 유형",
+    "editItemCardTitle": "요청 유형 편집",
+    "nameLabel": "이름",
+    "descriptionLabel": "설명",
+    "departmentLabel": "담당 부서",
+    "departmentPlaceholder": "선택",
+    "checklistTypeLabel": "체크리스트 유형",
+    "checklistTemplateLabel": "체크리스트 템플릿(하위 작업)",
+    "checklistEmptyWarning": "하위 작업이 비어 있습니다. 저장은 가능하지만, 이 유형으로 실제 요청 제출 시 거부됩니다.",
+    "formFieldsLabel": "양식 필드",
+    "saveButton": "저장",
+    "nameRequiredError": "이름은 필수입니다.",
+    "departmentRequiredError": "담당 부서는 필수입니다.",
+    "saveFailed": "저장에 실패했습니다.",
+    "createSuccess": "카탈로그 항목이 생성되었습니다",
+    "updateSuccess": "카탈로그 항목이 수정되었습니다",
+    "taskDescriptionLabel": "작업 설명",
+    "taskDescriptionPlaceholder": "예: 사원증 발급",
+    "removeTaskAria": "하위 작업 삭제",
+    "addTaskButton": "하위 작업 추가",
+    "noTasksTitle": "정의된 하위 작업이 없습니다",
+    "noTasksDescription": "아래 버튼으로 하위 작업을 추가하세요."
+  },
+  "hrCaseList": {
+    "title": "HR 케이스",
+    "description": "민감한 인사 이슈를 접수·처리합니다.",
+    "createButton": "케이스 접수",
+    "columnCaseId": "케이스ID",
+    "columnTitle": "제목",
+    "columnStatus": "상태",
+    "columnUpdatedAt": "최종 갱신일",
+    "filterAll": "전체",
+    "emptyTitle": "케이스가 없습니다",
+    "emptyDescription": "접수된 HR 케이스가 없습니다.",
+    "createModalTitle": "케이스 접수",
+    "createModalDescription": "민감 정보이므로 HR 케이스 담당자만 조회·처리할 수 있습니다.",
+    "subjectLabel": "대상자",
+    "titleLabel": "제목",
+    "descriptionLabel": "내용",
+    "titleRequiredError": "제목은 필수입니다.",
+    "createFailed": "접수에 실패했습니다.",
+    "createSuccess": "케이스가 접수되었습니다",
+    "cancelButton": "취소",
+    "submitButton": "접수"
+  },
+  "hrCaseDetail": {
+    "notFound": "케이스를 찾을 수 없습니다.",
+    "back": "이전으로",
+    "transitionSuccess": "상태가 '{{status}}'로 변경되었습니다",
+    "infoTitle": "정보",
+    "subjectLabel": "대상자",
+    "descriptionTitle": "내용",
+    "noDescription": "내용 없음",
+    "historyTitle": "상태 이력",
+    "noHistory": "이력이 없습니다."
+  },
+  "checklistDetail": {
+    "notFound": "체크리스트를 찾을 수 없습니다.",
+    "back": "이전으로",
+    "typeSuffix": "{{type}} 체크리스트",
+    "columnDepartment": "담당 부서",
+    "columnDescription": "설명",
+    "columnStatus": "상태",
+    "columnRecoveredAsset": "회수 자산",
+    "overallProgress": "전체 진행률 {{done}} / {{total}}",
+    "emptyTitle": "하위 작업이 없습니다",
+    "emptyDescription": "정의된 하위 작업이 없습니다."
+  },
+  "myChecklistTasks": {
+    "title": "내 하위 작업",
+    "description": "소속 부서에 배정된 온보딩/오프보딩 하위 작업을 처리합니다.",
+    "columnChecklistType": "체크리스트 유형",
+    "columnTargetUser": "대상자",
+    "columnDescription": "작업 설명",
+    "columnStatus": "상태",
+    "completeButton": "완료 처리",
+    "completeSuccess": "완료 처리되었습니다",
+    "filterAll": "전체",
+    "emptyTitle": "하위 작업이 없습니다",
+    "emptyDescription": "배정된 하위 작업이 없습니다."
+  },
+  "esmMetrics": {
+    "title": "ESM 지표",
+    "departmentLabel": "부서",
+    "filterAll": "전체",
+    "filterFrom": "시작일",
+    "filterTo": "종료일",
+    "searchButton": "조회",
+    "requestCount": "처리 건수",
+    "avgProcessingTime": "평균 처리 시간",
+    "onboardingCompletionRate": "온보딩 완료율",
+    "offboardingCompletionRate": "오프보딩 완료율",
+    "countUnit": "건",
+    "minutesUnit": "분"
+  }
+}
