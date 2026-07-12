@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ function newRequesterBox(roleIds: string[] = []): ApprovalStepBoxValue {
 }
 
 export function ApprovalProcessFormPage() {
+  const { t } = useTranslation("auth");
   const params = useParams();
   const navigate = useNavigate();
   const id = params.id ? Number(params.id) : null;
@@ -124,7 +126,7 @@ export function ApprovalProcessFormPage() {
           requesterRoleIds: requester.roleIds.map(Number),
           steps: stepsPayload,
         });
-        toast.success("승인 프로세스가 저장되었습니다");
+        toast.success(t("admin.approvalProcessForm.updateSuccess", { defaultValue: "승인 프로세스가 저장되었습니다" }));
       } else {
         await adminApi.createApprovalProcess({
           domain: domain as ApprovalDomain,
@@ -134,7 +136,7 @@ export function ApprovalProcessFormPage() {
           requesterRoleIds: requester.roleIds.map(Number),
           steps: stepsPayload,
         });
-        toast.success("승인 프로세스가 생성되었습니다");
+        toast.success(t("admin.approvalProcessForm.createSuccess", { defaultValue: "승인 프로세스가 생성되었습니다" }));
       }
       navigate("/admin/approval-processes");
     } catch (err) {
@@ -147,11 +149,11 @@ export function ApprovalProcessFormPage() {
   const handleSubmit = () => {
     setFormError(null);
     if (!domain) {
-      setFormError("도메인을 선택하세요.");
+      setFormError(t("admin.approvalProcessForm.domainRequiredError", { defaultValue: "도메인을 선택하세요." }));
       return;
     }
     if (!name.trim()) {
-      setFormError("규칙명을 입력하세요.");
+      setFormError(t("admin.approvalProcessForm.nameRequiredError", { defaultValue: "규칙명을 입력하세요." }));
       return;
     }
     doSubmit();
@@ -163,15 +165,19 @@ export function ApprovalProcessFormPage() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">규칙 정보</CardTitle>
+          <CardTitle className="text-base">
+            {t("admin.approvalProcessForm.ruleInfoTitle", { defaultValue: "규칙 정보" })}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-1.5">
-            <Label htmlFor="ap-name">규칙명</Label>
+            <Label htmlFor="ap-name">{t("admin.approvalProcessForm.name", { defaultValue: "규칙명" })}</Label>
             <Input id="ap-name" value={name} onChange={(e) => setName(e.target.value)} required />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="ap-desc">설명(선택)</Label>
+            <Label htmlFor="ap-desc">
+              {t("admin.approvalProcessForm.description", { defaultValue: "설명(선택)" })}
+            </Label>
             <Input id="ap-desc" value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
         </CardContent>
@@ -185,7 +191,10 @@ export function ApprovalProcessFormPage() {
         domainDisabled={isEdit}
         requestSubtypeOptions={
           hasRequestSubtype
-            ? [{ value: NO_SUBTYPE, label: "전체" }, ...subtypes.map((s) => ({ value: s.key, label: s.label }))]
+            ? [
+                { value: NO_SUBTYPE, label: t("admin.approvalProcessForm.allSubtypes", { defaultValue: "전체" }) },
+                ...subtypes.map((s) => ({ value: s.key, label: s.label })),
+              ]
             : null
         }
         requestSubtype={requestSubtypeKey}
@@ -196,7 +205,11 @@ export function ApprovalProcessFormPage() {
         onRequesterChange={setRequester}
         approvers={approvers}
         onApproversChange={setApprovers}
-        submitLabel={isEdit ? "저장" : "생성 완료"}
+        submitLabel={
+          isEdit
+            ? t("admin.approvalProcessForm.save", { defaultValue: "저장" })
+            : t("admin.approvalProcessForm.createComplete", { defaultValue: "생성 완료" })
+        }
         onSubmit={handleSubmit}
         submitting={saving}
         formError={formError}

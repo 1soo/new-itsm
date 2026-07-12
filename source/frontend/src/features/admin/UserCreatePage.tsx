@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Eye, EyeOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ import { extractErrorMessage, getStatusCode } from "@/lib/apiClient";
  * 이메일 중복(409) 시 인라인 오류. 성공 시 토스트 후 목록 복귀.
  */
 export function UserCreatePage() {
+  const { t } = useTranslation("auth");
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -50,13 +52,13 @@ export function UserCreatePage() {
     setEmailError(null);
     setFormError(null);
 
-    const policyError = validatePasswordPolicy(initialPassword);
+    const policyError = validatePasswordPolicy(t, initialPassword);
     if (policyError) {
       setFormError(policyError);
       return;
     }
     if (roleIds.length === 0) {
-      setFormError("초기 역할을 하나 이상 선택하세요.");
+      setFormError(t("admin.userCreate.roleRequiredError", { defaultValue: "초기 역할을 하나 이상 선택하세요." }));
       return;
     }
 
@@ -68,13 +70,15 @@ export function UserCreatePage() {
         initialPassword,
         roleIds: roleIds.map(Number),
       });
-      toast.success("계정이 생성되었습니다");
+      toast.success(t("admin.userCreate.success", { defaultValue: "계정이 생성되었습니다" }));
       navigate("/admin/users");
     } catch (err) {
       if (getStatusCode(err) === 409) {
-        setEmailError("이미 사용 중인 이메일입니다.");
+        setEmailError(t("admin.userCreate.emailDuplicateError", { defaultValue: "이미 사용 중인 이메일입니다." }));
       } else {
-        setFormError(extractErrorMessage(err, "계정 생성에 실패했습니다."));
+        setFormError(
+          extractErrorMessage(err, t("admin.userCreate.failed", { defaultValue: "계정 생성에 실패했습니다." })),
+        );
       }
     } finally {
       setSubmitting(false);
@@ -83,15 +87,17 @@ export function UserCreatePage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-4">
-      <h1 className="text-xl font-semibold text-foreground">계정 생성</h1>
+      <h1 className="text-xl font-semibold text-foreground">
+        {t("admin.userCreate.title", { defaultValue: "계정 생성" })}
+      </h1>
       <Card>
         <CardHeader>
-          <CardTitle>신규 계정</CardTitle>
+          <CardTitle>{t("admin.userCreate.cardTitle", { defaultValue: "신규 계정" })}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div className="space-y-1.5">
-              <Label htmlFor="email">이메일</Label>
+              <Label htmlFor="email">{t("admin.userCreate.email", { defaultValue: "이메일" })}</Label>
               <Input
                 id="email"
                 type="email"
@@ -108,7 +114,7 @@ export function UserCreatePage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="name">이름</Label>
+              <Label htmlFor="name">{t("admin.userCreate.name", { defaultValue: "이름" })}</Label>
               <Input
                 id="name"
                 value={name}
@@ -118,7 +124,9 @@ export function UserCreatePage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="initial-password">초기 비밀번호</Label>
+              <Label htmlFor="initial-password">
+                {t("admin.userCreate.initialPassword", { defaultValue: "초기 비밀번호" })}
+              </Label>
               <div className="relative">
                 <Input
                   id="initial-password"
@@ -133,23 +141,30 @@ export function UserCreatePage() {
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 표시"}
+                  aria-label={
+                    showPassword
+                      ? t("admin.userCreate.hidePasswordAria", { defaultValue: "비밀번호 숨기기" })
+                      : t("admin.userCreate.showPasswordAria", { defaultValue: "비밀번호 표시" })
+                  }
                 >
                   {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
               </div>
               <p className="text-xs text-muted-foreground">
-                최소 {MIN_PASSWORD_LENGTH}자 이상, 영문·숫자 포함. 사용자에게 안전하게 전달하세요.
+                {t("admin.userCreate.passwordHint", {
+                  minLength: MIN_PASSWORD_LENGTH,
+                  defaultValue: `최소 ${MIN_PASSWORD_LENGTH}자 이상, 영문·숫자 포함. 사용자에게 안전하게 전달하세요.`,
+                })}
               </p>
             </div>
 
             <div className="space-y-1.5">
-              <Label>초기 역할</Label>
+              <Label>{t("admin.userCreate.initialRoles", { defaultValue: "초기 역할" })}</Label>
               <MultiSelect
                 options={roleOptions}
                 value={roleIds}
                 onChange={setRoleIds}
-                placeholder="역할 선택 (1개 이상)"
+                placeholder={t("admin.userCreate.rolesPlaceholder", { defaultValue: "역할 선택 (1개 이상)" })}
               />
             </div>
 
@@ -161,10 +176,10 @@ export function UserCreatePage() {
 
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => navigate("/admin/users")}>
-                취소
+                {t("admin.userCreate.cancel", { defaultValue: "취소" })}
               </Button>
               <Button type="submit" loading={submitting}>
-                저장
+                {t("admin.userCreate.save", { defaultValue: "저장" })}
               </Button>
             </div>
           </form>

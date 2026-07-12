@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -52,6 +53,7 @@ function formatDate(iso: string): string {
 }
 
 export function UserListPage() {
+  const { t } = useTranslation("auth");
   const navigate = useNavigate();
 
   const [inputs, setInputs] = useState<Filters>(EMPTY_FILTERS);
@@ -102,10 +104,10 @@ export function UserListPage() {
   };
 
   const columns: Column<UserSummary>[] = [
-    { header: "이름", cell: (u) => u.name },
-    { header: "이메일", cell: (u) => u.email },
+    { header: t("admin.userList.columnName", { defaultValue: "이름" }), cell: (u) => u.name },
+    { header: t("admin.userList.columnEmail", { defaultValue: "이메일" }), cell: (u) => u.email },
     {
-      header: "역할",
+      header: t("admin.userList.columnRoles", { defaultValue: "역할" }),
       cell: (u) => (
         <span className="flex flex-wrap gap-1">
           {u.roles.map((r) => (
@@ -117,15 +119,19 @@ export function UserListPage() {
       ),
     },
     {
-      header: "상태",
+      header: t("admin.userList.columnStatus", { defaultValue: "상태" }),
       cell: (u) => (
         <StatusBadge
           tone={u.status === "ACTIVE" ? "success" : "warning"}
-          label={u.status === "ACTIVE" ? "활성" : "비활성"}
+          label={
+            u.status === "ACTIVE"
+              ? t("admin.userList.statusActive", { defaultValue: "활성" })
+              : t("admin.userList.statusInactive", { defaultValue: "비활성" })
+          }
         />
       ),
     },
-    { header: "생성일", cell: (u) => formatDate(u.createdAt) },
+    { header: t("admin.userList.columnCreatedAt", { defaultValue: "생성일" }), cell: (u) => formatDate(u.createdAt) },
   ];
 
   const totalPages = data ? Math.ceil(data.totalElements / PAGE_SIZE) : 0;
@@ -133,10 +139,12 @@ export function UserListPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-foreground">계정 관리</h1>
+        <h1 className="text-xl font-semibold text-foreground">
+          {t("admin.userList.title", { defaultValue: "계정 관리" })}
+        </h1>
         <Button onClick={() => navigate("/admin/users/new")}>
           <Plus />
-          계정 생성
+          {t("admin.userList.createButton", { defaultValue: "계정 생성" })}
         </Button>
       </div>
 
@@ -145,7 +153,7 @@ export function UserListPage() {
         className="grid grid-cols-1 gap-3 rounded-lg border border-border bg-card p-4 sm:grid-cols-2 lg:grid-cols-5"
       >
         <div className="space-y-1">
-          <Label htmlFor="f-email">이메일</Label>
+          <Label htmlFor="f-email">{t("admin.userList.filterEmail", { defaultValue: "이메일" })}</Label>
           <Input
             id="f-email"
             value={inputs.email}
@@ -153,7 +161,7 @@ export function UserListPage() {
           />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="f-name">이름</Label>
+          <Label htmlFor="f-name">{t("admin.userList.filterName", { defaultValue: "이름" })}</Label>
           <Input
             id="f-name"
             value={inputs.name}
@@ -161,7 +169,7 @@ export function UserListPage() {
           />
         </div>
         <div className="space-y-1">
-          <Label>상태</Label>
+          <Label>{t("admin.userList.filterStatus", { defaultValue: "상태" })}</Label>
           <Select
             value={inputs.status}
             onValueChange={(v) => setInputs((f) => ({ ...f, status: v }))}
@@ -170,14 +178,16 @@ export function UserListPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>전체</SelectItem>
-              <SelectItem value="ACTIVE">활성</SelectItem>
-              <SelectItem value="INACTIVE">비활성</SelectItem>
+              <SelectItem value={ALL}>{t("admin.userList.filterAll", { defaultValue: "전체" })}</SelectItem>
+              <SelectItem value="ACTIVE">{t("admin.userList.statusActive", { defaultValue: "활성" })}</SelectItem>
+              <SelectItem value="INACTIVE">
+                {t("admin.userList.statusInactive", { defaultValue: "비활성" })}
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-1">
-          <Label>역할</Label>
+          <Label>{t("admin.userList.filterRole", { defaultValue: "역할" })}</Label>
           <Select
             value={inputs.role}
             onValueChange={(v) => setInputs((f) => ({ ...f, role: v }))}
@@ -186,7 +196,7 @@ export function UserListPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>전체</SelectItem>
+              <SelectItem value={ALL}>{t("admin.userList.filterAll", { defaultValue: "전체" })}</SelectItem>
               {roles.map((r) => (
                 <SelectItem key={r.id} value={r.roleCode}>
                   {r.name}
@@ -197,7 +207,7 @@ export function UserListPage() {
         </div>
         <div className="flex items-end">
           <Button type="submit" className="w-full">
-            검색
+            {t("admin.userList.searchButton", { defaultValue: "검색" })}
           </Button>
         </div>
       </form>
@@ -208,8 +218,10 @@ export function UserListPage() {
         rowKey={(u) => u.id}
         loading={loading}
         onRowClick={(u) => navigate(`/admin/users/${u.id}`)}
-        emptyTitle="계정이 없습니다"
-        emptyDescription="검색 조건에 맞는 계정이 없습니다."
+        emptyTitle={t("admin.userList.emptyTitle", { defaultValue: "계정이 없습니다" })}
+        emptyDescription={t("admin.userList.emptyDescription", {
+          defaultValue: "검색 조건에 맞는 계정이 없습니다.",
+        })}
       />
 
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />

@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,6 +63,7 @@ function formatDateTime(iso: string): string {
 }
 
 export function AuditLogPage() {
+  const { t } = useTranslation("auth");
   const [inputs, setInputs] = useState<Filters>(EMPTY_FILTERS);
   const [applied, setApplied] = useState<Filters>(EMPTY_FILTERS);
   const [page, setPage] = useState(0);
@@ -102,17 +104,26 @@ export function AuditLogPage() {
     setApplied(inputs);
   };
 
+  const eventLabel = (eventType: AuditEventType): string =>
+    t(`admin.auditLog.eventLabel.${eventType}`, {
+      defaultValue: EVENT_LABELS[eventType] ?? eventType,
+    });
+
   const columns: Column<AuditLog>[] = [
-    { header: "시각", cell: (l) => formatDateTime(l.occurredAt) },
-    { header: "이벤트", cell: (l) => EVENT_LABELS[l.eventType] ?? l.eventType },
-    { header: "주체", cell: (l) => l.actor },
-    { header: "대상", cell: (l) => l.target },
+    { header: t("admin.auditLog.columnOccurredAt", { defaultValue: "시각" }), cell: (l) => formatDateTime(l.occurredAt) },
+    { header: t("admin.auditLog.columnEvent", { defaultValue: "이벤트" }), cell: (l) => eventLabel(l.eventType) },
+    { header: t("admin.auditLog.columnActor", { defaultValue: "주체" }), cell: (l) => l.actor },
+    { header: t("admin.auditLog.columnTarget", { defaultValue: "대상" }), cell: (l) => l.target },
     {
-      header: "결과",
+      header: t("admin.auditLog.columnResult", { defaultValue: "결과" }),
       cell: (l) => (
         <StatusBadge
           tone={l.result === "SUCCESS" ? "success" : "danger"}
-          label={l.result === "SUCCESS" ? "성공" : "실패"}
+          label={
+            l.result === "SUCCESS"
+              ? t("admin.auditLog.resultSuccess", { defaultValue: "성공" })
+              : t("admin.auditLog.resultFailure", { defaultValue: "실패" })
+          }
         />
       ),
     },
@@ -122,14 +133,16 @@ export function AuditLogPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold text-foreground">감사 로그</h1>
+      <h1 className="text-xl font-semibold text-foreground">
+        {t("admin.auditLog.title", { defaultValue: "감사 로그" })}
+      </h1>
 
       <form
         onSubmit={handleSearch}
         className="grid grid-cols-1 gap-3 rounded-lg border border-border bg-card p-4 sm:grid-cols-2 lg:grid-cols-6"
       >
         <div className="space-y-1">
-          <Label>이벤트 유형</Label>
+          <Label>{t("admin.auditLog.filterEventType", { defaultValue: "이벤트 유형" })}</Label>
           <Select
             value={inputs.eventType}
             onValueChange={(v) => setInputs((f) => ({ ...f, eventType: v }))}
@@ -138,17 +151,17 @@ export function AuditLogPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>전체</SelectItem>
+              <SelectItem value={ALL}>{t("admin.auditLog.filterAll", { defaultValue: "전체" })}</SelectItem>
               {(Object.keys(EVENT_LABELS) as AuditEventType[]).map((k) => (
                 <SelectItem key={k} value={k}>
-                  {EVENT_LABELS[k]}
+                  {eventLabel(k)}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-1">
-          <Label htmlFor="a-actor">주체</Label>
+          <Label htmlFor="a-actor">{t("admin.auditLog.filterActor", { defaultValue: "주체" })}</Label>
           <Input
             id="a-actor"
             value={inputs.actor}
@@ -156,7 +169,7 @@ export function AuditLogPage() {
           />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="a-target">대상</Label>
+          <Label htmlFor="a-target">{t("admin.auditLog.filterTarget", { defaultValue: "대상" })}</Label>
           <Input
             id="a-target"
             value={inputs.target}
@@ -164,7 +177,7 @@ export function AuditLogPage() {
           />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="a-from">시작일</Label>
+          <Label htmlFor="a-from">{t("admin.auditLog.filterFrom", { defaultValue: "시작일" })}</Label>
           <Input
             id="a-from"
             type="date"
@@ -173,7 +186,7 @@ export function AuditLogPage() {
           />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="a-to">종료일</Label>
+          <Label htmlFor="a-to">{t("admin.auditLog.filterTo", { defaultValue: "종료일" })}</Label>
           <Input
             id="a-to"
             type="date"
@@ -183,7 +196,7 @@ export function AuditLogPage() {
         </div>
         <div className="flex items-end">
           <Button type="submit" className="w-full">
-            검색
+            {t("admin.auditLog.searchButton", { defaultValue: "검색" })}
           </Button>
         </div>
       </form>
@@ -193,8 +206,10 @@ export function AuditLogPage() {
         data={data?.content ?? []}
         rowKey={(l) => l.id}
         loading={loading}
-        emptyTitle="감사 로그가 없습니다"
-        emptyDescription="조건에 맞는 이벤트 이력이 없습니다."
+        emptyTitle={t("admin.auditLog.emptyTitle", { defaultValue: "감사 로그가 없습니다" })}
+        emptyDescription={t("admin.auditLog.emptyDescription", {
+          defaultValue: "조건에 맞는 이벤트 이력이 없습니다.",
+        })}
       />
 
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />

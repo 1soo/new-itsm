@@ -1,5 +1,7 @@
 import { type FormEvent, useEffect, useState } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Plus, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -64,6 +66,7 @@ const EMPTY_FORM: MenuFormState = {
 };
 
 export function MenuManagementPage() {
+  const { t } = useTranslation("auth");
   const [data, setData] = useState<{ content: Screen[]; totalElements: number }>({
     content: [],
     totalElements: 0,
@@ -173,7 +176,7 @@ export function MenuManagementPage() {
           sortOrder: Number(form.sortOrder) || 0,
           navVisible: form.navVisible,
         });
-        toast.success("메뉴가 수정되었습니다");
+        toast.success(t("admin.menu.updateSuccess", { defaultValue: "메뉴가 수정되었습니다" }));
       } else {
         await adminApi.createScreen({
           screenCode: form.screenCode,
@@ -186,13 +189,13 @@ export function MenuManagementPage() {
           sortOrder: Number(form.sortOrder) || 0,
           navVisible: form.navVisible,
         });
-        toast.success("메뉴가 생성되었습니다");
+        toast.success(t("admin.menu.createSuccess", { defaultValue: "메뉴가 생성되었습니다" }));
       }
       setFormOpen(false);
       loadScreens();
       loadExistingGroups();
     } catch (err) {
-      setFormError(extractErrorMessage(err, "메뉴 저장에 실패했습니다."));
+      setFormError(extractErrorMessage(err, t("admin.menu.saveFailed", { defaultValue: "메뉴 저장에 실패했습니다." })));
     } finally {
       setSaving(false);
     }
@@ -203,7 +206,7 @@ export function MenuManagementPage() {
     setDeleteBusy(true);
     try {
       await adminApi.deleteScreen(deleting.id);
-      toast.success("메뉴가 삭제되었습니다");
+      toast.success(t("admin.menu.deleteSuccess", { defaultValue: "메뉴가 삭제되었습니다" }));
       setDeleting(null);
       loadScreens();
     } catch (err) {
@@ -233,11 +236,11 @@ export function MenuManagementPage() {
   };
 
   const columns: Column<Screen>[] = [
-    { header: "그룹", cell: (s) => s.groupLabel ?? s.groupCode ?? "-" },
-    { header: "메뉴명", cell: (s) => s.screenName },
-    { header: "경로", cell: (s) => s.path },
+    { header: t("admin.menu.columnGroup", { defaultValue: "그룹" }), cell: (s) => s.groupLabel ?? s.groupCode ?? "-" },
+    { header: t("admin.menu.columnName", { defaultValue: "메뉴명" }), cell: (s) => s.screenName },
+    { header: t("admin.menu.columnPath", { defaultValue: "경로" }), cell: (s) => s.path },
     {
-      header: "아이콘",
+      header: t("admin.menu.columnIcon", { defaultValue: "아이콘" }),
       cell: (s) => {
         const Icon = resolveIcon(s.iconName);
         return (
@@ -248,28 +251,30 @@ export function MenuManagementPage() {
         );
       },
     },
-    { header: "순서", cell: (s) => s.sortOrder, className: "text-right" },
+    { header: t("admin.menu.columnSortOrder", { defaultValue: "순서" }), cell: (s) => s.sortOrder, className: "text-right" },
     {
-      header: "노출 역할 수",
+      header: t("admin.menu.columnRoleCount", { defaultValue: "노출 역할 수" }),
       cell: (s) =>
         s.roles.length === 0 ? (
-          <Badge variant="muted">전체 공개</Badge>
+          <Badge variant="muted">{t("admin.menu.publicToAll", { defaultValue: "전체 공개" })}</Badge>
         ) : (
-          <Badge variant="info">{s.roles.length}개 역할</Badge>
+          <Badge variant="info">
+            {t("admin.menu.roleCount", { count: s.roles.length, defaultValue: `${s.roles.length}개 역할` })}
+          </Badge>
         ),
     },
     {
-      header: "액션",
+      header: t("admin.menu.columnActions", { defaultValue: "액션" }),
       cell: (s) => (
         <div className="flex justify-end gap-2">
           <Button size="sm" variant="outline" onClick={() => setRolePanel(s)}>
-            역할 매핑
+            {t("admin.menu.roleMapping", { defaultValue: "역할 매핑" })}
           </Button>
           <Button size="sm" variant="outline" onClick={() => openEdit(s)}>
-            수정
+            {t("admin.menu.edit", { defaultValue: "수정" })}
           </Button>
           <Button size="sm" variant="destructive" onClick={() => setDeleting(s)}>
-            삭제
+            {t("admin.menu.delete", { defaultValue: "삭제" })}
           </Button>
         </div>
       ),
@@ -282,10 +287,12 @@ export function MenuManagementPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-foreground">메뉴 관리</h1>
+        <h1 className="text-xl font-semibold text-foreground">
+          {t("admin.menu.title", { defaultValue: "메뉴 관리" })}
+        </h1>
         <Button onClick={openCreate}>
           <Plus />
-          메뉴 생성
+          {t("admin.menu.createButton", { defaultValue: "메뉴 생성" })}
         </Button>
       </div>
 
@@ -294,7 +301,7 @@ export function MenuManagementPage() {
         data={data.content}
         rowKey={(s) => s.id}
         loading={loading}
-        emptyTitle="메뉴가 없습니다"
+        emptyTitle={t("admin.menu.emptyTitle", { defaultValue: "메뉴가 없습니다" })}
       />
 
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
@@ -302,29 +309,33 @@ export function MenuManagementPage() {
       <Modal
         open={formOpen}
         onOpenChange={setFormOpen}
-        title={editing ? "메뉴 수정" : "메뉴 생성"}
+        title={
+          editing
+            ? t("admin.menu.editModalTitle", { defaultValue: "메뉴 수정" })
+            : t("admin.menu.createModalTitle", { defaultValue: "메뉴 생성" })
+        }
       >
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           {!editing && (
             <>
               <div className="space-y-1.5">
-                <Label htmlFor="menu-code">화면 코드</Label>
+                <Label htmlFor="menu-code">{t("admin.menu.screenCode", { defaultValue: "화면 코드" })}</Label>
                 <Input
                   id="menu-code"
                   value={form.screenCode}
                   onChange={(e) => setForm((f) => ({ ...f, screenCode: e.target.value.toUpperCase() }))}
-                  placeholder="예: SCR-ADMIN-006"
+                  placeholder={t("admin.menu.screenCodePlaceholder", { defaultValue: "예: SCR-ADMIN-006" })}
                   required
                   aria-invalid={!!formError}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="menu-domain">도메인</Label>
+                <Label htmlFor="menu-domain">{t("admin.menu.domain", { defaultValue: "도메인" })}</Label>
                 <Input
                   id="menu-domain"
                   value={form.domain}
                   onChange={(e) => setForm((f) => ({ ...f, domain: e.target.value }))}
-                  placeholder="예: auth"
+                  placeholder={t("admin.menu.domainPlaceholder", { defaultValue: "예: auth" })}
                   required
                   aria-invalid={!!formError}
                 />
@@ -332,7 +343,7 @@ export function MenuManagementPage() {
             </>
           )}
           <div className="space-y-1.5">
-            <Label htmlFor="menu-name">메뉴명</Label>
+            <Label htmlFor="menu-name">{t("admin.menu.columnName", { defaultValue: "메뉴명" })}</Label>
             <Input
               id="menu-name"
               value={form.screenName}
@@ -342,44 +353,44 @@ export function MenuManagementPage() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="menu-path">경로</Label>
+            <Label htmlFor="menu-path">{t("admin.menu.columnPath", { defaultValue: "경로" })}</Label>
             <Input
               id="menu-path"
               value={form.path}
               onChange={(e) => setForm((f) => ({ ...f, path: e.target.value }))}
-              placeholder="예: /admin/menus"
+              placeholder={t("admin.menu.pathPlaceholder", { defaultValue: "예: /admin/menus" })}
               required
               aria-invalid={!!formError}
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="menu-group">그룹</Label>
+            <Label htmlFor="menu-group">{t("admin.menu.columnGroup", { defaultValue: "그룹" })}</Label>
             <select
               id="menu-group"
               value={form.groupOption}
               onChange={(e) => setForm((f) => ({ ...f, groupOption: e.target.value }))}
               className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
             >
-              <option value={NO_GROUP}>그룹 없음</option>
+              <option value={NO_GROUP}>{t("admin.menu.noGroup", { defaultValue: "그룹 없음" })}</option>
               {existingGroups.map((g) => (
                 <option key={g.groupCode} value={g.groupCode}>
                   {g.groupLabel}
                 </option>
               ))}
-              <option value={NEW_GROUP}>새 그룹 추가...</option>
+              <option value={NEW_GROUP}>{t("admin.menu.addNewGroup", { defaultValue: "새 그룹 추가..." })}</option>
             </select>
             {form.groupOption === NEW_GROUP && (
               <div className="grid grid-cols-2 gap-2 pt-1">
                 <Input
                   value={form.newGroupCode}
                   onChange={(e) => setForm((f) => ({ ...f, newGroupCode: e.target.value }))}
-                  placeholder="그룹 코드(예: admin)"
+                  placeholder={t("admin.menu.newGroupCodePlaceholder", { defaultValue: "그룹 코드(예: admin)" })}
                   required
                 />
                 <Input
                   value={form.newGroupLabel}
                   onChange={(e) => setForm((f) => ({ ...f, newGroupLabel: e.target.value }))}
-                  placeholder="그룹 라벨(예: 관리자)"
+                  placeholder={t("admin.menu.newGroupLabelPlaceholder", { defaultValue: "그룹 라벨(예: 관리자)" })}
                   required
                 />
               </div>
@@ -387,13 +398,13 @@ export function MenuManagementPage() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="menu-icon">아이콘(lucide 이름)</Label>
+              <Label htmlFor="menu-icon">{t("admin.menu.iconLabel", { defaultValue: "아이콘(lucide 이름)" })}</Label>
               <div className="flex items-center gap-2">
                 <Input
                   id="menu-icon"
                   value={form.iconName}
                   onChange={(e) => setForm((f) => ({ ...f, iconName: e.target.value }))}
-                  placeholder="예: ListTree"
+                  placeholder={t("admin.menu.iconPlaceholder", { defaultValue: "예: ListTree" })}
                 />
                 {(() => {
                   const Icon = resolveIcon(form.iconName || undefined);
@@ -402,7 +413,7 @@ export function MenuManagementPage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="menu-order">순서</Label>
+              <Label htmlFor="menu-order">{t("admin.menu.columnSortOrder", { defaultValue: "순서" })}</Label>
               <Input
                 id="menu-order"
                 type="number"
@@ -418,7 +429,7 @@ export function MenuManagementPage() {
               onCheckedChange={(v) => setForm((f) => ({ ...f, navVisible: v === true }))}
             />
             <Label htmlFor="menu-visible" className="font-normal">
-              사이드바에 노출
+              {t("admin.menu.navVisible", { defaultValue: "사이드바에 노출" })}
             </Label>
           </div>
           {formError ? (
@@ -428,10 +439,10 @@ export function MenuManagementPage() {
           ) : null}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
-              취소
+              {t("admin.menu.cancel", { defaultValue: "취소" })}
             </Button>
             <Button type="submit" loading={saving}>
-              저장
+              {t("admin.menu.save", { defaultValue: "저장" })}
             </Button>
           </div>
         </form>
@@ -440,14 +451,18 @@ export function MenuManagementPage() {
       <ConfirmDialog
         open={!!deleting}
         onOpenChange={(open) => !open && setDeleting(null)}
-        title="메뉴 삭제"
-        description={`"${deleting?.screenName ?? ""}" 메뉴를 삭제하시겠습니까? 사이드바에서 즉시 사라집니다.`}
-        confirmLabel="삭제"
+        title={t("admin.menu.deleteDialogTitle", { defaultValue: "메뉴 삭제" })}
+        description={t("admin.menu.deleteDialogDescription", {
+          name: deleting?.screenName ?? "",
+          defaultValue: `"${deleting?.screenName ?? ""}" 메뉴를 삭제하시겠습니까? 사이드바에서 즉시 사라집니다.`,
+        })}
+        confirmLabel={t("admin.menu.delete", { defaultValue: "삭제" })}
         loading={deleteBusy}
         onConfirm={handleDelete}
       />
 
       <RoleMappingPanel
+        t={t}
         screen={rolePanel}
         roles={roles}
         busyRoleId={roleBusyId}
@@ -459,6 +474,7 @@ export function MenuManagementPage() {
 }
 
 interface RoleMappingPanelProps {
+  t: TFunction;
   screen: Screen | null;
   roles: Role[];
   busyRoleId: number | null;
@@ -468,6 +484,7 @@ interface RoleMappingPanelProps {
 
 /** 역할 매핑 우측 슬라이드 패널 — 기존 Dialog(Radix)의 토큰(Overlay·Close)을 재사용해 우측 슬라이드 스타일만 직접 구현. */
 function RoleMappingPanel({
+  t,
   screen,
   roles,
   busyRoleId,
@@ -487,10 +504,19 @@ function RoleMappingPanel({
             "data-[state=closed]:duration-[200ms] data-[state=closed]:ease-[var(--motion-modal-exit-easing)]",
           )}
         >
-          <DialogTitle>역할 매핑{screen ? ` — ${screen.screenName}` : ""}</DialogTitle>
+          <DialogTitle>
+            {screen
+              ? t("admin.menu.roleMappingTitleWithScreen", {
+                  name: screen.screenName,
+                  defaultValue: `역할 매핑 — ${screen.screenName}`,
+                })
+              : t("admin.menu.roleMapping", { defaultValue: "역할 매핑" })}
+          </DialogTitle>
           <p className="text-sm text-muted-foreground">
-            체크된 역할만 사이드바에서 이 메뉴를 볼 수 있습니다. 아무 역할도 체크하지 않으면 전체
-            인증 사용자에게 공개됩니다.
+            {t("admin.menu.roleMappingHint", {
+              defaultValue:
+                "체크된 역할만 사이드바에서 이 메뉴를 볼 수 있습니다. 아무 역할도 체크하지 않으면 전체 인증 사용자에게 공개됩니다.",
+            })}
           </p>
           <div className="flex-1 space-y-2 overflow-y-auto">
             {roles.map((role) => {
@@ -512,7 +538,7 @@ function RoleMappingPanel({
           </div>
           <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
             <X className="size-4" />
-            <span className="sr-only">닫기</span>
+            <span className="sr-only">{t("admin.menu.close", { defaultValue: "닫기" })}</span>
           </DialogClose>
         </DialogPrimitive.Content>
       </DialogPortal>

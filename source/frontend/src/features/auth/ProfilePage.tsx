@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 이름·이메일·상태·부여 역할을 읽기 전용으로 표시한다.
  */
 export function ProfilePage() {
+  const { t } = useTranslation("auth");
   const navigate = useNavigate();
   const [me, setMe] = useState<MeResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,13 +47,17 @@ export function ProfilePage() {
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-foreground">내 프로필</h1>
-        <Button onClick={() => navigate("/profile/password")}>비밀번호 변경</Button>
+        <h1 className="text-xl font-semibold text-foreground">
+          {t("profile.title", { defaultValue: "내 프로필" })}
+        </h1>
+        <Button onClick={() => navigate("/profile/password")}>
+          {t("profile.changePasswordButton", { defaultValue: "비밀번호 변경" })}
+        </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>계정 정보</CardTitle>
+          <CardTitle>{t("profile.accountInfoTitle", { defaultValue: "계정 정보" })}</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -62,24 +68,30 @@ export function ProfilePage() {
             </div>
           ) : me ? (
             <dl className="grid grid-cols-[7rem_1fr] gap-y-4 text-sm">
-              <dt className="text-muted-foreground">이름</dt>
+              <dt className="text-muted-foreground">{t("profile.name", { defaultValue: "이름" })}</dt>
               <dd className="text-foreground">{me.name}</dd>
 
-              <dt className="text-muted-foreground">이메일</dt>
+              <dt className="text-muted-foreground">{t("profile.email", { defaultValue: "이메일" })}</dt>
               <dd className="text-foreground">{me.email}</dd>
 
-              <dt className="text-muted-foreground">상태</dt>
+              <dt className="text-muted-foreground">{t("profile.status", { defaultValue: "상태" })}</dt>
               <dd>
                 <StatusBadge
                   tone={me.status === "ACTIVE" ? "success" : "warning"}
-                  label={me.status === "ACTIVE" ? "활성" : "비활성"}
+                  label={
+                    me.status === "ACTIVE"
+                      ? t("profile.statusActive", { defaultValue: "활성" })
+                      : t("profile.statusInactive", { defaultValue: "비활성" })
+                  }
                 />
               </dd>
 
-              <dt className="text-muted-foreground">역할</dt>
+              <dt className="text-muted-foreground">{t("profile.roles", { defaultValue: "역할" })}</dt>
               <dd className="flex flex-wrap gap-1">
                 {me.roles.length === 0 ? (
-                  <span className="text-muted-foreground">부여된 역할 없음</span>
+                  <span className="text-muted-foreground">
+                    {t("profile.noRoles", { defaultValue: "부여된 역할 없음" })}
+                  </span>
                 ) : (
                   me.roles.map((role) => (
                     <Badge key={role} variant="info">
@@ -90,7 +102,9 @@ export function ProfilePage() {
               </dd>
             </dl>
           ) : (
-            <p className="text-sm text-muted-foreground">정보를 불러오지 못했습니다.</p>
+            <p className="text-sm text-muted-foreground">
+              {t("profile.loadError", { defaultValue: "정보를 불러오지 못했습니다." })}
+            </p>
           )}
         </CardContent>
       </Card>

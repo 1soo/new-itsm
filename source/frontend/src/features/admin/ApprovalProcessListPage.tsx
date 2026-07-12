@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ const TIER_LABEL: Record<number, string> = {
 };
 
 export function ApprovalProcessListPage() {
+  const { t } = useTranslation("auth");
   const navigate = useNavigate();
   const [domains, setDomains] = useState<ApprovalDomainOption[]>([]);
   const [domain, setDomain] = useState(ALL);
@@ -67,15 +69,23 @@ export function ApprovalProcessListPage() {
 
   const domainLabel = (d: string) => domains.find((o) => o.domain === d)?.label ?? d;
 
+  const tierLabel = (tier: number): string =>
+    t(`admin.approvalProcessList.tier.${tier}`, {
+      defaultValue: TIER_LABEL[tier] ?? `tier ${tier}`,
+    });
+
   const columns: Column<ApprovalProcessSummary>[] = [
-    { header: "규칙명", cell: (p) => p.name },
-    { header: "도메인", cell: (p) => domainLabel(p.domain) },
-    { header: "요청유형", cell: (p) => p.requestSubtypeLabel ?? "전체" },
+    { header: t("admin.approvalProcessList.columnName", { defaultValue: "규칙명" }), cell: (p) => p.name },
+    { header: t("admin.approvalProcessList.columnDomain", { defaultValue: "도메인" }), cell: (p) => domainLabel(p.domain) },
     {
-      header: "요청자 역할",
+      header: t("admin.approvalProcessList.columnRequestSubtype", { defaultValue: "요청유형" }),
+      cell: (p) => p.requestSubtypeLabel ?? t("admin.approvalProcessList.all", { defaultValue: "전체" }),
+    },
+    {
+      header: t("admin.approvalProcessList.columnRequesterRoles", { defaultValue: "요청자 역할" }),
       cell: (p) =>
         p.requesterRoles.length === 0 ? (
-          <span className="text-muted-foreground">전체</span>
+          <span className="text-muted-foreground">{t("admin.approvalProcessList.all", { defaultValue: "전체" })}</span>
         ) : (
           <span className="flex flex-wrap gap-1">
             {p.requesterRoles.map((r) => (
@@ -85,34 +95,42 @@ export function ApprovalProcessListPage() {
         ),
     },
     {
-      header: "우선순위",
-      cell: (p) => <StatusBadge tone="muted" label={TIER_LABEL[p.priorityTier] ?? `tier ${p.priorityTier}`} />,
+      header: t("admin.approvalProcessList.columnPriorityTier", { defaultValue: "우선순위" }),
+      cell: (p) => <StatusBadge tone="muted" label={tierLabel(p.priorityTier)} />,
     },
     {
-      header: "차수",
-      cell: (p) => (p.stepCount === 0 ? "승인자 없음" : `${p.stepCount}차`),
+      header: t("admin.approvalProcessList.columnStepCount", { defaultValue: "차수" }),
+      cell: (p) =>
+        p.stepCount === 0
+          ? t("admin.approvalProcessList.noApprovers", { defaultValue: "승인자 없음" })
+          : t("admin.approvalProcessList.stepCount", {
+              count: p.stepCount,
+              defaultValue: `${p.stepCount}차`,
+            }),
     },
   ];
 
   return (
     <TicketListLayout
-      title="승인 프로세스"
-      description="도메인·요청유형·요청자별 커스텀 승인 프로세스를 관리합니다."
+      title={t("admin.approvalProcessList.title", { defaultValue: "승인 프로세스" })}
+      description={t("admin.approvalProcessList.description", {
+        defaultValue: "도메인·요청유형·요청자별 커스텀 승인 프로세스를 관리합니다.",
+      })}
       actions={
         <Button onClick={() => navigate("/admin/approval-processes/new")}>
           <Plus />
-          프로세스 생성
+          {t("admin.approvalProcessList.createButton", { defaultValue: "프로세스 생성" })}
         </Button>
       }
       filters={
         <div className="space-y-1">
-          <Label>도메인</Label>
+          <Label>{t("admin.approvalProcessList.columnDomain", { defaultValue: "도메인" })}</Label>
           <Select value={domain} onValueChange={setDomain}>
             <SelectTrigger className="w-48">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>전체</SelectItem>
+              <SelectItem value={ALL}>{t("admin.approvalProcessList.all", { defaultValue: "전체" })}</SelectItem>
               {domains.map((d) => (
                 <SelectItem key={d.domain} value={d.domain}>
                   {d.label}
@@ -129,7 +147,9 @@ export function ApprovalProcessListPage() {
         rowKey={(p) => p.id}
         loading={loading}
         onRowClick={(p) => navigate(`/admin/approval-processes/${p.id}`)}
-        emptyTitle="등록된 승인 프로세스가 없습니다"
+        emptyTitle={t("admin.approvalProcessList.emptyTitle", {
+          defaultValue: "등록된 승인 프로세스가 없습니다",
+        })}
       />
     </TicketListLayout>
   );

@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ import { extractErrorMessage, getStatusCode } from "@/lib/apiClient";
  * 역할명 중복(409) 시 인라인 오류.
  */
 export function RoleManagementPage() {
+  const { t } = useTranslation("auth");
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -54,14 +56,14 @@ export function RoleManagementPage() {
     setSubmitting(true);
     try {
       await adminApi.createRole({ roleCode, name, description });
-      toast.success("역할이 생성되었습니다");
+      toast.success(t("admin.role.createSuccess", { defaultValue: "역할이 생성되었습니다" }));
       setOpen(false);
       loadRoles();
     } catch (err) {
       if (getStatusCode(err) === 409) {
-        setError("이미 존재하는 역할 코드 또는 역할명입니다.");
+        setError(t("admin.role.duplicateError", { defaultValue: "이미 존재하는 역할 코드 또는 역할명입니다." }));
       } else {
-        setError(extractErrorMessage(err, "역할 생성에 실패했습니다."));
+        setError(extractErrorMessage(err, t("admin.role.createFailed", { defaultValue: "역할 생성에 실패했습니다." })));
       }
     } finally {
       setSubmitting(false);
@@ -69,11 +71,11 @@ export function RoleManagementPage() {
   };
 
   const columns: Column<Role>[] = [
-    { header: "역할 코드", cell: (r) => r.roleCode },
-    { header: "역할명", cell: (r) => r.name },
-    { header: "설명", cell: (r) => r.description },
+    { header: t("admin.role.columnCode", { defaultValue: "역할 코드" }), cell: (r) => r.roleCode },
+    { header: t("admin.role.columnName", { defaultValue: "역할명" }), cell: (r) => r.name },
+    { header: t("admin.role.columnDescription", { defaultValue: "설명" }), cell: (r) => r.description },
     {
-      header: "부여 사용자 수",
+      header: t("admin.role.columnUserCount", { defaultValue: "부여 사용자 수" }),
       cell: (r) => r.userCount ?? 0,
       className: "text-right",
     },
@@ -82,10 +84,12 @@ export function RoleManagementPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-foreground">역할 관리</h1>
+        <h1 className="text-xl font-semibold text-foreground">
+          {t("admin.role.title", { defaultValue: "역할 관리" })}
+        </h1>
         <Button onClick={openCreate}>
           <Plus />
-          역할 생성
+          {t("admin.role.createButton", { defaultValue: "역할 생성" })}
         </Button>
       </div>
 
@@ -94,25 +98,27 @@ export function RoleManagementPage() {
         data={roles}
         rowKey={(r) => r.id}
         loading={loading}
-        emptyTitle="역할이 없습니다"
+        emptyTitle={t("admin.role.emptyTitle", { defaultValue: "역할이 없습니다" })}
       />
 
-      <Modal open={open} onOpenChange={setOpen} title="역할 생성">
+      <Modal open={open} onOpenChange={setOpen} title={t("admin.role.createModalTitle", { defaultValue: "역할 생성" })}>
         <form onSubmit={handleCreate} className="space-y-4" noValidate>
           <div className="space-y-1.5">
-            <Label htmlFor="role-code">역할 코드</Label>
+            <Label htmlFor="role-code">{t("admin.role.columnCode", { defaultValue: "역할 코드" })}</Label>
             <Input
               id="role-code"
               value={roleCode}
               onChange={(e) => setRoleCode(e.target.value.toUpperCase())}
-              placeholder="예: INCIDENT_MANAGER"
+              placeholder={t("admin.role.codePlaceholder", { defaultValue: "예: INCIDENT_MANAGER" })}
               required
               aria-invalid={!!error}
             />
-            <p className="text-xs text-muted-foreground">대문자·언더스코어(스네이크) 형식.</p>
+            <p className="text-xs text-muted-foreground">
+              {t("admin.role.codeHint", { defaultValue: "대문자·언더스코어(스네이크) 형식." })}
+            </p>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="role-name">역할명</Label>
+            <Label htmlFor="role-name">{t("admin.role.columnName", { defaultValue: "역할명" })}</Label>
             <Input
               id="role-name"
               value={name}
@@ -122,7 +128,7 @@ export function RoleManagementPage() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="role-desc">설명</Label>
+            <Label htmlFor="role-desc">{t("admin.role.columnDescription", { defaultValue: "설명" })}</Label>
             <Input
               id="role-desc"
               value={description}
@@ -136,10 +142,10 @@ export function RoleManagementPage() {
           ) : null}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              취소
+              {t("admin.role.cancel", { defaultValue: "취소" })}
             </Button>
             <Button type="submit" loading={submitting}>
-              생성
+              {t("admin.role.create", { defaultValue: "생성" })}
             </Button>
           </div>
         </form>

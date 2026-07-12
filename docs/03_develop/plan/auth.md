@@ -109,6 +109,22 @@
 - 로그인 직후(혹은 라우트 최초 진입 시) 메뉴 API 실패 시 사이드바는 빈 상태로 두고 토스트 없이 조용히 실패(치명적이지 않음) — 기존 알림 로딩 실패 처리(`catch`) 패턴 참고.
 - **메뉴 관리 화면(SCR-ADMIN-006)**: 신규 `features/admin/MenuManagementPage.tsx`(+ `features/admin/api.ts`에 메뉴 CRUD·역할매핑 함수 추가, `features/admin/types.ts`에 `Menu`/`CreateMenuRequest`/`UpdateMenuRequest` 타입 추가). `RoleManagementPage.tsx`와 동일한 패턴(`DataTable`+`Modal`+토스트)으로 목록·생성/수정 모달 구성. 우측 슬라이드 패널(역할 매핑, 체크박스 토글마다 즉시 API 호출)은 기존 `components/ui/dialog.tsx`(Radix Dialog) 위에 우측 슬라이드 스타일(`slide-in-from-right`, Overlay elevation)을 적용한 경량 래퍼로 직접 구현(신규 UI 프리미티브가 필요하다고 판단되면 진행 전 dev-lead에게 알릴 것 — 현재는 기존 Dialog 토큰 재사용만으로 충분하다고 판단해 UI 미소집).
 - 라우팅: `routes/index.tsx`에 `/admin/menus` 추가(`RequireAdmin` 하위, 다른 admin 라우트와 동일 패턴).
+
+## i18n 다국어 전환 (유지보수 요청, 2026-07-12)
+
+> common 도메인 phase에서 i18n 인프라(`src/i18n/`)·SweetAlert2·언어 선택(SCR-COM-015)이 이미 구축 완료됨(`docs/03_develop/plan/common.md` v3절, 커밋 `bc66f6c`). 이번 auth phase는 **레이아웃/컴포넌트 변경 없이 텍스트만 번역 키로 치환**한다(`docs/02_plan/screen/common.md` 6절). BE/DB 변경 없음. status.ts 없음(6.7절).
+
+### 담당 범위 — dev-fe 단독(UI 미소집 대상)
+
+- 대상 화면: `features/auth/LoginPage.tsx`(SCR-AUTH-001), `features/auth/ChangePasswordPage.tsx`(SCR-AUTH-002 추정), `features/auth/ProfilePage.tsx`(SCR-AUTH-003 추정) — 정확한 화면ID 매핑은 `docs/02_plan/screen/auth.md` 3절 화면 목록 확인. `features/admin/UserListPage.tsx`/`UserCreatePage.tsx`/`UserDetailPage.tsx`/`RoleManagementPage.tsx`/`MenuManagementPage.tsx`/`AuditLogPage.tsx`/`ApprovalProcessListPage.tsx`/`ApprovalProcessFormPage.tsx`(SCR-ADMIN-001~008, `docs/02_plan/screen/admin.md` 3절 확인).
+- 각 화면의 하드코딩 한국어 문자열(타이틀·라벨·버튼·placeholder·빈 상태·toast/confirm-dialog 호출 시 넘기는 message 문자열·aria-label 등)을 `useTranslation("auth")` + `t()`로 전환. 6.3절 키 컨벤션(`{section}.{itemKey}`) 그대로 적용.
+- `locales/ko/auth.json`·`locales/en/auth.json`(현재 `{}` 스캐폴딩 상태, common phase에서 dev-ui가 생성) — **이번 phase는 dev-fe가 단독 소유**하고 직접 채운다(common.json과 달리 다른 담당자가 동시에 건드리지 않으므로 충돌 없음).
+- `toast.success/error(message, description)`/`<ConfirmDialog title description confirmLabel cancelLabel .../>` 호출부는 함수 시그니처 그대로 유지한 채, 넘기는 문자열 인자만 `t()` 호출 결과로 교체(컴포넌트 자체는 common phase에서 이미 SweetAlert2로 교체 완료, 호출부 수정 불필요 원칙 재확인).
+- 날짜/숫자 포맷은 기존 `ko-KR` 그대로 유지(포맷 현지화 없음, 확정된 결정 2).
+
+### 완료 기준
+- 헤더 지구본 아이콘으로 English 전환 시 로그인/프로필/비밀번호 변경 화면 및 관리자 8개 화면 텍스트가 전부 영어로 전환.
+- 기존 로그인/비밀번호 변경/사용자·역할·메뉴·감사로그·승인프로세스 관리 기능 자체는 회귀 없음(텍스트만 치환).
 - 신규 디렉토리 생성 없음(기존 `features/admin/` 확장)이라 `CLAUDE.md` 갱신만 파일 목록에 추가.
 
 ### 진행 순서

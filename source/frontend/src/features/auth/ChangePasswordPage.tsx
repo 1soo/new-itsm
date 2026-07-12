@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +22,7 @@ import { extractErrorMessage, getStatusCode } from "@/lib/apiClient";
  */
 
 export function ChangePasswordPage() {
+  const { t } = useTranslation("auth");
   const navigate = useNavigate();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -32,27 +34,32 @@ export function ChangePasswordPage() {
     e.preventDefault();
     setError(null);
 
-    const policyError = validatePasswordPolicy(newPassword);
+    const policyError = validatePasswordPolicy(t, newPassword);
     if (policyError) {
       setError(policyError);
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError("새 비밀번호와 확인이 일치하지 않습니다.");
+      setError(t("changePassword.mismatchError", { defaultValue: "새 비밀번호와 확인이 일치하지 않습니다." }));
       return;
     }
 
     setSubmitting(true);
     try {
       await authApi.changePassword({ currentPassword, newPassword });
-      toast.success("비밀번호가 변경되었습니다");
+      toast.success(t("changePassword.success", { defaultValue: "비밀번호가 변경되었습니다" }));
       navigate("/profile");
     } catch (err) {
       const status = getStatusCode(err);
       if (status === 401) {
-        setError("현재 비밀번호가 올바르지 않습니다.");
+        setError(t("changePassword.currentPasswordInvalid", { defaultValue: "현재 비밀번호가 올바르지 않습니다." }));
       } else {
-        setError(extractErrorMessage(err, "비밀번호 변경에 실패했습니다."));
+        setError(
+          extractErrorMessage(
+            err,
+            t("changePassword.failed", { defaultValue: "비밀번호 변경에 실패했습니다." }),
+          ),
+        );
       }
     } finally {
       setSubmitting(false);
@@ -61,15 +68,19 @@ export function ChangePasswordPage() {
 
   return (
     <div className="mx-auto max-w-md space-y-4">
-      <h1 className="text-xl font-semibold text-foreground">비밀번호 변경</h1>
+      <h1 className="text-xl font-semibold text-foreground">
+        {t("changePassword.title", { defaultValue: "비밀번호 변경" })}
+      </h1>
       <Card>
         <CardHeader>
-          <CardTitle>비밀번호 변경</CardTitle>
+          <CardTitle>{t("changePassword.title", { defaultValue: "비밀번호 변경" })}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div className="space-y-1.5">
-              <Label htmlFor="current">현재 비밀번호</Label>
+              <Label htmlFor="current">
+                {t("changePassword.currentPassword", { defaultValue: "현재 비밀번호" })}
+              </Label>
               <Input
                 id="current"
                 type="password"
@@ -80,7 +91,7 @@ export function ChangePasswordPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="new">새 비밀번호</Label>
+              <Label htmlFor="new">{t("changePassword.newPassword", { defaultValue: "새 비밀번호" })}</Label>
               <Input
                 id="new"
                 type="password"
@@ -90,11 +101,16 @@ export function ChangePasswordPage() {
                 required
               />
               <p className="text-xs text-muted-foreground">
-                최소 {MIN_PASSWORD_LENGTH}자 이상, 영문과 숫자를 포함하세요.
+                {t("changePassword.policyHint", {
+                  minLength: MIN_PASSWORD_LENGTH,
+                  defaultValue: `최소 ${MIN_PASSWORD_LENGTH}자 이상, 영문과 숫자를 포함하세요.`,
+                })}
               </p>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="confirm">새 비밀번호 확인</Label>
+              <Label htmlFor="confirm">
+                {t("changePassword.confirmPassword", { defaultValue: "새 비밀번호 확인" })}
+              </Label>
               <Input
                 id="confirm"
                 type="password"
@@ -113,10 +129,10 @@ export function ChangePasswordPage() {
 
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => navigate("/profile")}>
-                취소
+                {t("changePassword.cancel", { defaultValue: "취소" })}
               </Button>
               <Button type="submit" loading={submitting}>
-                저장
+                {t("changePassword.save", { defaultValue: "저장" })}
               </Button>
             </div>
           </form>

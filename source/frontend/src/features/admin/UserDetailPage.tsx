@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +31,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 역할 회수 시 역할명 → roleId 매핑이 필요하므로 역할 목록을 함께 로드한다.
  */
 export function UserDetailPage() {
+  const { t } = useTranslation("auth");
   const navigate = useNavigate();
   const params = useParams();
   const userId = Number(params.id);
@@ -93,7 +95,7 @@ export function UserDetailPage() {
     try {
       const updated = await adminApi.updateUser(detail.id, { name });
       setDetail(updated);
-      toast.success("계정 정보가 수정되었습니다");
+      toast.success(t("admin.userDetail.nameSaveSuccess", { defaultValue: "계정 정보가 수정되었습니다" }));
     } catch (err) {
       toast.error(extractErrorMessage(err));
     } finally {
@@ -107,7 +109,7 @@ export function UserDetailPage() {
     try {
       const res = await adminApi.assignRole(detail.id, Number(roleIdStr));
       setDetail({ ...detail, roles: res.roles });
-      toast.success("역할이 부여되었습니다");
+      toast.success(t("admin.userDetail.roleAssignSuccess", { defaultValue: "역할이 부여되었습니다" }));
     } catch (err) {
       toast.error(extractErrorMessage(err));
     } finally {
@@ -123,7 +125,7 @@ export function UserDetailPage() {
     try {
       const res = await adminApi.revokeRole(detail.id, roleId);
       setDetail({ ...detail, roles: res.roles });
-      toast.success("역할이 회수되었습니다");
+      toast.success(t("admin.userDetail.roleRevokeSuccess", { defaultValue: "역할이 회수되었습니다" }));
     } catch (err) {
       toast.error(extractErrorMessage(err));
     } finally {
@@ -138,7 +140,11 @@ export function UserDetailPage() {
     try {
       const res = await adminApi.setUserStatus(detail.id, next);
       setDetail({ ...detail, status: res.status });
-      toast.success(next === "INACTIVE" ? "계정이 비활성화되었습니다" : "계정이 활성화되었습니다");
+      toast.success(
+        next === "INACTIVE"
+          ? t("admin.userDetail.deactivateSuccess", { defaultValue: "계정이 비활성화되었습니다" })
+          : t("admin.userDetail.activateSuccess", { defaultValue: "계정이 활성화되었습니다" }),
+      );
     } catch (err) {
       toast.error(extractErrorMessage(err));
     } finally {
@@ -152,8 +158,12 @@ export function UserDetailPage() {
   if (notFound || !detail) {
     return (
       <div className="mx-auto max-w-lg space-y-4 text-center">
-        <p className="text-sm text-muted-foreground">계정을 찾을 수 없습니다.</p>
-        <Button onClick={() => navigate("/admin/users")}>목록으로</Button>
+        <p className="text-sm text-muted-foreground">
+          {t("admin.userDetail.notFound", { defaultValue: "계정을 찾을 수 없습니다." })}
+        </p>
+        <Button onClick={() => navigate("/admin/users")}>
+          {t("admin.userDetail.backToList", { defaultValue: "목록으로" })}
+        </Button>
       </div>
     );
   }
@@ -163,9 +173,11 @@ export function UserDetailPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-foreground">계정 상세</h1>
+        <h1 className="text-xl font-semibold text-foreground">
+          {t("admin.userDetail.title", { defaultValue: "계정 상세" })}
+        </h1>
         <Button variant="outline" onClick={() => navigate("/admin/users")}>
-          목록으로
+          {t("admin.userDetail.backToList", { defaultValue: "목록으로" })}
         </Button>
       </div>
 
@@ -176,29 +188,33 @@ export function UserDetailPage() {
             {detail.email}
             <StatusBadge
               tone={isActive ? "success" : "warning"}
-              label={isActive ? "활성" : "비활성"}
+              label={
+                isActive
+                  ? t("admin.userDetail.statusActive", { defaultValue: "활성" })
+                  : t("admin.userDetail.statusInactive", { defaultValue: "비활성" })
+              }
             />
           </CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
-          계정 ID {detail.id}
+          {t("admin.userDetail.accountId", { id: detail.id, defaultValue: `계정 ID ${detail.id}` })}
         </CardContent>
       </Card>
 
       {/* 정보 수정 */}
       <Card>
         <CardHeader>
-          <CardTitle>정보 수정</CardTitle>
+          <CardTitle>{t("admin.userDetail.editInfoTitle", { defaultValue: "정보 수정" })}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSaveName} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="name">이름</Label>
+              <Label htmlFor="name">{t("admin.userDetail.name", { defaultValue: "이름" })}</Label>
               <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
             </div>
             <div className="flex justify-end">
               <Button type="submit" loading={savingName} disabled={name === detail.name}>
-                저장
+                {t("admin.userDetail.save", { defaultValue: "저장" })}
               </Button>
             </div>
           </form>
@@ -208,12 +224,14 @@ export function UserDetailPage() {
       {/* 역할 부여/회수 */}
       <Card>
         <CardHeader>
-          <CardTitle>역할 관리</CardTitle>
+          <CardTitle>{t("admin.userDetail.roleManagementTitle", { defaultValue: "역할 관리" })}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-2">
             {detail.roles.length === 0 ? (
-              <span className="text-sm text-muted-foreground">부여된 역할 없음</span>
+              <span className="text-sm text-muted-foreground">
+                {t("admin.userDetail.noRoles", { defaultValue: "부여된 역할 없음" })}
+              </span>
             ) : (
               detail.roles.map((role) => (
                 <Badge key={role} variant="info" className="gap-1 pr-1">
@@ -222,7 +240,10 @@ export function UserDetailPage() {
                     type="button"
                     onClick={() => handleRevokeRole(role)}
                     disabled={roleBusy}
-                    aria-label={`${nameByCode.get(role) ?? role} 역할 회수`}
+                    aria-label={t("admin.userDetail.revokeRoleAria", {
+                      role: nameByCode.get(role) ?? role,
+                      defaultValue: `${nameByCode.get(role) ?? role} 역할 회수`,
+                    })}
                     className="rounded-full p-0.5 hover:bg-danger hover:text-danger-foreground disabled:opacity-50"
                   >
                     <X className="size-3" />
@@ -233,10 +254,16 @@ export function UserDetailPage() {
           </div>
 
           <div className="max-w-xs space-y-1.5">
-            <Label>역할 부여</Label>
+            <Label>{t("admin.userDetail.assignRole", { defaultValue: "역할 부여" })}</Label>
             <Select value="" onValueChange={handleAssignRole} disabled={roleBusy || unassignedRoles.length === 0}>
               <SelectTrigger>
-                <SelectValue placeholder={unassignedRoles.length === 0 ? "부여할 역할 없음" : "역할 선택"} />
+                <SelectValue
+                  placeholder={
+                    unassignedRoles.length === 0
+                      ? t("admin.userDetail.noAssignableRoles", { defaultValue: "부여할 역할 없음" })
+                      : t("admin.userDetail.selectRole", { defaultValue: "역할 선택" })
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
                 {unassignedRoles.map((r) => (
@@ -253,21 +280,25 @@ export function UserDetailPage() {
       {/* 상태 변경 */}
       <Card>
         <CardHeader>
-          <CardTitle>계정 상태</CardTitle>
+          <CardTitle>{t("admin.userDetail.statusCardTitle", { defaultValue: "계정 상태" })}</CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
             {isActive
-              ? "비활성화하면 해당 계정의 로그인이 차단됩니다."
-              : "활성화하면 해당 계정이 다시 로그인할 수 있습니다."}
+              ? t("admin.userDetail.deactivateHint", {
+                  defaultValue: "비활성화하면 해당 계정의 로그인이 차단됩니다.",
+                })
+              : t("admin.userDetail.activateHint", {
+                  defaultValue: "활성화하면 해당 계정이 다시 로그인할 수 있습니다.",
+                })}
           </p>
           {isActive ? (
             <Button variant="destructive" onClick={() => setStatusOpen(true)}>
-              비활성화
+              {t("admin.userDetail.deactivate", { defaultValue: "비활성화" })}
             </Button>
           ) : (
             <Button onClick={handleToggleStatus} loading={statusBusy}>
-              활성화
+              {t("admin.userDetail.activate", { defaultValue: "활성화" })}
             </Button>
           )}
         </CardContent>
@@ -276,9 +307,11 @@ export function UserDetailPage() {
       <ConfirmDialog
         open={statusOpen}
         onOpenChange={setStatusOpen}
-        title="계정 비활성화"
-        description="이 계정을 비활성화하시겠습니까? 비활성화된 계정은 로그인할 수 없습니다."
-        confirmLabel="비활성화"
+        title={t("admin.userDetail.deactivateDialogTitle", { defaultValue: "계정 비활성화" })}
+        description={t("admin.userDetail.deactivateDialogDescription", {
+          defaultValue: "이 계정을 비활성화하시겠습니까? 비활성화된 계정은 로그인할 수 없습니다.",
+        })}
+        confirmLabel={t("admin.userDetail.deactivate", { defaultValue: "비활성화" })}
         loading={statusBusy}
         onConfirm={handleToggleStatus}
       />

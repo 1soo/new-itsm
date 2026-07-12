@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Eye, EyeOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -23,32 +24,32 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
  * 로그인(SCR-AUTH-001) — 이메일·비밀번호 인증 후 역할 기본 홈으로 이동.
  * 계정 열거 방지를 위해 401(불일치)·403(비활성)은 동일 메시지로 통일 표기한다.
  */
-const AUTH_FAIL_MESSAGE = "이메일 또는 비밀번호가 올바르지 않습니다.";
 
 // POC 데모용 안내 — 역할별 테스트 계정. 실서비스 전환 시 이 표는 제거한다.
 const TEST_ACCOUNTS = [
-  { email: "admin@itsm.local", role: "시스템 관리자 (SYSTEM_ADMIN)" },
-  { email: "user@itsm.local", role: "최종 사용자 (END_USER)" },
-  { email: "agent@itsm.local", role: "서비스 데스크 상담원 (SERVICE_DESK_AGENT)" },
-  { email: "cab@itsm.local", role: "승인자 (APPROVER)" },
-  { email: "im@itsm.local", role: "인시던트 관리자 (INCIDENT_MANAGER)" },
-  { email: "pm@itsm.local", role: "문제 관리자 (PROBLEM_MANAGER)" },
-  { email: "cm@itsm.local", role: "변경 관리자 (CHANGE_MANAGER)" },
-  { email: "kc@itsm.local", role: "지식 기여자 (KNOWLEDGE_CONTRIBUTOR)" },
-  { email: "kg@itsm.local", role: "지식 게이트키퍼 (KNOWLEDGE_GATEKEEPER)" },
-  { email: "am@itsm.local", role: "자산 관리자 (ASSET_MANAGER)" },
-  { email: "po@itsm.local", role: "프로세스 오너 (PROCESS_OWNER)" },
-  { email: "hr@itsm.local", role: "HR 케이스 담당자 (HR_CASE_MANAGER)" },
-  { email: "legal-coord@itsm.local", role: "법무 처리 담당자 (DEPT_COORDINATOR)" },
-  { email: "facilities-coord@itsm.local", role: "시설 처리 담당자 (DEPT_COORDINATOR)" },
-  { email: "it-coord@itsm.local", role: "IT 처리 담당자 (DEPT_COORDINATOR)" },
-  { email: "vm@itsm.local", role: "취약점 관리 담당자 (VULNERABILITY_MANAGER)" },
-  { email: "co@itsm.local", role: "컴플라이언스 담당자 (COMPLIANCE_OFFICER)" },
-  { email: "io@itsm.local", role: "인프라 운영 담당자 (INFRA_OPERATOR)" },
+  { email: "admin@itsm.local", roleKey: "admin" },
+  { email: "user@itsm.local", roleKey: "user" },
+  { email: "agent@itsm.local", roleKey: "agent" },
+  { email: "cab@itsm.local", roleKey: "cab" },
+  { email: "im@itsm.local", roleKey: "im" },
+  { email: "pm@itsm.local", roleKey: "pm" },
+  { email: "cm@itsm.local", roleKey: "cm" },
+  { email: "kc@itsm.local", roleKey: "kc" },
+  { email: "kg@itsm.local", roleKey: "kg" },
+  { email: "am@itsm.local", roleKey: "am" },
+  { email: "po@itsm.local", roleKey: "po" },
+  { email: "hr@itsm.local", roleKey: "hr" },
+  { email: "legal-coord@itsm.local", roleKey: "legalCoord" },
+  { email: "facilities-coord@itsm.local", roleKey: "facilitiesCoord" },
+  { email: "it-coord@itsm.local", roleKey: "itCoord" },
+  { email: "vm@itsm.local", roleKey: "vm" },
+  { email: "co@itsm.local", roleKey: "co" },
+  { email: "io@itsm.local", roleKey: "io" },
 ] as const;
 const TEST_ACCOUNT_PASSWORD = "Admin@1234";
 
 export function LoginPage() {
+  const { t } = useTranslation("auth");
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const status = useAppSelector((s) => s.auth.status);
@@ -75,9 +76,9 @@ export function LoginPage() {
     } catch (rejected) {
       const err = rejected as LoginError;
       if (err.status === 401 || err.status === 403) {
-        setError(AUTH_FAIL_MESSAGE);
+        setError(t("login.authFailMessage", { defaultValue: "이메일 또는 비밀번호가 올바르지 않습니다." }));
       } else {
-        setError(err.message ?? "로그인 중 오류가 발생했습니다.");
+        setError(err.message ?? t("login.genericError", { defaultValue: "로그인 중 오류가 발생했습니다." }));
       }
     } finally {
       setSubmitting(false);
@@ -91,12 +92,12 @@ export function LoginPage() {
           <span className="mb-2 flex size-10 items-center justify-center rounded-md bg-primary text-base font-bold text-primary-foreground">
             IT
           </span>
-          <CardTitle>ITSM 플랫폼 로그인</CardTitle>
+          <CardTitle>{t("login.title", { defaultValue: "ITSM 플랫폼 로그인" })}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div className="space-y-1.5">
-              <Label htmlFor="email">이메일</Label>
+              <Label htmlFor="email">{t("login.email", { defaultValue: "이메일" })}</Label>
               <Input
                 id="email"
                 type="email"
@@ -109,7 +110,7 @@ export function LoginPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="password">비밀번호</Label>
+              <Label htmlFor="password">{t("login.password", { defaultValue: "비밀번호" })}</Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -125,7 +126,11 @@ export function LoginPage() {
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 표시"}
+                  aria-label={
+                    showPassword
+                      ? t("login.hidePasswordAria", { defaultValue: "비밀번호 숨기기" })
+                      : t("login.showPasswordAria", { defaultValue: "비밀번호 표시" })
+                  }
                 >
                   {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
@@ -139,7 +144,7 @@ export function LoginPage() {
             ) : null}
 
             <Button type="submit" className="w-full" loading={submitting}>
-              로그인
+              {t("login.submit", { defaultValue: "로그인" })}
             </Button>
           </form>
         </CardContent>
@@ -148,16 +153,18 @@ export function LoginPage() {
       <Card className="w-full max-w-2xl">
         <CardHeader>
           <CardTitle className="text-sm text-muted-foreground">
-            POC 테스트 계정 (역할별 데모용 — 실서비스 전환 시 제거)
+            {t("login.testAccounts.title", {
+              defaultValue: "POC 테스트 계정 (역할별 데모용 — 실서비스 전환 시 제거)",
+            })}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>이메일</TableHead>
-                <TableHead>비밀번호</TableHead>
-                <TableHead>역할</TableHead>
+                <TableHead>{t("login.testAccounts.columnEmail", { defaultValue: "이메일" })}</TableHead>
+                <TableHead>{t("login.testAccounts.columnPassword", { defaultValue: "비밀번호" })}</TableHead>
+                <TableHead>{t("login.testAccounts.columnRole", { defaultValue: "역할" })}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -165,7 +172,7 @@ export function LoginPage() {
                 <TableRow key={account.email}>
                   <TableCell className="font-mono text-xs">{account.email}</TableCell>
                   <TableCell className="font-mono text-xs">{TEST_ACCOUNT_PASSWORD}</TableCell>
-                  <TableCell>{account.role}</TableCell>
+                  <TableCell>{t(`login.testAccounts.roleLabel.${account.roleKey}`)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
