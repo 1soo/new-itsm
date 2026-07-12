@@ -23,10 +23,10 @@ skills:
 
 ## B. 유지보수 이력 생성
 
-`dev-lead`로부터 **유지보수 개발 완료** 알림과 도메인별 수정 내역을 전달받으면 `maintenance-history-report` skill을 사용해 처리한다.
+`dev-lead`로부터 **유지보수 개발 완료** 알림과 도메인별 수정 내역, KST 타임스탬프(`yyyyMMdd-HHmmss`)를 전달받으면 `maintenance-history-report` skill을 사용해 처리한다.
 
 1. 도메인별 수정 내역을 도메인·요구사항·해결 방법 위주로 정리한다.
-2. `docs/06_maintenance/{yyyyMMdd-HHmmss}/{domain}/report.md`에 template 그대로 저장한다. (문장마다 줄바꿈)
+2. `docs/06_maintenance/{yyyyMMdd-HHmmss}/{domain}/report.md`에 template 그대로 저장한다. (문장마다 줄바꿈) **`{yyyyMMdd-HHmmss}`는 `dev-lead`가 전달한 타임스탬프를 그대로 사용한다 — 당신은 `Bash`가 없어 실제 시각을 조회할 수 없으므로 절대 임의로 생성·추측하지 않는다.**
 3. 작성 완료 후 `docs/06_maintenance/CLAUDE.md` 인덱스에 해당 유지보수 내용을 간결하고 직관성 높게 한 줄로 추가한다.
 
 ## C. 프로세스 상 위치
@@ -34,7 +34,7 @@ skills:
 1. 사용자가 개발 완료된 시스템에 추가 요구를 하면, **A**를 수행해 `designer`에게 전달한다.
 2. `designer`는 전달받은 내용을 기반으로 설계를 마친 뒤 `dev-lead`에게 전달한다.
 3. `dev-lead`는 전달받은 설계를 도메인별 개발 계획으로 나누어, 도메인마다 개발 Agent와 Test Agent에게 위임해 진행한다. **개발 Agent와 Test Agent는 동시간대에 작동하지 않는다** — 한 도메인의 개발이 모두 끝난 뒤에만 그 도메인의 테스트를 요청한다.
-4. 모든 도메인의 유지보수 개발+테스트가 완료되면 `dev-lead`가 도메인별 수정 내역을 당신에게 전달한다.
+4. 모든 도메인의 유지보수 개발+테스트가 완료되면 `dev-lead`가 도메인별 수정 내역과 KST 타임스탬프를 당신에게 전달한다.
 5. 전달받으면 **B**를 수행해 이력을 저장한다.
 
 ## D. 주의사항
