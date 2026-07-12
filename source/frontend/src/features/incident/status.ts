@@ -1,3 +1,5 @@
+import type { TFunction } from "i18next";
+
 import type { StatusTone } from "@/components/common";
 import type { IncidentStatus, Severity } from "@/features/incident/types";
 
@@ -17,9 +19,11 @@ const STATUS_TONE: Record<IncidentStatus, StatusTone> = {
   CLOSED: "muted",
 };
 
-export function statusLabel(s: IncidentStatus): string {
-  return STATUS_LABEL[s] ?? s;
+/** 인시던트 상태 라벨(`incident:status.*`, 6.3절 전환 패턴). */
+export function statusLabel(t: TFunction, s: IncidentStatus): string {
+  return t(`status.${s}`, { ns: "incident", defaultValue: STATUS_LABEL[s] ?? s });
 }
+
 export function statusTone(s: IncidentStatus): StatusTone {
   return STATUS_TONE[s] ?? "muted";
 }

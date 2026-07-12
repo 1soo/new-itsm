@@ -6,4 +6,5 @@
 - `common.json` — 레이아웃(헤더)·언어 선택·확인 다이얼로그 기본 라벨·알림 조립 라벨(도메인 라벨·상대 시간) 등 common 네임스페이스 전체.
 - `auth.json` — auth phase에서 채워짐. 로그인(SCR-AUTH-001)·프로필(SCR-AUTH-002)·비밀번호 변경(SCR-AUTH-003)과 관리자 8개 화면(SCR-ADMIN-001~008) 전체 텍스트.
 - `service-request.json` — service-request phase에서 채워짐. 포털·요청 제출·목록·큐·상세·카탈로그 관리·지표(SCR-SRM-001~005,007~008) 전체 텍스트 + 상태/SLA 라벨(`status.*`/`sla.*`).
-- `incident.json` / `problem.json` / `change.json` / `knowledge.json` / `asset.json` / `esm.json` / `vulnerability.json` / `compliance.json` / `infra-monitoring.json` — 각 업무 도메인 네임스페이스. 담당 개발자가 채우기 전까지 `{}`.
+- `incident.json` — incident phase에서 채워짐. 목록·등록·상세·포스트모템·지표(SCR-INC-001~005) 전체 텍스트 + 상태 라벨(`status.*`).
+- `problem.json` / `change.json` / `knowledge.json` / `asset.json` / `esm.json` / `vulnerability.json` / `compliance.json` / `infra-monitoring.json` — 각 업무 도메인 네임스페이스. 담당 개발자가 채우기 전까지 `{}`.

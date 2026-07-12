@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +19,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 인시던트 지표(SCR-INC-005) — 기간별 건수·평균 MTTR + 심각도 분포 차트.
  */
 export function IncidentMetricsPage() {
+  const { t } = useTranslation("incident");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [applied, setApplied] = useState<{ from: string; to: string }>({ from: "", to: "" });
@@ -52,35 +54,46 @@ export function IncidentMetricsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold text-foreground">인시던트 지표</h1>
+      <h1 className="text-xl font-semibold text-foreground">
+        {t("metrics.title", { defaultValue: "인시던트 지표" })}
+      </h1>
 
       <form onSubmit={handleSearch} className="flex flex-wrap items-end gap-2 rounded-lg border border-border bg-card p-3">
         <div className="space-y-1">
-          <Label htmlFor="from">시작일</Label>
+          <Label htmlFor="from">{t("metrics.filterFrom", { defaultValue: "시작일" })}</Label>
           <Input id="from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="to">종료일</Label>
+          <Label htmlFor="to">{t("metrics.filterTo", { defaultValue: "종료일" })}</Label>
           <Input id="to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         </div>
-        <Button type="submit">조회</Button>
+        <Button type="submit">{t("metrics.searchButton", { defaultValue: "조회" })}</Button>
       </form>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <KpiCard label="인시던트 건수" value={loading ? "-" : (metrics?.count ?? 0)} unit="건" />
         <KpiCard
-          label="평균 MTTR"
+          label={t("metrics.incidentCount", { defaultValue: "인시던트 건수" })}
+          value={loading ? "-" : (metrics?.count ?? 0)}
+          unit={t("metrics.countUnit", { defaultValue: "건" })}
+        />
+        <KpiCard
+          label={t("metrics.avgMttr", { defaultValue: "평균 MTTR" })}
           value={loading ? "-" : Math.round(metrics?.avgMttrMinutes ?? 0)}
-          unit="분"
+          unit={t("metrics.minutesUnit", { defaultValue: "분" })}
         />
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">심각도 분포</CardTitle>
+          <CardTitle className="text-base">
+            {t("metrics.severityDistributionTitle", { defaultValue: "심각도 분포" })}
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <DistributionChart data={dist} ariaLabel="심각도별 인시던트 분포" />
+          <DistributionChart
+            data={dist}
+            ariaLabel={t("metrics.severityDistributionAria", { defaultValue: "심각도별 인시던트 분포" })}
+          />
         </CardContent>
       </Card>
     </div>

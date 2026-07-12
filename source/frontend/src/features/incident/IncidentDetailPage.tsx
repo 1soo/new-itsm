@@ -1,5 +1,7 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { AlertTriangle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -67,6 +69,7 @@ function fallbackTransitions(status: string): IncidentTargetStatus[] {
  * 타임라인 업데이트·해결/시간지표·문제 연계(problem 단계 전 비활성). 포스트모템 필요 배너.
  */
 export function IncidentDetailPage() {
+  const { t } = useTranslation("incident");
   const navigate = useNavigate();
   const id = Number(useParams().id);
   const roles = useAppSelector((s) => s.auth.user?.roles);
@@ -154,8 +157,12 @@ export function IncidentDetailPage() {
   if (notFound || !detail) {
     return (
       <div className="mx-auto max-w-lg space-y-4 text-center">
-        <p className="text-sm text-muted-foreground">인시던트를 찾을 수 없습니다.</p>
-        <Button onClick={() => navigate("/incidents")}>목록으로</Button>
+        <p className="text-sm text-muted-foreground">
+          {t("incidentDetail.notFound", { defaultValue: "인시던트를 찾을 수 없습니다." })}
+        </p>
+        <Button onClick={() => navigate("/incidents")}>
+          {t("incidentDetail.backToList", { defaultValue: "목록으로" })}
+        </Button>
       </div>
     );
   }
@@ -165,11 +172,14 @@ export function IncidentDetailPage() {
   const showPmBanner = detail.postmortemRequired ?? (isSev12 && detail.status === "RESOLVED");
   const approved = detail.approval.approvalRequestId == null || detail.approval.status === "APPROVED";
 
-  const timelineItems: TimelineItem[] = detail.timeline.map((t, i) => ({
+  const timelineItems: TimelineItem[] = detail.timeline.map((entry, i) => ({
     id: String(i),
-    title: t.message,
-    description: t.visibility === "EXTERNAL" ? "외부 공개" : "내부",
-    timestamp: formatDateTime(t.at),
+    title: entry.message,
+    description:
+      entry.visibility === "EXTERNAL"
+        ? t("incidentDetail.visibilityExternal", { defaultValue: "외부 공개" })
+        : t("incidentDetail.visibilityInternal", { defaultValue: "내부" }),
+    timestamp: formatDateTime(entry.at),
   }));
 
   const toIso = (v: string) => (v ? new Date(v).toISOString() : undefined);
@@ -177,9 +187,11 @@ export function IncidentDetailPage() {
   const handleUpdate = (e: FormEvent) => {
     e.preventDefault();
     if (!updateMsg.trim()) return;
-    run("update", () => incidentApi.addUpdate(id, updateMsg.trim(), updateVis), "업데이트가 기록되었습니다").then(() =>
-      setUpdateMsg(""),
-    );
+    run(
+      "update",
+      () => incidentApi.addUpdate(id, updateMsg.trim(), updateVis),
+      t("incidentDetail.updateRecorded", { defaultValue: "업데이트가 기록되었습니다" }),
+    ).then(() => setUpdateMsg(""));
   };
 
   return (
@@ -189,39 +201,57 @@ export function IncidentDetailPage() {
       badges={
         <>
           <StatusBadge tone={severityTone(detail.severity)} label={detail.severity} />
-          <StatusBadge tone={statusTone(detail.status)} label={statusLabel(detail.status)} />
+          <StatusBadge tone={statusTone(detail.status)} label={statusLabel(t, detail.status)} />
         </>
       }
-      actions={transitions.map((t) => {
-        const blocked = t === "RESOLVED" && !approved;
+      actions={transitions.map((target) => {
+        const blocked = target === "RESOLVED" && !approved;
         return (
           <Button
-            key={t}
-            loading={busy === `st-${t}`}
+            key={target}
+            loading={busy === `st-${target}`}
             disabled={blocked}
-            title={blocked ? "승인 완료 전에는 해결 상태로 전이할 수 없습니다" : undefined}
+            title={
+              blocked
+                ? t("incidentDetail.resolveBlockedTooltip", {
+                    defaultValue: "승인 완료 전에는 해결 상태로 전이할 수 없습니다",
+                  })
+                : undefined
+            }
             onClick={() =>
-              run(`st-${t}`, () => incidentApi.transition(id, t), `상태가 '${statusLabel(t)}'로 변경되었습니다`, true)
+              run(
+                `st-${target}`,
+                () => incidentApi.transition(id, target),
+                t("incidentDetail.transitionSuccess", {
+                  status: statusLabel(t, target),
+                  defaultValue: `상태가 '${statusLabel(t, target)}'로 변경되었습니다`,
+                }),
+                true,
+              )
             }
           >
-            {statusLabel(t)}
+            {statusLabel(t, target)}
           </Button>
         );
       })}
       meta={
         <>
           <Card>
-            <CardHeader><CardTitle className="text-base">심각도·우선순위</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">
+                {t("incidentDetail.severityPriorityTitle", { defaultValue: "심각도·우선순위" })}
+              </CardTitle>
+            </CardHeader>
             <CardContent className="space-y-3">
               <div className="space-y-1.5">
-                <Label>심각도</Label>
+                <Label>{t("incidentList.columnSeverity", { defaultValue: "심각도" })}</Label>
                 <Select value={sev} onValueChange={(v) => setSev(v as Severity)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{SEVERITIES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>우선순위</Label>
+                <Label>{t("incidentDetail.priority", { defaultValue: "우선순위" })}</Label>
                 <Select value={pri} onValueChange={(v) => setPri(v as Priority)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{PRIORITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
@@ -232,19 +262,29 @@ export function IncidentDetailPage() {
                 className="w-full"
                 loading={busy === "sev"}
                 disabled={sev === detail.severity && pri === detail.priority}
-                onClick={() => run("sev", () => incidentApi.updateSeverity(id, sev, pri), "심각도/우선순위가 변경되었습니다")}
+                onClick={() =>
+                  run(
+                    "sev",
+                    () => incidentApi.updateSeverity(id, sev, pri),
+                    t("incidentDetail.severityPrioritySaved", { defaultValue: "심각도/우선순위가 변경되었습니다" }),
+                  )
+                }
               >
-                저장
+                {t("incidentDetail.save", { defaultValue: "저장" })}
               </Button>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="text-base">시간 지표</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">
+                {t("incidentDetail.timeMetricsTitle", { defaultValue: "시간 지표" })}
+              </CardTitle>
+            </CardHeader>
             <CardContent className="space-y-1.5 text-sm">
-              <MetaRow label="MTTD" value={formatMinutes(detail.metrics?.mttdMinutes)} />
-              <MetaRow label="MTTA" value={formatMinutes(detail.metrics?.mttaMinutes)} />
-              <MetaRow label="MTTR" value={formatMinutes(detail.metrics?.mttrMinutes)} />
+              <MetaRow label="MTTD" value={formatMinutes(t, detail.metrics?.mttdMinutes)} />
+              <MetaRow label="MTTA" value={formatMinutes(t, detail.metrics?.mttaMinutes)} />
+              <MetaRow label="MTTR" value={formatMinutes(t, detail.metrics?.mttrMinutes)} />
             </CardContent>
           </Card>
 
@@ -255,10 +295,14 @@ export function IncidentDetailPage() {
           />
 
           <Card>
-            <CardHeader><CardTitle className="text-base">대응 역할</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">{t("incidentDetail.respondersTitle", { defaultValue: "대응 역할" })}</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-2 text-sm">
               {detail.responders.length === 0 ? (
-                <p className="text-muted-foreground">배정된 역할 없음</p>
+                <p className="text-muted-foreground">
+                  {t("incidentDetail.noResponders", { defaultValue: "배정된 역할 없음" })}
+                </p>
               ) : (
                 detail.responders.map((r) => (
                   <MetaRow key={`${r.userId}-${r.role}`} label={RESPONDER_ROLE_LABEL[r.role] ?? r.role} value={r.name} />
@@ -269,19 +313,39 @@ export function IncidentDetailPage() {
 
           {(detail.affectedService || detail.affectedProduct) ? (
             <Card>
-              <CardHeader><CardTitle className="text-base">영향 범위</CardTitle></CardHeader>
+              <CardHeader>
+                <CardTitle className="text-base">
+                  {t("incidentDetail.affectedScopeTitle", { defaultValue: "영향 범위" })}
+                </CardTitle>
+              </CardHeader>
               <CardContent className="space-y-1.5 text-sm">
-                {detail.affectedService ? <MetaRow label="서비스" value={detail.affectedService} /> : null}
-                {detail.affectedProduct ? <MetaRow label="제품" value={detail.affectedProduct} /> : null}
+                {detail.affectedService ? (
+                  <MetaRow
+                    label={t("incidentDetail.affectedServiceLabel", { defaultValue: "서비스" })}
+                    value={detail.affectedService}
+                  />
+                ) : null}
+                {detail.affectedProduct ? (
+                  <MetaRow
+                    label={t("incidentDetail.affectedProductLabel", { defaultValue: "제품" })}
+                    value={detail.affectedProduct}
+                  />
+                ) : null}
               </CardContent>
             </Card>
           ) : null}
 
           <Card>
-            <CardHeader><CardTitle className="text-base">연결 문제/자산</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">
+                {t("incidentDetail.linksTitle", { defaultValue: "연결 문제/자산" })}
+              </CardTitle>
+            </CardHeader>
             <CardContent className="space-y-1.5 text-sm">
               {detail.links.length === 0 ? (
-                <p className="text-muted-foreground">연결 없음</p>
+                <p className="text-muted-foreground">
+                  {t("incidentDetail.noLinks", { defaultValue: "연결 없음" })}
+                </p>
               ) : (
                 detail.links.map((l, i) => (
                   <span key={i} className="block text-foreground">{l.type} · {l.targetKey}</span>
@@ -296,40 +360,54 @@ export function IncidentDetailPage() {
         <div className="flex items-center justify-between gap-3 rounded-lg border border-warning/40 bg-warning/10 p-4">
           <div className="flex items-center gap-2 text-sm">
             <AlertTriangle className="size-5 text-warning" />
-            <span>SEV1·2 해결 인시던트입니다. 포스트모템 작성이 필요합니다.</span>
+            <span>
+              {t("incidentDetail.pmBanner", {
+                defaultValue: "SEV1·2 해결 인시던트입니다. 포스트모템 작성이 필요합니다.",
+              })}
+            </span>
           </div>
           <Button variant="outline" onClick={() => navigate(`/incidents/${id}/postmortem`)}>
-            포스트모템 작성
+            {t("incidentDetail.pmWriteButton", { defaultValue: "포스트모템 작성" })}
           </Button>
         </div>
       ) : null}
 
       <Card>
-        <CardHeader><CardTitle className="text-base">설명</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">{t("incidentDetail.descriptionTitle", { defaultValue: "설명" })}</CardTitle></CardHeader>
         <CardContent>
-          <p className="whitespace-pre-wrap text-sm text-foreground">{detail.description || "설명 없음"}</p>
+          <p className="whitespace-pre-wrap text-sm text-foreground">
+            {detail.description || t("incidentDetail.noDescription", { defaultValue: "설명 없음" })}
+          </p>
         </CardContent>
       </Card>
 
       {/* 역할 배정 — IM 전용 */}
       {isIM ? (
         <Card>
-          <CardHeader><CardTitle className="text-base">대응 역할 배정</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">
+              {t("incidentDetail.assignResponderTitle", { defaultValue: "대응 역할 배정" })}
+            </CardTitle>
+          </CardHeader>
           <CardContent>
             <form
               className="flex flex-wrap items-end gap-2"
               onSubmit={(e) => {
                 e.preventDefault();
                 if (!assignUserId) return;
-                run("assign", () => incidentApi.assignRole(id, Number(assignUserId), assignRole), "역할이 배정되었습니다").then(() => setAssignUserId(""));
+                run(
+                  "assign",
+                  () => incidentApi.assignRole(id, Number(assignUserId), assignRole),
+                  t("incidentDetail.assignSuccess", { defaultValue: "역할이 배정되었습니다" }),
+                ).then(() => setAssignUserId(""));
               }}
             >
               <div className="space-y-1">
-                <Label htmlFor="au">사용자 ID</Label>
+                <Label htmlFor="au">{t("incidentDetail.userId", { defaultValue: "사용자 ID" })}</Label>
                 <Input id="au" type="number" className="w-28" value={assignUserId} onChange={(e) => setAssignUserId(e.target.value)} />
               </div>
               <div className="space-y-1">
-                <Label>역할</Label>
+                <Label>{t("incidentDetail.role", { defaultValue: "역할" })}</Label>
                 <Select value={assignRole} onValueChange={(v) => setAssignRole(v as ResponderRole)}>
                   <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -339,7 +417,9 @@ export function IncidentDetailPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button type="submit" loading={busy === "assign"} disabled={!assignUserId}>배정</Button>
+              <Button type="submit" loading={busy === "assign"} disabled={!assignUserId}>
+                {t("incidentDetail.assign", { defaultValue: "배정" })}
+              </Button>
             </form>
           </CardContent>
         </Card>
@@ -347,35 +427,48 @@ export function IncidentDetailPage() {
 
       {/* 에스컬레이션 */}
       <Card>
-        <CardHeader><CardTitle className="text-base">에스컬레이션</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">{t("incidentDetail.escalationTitle", { defaultValue: "에스컬레이션" })}</CardTitle></CardHeader>
         <CardContent>
           <form
             className="flex flex-wrap items-end gap-2"
             onSubmit={(e) => {
               e.preventDefault();
               if (!escUserId) return;
-              run("esc", () => incidentApi.escalate(id, Number(escUserId), escType, escReason.trim() || undefined), "에스컬레이션되었습니다").then(() => { setEscUserId(""); setEscReason(""); });
+              run(
+                "esc",
+                () => incidentApi.escalate(id, Number(escUserId), escType, escReason.trim() || undefined),
+                t("incidentDetail.escalateSuccess", { defaultValue: "에스컬레이션되었습니다" }),
+              ).then(() => {
+                setEscUserId("");
+                setEscReason("");
+              });
             }}
           >
             <div className="space-y-1">
-              <Label htmlFor="eu">대상 사용자 ID</Label>
+              <Label htmlFor="eu">{t("incidentDetail.escalateTargetUserId", { defaultValue: "대상 사용자 ID" })}</Label>
               <Input id="eu" type="number" className="w-28" value={escUserId} onChange={(e) => setEscUserId(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <Label>유형</Label>
+              <Label>{t("incidentDetail.escalateType", { defaultValue: "유형" })}</Label>
               <Select value={escType} onValueChange={(v) => setEscType(v as "HIERARCHICAL" | "FUNCTIONAL")}>
                 <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="HIERARCHICAL">계층적</SelectItem>
-                  <SelectItem value="FUNCTIONAL">기능적</SelectItem>
+                  <SelectItem value="HIERARCHICAL">
+                    {t("incidentDetail.escalateHierarchical", { defaultValue: "계층적" })}
+                  </SelectItem>
+                  <SelectItem value="FUNCTIONAL">
+                    {t("incidentDetail.escalateFunctional", { defaultValue: "기능적" })}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="flex-1 space-y-1">
-              <Label htmlFor="er">사유</Label>
+              <Label htmlFor="er">{t("incidentDetail.escalateReason", { defaultValue: "사유" })}</Label>
               <Input id="er" value={escReason} onChange={(e) => setEscReason(e.target.value)} />
             </div>
-            <Button type="submit" variant="outline" loading={busy === "esc"} disabled={!escUserId}>에스컬레이션</Button>
+            <Button type="submit" variant="outline" loading={busy === "esc"} disabled={!escUserId}>
+              {t("incidentDetail.escalationTitle", { defaultValue: "에스컬레이션" })}
+            </Button>
           </form>
         </CardContent>
       </Card>
@@ -383,9 +476,14 @@ export function IncidentDetailPage() {
       {/* 해결 처리 */}
       {detail.status !== "CLOSED" ? (
         <Card>
-          <CardHeader><CardTitle className="text-base">해결 처리 (시간 지표)</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">
+              {t("incidentDetail.resolveTitle", { defaultValue: "해결 처리 (시간 지표)" })}
+            </CardTitle>
+          </CardHeader>
           <CardContent>
             <ResolveForm
+              t={t}
               busy={busy === "resolve"}
               approved={approved}
               onSubmit={(vals) =>
@@ -397,7 +495,7 @@ export function IncidentDetailPage() {
                     impactEndAt: toIso(vals.impactEndAt),
                     resolutionNote: vals.resolutionNote.trim() || undefined,
                   }),
-                  "해결 처리되었습니다",
+                  t("incidentDetail.resolveSuccess", { defaultValue: "해결 처리되었습니다" }),
                   true,
                 )
               }
@@ -408,36 +506,58 @@ export function IncidentDetailPage() {
 
       {/* 문제 연계 */}
       <LinkProblemCard
+        t={t}
         busy={busy === "link"}
         onLink={(problemId, createNew) =>
-          run("link", () => incidentApi.linkProblem(id, problemId, createNew), "문제가 연계되었습니다")
+          run(
+            "link",
+            () => incidentApi.linkProblem(id, problemId, createNew),
+            t("incidentDetail.linkProblemSuccess", { defaultValue: "문제가 연계되었습니다" }),
+          )
         }
       />
 
       {/* 상태 업데이트 + 타임라인 */}
       <Card>
-        <CardHeader><CardTitle className="text-base">상태 업데이트·타임라인</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base">
+            {t("incidentDetail.updateTimelineTitle", { defaultValue: "상태 업데이트·타임라인" })}
+          </CardTitle>
+        </CardHeader>
         <CardContent className="space-y-4">
           <form onSubmit={handleUpdate} className="flex flex-wrap items-end gap-2">
             <div className="flex-1 space-y-1">
-              <Label htmlFor="um">업데이트 메시지</Label>
-              <Input id="um" value={updateMsg} onChange={(e) => setUpdateMsg(e.target.value)} placeholder="진행 상황을 입력하세요" />
+              <Label htmlFor="um">{t("incidentDetail.updateMessage", { defaultValue: "업데이트 메시지" })}</Label>
+              <Input
+                id="um"
+                value={updateMsg}
+                onChange={(e) => setUpdateMsg(e.target.value)}
+                placeholder={t("incidentDetail.updateMessagePlaceholder", { defaultValue: "진행 상황을 입력하세요" })}
+              />
             </div>
             <div className="space-y-1">
-              <Label>공개 범위</Label>
+              <Label>{t("incidentDetail.visibility", { defaultValue: "공개 범위" })}</Label>
               <Select value={updateVis} onValueChange={(v) => setUpdateVis(v as Visibility)}>
                 <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="INTERNAL">내부</SelectItem>
-                  <SelectItem value="EXTERNAL">외부</SelectItem>
+                  <SelectItem value="INTERNAL">
+                    {t("incidentDetail.visibilityInternal", { defaultValue: "내부" })}
+                  </SelectItem>
+                  <SelectItem value="EXTERNAL">
+                    {t("incidentDetail.visibilityExternal", { defaultValue: "외부" })}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <Button type="submit" loading={busy === "update"} disabled={!updateMsg.trim()}>기록</Button>
+            <Button type="submit" loading={busy === "update"} disabled={!updateMsg.trim()}>
+              {t("incidentDetail.updateSubmit", { defaultValue: "기록" })}
+            </Button>
           </form>
 
           {timelineItems.length === 0 ? (
-            <p className="text-sm text-muted-foreground">이력이 없습니다.</p>
+            <p className="text-sm text-muted-foreground">
+              {t("incidentDetail.noTimeline", { defaultValue: "이력이 없습니다." })}
+            </p>
           ) : (
             <Timeline items={timelineItems} />
           )}
@@ -457,10 +577,12 @@ function MetaRow({ label, value }: { label: string; value: string }) {
 }
 
 function ResolveForm({
+  t,
   busy,
   approved,
   onSubmit,
 }: {
+  t: TFunction;
   busy: boolean;
   approved: boolean;
   onSubmit: (v: { impactStartAt: string; detectedAt: string; impactEndAt: string; resolutionNote: string }) => void;
@@ -479,20 +601,20 @@ function ResolveForm({
     >
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="space-y-1">
-          <Label htmlFor="is">영향 시작</Label>
+          <Label htmlFor="is">{t("incidentDetail.impactStart", { defaultValue: "영향 시작" })}</Label>
           <Input id="is" type="datetime-local" value={impactStartAt} onChange={(e) => setImpactStartAt(e.target.value)} />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="dt">탐지</Label>
+          <Label htmlFor="dt">{t("incidentDetail.detectedAt", { defaultValue: "탐지" })}</Label>
           <Input id="dt" type="datetime-local" value={detectedAt} onChange={(e) => setDetectedAt(e.target.value)} />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="ie">영향 종료</Label>
+          <Label htmlFor="ie">{t("incidentDetail.impactEnd", { defaultValue: "영향 종료" })}</Label>
           <Input id="ie" type="datetime-local" value={impactEndAt} onChange={(e) => setImpactEndAt(e.target.value)} />
         </div>
       </div>
       <div className="space-y-1">
-        <Label htmlFor="rn">해결 메모</Label>
+        <Label htmlFor="rn">{t("incidentDetail.resolutionNote", { defaultValue: "해결 메모" })}</Label>
         <Input id="rn" value={resolutionNote} onChange={(e) => setResolutionNote(e.target.value)} />
       </div>
       <div className="flex justify-end">
@@ -500,9 +622,13 @@ function ResolveForm({
           type="submit"
           loading={busy}
           disabled={!approved}
-          title={!approved ? "승인 완료 전에는 해결 처리할 수 없습니다" : undefined}
+          title={
+            !approved
+              ? t("incidentDetail.resolveBlockedFormTooltip", { defaultValue: "승인 완료 전에는 해결 처리할 수 없습니다" })
+              : undefined
+          }
         >
-          해결 처리
+          {t("incidentDetail.resolveSubmit", { defaultValue: "해결 처리" })}
         </Button>
       </div>
     </form>
@@ -510,9 +636,11 @@ function ResolveForm({
 }
 
 function LinkProblemCard({
+  t,
   busy,
   onLink,
 }: {
+  t: TFunction;
   busy: boolean;
   onLink: (problemId: number | undefined, createNew: boolean) => void;
 }) {
@@ -520,7 +648,7 @@ function LinkProblemCard({
 
   return (
     <Card>
-      <CardHeader><CardTitle className="text-base">문제 연계</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="text-base">{t("incidentDetail.linkProblemTitle", { defaultValue: "문제 연계" })}</CardTitle></CardHeader>
       <CardContent>
         <form
           className="flex flex-wrap items-end gap-2"
@@ -532,11 +660,15 @@ function LinkProblemCard({
           }}
         >
           <div className="space-y-1.5">
-            <Label htmlFor="prbId">문제 ID</Label>
+            <Label htmlFor="prbId">{t("incidentDetail.problemId", { defaultValue: "문제 ID" })}</Label>
             <Input id="prbId" type="number" className="w-40" value={problemId} onChange={(e) => setProblemId(e.target.value)} />
           </div>
-          <Button type="submit" loading={busy} disabled={!problemId}>기존 문제 연계</Button>
-          <Button type="button" variant="outline" loading={busy} onClick={() => onLink(undefined, true)}>신규 문제 생성·연계</Button>
+          <Button type="submit" loading={busy} disabled={!problemId}>
+            {t("incidentDetail.linkExistingProblem", { defaultValue: "기존 문제 연계" })}
+          </Button>
+          <Button type="button" variant="outline" loading={busy} onClick={() => onLink(undefined, true)}>
+            {t("incidentDetail.createAndLinkProblem", { defaultValue: "신규 문제 생성·연계" })}
+          </Button>
         </form>
       </CardContent>
     </Card>

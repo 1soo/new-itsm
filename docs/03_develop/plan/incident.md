@@ -52,3 +52,20 @@
 
 ## 7. 특이사항
 - ticket_link 이 단계 도입. 문제 연계 완성은 problem 도메인(교차 표기). 지표 심각도 분포 차트는 유효(metrics가 분포 반환).
+
+## i18n 다국어 전환 (유지보수 요청, 2026-07-12)
+
+> i18n 인프라·SweetAlert2·언어 선택은 common phase에서 완료됨(`docs/03_develop/plan/common.md` v3절). 레이아웃/컴포넌트 변경 없이 텍스트만 번역 키로 치환(`docs/02_plan/screen/common.md` 6절). BE/DB 변경 없음.
+
+### 담당 범위 — dev-fe 단독(UI 미소집)
+
+- 대상 화면(`docs/02_plan/screen/incident.md` 3절): `IncidentListPage.tsx`(SCR-INC-001), `IncidentCreatePage.tsx`(002), `IncidentDetailPage.tsx`(003), `PostmortemPage.tsx`(004), `IncidentMetricsPage.tsx`(005).
+- `features/incident/status.ts` — 6.3절 패턴대로 `t` 인자를 받도록 전환, 호출부(각 Page.tsx, `features/search/status.ts`의 INCIDENT 분기) 갱신.
+- `useTranslation(["incident", "common"])` 사용.
+- `locales/{ko,en}/incident.json`(현재 `{}` 스캐폴딩) — 단독 소유, 직접 채운다.
+- `format.ts`는 건드리지 않는다(ko-KR 고정 유지).
+- 승인 패널(SCR-COM-014 공용)·`ticketTypeApprovalLabel` 등 common 소유 텍스트는 이미 common phase에서 전환 완료 — 인시던트 상세에서 재사용되는 부분은 그대로 동작하는지만 확인.
+
+### 완료 기준
+- English 전환 시 목록/등록/상세/포스트모템/지표 대시보드 전체 텍스트(상태·심각도 라벨 포함) 영어 전환.
+- 상태 전이·에스컬레이션·타임라인·문제 연계·5 Whys 등 기존 기능 회귀 없음(텍스트만 치환).
