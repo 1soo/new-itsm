@@ -10,4 +10,5 @@
 - `problem.json` — problem phase에서 채워짐. 목록·등록·상세·KEDB 검색(SCR-PRB-001~004) 전체 텍스트 + 상태/출처/영향도-긴급도/조치 상태 라벨(`status.*`/`origin.*`/`level.*`/`actionStatus.*`).
 - `change.json` — change phase에서 채워짐. 목록·RFC생성·상세·일정 캘린더·지표(SCR-CHG-001~003,005~006) 전체 텍스트 + 상태/유형/위험도 라벨(`status.*`/`type.*`/`risk.*`).
 - `knowledge.json` — knowledge phase에서 채워짐. 검색/목록·열람·작성/편집·지표(SCR-KM-001~003,005) 전체 텍스트 + 상태 라벨(`status.*`).
-- `asset.json` / `esm.json` / `vulnerability.json` / `compliance.json` / `infra-monitoring.json` — 각 업무 도메인 네임스페이스. 담당 개발자가 채우기 전까지 `{}`.
+- `asset.json` — asset phase에서 채워짐. 목록·등록/수정·상세·CI/CMDB 관계·지표(SCR-ITAM-001~005) 전체 텍스트 + 유형/상태/만료/연계 티켓 유형/CI 관계 유형 라벨(`type.*`/`status.*`/`expiry.*`/`ticketType.*`/`relationType.*`).
+- `esm.json` / `vulnerability.json` / `compliance.json` / `infra-monitoring.json` — 각 업무 도메인 네임스페이스. 담당 개발자가 채우기 전까지 `{}`.

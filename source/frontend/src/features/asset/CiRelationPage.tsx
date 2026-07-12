@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { StatusBadge, toast } from "@/components/common";
 import { assetApi } from "@/features/asset/api";
+import { relationTypeLabel } from "@/features/asset/status";
 import type { Ci, CiRelationType, ImpactItem } from "@/features/asset/types";
 import { extractErrorMessage } from "@/lib/apiClient";
 import { cn } from "@/lib/utils";
@@ -23,6 +25,7 @@ import { cn } from "@/lib/utils";
  * 관계 시각화는 신규 그래프 라이브러리 없이 단순 리스트(깊이 표시)로 최소 구현.
  */
 export function CiRelationPage() {
+  const { t } = useTranslation("asset");
   const [keyword, setKeyword] = useState("");
   const [cis, setCis] = useState<Ci[]>([]);
   const [loadingCis, setLoadingCis] = useState(true);
@@ -74,7 +77,7 @@ export function CiRelationPage() {
     setCreatingCi(true);
     try {
       const created = await assetApi.createCi({ name: newCiName.trim(), type: newCiType.trim() || undefined });
-      toast.success("CI가 등록되었습니다");
+      toast.success(t("ciRelation.ciCreated", { defaultValue: "CI가 등록되었습니다" }));
       setNewCiName("");
       setNewCiType("");
       loadCis();
@@ -92,7 +95,7 @@ export function CiRelationPage() {
     setSavingRelation(true);
     try {
       await assetApi.createRelation(selectedId, { targetCiId: Number(targetCiId), relationType });
-      toast.success("관계가 등록되었습니다");
+      toast.success(t("ciRelation.relationCreated", { defaultValue: "관계가 등록되었습니다" }));
       setTargetCiId("");
       loadImpact(selectedId);
     } catch (err) {
@@ -106,25 +109,25 @@ export function CiRelationPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold text-foreground">CI·CMDB 관계</h1>
+      <h1 className="text-xl font-semibold text-foreground">{t("ciRelation.title", { defaultValue: "CI·CMDB 관계" })}</h1>
 
       <div className="grid gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
         <Card>
-          <CardHeader><CardTitle className="text-base">CI 목록</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">{t("ciRelation.ciListTitle", { defaultValue: "CI 목록" })}</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <form onSubmit={handleSearch} className="flex items-end gap-2">
               <div className="flex-1 space-y-1">
-                <Label htmlFor="kw">검색</Label>
+                <Label htmlFor="kw">{t("ciRelation.searchLabel", { defaultValue: "검색" })}</Label>
                 <Input id="kw" value={keyword} onChange={(e) => setKeyword(e.target.value)} />
               </div>
-              <Button type="submit" size="sm">검색</Button>
+              <Button type="submit" size="sm">{t("ciRelation.searchButton", { defaultValue: "검색" })}</Button>
             </form>
 
             <div className="space-y-1">
               {loadingCis ? (
-                <p className="text-sm text-muted-foreground">불러오는 중...</p>
+                <p className="text-sm text-muted-foreground">{t("ciRelation.loading", { defaultValue: "불러오는 중..." })}</p>
               ) : cis.length === 0 ? (
-                <p className="text-sm text-muted-foreground">등록된 CI가 없습니다.</p>
+                <p className="text-sm text-muted-foreground">{t("ciRelation.noCis", { defaultValue: "등록된 CI가 없습니다." })}</p>
               ) : (
                 cis.map((ci) => (
                   <button
@@ -144,12 +147,20 @@ export function CiRelationPage() {
             </div>
 
             <form onSubmit={handleCreateCi} className="space-y-2 border-t border-border pt-3">
-              <Label>새 CI 등록</Label>
-              <Input placeholder="이름" value={newCiName} onChange={(e) => setNewCiName(e.target.value)} />
-              <Input placeholder="유형(선택)" value={newCiType} onChange={(e) => setNewCiType(e.target.value)} />
+              <Label>{t("ciRelation.newCiTitle", { defaultValue: "새 CI 등록" })}</Label>
+              <Input
+                placeholder={t("ciRelation.namePlaceholder", { defaultValue: "이름" })}
+                value={newCiName}
+                onChange={(e) => setNewCiName(e.target.value)}
+              />
+              <Input
+                placeholder={t("ciRelation.typePlaceholder", { defaultValue: "유형(선택)" })}
+                value={newCiType}
+                onChange={(e) => setNewCiType(e.target.value)}
+              />
               <Button type="submit" size="sm" className="w-full" loading={creatingCi} disabled={!newCiName.trim()}>
                 <Plus />
-                등록
+                {t("ciRelation.createButton", { defaultValue: "등록" })}
               </Button>
             </form>
           </CardContent>
@@ -157,43 +168,47 @@ export function CiRelationPage() {
 
         <div className="space-y-4">
           <Card>
-            <CardHeader><CardTitle className="text-base">관계 추가</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">{t("ciRelation.addRelationTitle", { defaultValue: "관계 추가" })}</CardTitle></CardHeader>
             <CardContent>
               {selectedCi ? (
                 <form onSubmit={handleAddRelation} className="flex flex-wrap items-end gap-2">
-                  <p className="w-full text-sm text-muted-foreground">기준 CI: {selectedCi.name}</p>
+                  <p className="w-full text-sm text-muted-foreground">
+                    {t("ciRelation.baseCiLabel", { name: selectedCi.name, defaultValue: `기준 CI: ${selectedCi.name}` })}
+                  </p>
                   <div className="space-y-1.5">
-                    <Label htmlFor="targetCi">대상 CI ID</Label>
+                    <Label htmlFor="targetCi">{t("ciRelation.targetCiIdLabel", { defaultValue: "대상 CI ID" })}</Label>
                     <Input id="targetCi" type="number" className="w-32" value={targetCiId} onChange={(e) => setTargetCiId(e.target.value)} />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>관계 유형</Label>
+                    <Label>{t("ciRelation.relationTypeLabel", { defaultValue: "관계 유형" })}</Label>
                     <Select value={relationType} onValueChange={(v) => setRelationType(v as CiRelationType)}>
                       <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="DEPENDS_ON">의존(DEPENDS_ON)</SelectItem>
-                        <SelectItem value="RUNS_ON">실행(RUNS_ON)</SelectItem>
-                        <SelectItem value="CONNECTS_TO">연결(CONNECTS_TO)</SelectItem>
+                        <SelectItem value="DEPENDS_ON">{relationTypeLabel(t, "DEPENDS_ON")}(DEPENDS_ON)</SelectItem>
+                        <SelectItem value="RUNS_ON">{relationTypeLabel(t, "RUNS_ON")}(RUNS_ON)</SelectItem>
+                        <SelectItem value="CONNECTS_TO">{relationTypeLabel(t, "CONNECTS_TO")}(CONNECTS_TO)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button type="submit" loading={savingRelation} disabled={!targetCiId}>추가</Button>
+                  <Button type="submit" loading={savingRelation} disabled={!targetCiId}>
+                    {t("ciRelation.addButton", { defaultValue: "추가" })}
+                  </Button>
                 </form>
               ) : (
-                <p className="text-sm text-muted-foreground">좌측에서 CI를 선택하세요.</p>
+                <p className="text-sm text-muted-foreground">{t("ciRelation.selectCiHint", { defaultValue: "좌측에서 CI를 선택하세요." })}</p>
               )}
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="text-base">영향 범위</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">{t("ciRelation.impactTitle", { defaultValue: "영향 범위" })}</CardTitle></CardHeader>
             <CardContent>
               {!selectedCi ? (
-                <p className="text-sm text-muted-foreground">좌측에서 CI를 선택하세요.</p>
+                <p className="text-sm text-muted-foreground">{t("ciRelation.selectCiHint", { defaultValue: "좌측에서 CI를 선택하세요." })}</p>
               ) : loadingImpact ? (
-                <p className="text-sm text-muted-foreground">불러오는 중...</p>
+                <p className="text-sm text-muted-foreground">{t("ciRelation.loading", { defaultValue: "불러오는 중..." })}</p>
               ) : impact.length === 0 ? (
-                <p className="text-sm text-muted-foreground">연결된 CI가 없습니다.</p>
+                <p className="text-sm text-muted-foreground">{t("ciRelation.noImpact", { defaultValue: "연결된 CI가 없습니다." })}</p>
               ) : (
                 <ul className="space-y-2">
                   {impact.map((it) => (
@@ -203,8 +218,10 @@ export function CiRelationPage() {
                         {it.name}
                       </span>
                       <span className="flex items-center gap-2">
-                        <StatusBadge tone="info" label={it.relationType} />
-                        <span className="text-xs text-muted-foreground">depth {it.depth}</span>
+                        <StatusBadge tone="info" label={relationTypeLabel(t, it.relationType as CiRelationType)} />
+                        <span className="text-xs text-muted-foreground">
+                          {t("ciRelation.impactDepth", { depth: it.depth, defaultValue: `depth ${it.depth}` })}
+                        </span>
                       </span>
                     </li>
                   ))}

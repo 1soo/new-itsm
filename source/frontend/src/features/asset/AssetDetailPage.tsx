@@ -1,5 +1,7 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +24,7 @@ import {
   expiryTone,
   statusLabel,
   statusTone,
+  ticketTypeLabel,
   typeLabel,
   typeTone,
 } from "@/features/asset/status";
@@ -36,6 +39,7 @@ const NON_TERMINAL_STAGES: AssetStatus[] = ["PLANNING", "PROCUREMENT", "OPERATIO
  * 티켓 연계·연결 CI 표시.
  */
 export function AssetDetailPage() {
+  const { t } = useTranslation("asset");
   const navigate = useNavigate();
   const id = Number(useParams().id);
 
@@ -112,7 +116,7 @@ export function AssetDetailPage() {
     setBusy("retire");
     try {
       await assetApi.retire(id);
-      toast.success("자산이 폐기되었습니다");
+      toast.success(t("assetDetail.retireSuccess", { defaultValue: "자산이 폐기되었습니다" }));
       load();
     } catch (err) {
       toast.error(extractErrorMessage(err));
@@ -126,17 +130,19 @@ export function AssetDetailPage() {
   const handleLink = (e: FormEvent) => {
     e.preventDefault();
     if (!ticketId) return;
-    run("link", () => assetApi.link(id, { ticketType, ticketId: Number(ticketId) }), "연계되었습니다").then(() =>
-      setTicketId(""),
-    );
+    run(
+      "link",
+      () => assetApi.link(id, { ticketType, ticketId: Number(ticketId) }),
+      t("assetDetail.linkSuccess", { defaultValue: "연계되었습니다" }),
+    ).then(() => setTicketId(""));
   };
 
   if (loading) return <FullscreenLoader />;
   if (notFound || !detail) {
     return (
       <div className="mx-auto max-w-lg space-y-4 text-center">
-        <p className="text-sm text-muted-foreground">자산을 찾을 수 없습니다.</p>
-        <Button onClick={() => navigate("/assets")}>목록으로</Button>
+        <p className="text-sm text-muted-foreground">{t("assetDetail.notFound", { defaultValue: "자산을 찾을 수 없습니다." })}</p>
+        <Button onClick={() => navigate("/assets")}>{t("assetDetail.backToList", { defaultValue: "목록으로" })}</Button>
       </div>
     );
   }
@@ -153,30 +159,39 @@ export function AssetDetailPage() {
             <p className="text-sm text-muted-foreground">{detail.assetKey}</p>
             <h1 className="text-xl font-semibold text-foreground">{detail.name}</h1>
             <div className="flex flex-wrap gap-2">
-              <StatusBadge tone={typeTone(detail.type)} label={typeLabel(detail.type)} />
-              <StatusBadge tone={statusTone(detail.status)} label={statusLabel(detail.status)} />
+              <StatusBadge tone={typeTone(detail.type)} label={typeLabel(t, detail.type)} />
+              <StatusBadge tone={statusTone(detail.status)} label={statusLabel(t, detail.status)} />
             </div>
           </div>
           {!isRetired ? (
             <div className="flex flex-wrap gap-2">
-              {transitions.map((t) => (
+              {transitions.map((target) => (
                 <Button
-                  key={t}
+                  key={target}
                   size="sm"
-                  loading={busy === `st-${t}`}
-                  onClick={() => run(`st-${t}`, () => assetApi.transition(id, t), `상태가 '${statusLabel(t)}'로 변경되었습니다`)}
+                  loading={busy === `st-${target}`}
+                  onClick={() =>
+                    run(
+                      `st-${target}`,
+                      () => assetApi.transition(id, target),
+                      t("assetDetail.transitionSuccess", {
+                        status: statusLabel(t, target),
+                        defaultValue: `상태가 '${statusLabel(t, target)}'로 변경되었습니다`,
+                      }),
+                    )
+                  }
                 >
-                  {statusLabel(t)}
+                  {statusLabel(t, target)}
                 </Button>
               ))}
               <Button
                 size="sm"
                 variant="destructive"
                 disabled={!approved}
-                title={!approved ? "승인 완료 전에는 폐기할 수 없습니다" : undefined}
+                title={!approved ? t("assetDetail.retireBlockedTooltip", { defaultValue: "승인 완료 전에는 폐기할 수 없습니다" }) : undefined}
                 onClick={() => setConfirmRetire(true)}
               >
-                폐기
+                {t("assetDetail.retireButton", { defaultValue: "폐기" })}
               </Button>
             </div>
           ) : null}
@@ -185,16 +200,19 @@ export function AssetDetailPage() {
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
           <div className="space-y-4">
             <Card>
-              <CardHeader><CardTitle className="text-base">기본 정보</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">{t("assetDetail.basicInfoTitle", { defaultValue: "기본 정보" })}</CardTitle></CardHeader>
               <CardContent className="space-y-1.5 text-sm">
-                <MetaRow label="소유자" value={detail.owner || "미지정"} />
-                <MetaRow label="위치" value={detail.location || "-"} />
+                <MetaRow
+                  label={t("assetDetail.ownerLabel", { defaultValue: "소유자" })}
+                  value={detail.owner || t("assetDetail.ownerUnassigned", { defaultValue: "미지정" })}
+                />
+                <MetaRow label={t("assetDetail.locationLabel", { defaultValue: "위치" })} value={detail.location || "-"} />
               </CardContent>
             </Card>
 
             {Object.keys(detail.attributes ?? {}).length > 0 ? (
               <Card>
-                <CardHeader><CardTitle className="text-base">유형별 속성</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="text-base">{t("assetDetail.attributesTitle", { defaultValue: "유형별 속성" })}</CardTitle></CardHeader>
                 <CardContent className="space-y-1.5 text-sm">
                   {Object.entries(detail.attributes).map(([k, v]) => (
                     <MetaRow key={k} label={k} value={v} />
@@ -204,14 +222,14 @@ export function AssetDetailPage() {
             ) : null}
 
             <Card>
-              <CardHeader><CardTitle className="text-base">생애주기 이력</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">{t("assetDetail.lifecycleTitle", { defaultValue: "생애주기 이력" })}</CardTitle></CardHeader>
               <CardContent className="space-y-2 text-sm">
                 {detail.lifecycleHistory.length === 0 ? (
-                  <p className="text-muted-foreground">이력 없음</p>
+                  <p className="text-muted-foreground">{t("assetDetail.noHistory", { defaultValue: "이력 없음" })}</p>
                 ) : (
                   detail.lifecycleHistory.map((h, i) => (
                     <div key={i} className="flex items-center justify-between gap-2">
-                      <span className="text-foreground">{h.stage}</span>
+                      <span className="text-foreground">{statusLabel(t, h.stage as AssetStatus)}</span>
                       <span className="text-xs text-muted-foreground">{formatDateTime(h.at)}</span>
                     </div>
                   ))
@@ -220,26 +238,28 @@ export function AssetDetailPage() {
             </Card>
 
             <Card>
-              <CardHeader><CardTitle className="text-base">티켓 연계</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">{t("assetDetail.linkTicketTitle", { defaultValue: "티켓 연계" })}</CardTitle></CardHeader>
               <CardContent>
                 <form onSubmit={handleLink} className="flex flex-wrap items-end gap-2">
                   <div className="space-y-1.5">
-                    <Label>대상 유형</Label>
+                    <Label>{t("assetDetail.ticketTargetTypeLabel", { defaultValue: "대상 유형" })}</Label>
                     <Select value={ticketType} onValueChange={(v) => setTicketType(v as TicketType)}>
                       <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="SERVICE_REQUEST">서비스 요청</SelectItem>
-                        <SelectItem value="INCIDENT">인시던트</SelectItem>
-                        <SelectItem value="PROBLEM">문제</SelectItem>
-                        <SelectItem value="CHANGE">변경</SelectItem>
+                        <SelectItem value="SERVICE_REQUEST">{ticketTypeLabel(t, "SERVICE_REQUEST")}</SelectItem>
+                        <SelectItem value="INCIDENT">{ticketTypeLabel(t, "INCIDENT")}</SelectItem>
+                        <SelectItem value="PROBLEM">{ticketTypeLabel(t, "PROBLEM")}</SelectItem>
+                        <SelectItem value="CHANGE">{ticketTypeLabel(t, "CHANGE")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="tid">대상 ID</Label>
+                    <Label htmlFor="tid">{t("assetDetail.ticketTargetIdLabel", { defaultValue: "대상 ID" })}</Label>
                     <Input id="tid" type="number" className="w-32" value={ticketId} onChange={(e) => setTicketId(e.target.value)} />
                   </div>
-                  <Button type="submit" loading={busy === "link"} disabled={!ticketId}>연계</Button>
+                  <Button type="submit" loading={busy === "link"} disabled={!ticketId}>
+                    {t("assetDetail.linkButton", { defaultValue: "연계" })}
+                  </Button>
                 </form>
               </CardContent>
             </Card>
@@ -247,11 +267,11 @@ export function AssetDetailPage() {
 
           <div className="space-y-4">
             <Card>
-              <CardHeader><CardTitle className="text-base">만료 정보</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">{t("assetDetail.expiryTitle", { defaultValue: "만료 정보" })}</CardTitle></CardHeader>
               <CardContent className="space-y-1.5 text-sm">
-                <ExpiryRow label="라이선스" value={detail.expiry.license} />
-                <ExpiryRow label="보증" value={detail.expiry.warranty} />
-                <ExpiryRow label="계약" value={detail.expiry.contract} />
+                <ExpiryRow t={t} label={t("assetDetail.expiryLicense", { defaultValue: "라이선스" })} value={detail.expiry.license} />
+                <ExpiryRow t={t} label={t("assetDetail.expiryWarranty", { defaultValue: "보증" })} value={detail.expiry.warranty} />
+                <ExpiryRow t={t} label={t("assetDetail.expiryContract", { defaultValue: "계약" })} value={detail.expiry.contract} />
               </CardContent>
             </Card>
 
@@ -262,23 +282,23 @@ export function AssetDetailPage() {
             />
 
             <Card>
-              <CardHeader><CardTitle className="text-base">연결 티켓</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">{t("assetDetail.linkedTicketsTitle", { defaultValue: "연결 티켓" })}</CardTitle></CardHeader>
               <CardContent className="space-y-1.5 text-sm">
                 {detail.linkedTickets.length === 0 ? (
-                  <p className="text-muted-foreground">연결 없음</p>
+                  <p className="text-muted-foreground">{t("assetDetail.noLinks", { defaultValue: "연결 없음" })}</p>
                 ) : (
-                  detail.linkedTickets.map((t, i) => (
-                    <span key={i} className="block text-foreground">{t.type} · {t.ticketKey}</span>
+                  detail.linkedTickets.map((lt, i) => (
+                    <span key={i} className="block text-foreground">{ticketTypeLabel(t, lt.type)} · {lt.ticketKey}</span>
                   ))
                 )}
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader><CardTitle className="text-base">연결 CI</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">{t("assetDetail.linkedCisTitle", { defaultValue: "연결 CI" })}</CardTitle></CardHeader>
               <CardContent className="space-y-1.5 text-sm">
                 {detail.linkedCis.length === 0 ? (
-                  <p className="text-muted-foreground">연결 없음</p>
+                  <p className="text-muted-foreground">{t("assetDetail.noLinks", { defaultValue: "연결 없음" })}</p>
                 ) : (
                   detail.linkedCis.map((c) => (
                     <span key={c.ciId} className="block text-foreground">{c.name}</span>
@@ -293,9 +313,9 @@ export function AssetDetailPage() {
       <ConfirmDialog
         open={confirmRetire}
         onOpenChange={setConfirmRetire}
-        title="자산을 폐기하시겠습니까?"
-        description="폐기 후에는 되돌릴 수 없습니다."
-        confirmLabel="폐기"
+        title={t("assetDetail.retireConfirmTitle", { defaultValue: "자산을 폐기하시겠습니까?" })}
+        description={t("assetDetail.retireConfirmDescription", { defaultValue: "폐기 후에는 되돌릴 수 없습니다." })}
+        confirmLabel={t("assetDetail.retireButton", { defaultValue: "폐기" })}
         loading={busy === "retire"}
         onConfirm={handleRetire}
       />
@@ -312,7 +332,7 @@ function MetaRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ExpiryRow({ label, value }: { label: string; value: ExpiryField }) {
+function ExpiryRow({ t, label, value }: { t: TFunction; label: string; value: ExpiryField }) {
   if (!value.date) {
     return (
       <div className="flex items-center justify-between gap-2">
@@ -327,7 +347,7 @@ function ExpiryRow({ label, value }: { label: string; value: ExpiryField }) {
       <span className="flex items-center gap-1.5">
         {formatDate(value.date)}
         {value.status && value.status !== "OK" ? (
-          <StatusBadge tone={expiryTone(value.status)} label={expiryLabel(value.status)} />
+          <StatusBadge tone={expiryTone(value.status)} label={expiryLabel(t, value.status)} />
         ) : null}
       </span>
     </div>

@@ -1,5 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ interface AttributeRow {
  * 만료일 3종(라이선스/보증/계약). id 없으면 신규 등록, 있으면 수정.
  */
 export function AssetFormPage() {
+  const { t } = useTranslation("asset");
   const navigate = useNavigate();
   const params = useParams();
   const id = params.id ? Number(params.id) : null;
@@ -84,7 +86,7 @@ export function AssetFormPage() {
     e.preventDefault();
     setError(null);
     if (!name.trim() || !type) {
-      setError("이름과 유형은 필수입니다.");
+      setError(t("assetForm.requiredError", { defaultValue: "이름과 유형은 필수입니다." }));
       return;
     }
     const attributeMap = attributes.reduce<Record<string, string>>((acc, r) => {
@@ -107,15 +109,20 @@ export function AssetFormPage() {
     try {
       if (id) {
         await assetApi.update(id, payload);
-        toast.success("자산이 저장되었습니다");
+        toast.success(t("assetForm.saveSuccess", { defaultValue: "자산이 저장되었습니다" }));
         navigate(`/assets/${id}`);
       } else {
         const created = await assetApi.create(payload);
-        toast.success(`자산이 등록되었습니다 (${created.assetKey})`);
+        toast.success(
+          t("assetForm.createSuccess", {
+            assetKey: created.assetKey,
+            defaultValue: `자산이 등록되었습니다 (${created.assetKey})`,
+          }),
+        );
         navigate(`/assets/${created.id}`);
       }
     } catch (err) {
-      setError(extractErrorMessage(err, "저장에 실패했습니다."));
+      setError(extractErrorMessage(err, t("assetForm.saveFailed", { defaultValue: "저장에 실패했습니다." })));
     } finally {
       setSaving(false);
     }
@@ -125,33 +132,41 @@ export function AssetFormPage() {
   if (id && notFound) {
     return (
       <div className="mx-auto max-w-lg space-y-4 text-center">
-        <p className="text-sm text-muted-foreground">자산을 찾을 수 없습니다.</p>
-        <Button onClick={() => navigate("/assets")}>목록으로</Button>
+        <p className="text-sm text-muted-foreground">{t("assetForm.notFound", { defaultValue: "자산을 찾을 수 없습니다." })}</p>
+        <Button onClick={() => navigate("/assets")}>{t("assetForm.backToList", { defaultValue: "목록으로" })}</Button>
       </div>
     );
   }
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <h1 className="text-xl font-semibold text-foreground">{id ? "자산 수정" : "자산 등록"}</h1>
+      <h1 className="text-xl font-semibold text-foreground">
+        {id
+          ? t("assetForm.titleEdit", { defaultValue: "자산 수정" })
+          : t("assetForm.titleCreate", { defaultValue: "자산 등록" })}
+      </h1>
       <Card>
         <CardHeader>
-          <CardTitle>{id ? "자산 정보 수정" : "새 자산"}</CardTitle>
+          <CardTitle>
+            {id
+              ? t("assetForm.cardTitleEdit", { defaultValue: "자산 정보 수정" })
+              : t("assetForm.cardTitleCreate", { defaultValue: "새 자산" })}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="name">이름</Label>
+                <Label htmlFor="name">{t("assetForm.nameLabel", { defaultValue: "이름" })}</Label>
                 <Input id="name" value={name} onChange={(e) => setName(e.target.value)} aria-invalid={!!error && !name.trim()} required />
               </div>
               <div className="space-y-1.5">
-                <Label>유형</Label>
+                <Label>{t("assetForm.typeLabel", { defaultValue: "유형" })}</Label>
                 <Select value={type} onValueChange={(v) => setType(v as AssetType)}>
-                  <SelectTrigger aria-invalid={!!error && !type}><SelectValue placeholder="유형 선택" /></SelectTrigger>
+                  <SelectTrigger aria-invalid={!!error && !type}><SelectValue placeholder={t("assetForm.typePlaceholder", { defaultValue: "유형 선택" })} /></SelectTrigger>
                   <SelectContent>
-                    {ASSET_TYPES.map((t) => (
-                      <SelectItem key={t} value={t}>{typeLabel(t)}</SelectItem>
+                    {ASSET_TYPES.map((ty) => (
+                      <SelectItem key={ty} value={ty}>{typeLabel(t, ty)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -159,55 +174,69 @@ export function AssetFormPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="owner">소유자</Label>
+                <Label htmlFor="owner">{t("assetForm.ownerLabel", { defaultValue: "소유자" })}</Label>
                 <Input id="owner" value={owner} onChange={(e) => setOwner(e.target.value)} />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="location">위치</Label>
+                <Label htmlFor="location">{t("assetForm.locationLabel", { defaultValue: "위치" })}</Label>
                 <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="purchase">구매일</Label>
+                <Label htmlFor="purchase">{t("assetForm.purchaseDateLabel", { defaultValue: "구매일" })}</Label>
                 <Input id="purchase" type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="cost">비용</Label>
+                <Label htmlFor="cost">{t("assetForm.costLabel", { defaultValue: "비용" })}</Label>
                 <Input id="cost" type="number" value={cost} onChange={(e) => setCost(e.target.value)} />
               </div>
             </div>
 
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="license">라이선스 만료일</Label>
+                <Label htmlFor="license">{t("assetForm.licenseExpiryLabel", { defaultValue: "라이선스 만료일" })}</Label>
                 <Input id="license" type="date" value={licenseExpiry} onChange={(e) => setLicenseExpiry(e.target.value)} />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="warranty">보증 만료일</Label>
+                <Label htmlFor="warranty">{t("assetForm.warrantyExpiryLabel", { defaultValue: "보증 만료일" })}</Label>
                 <Input id="warranty" type="date" value={warrantyExpiry} onChange={(e) => setWarrantyExpiry(e.target.value)} />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="contract">계약 만료일</Label>
+                <Label htmlFor="contract">{t("assetForm.contractExpiryLabel", { defaultValue: "계약 만료일" })}</Label>
                 <Input id="contract" type="date" value={contractExpiry} onChange={(e) => setContractExpiry(e.target.value)} />
               </div>
             </div>
 
             {type ? (
               <div className="space-y-2">
-                <Label>유형별 속성</Label>
+                <Label>{t("assetForm.attributesLabel", { defaultValue: "유형별 속성" })}</Label>
                 {attributes.map((row, i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <Input placeholder="속성명" value={row.key} onChange={(e) => setAttr(i, "key", e.target.value)} />
-                    <Input placeholder="값" value={row.value} onChange={(e) => setAttr(i, "value", e.target.value)} />
-                    <Button type="button" variant="ghost" size="icon" onClick={() => removeAttr(i)} aria-label="삭제">
+                    <Input
+                      placeholder={t("assetForm.attributeKeyPlaceholder", { defaultValue: "속성명" })}
+                      value={row.key}
+                      onChange={(e) => setAttr(i, "key", e.target.value)}
+                    />
+                    <Input
+                      placeholder={t("assetForm.attributeValuePlaceholder", { defaultValue: "값" })}
+                      value={row.value}
+                      onChange={(e) => setAttr(i, "value", e.target.value)}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeAttr(i)}
+                      aria-label={t("assetForm.removeAttributeAria", { defaultValue: "삭제" })}
+                    >
                       <Trash2 />
                     </Button>
                   </div>
                 ))}
                 <Button type="button" variant="outline" size="sm" onClick={addAttr}>
                   <Plus />
-                  속성 추가
+                  {t("assetForm.addAttributeButton", { defaultValue: "속성 추가" })}
                 </Button>
               </div>
             ) : null}
@@ -217,8 +246,10 @@ export function AssetFormPage() {
             ) : null}
 
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => navigate("/assets")}>취소</Button>
-              <Button type="submit" loading={saving}>저장</Button>
+              <Button type="button" variant="outline" onClick={() => navigate("/assets")}>
+                {t("assetForm.cancelButton", { defaultValue: "취소" })}
+              </Button>
+              <Button type="submit" loading={saving}>{t("assetForm.saveButton", { defaultValue: "저장" })}</Button>
             </div>
           </form>
         </CardContent>
