@@ -24,8 +24,8 @@ description: 도메인별 통합 테스트 시나리오 작성과 수행 규칙.
 
 **한 번의 테스트 실행마다 실행 시작 시각 폴더 `docs/04_test/{yyyyMMdd-HHmmss}/{domain}/` 를 만들고**, 그 안에 시나리오를 먼저 작성한 뒤 테스트를 수행하고 결과를 기록한다. (`{yyyyMMdd-HHmmss}` = 테스트 수행 시작 시각)
 
-- 시나리오: `docs/04_test/{yyyyMMdd-HHmmss}/{domain}/scenario/{domain}.md`
-- 결과: `docs/04_test/{yyyyMMdd-HHmmss}/{domain}/result/{domain}.md`
+- 시나리오: `docs/04_test/{yyyyMMdd-HHmmss}/{domain}/scenario.md`
+- 결과: `docs/04_test/{yyyyMMdd-HHmmss}/{domain}/result/{domain}.md` (스크린샷·API 근거 등 증적 파일도 `result/` 하위에 저장)
 
 ## docs
 

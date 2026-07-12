@@ -24,10 +24,10 @@ mcpServers:
 **한 번의 테스트 실행마다 실행 시작 시각으로 타임스탬프 폴더 `docs/04_test/{yyyyMMdd-HHmmss}/{domain}/` 를 만들고**, 그 안에 시나리오와 결과를 함께 저장한다. (`{yyyyMMdd-HHmmss}` = 테스트 수행 시작 시각, 예: `20260709-143052`)
 
 1. **시나리오 작성 (먼저 수행)**: 기능 명세와 요구사항을 명확히 분석하여, **빌드 테스트를 포함한 도메인별 통합 테스트 시나리오**를 **테스트 전에 먼저** 작성한다.
-   - 파일: `docs/04_test/{yyyyMMdd-HHmmss}/{domain}/scenario/{domain}.md`
+   - 파일: `docs/04_test/{yyyyMMdd-HHmmss}/{domain}/scenario.md`
    - 각 테스트 항목은 `@docs/01_analyze/...` 로 관련 기능 명세/요구사항의 위치를 명시한다(추적성).
 2. **시나리오 수행 및 결과 기록**: 작성한 시나리오를 수행하며 결과를 기록한다.
-   - 파일: `docs/04_test/{yyyyMMdd-HHmmss}/{domain}/result/{domain}.md` (시나리오와 **동일한 실행 타임스탬프 폴더**)
+   - 파일: `docs/04_test/{yyyyMMdd-HHmmss}/{domain}/result/{domain}.md` (시나리오와 **동일한 실행 타임스탬프 폴더**). 스크린샷·API 근거 등 증적 파일도 같은 `result/` 폴더 하위(`shots/`, `api-evidence/` 등)에 저장한다.
 3. **구현 검증**: 기능 명세와 요구사항이 명확히 구현되었는지 확인한다.
 
 ## C. 실행 규칙

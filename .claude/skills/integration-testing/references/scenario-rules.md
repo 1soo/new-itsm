@@ -8,7 +8,7 @@
 - 격리: playwright는 매 항목마다 새 창(새 context)에서 수행, storage 초기화.
 - 시나리오에 없는 내용은 수행하지 않는다.
 
-## 시나리오 양식 — `docs/04_test/{yyyyMMdd-HHmmss}/{domain}/scenario/{domain}.md`
+## 시나리오 양식 — `docs/04_test/{yyyyMMdd-HHmmss}/{domain}/scenario.md`
 
 ```markdown
 # 통합 테스트 시나리오 — {도메인명}
