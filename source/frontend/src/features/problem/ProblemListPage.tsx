@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Plus, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,7 @@ interface Filters {
 const EMPTY: Filters = { status: ALL, priority: ALL, origin: ALL, assignee: "", from: "", to: "" };
 
 export function ProblemListPage() {
+  const { t } = useTranslation("problem");
   const navigate = useNavigate();
   const [inputs, setInputs] = useState<Filters>(EMPTY);
   const [applied, setApplied] = useState<Filters>(EMPTY);
@@ -95,60 +97,71 @@ export function ProblemListPage() {
   };
 
   const columns: Column<ProblemSummary>[] = [
-    { header: "식별키", cell: (p) => p.ticketKey },
-    { header: "요약", cell: (p) => <span className="line-clamp-1">{p.summary}</span> },
-    { header: "상태", cell: (p) => <StatusBadge tone={statusTone(p.status)} label={statusLabel(p.status)} /> },
+    { header: t("problemList.columnTicketKey", { defaultValue: "식별키" }), cell: (p) => p.ticketKey },
     {
-      header: "우선순위",
+      header: t("problemList.columnSummary", { defaultValue: "요약" }),
+      cell: (p) => <span className="line-clamp-1">{p.summary}</span>,
+    },
+    {
+      header: t("problemList.columnStatus", { defaultValue: "상태" }),
+      cell: (p) => <StatusBadge tone={statusTone(p.status)} label={statusLabel(t, p.status)} />,
+    },
+    {
+      header: t("problemList.columnPriority", { defaultValue: "우선순위" }),
       cell: (p) =>
         p.priority ? (
           <PriorityBadge priority={p.priority} />
         ) : (
-          <span className="text-sm text-muted-foreground">미산정</span>
+          <span className="text-sm text-muted-foreground">
+            {t("problemList.priorityNotCalculated", { defaultValue: "미산정" })}
+          </span>
         ),
     },
-    { header: "출처", cell: (p) => originLabel(p.origin) },
-    { header: "담당자", cell: (p) => p.assignee || "미배정" },
-    { header: "갱신일", cell: (p) => formatDate(p.updatedAt) },
+    { header: t("problemList.columnOrigin", { defaultValue: "출처" }), cell: (p) => originLabel(t, p.origin) },
+    {
+      header: t("problemList.columnAssignee", { defaultValue: "담당자" }),
+      cell: (p) => p.assignee || t("problemList.unassigned", { defaultValue: "미배정" }),
+    },
+    { header: t("problemList.columnUpdatedAt", { defaultValue: "갱신일" }), cell: (p) => formatDate(p.updatedAt) },
   ];
 
   const totalPages = data ? Math.ceil(data.totalElements / PAGE_SIZE) : 0;
 
   return (
     <TicketListLayout
-      title="문제"
+      title={t("problemList.title", { defaultValue: "문제" })}
       actions={
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => navigate("/known-errors")}>
             <Search />
-            KEDB 검색
+            {t("problemList.kedbSearchButton", { defaultValue: "KEDB 검색" })}
           </Button>
           <Button onClick={() => navigate("/problems/new")}>
             <Plus />
-            문제 등록
+            {t("problemList.createButton", { defaultValue: "문제 등록" })}
           </Button>
         </div>
       }
       filters={
         <form onSubmit={handleSearch} className="flex flex-wrap items-end gap-2">
           <div className="space-y-1">
-            <Label>상태</Label>
+            <Label>{t("problemList.columnStatus", { defaultValue: "상태" })}</Label>
             <Select value={inputs.status} onValueChange={(v) => setInputs((f) => ({ ...f, status: v }))}>
               <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>전체</SelectItem>
+                <SelectItem value={ALL}>{t("problemList.filterAll", { defaultValue: "전체" })}</SelectItem>
                 {PROBLEM_STATUSES.map((s) => (
-                  <SelectItem key={s} value={s}>{statusLabel(s)}</SelectItem>
+                  <SelectItem key={s} value={s}>{statusLabel(t, s)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1">
-            <Label>우선순위</Label>
+            <Label>{t("problemList.columnPriority", { defaultValue: "우선순위" })}</Label>
             <Select value={inputs.priority} onValueChange={(v) => setInputs((f) => ({ ...f, priority: v }))}>
               <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>전체</SelectItem>
+                <SelectItem value={ALL}>{t("problemList.filterAll", { defaultValue: "전체" })}</SelectItem>
                 {PROBLEM_PRIORITIES.map((p) => (
                   <SelectItem key={p} value={p}>{p}</SelectItem>
                 ))}
@@ -156,30 +169,30 @@ export function ProblemListPage() {
             </Select>
           </div>
           <div className="space-y-1">
-            <Label>출처</Label>
+            <Label>{t("problemList.columnOrigin", { defaultValue: "출처" })}</Label>
             <Select value={inputs.origin} onValueChange={(v) => setInputs((f) => ({ ...f, origin: v }))}>
               <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>전체</SelectItem>
+                <SelectItem value={ALL}>{t("problemList.filterAll", { defaultValue: "전체" })}</SelectItem>
                 {ORIGINS.map((o) => (
-                  <SelectItem key={o} value={o}>{originLabel(o)}</SelectItem>
+                  <SelectItem key={o} value={o}>{originLabel(t, o)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1">
-            <Label htmlFor="assignee">담당자</Label>
+            <Label htmlFor="assignee">{t("problemList.columnAssignee", { defaultValue: "담당자" })}</Label>
             <Input id="assignee" className="w-32" value={inputs.assignee} onChange={(e) => setInputs((f) => ({ ...f, assignee: e.target.value }))} />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="from">시작일</Label>
+            <Label htmlFor="from">{t("problemList.filterFrom", { defaultValue: "시작일" })}</Label>
             <Input id="from" type="date" value={inputs.from} onChange={(e) => setInputs((f) => ({ ...f, from: e.target.value }))} />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="to">종료일</Label>
+            <Label htmlFor="to">{t("problemList.filterTo", { defaultValue: "종료일" })}</Label>
             <Input id="to" type="date" value={inputs.to} onChange={(e) => setInputs((f) => ({ ...f, to: e.target.value }))} />
           </div>
-          <Button type="submit">검색</Button>
+          <Button type="submit">{t("problemList.searchButton", { defaultValue: "검색" })}</Button>
         </form>
       }
     >
@@ -189,8 +202,8 @@ export function ProblemListPage() {
         rowKey={(p) => p.id}
         loading={loading}
         onRowClick={(p) => navigate(`/problems/${p.id}`)}
-        emptyTitle="문제가 없습니다"
-        emptyDescription="조건에 맞는 문제가 없습니다."
+        emptyTitle={t("problemList.emptyTitle", { defaultValue: "문제가 없습니다" })}
+        emptyDescription={t("problemList.emptyDescription", { defaultValue: "조건에 맞는 문제가 없습니다." })}
       />
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </TicketListLayout>

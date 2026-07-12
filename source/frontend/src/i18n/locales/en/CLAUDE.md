@@ -7,4 +7,5 @@
 - `auth.json` — auth phase에서 채워짐. `ko/auth.json`과 키 구조 1:1 대응(로그인·프로필·비밀번호 변경·관리자 8개 화면).
 - `service-request.json` — service-request phase에서 채워짐. `ko/service-request.json`과 키 구조 1:1 대응.
 - `incident.json` — incident phase에서 채워짐. `ko/incident.json`과 키 구조 1:1 대응.
-- `problem.json` / `change.json` / `knowledge.json` / `asset.json` / `esm.json` / `vulnerability.json` / `compliance.json` / `infra-monitoring.json` — 각 업무 도메인 네임스페이스. 담당 개발자가 채우기 전까지 `{}`.
+- `problem.json` — problem phase에서 채워짐. `ko/problem.json`과 키 구조 1:1 대응.
+- `change.json` / `knowledge.json` / `asset.json` / `esm.json` / `vulnerability.json` / `compliance.json` / `infra-monitoring.json` — 각 업무 도메인 네임스페이스. 담당 개발자가 채우기 전까지 `{}`.

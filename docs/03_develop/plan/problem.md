@@ -57,3 +57,19 @@
 
 ## 7. 특이사항
 - ticket_link는 incident 단계 도입분 재사용. INCIDENT 연계는 완성, CHANGE 연계는 change 단계로 연기(교차 표기). incident API-INC-012 스텁은 이번 단계에서 실구현으로 대체.
+
+## i18n 다국어 전환 (유지보수 요청, 2026-07-12)
+
+> i18n 인프라·SweetAlert2·언어 선택은 common phase에서 완료됨(`docs/03_develop/plan/common.md` v3절). 레이아웃/컴포넌트 변경 없이 텍스트만 번역 키로 치환(`docs/02_plan/screen/common.md` 6절). BE/DB 변경 없음.
+
+### 담당 범위 — dev-fe 단독(UI 미소집)
+
+- 대상 화면(`docs/02_plan/screen/problem.md` 3절): `ProblemListPage.tsx`(SCR-PRB-001), `ProblemCreatePage.tsx`(002), `ProblemDetailPage.tsx`(003), `KnownErrorSearchPage.tsx`(004).
+- `features/problem/status.ts` — `t` 인자를 받도록 전환(6.3절 패턴), 호출부(각 Page.tsx, `features/search/status.ts`의 PROBLEM 분기) 갱신.
+- `features/problem/format.ts` 확인 필수 — incident phase에서 발견된 것처럼 날짜/숫자 "포맷" 함수 안에 텍스트 라벨(예: 값 없음 폴백 문구)이 섞여 있으면 그 라벨만 번역 키로 전환하고, 실제 `ko-KR` 날짜/숫자 포맷 자체는 그대로 유지.
+- `useTranslation(["problem", "common"])` 사용. `locales/{ko,en}/problem.json`(현재 `{}` 스캐폴딩) 단독 소유, 직접 채운다.
+- 타임라인 메시지 등 BE 하드코딩 데이터(DB 저장분)는 번역 대상 아님(incident phase와 동일, 회귀 아님).
+
+### 완료 기준
+- English 전환 시 목록/등록/상세/KEDB 검색 전체 텍스트(상태·우선순위·영향도/긴급도 라벨 포함) 영어 전환.
+- RCA·워크어라운드·인시던트 연계·후속조치·종료 등 기존 기능 회귀 없음(텍스트만 치환).

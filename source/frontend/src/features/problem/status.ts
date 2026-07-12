@@ -1,3 +1,5 @@
+import type { TFunction } from "i18next";
+
 import type { StatusTone } from "@/components/common";
 import type {
   ActionStatus,
@@ -28,8 +30,9 @@ const STATUS_TONE: Record<ProblemStatus, StatusTone> = {
   RESOLVED_CLOSED: "success",
 };
 
-export function statusLabel(s: ProblemStatus): string {
-  return STATUS_LABEL[s] ?? s;
+/** 문제 상태 라벨(`problem:status.*`, 6.3절 전환 패턴). */
+export function statusLabel(t: TFunction, s: ProblemStatus): string {
+  return t(`status.${s}`, { ns: "problem", defaultValue: STATUS_LABEL[s] ?? s });
 }
 export function statusTone(s: ProblemStatus): StatusTone {
   return STATUS_TONE[s] ?? "muted";
@@ -51,8 +54,10 @@ const ORIGIN_LABEL: Record<Origin, string> = {
   PROACTIVE: "선제",
 };
 
-export function originLabel(o: Origin): string {
-  return ORIGIN_LABEL[o] ?? o;
+/** 문제 출처 라벨(`problem:origin.*`). 값이 없으면(레거시 데이터) 빈 문자열(기존 동작 유지). */
+export function originLabel(t: TFunction, o: Origin | null | undefined): string {
+  if (!o) return "";
+  return t(`origin.${o}`, { ns: "problem", defaultValue: ORIGIN_LABEL[o] ?? o });
 }
 
 const LEVEL_LABEL: Record<Level, string> = {
@@ -61,8 +66,9 @@ const LEVEL_LABEL: Record<Level, string> = {
   LOW: "낮음",
 };
 
-export function levelLabel(l: Level): string {
-  return LEVEL_LABEL[l] ?? l;
+/** 영향도/긴급도 등급 라벨(`problem:level.*`). */
+export function levelLabel(t: TFunction, l: Level): string {
+  return t(`level.${l}`, { ns: "problem", defaultValue: LEVEL_LABEL[l] ?? l });
 }
 
 const ACTION_STATUS_LABEL: Record<ActionStatus, string> = {
@@ -70,8 +76,9 @@ const ACTION_STATUS_LABEL: Record<ActionStatus, string> = {
   DONE: "완료",
 };
 
-export function actionStatusLabel(s: ActionStatus): string {
-  return ACTION_STATUS_LABEL[s] ?? s;
+/** 후속 조치 상태 라벨(`problem:actionStatus.*`). */
+export function actionStatusLabel(t: TFunction, s: ActionStatus): string {
+  return t(`actionStatus.${s}`, { ns: "problem", defaultValue: ACTION_STATUS_LABEL[s] ?? s });
 }
 
 /*
