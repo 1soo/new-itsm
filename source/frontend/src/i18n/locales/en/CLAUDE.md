@@ -12,4 +12,5 @@
 - `knowledge.json` — knowledge phase에서 채워짐. `ko/knowledge.json`과 키 구조 1:1 대응.
 - `asset.json` — asset phase에서 채워짐. `ko/asset.json`과 키 구조 1:1 대응.
 - `esm.json` — esm phase에서 채워짐. `ko/esm.json`과 키 구조 1:1 대응.
-- `vulnerability.json` / `compliance.json` / `infra-monitoring.json` — 각 업무 도메인 네임스페이스. 담당 개발자가 채우기 전까지 `{}`.
+- `vulnerability.json` — vulnerability phase에서 채워짐. `ko/vulnerability.json`과 키 구조 1:1 대응.
+- `compliance.json` / `infra-monitoring.json` — 각 업무 도메인 네임스페이스. 담당 개발자가 채우기 전까지 `{}`.
