@@ -21,6 +21,7 @@ import com.itsm.common.security.SecurityUtils;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 
@@ -58,8 +59,11 @@ public class ScreenAdminService {
         if (screenRepository.existsByPath(request.path())) {
             throw new BusinessException(ErrorCode.PATH_DUPLICATE);
         }
-        Screen screen = new Screen(request.screenCode(), request.screenName(), request.path(), request.domain(),
-                request.iconName(), request.groupCode(), request.groupLabel(),
+        if (request.groupCode() != null && !StringUtils.hasText(request.groupLabelEn())) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "groupCode 지정 시 groupLabelEn은 필수입니다.");
+        }
+        Screen screen = new Screen(request.screenCode(), request.screenName(), request.screenNameEn(), request.path(),
+                request.domain(), request.iconName(), request.groupCode(), request.groupLabel(), request.groupLabelEn(),
                 request.sortOrder() != null ? request.sortOrder() : 0,
                 request.navVisible() != null ? request.navVisible() : true);
         Screen saved = screenRepository.save(screen);
@@ -73,8 +77,9 @@ public class ScreenAdminService {
         if (request.path() != null && screenRepository.existsByPathAndIdNot(request.path(), screenId)) {
             throw new BusinessException(ErrorCode.PATH_DUPLICATE);
         }
-        screen.update(request.screenName(), request.path(), request.iconName(), request.groupCode(),
-                request.groupLabel(), request.sortOrder(), request.navVisible());
+        screen.update(request.screenName(), request.screenNameEn(), request.path(), request.iconName(),
+                request.groupCode(), request.groupLabel(), request.groupLabelEn(),
+                request.sortOrder(), request.navVisible());
         Screen saved = screenRepository.save(screen);
         recordChange(saved.getScreenCode());
         return toResponse(saved);
@@ -127,9 +132,9 @@ public class ScreenAdminService {
     }
 
     private ScreenResponse toResponse(Screen screen, List<String> roles) {
-        return new ScreenResponse(screen.getId(), screen.getScreenCode(), screen.getScreenName(), screen.getPath(),
-                screen.getDomain(), screen.getIconName(), screen.getGroupCode(), screen.getGroupLabel(),
-                screen.getSortOrder(), screen.isNavVisible(), roles);
+        return new ScreenResponse(screen.getId(), screen.getScreenCode(), screen.getScreenName(), screen.getScreenNameEn(),
+                screen.getPath(), screen.getDomain(), screen.getIconName(), screen.getGroupCode(), screen.getGroupLabel(),
+                screen.getGroupLabelEn(), screen.getSortOrder(), screen.isNavVisible(), roles);
     }
 
     private List<String> roleCodes(Long screenId) {

@@ -9,6 +9,8 @@ public record CreateScreenRequest(
         @NotBlank String screenCode,
         @Schema(description = "화면명(필수)")
         @NotBlank String screenName,
+        @Schema(description = "화면명(영어, 필수)")
+        @NotBlank String screenNameEn,
         @Schema(description = "라우팅 경로(필수)")
         @NotBlank String path,
         @Schema(description = "소속 도메인(필수)")
@@ -19,6 +21,8 @@ public record CreateScreenRequest(
         String groupCode,
         @Schema(description = "사이드바 그룹 표시명(선택, groupCode와 함께 지정)")
         String groupLabel,
+        @Schema(description = "사이드바 그룹 표시명(영어, groupCode 지정 시 필수)")
+        String groupLabelEn,
         @Schema(description = "정렬 순서(선택, 기본 0)")
         Integer sortOrder,
         @Schema(description = "사이드바 노출 여부(선택, 기본 true)")

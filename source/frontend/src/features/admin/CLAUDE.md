@@ -10,6 +10,6 @@
 - `UserDetailPage.tsx` — 계정 상세·수정·역할 관리(SCR-ADMIN-003).
 - `RoleManagementPage.tsx` — 역할 관리(SCR-ADMIN-004).
 - `AuditLogPage.tsx` — 감사 로그 조회(SCR-ADMIN-005).
-- `MenuManagementPage.tsx` — 메뉴 관리(SCR-ADMIN-006, Role-Menu 동적 매핑). 메뉴(화면) CRUD 모달 + 역할 매핑 우측 슬라이드 패널(체크박스 토글마다 즉시 반영). 아이콘 미리보기는 `lib/icon.ts`의 `resolveIcon` 재사용.
+- `MenuManagementPage.tsx` — 메뉴 관리(SCR-ADMIN-006, Role-Menu 동적 매핑). 메뉴(화면) CRUD 모달(메뉴명·메뉴 영문명·그룹·그룹 영문명·경로·아이콘 등, 사이드바 메뉴 i18n 미적용 결함 수정으로 영문명 필드 추가 — 2026-07-13 유지보수 요청) + 역할 매핑 우측 슬라이드 패널(체크박스 토글마다 즉시 반영). 그룹 영문명은 기존 그룹 선택 시 저장된 값을 자동 표시 후 수정 가능(신규 그룹은 직접 입력). 아이콘 미리보기는 `lib/icon.ts`의 `resolveIcon` 재사용.
 - `ApprovalProcessListPage.tsx` — 승인 프로세스 목록(SCR-ADMIN-007, 승인 프로세스 커스텀 기능). 도메인 필터 + 규칙명·도메인·요청유형·요청자 역할·우선순위 tier·차수 수 표.
-- `ApprovalProcessFormPage.tsx` — 승인 프로세스 생성/편집(SCR-ADMIN-008). "규칙 정보"(규칙명·설명 입력) 카드는 이 화면이 직접 렌더링(공용 컴포넌트에 없는 필드), 아래 0~3단계 카드 스택·역할 선택 슬라이드 패널·드래그 재정렬·박스별 필수역할 검증·승인자 0개 확인 다이얼로그는 공용 `ApprovalProcessFlow`(`components/common`) 담당. 이 화면은 도메인/요청유형/이름 상태와 API 연동(도메인·역할 후보 조회, 생성/수정 payload 조립: `requester.roleIds`/`approvers[].{roleIds,matchType}`는 string ID → number 변환) 조립. 편집 시 domain·requestSubtypeKey는 식별 스코프라 `domainDisabled`/`requestSubtypeDisabled` prop으로 선택 비활성화(API-AUTH-028).
+- `ApprovalProcessFormPage.tsx` — 승인 프로세스 생성/편집(SCR-ADMIN-008). "규칙 정보" 카드(도메인·요청유형·규칙명·설명 순서, 메타데이터 분리 개편으로 도메인·요청유형 선택을 이 카드로 이관 — 2026-07-13 유지보수 요청)는 이 화면이 직접 렌더링, 아래 1(승인 요청자)~2(승인자 n차) 단계 카드 스택·역할 선택 슬라이드 패널·드래그 재정렬·박스별 필수역할 검증·승인자 0개 확인 다이얼로그는 공용 `ApprovalProcessFlow`(`components/common`) 담당. 이 화면은 도메인/요청유형/이름 상태와 API 연동(도메인·역할 후보 조회, 생성/수정 payload 조립: `requester.roleIds`/`approvers[].{roleIds,matchType}`는 string ID → number 변환) 조립. 편집 시 domain·requestSubtypeKey는 식별 스코프라 두 Select를 `disabled={isEdit}`로 비활성화(API-AUTH-028).

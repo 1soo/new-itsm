@@ -1,5 +1,7 @@
 import { useId, useMemo, useState, type DragEvent } from "react";
 import { Check, GripVertical, Plus, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,13 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
@@ -27,11 +22,13 @@ import type { ApprovalMatchType } from "@/components/common/approval-schema";
 
 /**
  * 승인 프로세스 생성/편집 플로우 — admin.md SCR-ADMIN-008.
- * 0단계(도메인)~3단계(승인자 n차)를 하나의 페이지로 구성한다. 제어 컴포넌트:
- * 각 단계 값과 변경 콜백을 FE(라우팅·API·검증 조합)가 주입하고, 이 컴포넌트는
- * 카드 스택 레이아웃·드래그 앤 드롭 재정렬·역할 선택 사이드 패널만 담당한다.
+ * 1단계(승인 요청자)~2단계(승인자 n차) 카드 스택을 구성한다(도메인·요청유형 선택은
+ * 메타데이터 분리 개편으로 FE의 "규칙 정보" 카드가 담당, 유지보수 요청 2026-07-13).
+ * 제어 컴포넌트: 각 단계 값과 변경 콜백을 FE(라우팅·API·검증 조합)가 주입하고, 이
+ * 컴포넌트는 카드 스택 레이아웃·드래그 앤 드롭 재정렬·역할 선택 사이드 패널만 담당한다.
  * 단, "박스 0개 역할" 인라인 오류와 "승인자 0개 저장" 확인 다이얼로그는 이 컴포넌트가 직접 처리한다
  * (단순 필수 입력 검증이라 프레젠테이션 레이어에서 완결하는 편이 FE 중복 구현을 줄인다).
+ * 문구는 `auth:admin.approvalProcessForm.flow.*` 키(common.md 6.8절, i18n 커버리지 결함 수정).
  */
 export interface ApprovalRoleOption {
   id: string;
@@ -45,32 +42,17 @@ export interface ApprovalStepBoxValue {
   matchType: ApprovalMatchType;
 }
 
-interface SelectOption {
-  value: string;
-  label: string;
-}
-
 export interface ApprovalProcessFlowProps {
-  domainOptions: SelectOption[];
+  /** 도메인 미선택 시 하단 단계 카드 스택을 비활성화하기 위한 값(선택 UI 자체는 FE의 "규칙 정보" 카드가 담당) */
   domain: string;
-  onDomainChange: (domain: string) => void;
-  /** 편집 모드 등 도메인이 식별 스코프라 변경 불가할 때(예: API-AUTH-028) true로 전달 */
-  domainDisabled?: boolean;
-
-  /** null이면 하위유형 없는 도메인 — 1단계 카드 자체를 렌더링하지 않는다 */
-  requestSubtypeOptions: SelectOption[] | null;
-  requestSubtype: string;
-  onRequestSubtypeChange: (value: string) => void;
-  /** 편집 모드 등 요청유형이 식별 스코프라 변경 불가할 때 true로 전달 */
-  requestSubtypeDisabled?: boolean;
 
   roleOptions: ApprovalRoleOption[];
 
-  /** 항상 1개(2단계) */
+  /** 항상 1개(1단계) */
   requester: ApprovalStepBoxValue;
   onRequesterChange: (value: ApprovalStepBoxValue) => void;
 
-  /** 배열 순서 = 차수(1차부터) */
+  /** 배열 순서 = 차수(1차부터, 2단계) */
   approvers: ApprovalStepBoxValue[];
   onApproversChange: (value: ApprovalStepBoxValue[]) => void;
 
@@ -90,25 +72,21 @@ const APPROVER_MIME = "application/x-itsm-approver-index";
 const MAX_APPROVER_STEPS = 10;
 
 export function ApprovalProcessFlow({
-  domainOptions,
   domain,
-  onDomainChange,
-  domainDisabled = false,
-  requestSubtypeOptions,
-  requestSubtype,
-  onRequestSubtypeChange,
-  requestSubtypeDisabled = false,
   roleOptions,
   requester,
   onRequesterChange,
   approvers,
   onApproversChange,
-  submitLabel = "생성 완료",
+  submitLabel,
   onSubmit,
   submitting = false,
   formError,
   className,
 }: ApprovalProcessFlowProps) {
+  const { t } = useTranslation("auth");
+  const resolvedSubmitLabel =
+    submitLabel ?? t("admin.approvalProcessForm.createComplete", { defaultValue: "생성 완료" });
   const [rolePanelTarget, setRolePanelTarget] = useState<RolePanelTarget>(null);
   const [roleSearch, setRoleSearch] = useState("");
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -216,9 +194,11 @@ export function ApprovalProcessFlow({
   return (
     <div className={cn("flex flex-col gap-8", className)}>
       <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-background/95 py-3 backdrop-blur">
-        <h1 className="text-heading-large font-bold text-foreground">승인 프로세스</h1>
+        <h1 className="text-heading-large font-bold text-foreground">
+          {t("admin.approvalProcessForm.flow.title", { defaultValue: "승인 프로세스" })}
+        </h1>
         <Button type="button" loading={submitting} onClick={handleSubmitClick}>
-          {submitLabel}
+          {resolvedSubmitLabel}
         </Button>
       </div>
 
@@ -228,56 +208,12 @@ export function ApprovalProcessFlow({
         </p>
       ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>0단계 · 도메인 선택</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <Select value={domain} onValueChange={onDomainChange} disabled={domainDisabled}>
-            <SelectTrigger className="max-w-xs">
-              <SelectValue placeholder="도메인 선택" />
-            </SelectTrigger>
-            <SelectContent>
-              {domainOptions.map((o) => (
-                <SelectItem key={o.value} value={o.value}>
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
-
       <div className={cn("flex flex-col gap-8", !domainSelected && "pointer-events-none opacity-50")}>
-        {requestSubtypeOptions ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>1단계 · 요청 유형 선택</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <Select
-                value={requestSubtype}
-                onValueChange={onRequestSubtypeChange}
-                disabled={requestSubtypeDisabled}
-              >
-                <SelectTrigger className="max-w-xs">
-                  <SelectValue placeholder="요청 유형 선택" />
-                </SelectTrigger>
-                <SelectContent>
-                  {requestSubtypeOptions.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
-        ) : null}
-
         <Card>
           <CardHeader>
-            <CardTitle>2단계 · 승인 요청자</CardTitle>
+            <CardTitle>
+              {t("admin.approvalProcessForm.flow.requesterStepTitle", { defaultValue: "1단계 · 승인 요청자" })}
+            </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
             <div
@@ -291,11 +227,13 @@ export function ApprovalProcessFlow({
                 onOpenPicker={() => setRolePanelTarget({ kind: "requester", id: requester.id })}
                 onRemoveRole={(roleId) => removeRole("requester", requester.id, roleId)}
                 showError={attemptedSubmit && requester.roleIds.length === 0}
+                t={t}
               />
               {requester.roleIds.length >= 2 ? (
                 <MatchTypeCheckbox
                   matchType={requester.matchType}
                   onChange={(m) => toggleMatch("requester", requester.id, m)}
+                  t={t}
                 />
               ) : null}
             </div>
@@ -304,7 +242,9 @@ export function ApprovalProcessFlow({
 
         <Card>
           <CardHeader>
-            <CardTitle>3단계 · 승인자</CardTitle>
+            <CardTitle>
+              {t("admin.approvalProcessForm.flow.approverStepTitle", { defaultValue: "2단계 · 승인자" })}
+            </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4 pt-0">
             {approvers.map((box, index) => (
@@ -328,13 +268,15 @@ export function ApprovalProcessFlow({
                     className="size-4 shrink-0 cursor-grab text-muted-foreground"
                     aria-hidden="true"
                   />
-                  <Badge variant="info">{index + 1}차</Badge>
+                  <Badge variant="info">
+                    {t("admin.approvalProcessForm.flow.stepBadge", { count: index + 1, defaultValue: `${index + 1}차` })}
+                  </Badge>
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
                     className="ml-auto"
-                    aria-label="승인자 박스 삭제"
+                    aria-label={t("admin.approvalProcessForm.flow.removeApproverAria", { defaultValue: "승인자 박스 삭제" })}
                     onClick={() => removeApprover(box.id)}
                   >
                     <X className="text-destructive" />
@@ -346,11 +288,13 @@ export function ApprovalProcessFlow({
                   onOpenPicker={() => setRolePanelTarget({ kind: "approver", id: box.id })}
                   onRemoveRole={(roleId) => removeRole("approver", box.id, roleId)}
                   showError={attemptedSubmit && box.roleIds.length === 0}
+                  t={t}
                 />
                 {box.roleIds.length >= 2 ? (
                   <MatchTypeCheckbox
                     matchType={box.matchType}
                     onChange={(m) => toggleMatch("approver", box.id, m)}
+                    t={t}
                   />
                 ) : null}
               </div>
@@ -362,11 +306,15 @@ export function ApprovalProcessFlow({
               className="self-start"
               disabled={approvers.length >= MAX_APPROVER_STEPS}
               title={
-                approvers.length >= MAX_APPROVER_STEPS ? "최대 10차까지 추가할 수 있습니다" : undefined
+                approvers.length >= MAX_APPROVER_STEPS
+                  ? t("admin.approvalProcessForm.flow.maxStepsTooltip", {
+                      defaultValue: "최대 10차까지 추가할 수 있습니다",
+                    })
+                  : undefined
               }
               onClick={addApprover}
             >
-              <Plus /> 승인자 추가
+              <Plus /> {t("admin.approvalProcessForm.flow.addApprover", { defaultValue: "승인자 추가" })}
             </Button>
           </CardContent>
         </Card>
@@ -375,17 +323,23 @@ export function ApprovalProcessFlow({
       <Sheet open={rolePanelTarget !== null} onOpenChange={(open) => !open && setRolePanelTarget(null)}>
         <SheetContent className="gap-3">
           <SheetHeader>
-            <SheetTitle>역할 선택</SheetTitle>
-            <SheetDescription>목록을 박스 영역으로 드래그하거나 클릭하여 추가하세요.</SheetDescription>
+            <SheetTitle>{t("admin.approvalProcessForm.flow.roleSheetTitle", { defaultValue: "역할 선택" })}</SheetTitle>
+            <SheetDescription>
+              {t("admin.approvalProcessForm.flow.roleSheetDescription", {
+                defaultValue: "목록을 박스 영역으로 드래그하거나 클릭하여 추가하세요.",
+              })}
+            </SheetDescription>
           </SheetHeader>
           <Input
-            placeholder="역할 검색"
+            placeholder={t("admin.approvalProcessForm.flow.roleSearchPlaceholder", { defaultValue: "역할 검색" })}
             value={roleSearch}
             onChange={(e) => setRoleSearch(e.target.value)}
           />
           <ul className="flex flex-1 flex-col gap-1 overflow-auto">
             {filteredRoles.length === 0 ? (
-              <li className="px-2 py-1.5 text-sm text-muted-foreground">일치하는 역할이 없습니다</li>
+              <li className="px-2 py-1.5 text-sm text-muted-foreground">
+                {t("admin.approvalProcessForm.flow.noMatchingRoles", { defaultValue: "일치하는 역할이 없습니다" })}
+              </li>
             ) : (
               filteredRoles.map((role) => {
                 const added = activeBoxRoleIds.includes(role.id);
@@ -413,9 +367,11 @@ export function ApprovalProcessFlow({
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title="승인자 없이 진행하시겠습니까?"
-        description="승인자 없이 바로 진행됩니다."
-        confirmLabel={submitLabel}
+        title={t("admin.approvalProcessForm.flow.noApproverConfirmTitle", { defaultValue: "승인자 없이 진행하시겠습니까?" })}
+        description={t("admin.approvalProcessForm.flow.noApproverConfirmDescription", {
+          defaultValue: "승인자 없이 바로 진행됩니다.",
+        })}
+        confirmLabel={resolvedSubmitLabel}
         destructive={false}
         onConfirm={() => {
           setConfirmOpen(false);
@@ -432,12 +388,14 @@ function RoleChipArea({
   onOpenPicker,
   onRemoveRole,
   showError,
+  t,
 }: {
   roleOptions: ApprovalRoleOption[];
   roleIds: string[];
   onOpenPicker: () => void;
   onRemoveRole: (roleId: string) => void;
   showError: boolean;
+  t: TFunction;
 }) {
   const labelOf = (id: string) => roleOptions.find((r) => r.id === id)?.label ?? id;
   return (
@@ -448,7 +406,10 @@ function RoleChipArea({
             {labelOf(id)}
             <button
               type="button"
-              aria-label={`${labelOf(id)} 역할 제거`}
+              aria-label={t("admin.approvalProcessForm.flow.removeRoleAria", {
+                role: labelOf(id),
+                defaultValue: `${labelOf(id)} 역할 제거`,
+              })}
               onClick={() => onRemoveRole(id)}
               className="rounded-full hover:bg-black/10"
             >
@@ -457,10 +418,14 @@ function RoleChipArea({
           </Badge>
         ))}
         <Button type="button" variant="outline" size="sm" onClick={onOpenPicker}>
-          역할 선택
+          {t("admin.approvalProcessForm.flow.selectRole", { defaultValue: "역할 선택" })}
         </Button>
       </div>
-      {showError ? <p className="text-xs text-destructive">역할을 1개 이상 선택하세요</p> : null}
+      {showError ? (
+        <p className="text-xs text-destructive">
+          {t("admin.approvalProcessForm.flow.roleRequiredError", { defaultValue: "역할을 1개 이상 선택하세요" })}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -468,9 +433,11 @@ function RoleChipArea({
 function MatchTypeCheckbox({
   matchType,
   onChange,
+  t,
 }: {
   matchType: ApprovalMatchType;
   onChange: (matchType: ApprovalMatchType) => void;
+  t: TFunction;
 }) {
   const id = useId();
   return (
@@ -481,7 +448,7 @@ function MatchTypeCheckbox({
         onCheckedChange={(c) => onChange(c === true ? "AND" : "OR")}
       />
       <Label htmlFor={id} className="font-normal">
-        모두 승인 필요 (AND)
+        {t("admin.approvalProcessForm.flow.matchTypeAnd", { defaultValue: "모두 승인 필요 (AND)" })}
       </Label>
     </div>
   );

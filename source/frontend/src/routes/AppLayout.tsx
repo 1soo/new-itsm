@@ -98,7 +98,7 @@ const SEARCH_DEBOUNCE_MS = 300;
  * 주입·로그아웃 확인은 FE가 담당한다.
  */
 export function AppLayout() {
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useAppDispatch();
@@ -146,15 +146,18 @@ export function AppLayout() {
   }, [pathname, menuGroups]);
 
   const roles = user?.roles;
+  // 사이드바 메뉴 라벨은 관리자(SCR-ADMIN-006)가 입력하는 DB 이중언어 컬럼(screenNameEn/groupLabelEn)에서
+  // 현재 언어에 맞는 값을 선택한다(common.md 6.8절). 영문값 미입력 시 한국어로 폴백한다.
+  const isEnglish = i18n.language === "en";
   const groups = useMemo<NavGroup[]>(() => {
     return menuGroups.map((group) => ({
       key: group.groupCode ?? "main",
-      label: group.groupLabel ?? undefined,
+      label: (isEnglish ? group.groupLabelEn : null) ?? group.groupLabel ?? undefined,
       items: group.items.map((item) => {
         const Icon = resolveIcon(item.iconName);
         return {
           key: item.screenCode,
-          label: item.screenName,
+          label: (isEnglish ? item.screenNameEn : null) ?? item.screenName,
           icon: <Icon />,
           active: item.screenCode === activeKey,
           onSelect: () => navigate(item.path),
@@ -162,7 +165,7 @@ export function AppLayout() {
       }),
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [menuGroups, activeKey, navigate]);
+  }, [menuGroups, activeKey, navigate, isEnglish]);
 
   // 알림 벨: 승인 대기(전 도메인 공용, API-COM-003)와 자산 만료 임박 항목을 조합해 팝오버 리스트로 조립한다
   // (승인 프로세스 커스텀 기능으로 서비스요청·변경 전용 API에서 공용 API로 전환, 5초 간격으로 재조회하며

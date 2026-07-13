@@ -42,12 +42,15 @@ const NEW_GROUP = "__new__";
 interface MenuFormState {
   screenCode: string;
   screenName: string;
+  screenNameEn: string;
   path: string;
   domain: string;
   iconName: string;
   groupOption: string;
   newGroupCode: string;
   newGroupLabel: string;
+  /** 그룹 영문명(신규/기존 그룹 공통 편집 필드, 기존 그룹 선택 시 자동 표시 후 수정 가능). */
+  groupLabelEn: string;
   sortOrder: string;
   navVisible: boolean;
 }
@@ -55,12 +58,14 @@ interface MenuFormState {
 const EMPTY_FORM: MenuFormState = {
   screenCode: "",
   screenName: "",
+  screenNameEn: "",
   path: "",
   domain: "",
   iconName: "",
   groupOption: NO_GROUP,
   newGroupCode: "",
   newGroupLabel: "",
+  groupLabelEn: "",
   sortOrder: "0",
   navVisible: true,
 };
@@ -88,9 +93,9 @@ export function MenuManagementPage() {
   const [roleBusyId, setRoleBusyId] = useState<number | null>(null);
 
   // 그룹 선택 후보(선택 또는 신규 입력) — 페이지네이션과 무관하게 전체 목록에서 뽑는다.
-  const [existingGroups, setExistingGroups] = useState<{ groupCode: string; groupLabel: string }[]>(
-    [],
-  );
+  const [existingGroups, setExistingGroups] = useState<
+    { groupCode: string; groupLabel: string; groupLabelEn: string }[]
+  >([]);
 
   const loadScreens = () => {
     setLoading(true);
@@ -105,12 +110,17 @@ export function MenuManagementPage() {
     adminApi
       .listScreens({ page: 0, size: 200 })
       .then((res) => {
-        const map = new Map<string, string>();
+        const map = new Map<string, { groupLabel: string; groupLabelEn: string }>();
         for (const s of res.content) {
-          if (s.groupCode) map.set(s.groupCode, s.groupLabel ?? s.groupCode);
+          if (s.groupCode) {
+            map.set(s.groupCode, {
+              groupLabel: s.groupLabel ?? s.groupCode,
+              groupLabelEn: s.groupLabelEn ?? "",
+            });
+          }
         }
         setExistingGroups(
-          Array.from(map.entries()).map(([groupCode, groupLabel]) => ({ groupCode, groupLabel })),
+          Array.from(map.entries()).map(([groupCode, v]) => ({ groupCode, ...v })),
         );
       })
       .catch(() => {});
@@ -138,12 +148,14 @@ export function MenuManagementPage() {
     setForm({
       screenCode: screen.screenCode,
       screenName: screen.screenName,
+      screenNameEn: screen.screenNameEn ?? "",
       path: screen.path,
       domain: screen.domain,
       iconName: screen.iconName ?? "",
       groupOption: screen.groupCode ?? NO_GROUP,
       newGroupCode: "",
       newGroupLabel: "",
+      groupLabelEn: screen.groupLabelEn ?? "",
       sortOrder: String(screen.sortOrder),
       navVisible: screen.navVisible,
     });
@@ -151,28 +163,44 @@ export function MenuManagementPage() {
     setFormOpen(true);
   };
 
-  const resolvedGroup = (): { groupCode?: string; groupLabel?: string } => {
-    if (form.groupOption === NO_GROUP) return { groupCode: undefined, groupLabel: undefined };
+  /** 그룹 선택 변경 시 그룹 영문명을 함께 갱신한다(기존 그룹은 저장된 값 자동 표시, 신규/없음은 초기화). */
+  const handleGroupOptionChange = (groupOption: string) => {
+    const found = existingGroups.find((g) => g.groupCode === groupOption);
+    setForm((f) => ({ ...f, groupOption, groupLabelEn: found?.groupLabelEn ?? "" }));
+  };
+
+  const resolvedGroup = (): { groupCode?: string; groupLabel?: string; groupLabelEn?: string } => {
+    if (form.groupOption === NO_GROUP) return {};
     if (form.groupOption === NEW_GROUP) {
-      return { groupCode: form.newGroupCode.trim(), groupLabel: form.newGroupLabel.trim() };
+      return {
+        groupCode: form.newGroupCode.trim(),
+        groupLabel: form.newGroupLabel.trim(),
+        groupLabelEn: form.groupLabelEn.trim() || undefined,
+      };
     }
     const found = existingGroups.find((g) => g.groupCode === form.groupOption);
-    return { groupCode: form.groupOption, groupLabel: found?.groupLabel };
+    return {
+      groupCode: form.groupOption,
+      groupLabel: found?.groupLabel,
+      groupLabelEn: form.groupLabelEn.trim() || found?.groupLabelEn || undefined,
+    };
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setFormError(null);
     setSaving(true);
-    const { groupCode, groupLabel } = resolvedGroup();
+    const { groupCode, groupLabel, groupLabelEn } = resolvedGroup();
     try {
       if (editing) {
         await adminApi.updateScreen(editing.id, {
           screenName: form.screenName,
+          screenNameEn: form.screenNameEn,
           path: form.path,
           iconName: form.iconName || undefined,
           groupCode,
           groupLabel,
+          groupLabelEn,
           sortOrder: Number(form.sortOrder) || 0,
           navVisible: form.navVisible,
         });
@@ -181,11 +209,13 @@ export function MenuManagementPage() {
         await adminApi.createScreen({
           screenCode: form.screenCode,
           screenName: form.screenName,
+          screenNameEn: form.screenNameEn,
           path: form.path,
           domain: form.domain,
           iconName: form.iconName || undefined,
           groupCode,
           groupLabel,
+          groupLabelEn,
           sortOrder: Number(form.sortOrder) || 0,
           navVisible: form.navVisible,
         });
@@ -353,6 +383,17 @@ export function MenuManagementPage() {
             />
           </div>
           <div className="space-y-1.5">
+            <Label htmlFor="menu-name-en">{t("admin.menu.screenNameEn", { defaultValue: "메뉴 영문명" })}</Label>
+            <Input
+              id="menu-name-en"
+              value={form.screenNameEn}
+              onChange={(e) => setForm((f) => ({ ...f, screenNameEn: e.target.value }))}
+              placeholder={t("admin.menu.screenNameEnPlaceholder", { defaultValue: "예: Menu Management" })}
+              required
+              aria-invalid={!!formError}
+            />
+          </div>
+          <div className="space-y-1.5">
             <Label htmlFor="menu-path">{t("admin.menu.columnPath", { defaultValue: "경로" })}</Label>
             <Input
               id="menu-path"
@@ -368,7 +409,7 @@ export function MenuManagementPage() {
             <select
               id="menu-group"
               value={form.groupOption}
-              onChange={(e) => setForm((f) => ({ ...f, groupOption: e.target.value }))}
+              onChange={(e) => handleGroupOptionChange(e.target.value)}
               className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
             >
               <option value={NO_GROUP}>{t("admin.menu.noGroup", { defaultValue: "그룹 없음" })}</option>
@@ -391,6 +432,16 @@ export function MenuManagementPage() {
                   value={form.newGroupLabel}
                   onChange={(e) => setForm((f) => ({ ...f, newGroupLabel: e.target.value }))}
                   placeholder={t("admin.menu.newGroupLabelPlaceholder", { defaultValue: "그룹 라벨(예: 관리자)" })}
+                  required
+                />
+              </div>
+            )}
+            {form.groupOption !== NO_GROUP && (
+              <div className="pt-1">
+                <Input
+                  value={form.groupLabelEn}
+                  onChange={(e) => setForm((f) => ({ ...f, groupLabelEn: e.target.value }))}
+                  placeholder={t("admin.menu.groupLabelEnPlaceholder", { defaultValue: "그룹 영문명(예: Admin)" })}
                   required
                 />
               </div>

@@ -1,6 +1,6 @@
 # 테이블 정의서 — 인증/계정/권한 (Auth & RBAC)
 
-> 도메인: auth · 버전: 0.2 · 작성일: 2026-07-11 · Role-Menu 동적 매핑(유지보수 요청) 반영 — `screen`에 사이드바 표시 컬럼 추가, `screen_role`을 메뉴 노출 판정에도 재사용(신규 테이블 없음)
+> 도메인: auth · 버전: 0.3 · 작성일: 2026-07-13 · Role-Menu 동적 매핑(유지보수 요청) 반영 — `screen`에 사이드바 표시 컬럼 추가, `screen_role`을 메뉴 노출 판정에도 재사용(신규 테이블 없음) · 사이드바 메뉴 i18n 미적용 결함 수정(유지보수 요청) — `screen`에 영문 메뉴명/그룹명 컬럼 추가(신규 테이블 없음)
 
 계정·역할·RBAC·화면 매핑·세션(Refresh Token)·감사 로그를 정의한다. RBAC/화면 매핑 테이블(`screen`, `user_role`, `screen_role`)의 **단일 원천(single source of truth)**이며, 타 도메인 정의서는 이를 참조한다.
 
@@ -114,16 +114,20 @@ Refresh Token 세션 관리. 로그아웃/재발급 무효화 판정에 사용. 
 
 화면 정보. `screen_code`는 화면 설계서의 SCR-* 코드와 1:1 매핑. **사이드바 메뉴 마스터 데이터도 겸한다**(Role-Menu 동적 매핑, Main 요청 2026-07-11) — 별도 `menu` 테이블을 신설하지 않고 이 테이블에 사이드바 표시용 컬럼을 추가해 SCR-ADMIN-006(메뉴 관리)에서 관리자가 CRUD한다. `nav_visible=false`인 화면(상세/서브 화면 등 사이드바 미노출 대상)은 화면 접근 제어(screen_role) 판정에는 그대로 참여하되 사이드바에는 나타나지 않는다.
 
+> **i18n 미적용 결함 수정(유지보수 요청, 2026-07-13)**: 사이드바 메뉴명·그룹명이 `screen_name`/`group_label`(DB 원문, 관리자가 한국어로 입력) 그대로 노출되어 언어 전환이 반영되지 않았다. FE 번역 키 방식(6절 i18n 아키텍처, `screen/common.md` 6.4절)은 정적 UI 문구에만 적용 가능하고 관리자가 동적으로 CRUD하는 메뉴 데이터에는 적용할 수 없으므로, **이중언어 컬럼 추가** 방식으로 해결한다(신규 테이블 없음). `screen_name_en`/`group_label_en`을 추가해 SCR-ADMIN-006(메뉴 관리)에서 관리자가 영문값도 함께 입력하고, `GET /api/v1/menus/mine`(API-AUTH-022) 응답에 두 언어 값을 모두 포함해 FE가 현재 `i18n.language`에 따라 선택한다(`AppLayout.tsx`).
+
 | 컬럼 | 타입 | 제약 | 설명 |
 |------|------|------|------|
 | id | BIGINT | PK | |
 | screen_code | VARCHAR(50) | UNIQUE, NOT NULL | 화면 식별 코드(예: SCR-INC-001) |
-| screen_name | VARCHAR(100) | NOT NULL | 화면명(= 메뉴명) |
+| screen_name | VARCHAR(100) | NOT NULL | 화면명(= 메뉴명, 한국어) |
+| screen_name_en | VARCHAR(100) | NOT NULL | 화면명(= 메뉴명, 영어). 마이그레이션 시 기존 데이터는 `screen_name` 번역값으로 백필 |
 | path | VARCHAR(255) | UNIQUE, NOT NULL | 라우팅 경로(하나의 경로는 하나의 화면만 가리킴 — 중복 시 사이드바 라우팅 충돌) |
 | domain | VARCHAR(30) | NOT NULL | 소속 도메인(auth/incident 등) |
 | icon_name | VARCHAR(50) | NULL | 사이드바 아이콘(lucide-react 컴포넌트명, 예: `LayoutDashboard`). `nav_visible=false`면 미사용 |
 | group_code | VARCHAR(30) | NULL | 사이드바 그룹 키(예: srm/inc/admin). NULL은 그룹 라벨 없이 표시(대시보드 등 최상단 그룹) |
-| group_label | VARCHAR(50) | NULL | 사이드바 그룹 표시명(예: "서비스 요청"). group_code가 NULL이면 함께 NULL |
+| group_label | VARCHAR(50) | NULL | 사이드바 그룹 표시명(예: "서비스 요청", 한국어). group_code가 NULL이면 함께 NULL |
+| group_label_en | VARCHAR(50) | NULL | 사이드바 그룹 표시명(영어). group_code가 NULL이면 함께 NULL, 그 외에는 NOT NULL로 관리(마이그레이션 시 백필) |
 | sort_order | INT | NOT NULL, DEFAULT 0 | 정렬 순서(오름차순). 그룹 표시 순서는 별도 컬럼 없이 그룹별 최소 sort_order 값으로 정렬 |
 | nav_visible | BOOLEAN | NOT NULL, DEFAULT true | 사이드바 노출 여부(false면 화면 접근 통제만 하고 메뉴에는 미노출) |
 | ...공통 컬럼... | | | |

@@ -67,7 +67,8 @@ class ScreenAdminServiceTest {
     }
 
     private Screen screen() {
-        return new Screen("SCR-ADMIN-006", "메뉴 관리", "/admin/menus", "auth", "ListTree", "admin", "관리자", 420, true);
+        return new Screen("SCR-ADMIN-006", "메뉴 관리", "Menu Management", "/admin/menus", "auth", "ListTree",
+                "admin", "관리자", "Admin", 420, true);
     }
 
     private ErrorCode codeOf(Throwable e) {
@@ -79,7 +80,7 @@ class ScreenAdminServiceTest {
         when(screenRepository.existsByScreenCode("SCR-ADMIN-006")).thenReturn(true);
 
         assertThatThrownBy(() -> service.create(new CreateScreenRequest(
-                "SCR-ADMIN-006", "메뉴 관리", "/admin/menus", "auth", null, null, null, null, null)))
+                "SCR-ADMIN-006", "메뉴 관리", "Menu Management", "/admin/menus", "auth", null, null, null, null, null, null)))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.SCREEN_CODE_DUPLICATE));
     }
@@ -90,7 +91,7 @@ class ScreenAdminServiceTest {
         when(screenRepository.existsByPath("/admin/menus")).thenReturn(true);
 
         assertThatThrownBy(() -> service.create(new CreateScreenRequest(
-                "SCR-NEW-001", "새 메뉴", "/admin/menus", "auth", null, null, null, null, null)))
+                "SCR-NEW-001", "새 메뉴", "New Menu", "/admin/menus", "auth", null, null, null, null, null, null)))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.PATH_DUPLICATE));
     }
@@ -101,7 +102,7 @@ class ScreenAdminServiceTest {
         when(screenRepository.existsByPath(anyString())).thenReturn(false);
 
         ScreenResponse response = service.create(new CreateScreenRequest(
-                "SCR-NEW-001", "새 메뉴", "/new-menu", "auth", null, null, null, null, null));
+                "SCR-NEW-001", "새 메뉴", "New Menu", "/new-menu", "auth", null, null, null, null, null, null));
 
         assertThat(response.screenCode()).isEqualTo("SCR-NEW-001");
         assertThat(response.sortOrder()).isEqualTo(0);
@@ -112,10 +113,32 @@ class ScreenAdminServiceTest {
     }
 
     @Test
+    void createWithGroupCodeMissingGroupLabelEnThrows() {
+        when(screenRepository.existsByScreenCode(anyString())).thenReturn(false);
+        when(screenRepository.existsByPath(anyString())).thenReturn(false);
+
+        assertThatThrownBy(() -> service.create(new CreateScreenRequest(
+                "SCR-NEW-001", "새 메뉴", "New Menu", "/new-menu", "auth", null, "admin", "관리자", null, null, null)))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.VALIDATION_ERROR));
+    }
+
+    @Test
+    void createWithGroupCodeBlankGroupLabelEnThrows() {
+        when(screenRepository.existsByScreenCode(anyString())).thenReturn(false);
+        when(screenRepository.existsByPath(anyString())).thenReturn(false);
+
+        assertThatThrownBy(() -> service.create(new CreateScreenRequest(
+                "SCR-NEW-001", "새 메뉴", "New Menu", "/new-menu", "auth", null, "admin", "관리자", "  ", null, null)))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.VALIDATION_ERROR));
+    }
+
+    @Test
     void updateNotFoundThrows() {
         when(screenRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.update(99L, new UpdateScreenRequest(null, null, null, null, null, null, null)))
+        assertThatThrownBy(() -> service.update(99L, new UpdateScreenRequest(null, null, null, null, null, null, null, null, null)))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.SCREEN_NOT_FOUND));
     }
@@ -125,7 +148,7 @@ class ScreenAdminServiceTest {
         when(screenRepository.findById(1L)).thenReturn(Optional.of(screen()));
         when(screenRepository.existsByPathAndIdNot("/dup", 1L)).thenReturn(true);
 
-        assertThatThrownBy(() -> service.update(1L, new UpdateScreenRequest(null, "/dup", null, null, null, null, null)))
+        assertThatThrownBy(() -> service.update(1L, new UpdateScreenRequest(null, null, "/dup", null, null, null, null, null, null)))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.PATH_DUPLICATE));
     }
@@ -135,7 +158,7 @@ class ScreenAdminServiceTest {
         when(screenRepository.findById(1L)).thenReturn(Optional.of(screen()));
 
         ScreenResponse response = service.update(1L,
-                new UpdateScreenRequest("메뉴 관리(변경)", null, null, null, null, 999, false));
+                new UpdateScreenRequest("메뉴 관리(변경)", null, null, null, null, null, null, 999, false));
 
         assertThat(response.screenName()).isEqualTo("메뉴 관리(변경)");
         assertThat(response.sortOrder()).isEqualTo(999);

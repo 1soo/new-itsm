@@ -6,6 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   ApprovalProcessFlow,
   type ApprovalRoleOption,
   type ApprovalStepBoxValue,
@@ -23,11 +30,13 @@ import type {
 import { extractErrorMessage } from "@/lib/apiClient";
 
 /*
- * 승인 프로세스 생성/편집(SCR-ADMIN-008) — 0(도메인)~3(승인자 n차) 단계를 거쳐 커스텀 승인
- * 프로세스를 정의한다. 편집 시 domain·requestSubtypeKey는 식별 스코프라 수정 대상에서 제외한다
- * (API-AUTH-028). 카드 스택 레이아웃·드래그 재정렬·역할 선택 패널·박스별 필수역할 검증·승인자
- * 0개 확인 다이얼로그는 공용 `ApprovalProcessFlow`(components/common)가 담당하고, 이 화면은
- * 도메인/요청유형/이름 등 나머지 폼 필드와 API 연동만 조립한다.
+ * 승인 프로세스 생성/편집(SCR-ADMIN-008) — "규칙 정보" 카드(도메인·요청유형·규칙명·설명)와
+ * 1(승인 요청자)~2(승인자 n차) 단계 카드 스택으로 구성한다. 메타데이터 분리 개편(유지보수 요청
+ * 2026-07-13)으로 도메인·요청유형 선택은 이 화면의 "규칙 정보" 카드가 직접 렌더링하고(카드 스택
+ * 안에 있던 구 0/1단계를 이관), 승인 단계 카드 스택은 승인 요청자부터 1단계로 재시작한다. 편집 시
+ * domain·requestSubtypeKey는 식별 스코프라 수정 대상에서 제외한다(API-AUTH-028). 카드 스택
+ * 레이아웃·드래그 재정렬·역할 선택 패널·박스별 필수역할 검증·승인자 0개 확인 다이얼로그는 공용
+ * `ApprovalProcessFlow`(components/common)가 담당한다.
  */
 const NO_SUBTYPE = "__ALL__";
 
@@ -171,6 +180,51 @@ export function ApprovalProcessFormPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-1.5">
+            <Label htmlFor="ap-domain">{t("admin.approvalProcessForm.domainLabel", { defaultValue: "도메인" })}</Label>
+            {/* 편집 시 domain은 식별 스코프라 변경을 허용하지 않는다(API-AUTH-028). */}
+            <Select value={domain} onValueChange={(v) => setDomain(v as ApprovalDomain)} disabled={isEdit}>
+              <SelectTrigger id="ap-domain" className="max-w-xs">
+                <SelectValue
+                  placeholder={t("admin.approvalProcessForm.domainPlaceholder", { defaultValue: "도메인 선택" })}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {domains.map((d) => (
+                  <SelectItem key={d.domain} value={d.domain}>
+                    {d.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {hasRequestSubtype ? (
+            <div className="space-y-1.5">
+              <Label htmlFor="ap-subtype">
+                {t("admin.approvalProcessForm.requestSubtypeLabel", { defaultValue: "요청 유형" })}
+              </Label>
+              {/* 편집 시 requestSubtypeKey는 식별 스코프라 변경을 허용하지 않는다(API-AUTH-028). */}
+              <Select value={requestSubtypeKey} onValueChange={setRequestSubtypeKey} disabled={isEdit}>
+                <SelectTrigger id="ap-subtype" className="max-w-xs">
+                  <SelectValue
+                    placeholder={t("admin.approvalProcessForm.requestSubtypePlaceholder", {
+                      defaultValue: "요청 유형 선택",
+                    })}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_SUBTYPE}>
+                    {t("admin.approvalProcessForm.allSubtypes", { defaultValue: "전체" })}
+                  </SelectItem>
+                  {subtypes.map((s) => (
+                    <SelectItem key={s.key} value={s.key}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+          <div className="space-y-1.5">
             <Label htmlFor="ap-name">{t("admin.approvalProcessForm.name", { defaultValue: "규칙명" })}</Label>
             <Input id="ap-name" value={name} onChange={(e) => setName(e.target.value)} required />
           </div>
@@ -184,22 +238,7 @@ export function ApprovalProcessFormPage() {
       </Card>
 
       <ApprovalProcessFlow
-        domainOptions={domains.map((d) => ({ value: d.domain, label: d.label }))}
         domain={domain}
-        onDomainChange={(v) => setDomain(v as ApprovalDomain)}
-        // 편집 시 domain·requestSubtypeKey는 식별 스코프라 변경을 허용하지 않는다(API-AUTH-028).
-        domainDisabled={isEdit}
-        requestSubtypeOptions={
-          hasRequestSubtype
-            ? [
-                { value: NO_SUBTYPE, label: t("admin.approvalProcessForm.allSubtypes", { defaultValue: "전체" }) },
-                ...subtypes.map((s) => ({ value: s.key, label: s.label })),
-              ]
-            : null
-        }
-        requestSubtype={requestSubtypeKey}
-        onRequestSubtypeChange={setRequestSubtypeKey}
-        requestSubtypeDisabled={isEdit}
         roleOptions={roleOptions}
         requester={requester}
         onRequesterChange={setRequester}

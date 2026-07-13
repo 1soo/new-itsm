@@ -42,6 +42,8 @@ export interface ChangePasswordRequest {
 export interface MenuItem {
   screenCode: string;
   screenName: string;
+  /** 영문 메뉴명(사이드바 i18n, common.md 6.8절). 미입력 시 screenName으로 폴백. */
+  screenNameEn?: string | null;
   path: string;
   iconName: string | null;
 }
@@ -49,6 +51,8 @@ export interface MenuItem {
 export interface MenuGroup {
   groupCode: string | null;
   groupLabel: string | null;
+  /** 영문 그룹명(사이드바 i18n, common.md 6.8절). 미입력 시 groupLabel로 폴백. */
+  groupLabelEn?: string | null;
   items: MenuItem[];
 }
 

@@ -53,7 +53,9 @@ class MyMenuServiceTest {
     }
 
     private Screen screenWithId(Long id, String code, String groupCode, String groupLabel, int sortOrder) {
-        Screen screen = new Screen(code, code + " 이름", "/" + code, "auth", null, groupCode, groupLabel, sortOrder, true);
+        String groupLabelEn = groupLabel == null ? null : groupLabel + " (EN)";
+        Screen screen = new Screen(code, code + " 이름", code + " Name", "/" + code, "auth", null,
+                groupCode, groupLabel, groupLabelEn, sortOrder, true);
         try {
             var field = Screen.class.getDeclaredField("id");
             field.setAccessible(true);

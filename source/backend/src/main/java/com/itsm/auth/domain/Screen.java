@@ -31,6 +31,9 @@ public class Screen extends BaseEntity {
     @Column(name = "screen_name", nullable = false, length = 100)
     private String screenName;
 
+    @Column(name = "screen_name_en", nullable = false, length = 100)
+    private String screenNameEn;
+
     @Column(nullable = false, unique = true, length = 255)
     private String path;
 
@@ -46,29 +49,38 @@ public class Screen extends BaseEntity {
     @Column(name = "group_label", length = 50)
     private String groupLabel;
 
+    @Column(name = "group_label_en", length = 50)
+    private String groupLabelEn;
+
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;
 
     @Column(name = "nav_visible", nullable = false)
     private boolean navVisible;
 
-    public Screen(String screenCode, String screenName, String path, String domain, String iconName,
-                  String groupCode, String groupLabel, int sortOrder, boolean navVisible) {
+    public Screen(String screenCode, String screenName, String screenNameEn, String path, String domain,
+                  String iconName, String groupCode, String groupLabel, String groupLabelEn,
+                  int sortOrder, boolean navVisible) {
         this.screenCode = screenCode;
         this.screenName = screenName;
+        this.screenNameEn = screenNameEn;
         this.path = path;
         this.domain = domain;
         this.iconName = iconName;
         this.groupCode = groupCode;
         this.groupLabel = groupLabel;
+        this.groupLabelEn = groupLabelEn;
         this.sortOrder = sortOrder;
         this.navVisible = navVisible;
     }
 
-    public void update(String screenName, String path, String iconName, String groupCode,
-                        String groupLabel, Integer sortOrder, Boolean navVisible) {
+    public void update(String screenName, String screenNameEn, String path, String iconName, String groupCode,
+                        String groupLabel, String groupLabelEn, Integer sortOrder, Boolean navVisible) {
         if (screenName != null) {
             this.screenName = screenName;
+        }
+        if (screenNameEn != null) {
+            this.screenNameEn = screenNameEn;
         }
         if (path != null) {
             this.path = path;
@@ -81,6 +93,9 @@ public class Screen extends BaseEntity {
         }
         if (groupLabel != null) {
             this.groupLabel = groupLabel;
+        }
+        if (groupLabelEn != null) {
+            this.groupLabelEn = groupLabelEn;
         }
         if (sortOrder != null) {
             this.sortOrder = sortOrder;

@@ -9,11 +9,13 @@ public record ScreenResponse(
         Long id,
         String screenCode,
         String screenName,
+        String screenNameEn,
         String path,
         String domain,
         String iconName,
         String groupCode,
         String groupLabel,
+        String groupLabelEn,
         int sortOrder,
         boolean navVisible,
         List<String> roles

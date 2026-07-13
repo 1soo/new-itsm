@@ -52,8 +52,9 @@ public class MyMenuService {
                 .map(screens -> new MenuGroupResponse(
                         screens.get(0).getGroupCode(),
                         screens.get(0).getGroupLabel(),
+                        screens.get(0).getGroupLabelEn(),
                         screens.stream()
-                                .map(s -> new MenuItemResponse(s.getScreenCode(), s.getScreenName(), s.getPath(), s.getIconName()))
+                                .map(s -> new MenuItemResponse(s.getScreenCode(), s.getScreenName(), s.getScreenNameEn(), s.getPath(), s.getIconName()))
                                 .toList()))
                 .toList();
 

@@ -89,11 +89,15 @@ export interface Screen {
   id: number;
   screenCode: string;
   screenName: string;
+  /** 영문 메뉴명(사이드바 i18n, common.md 6.8절). */
+  screenNameEn: string | null;
   path: string;
   domain: string;
   iconName: string | null;
   groupCode: string | null;
   groupLabel: string | null;
+  /** 영문 그룹명(사이드바 i18n, common.md 6.8절). */
+  groupLabelEn: string | null;
   sortOrder: number;
   navVisible: boolean;
   /** 매핑된 역할 코드(비어있으면 전체 인증 사용자 공개). */
@@ -110,21 +114,25 @@ export interface ScreenListQuery {
 export interface CreateMenuRequest {
   screenCode: string;
   screenName: string;
+  screenNameEn: string;
   path: string;
   domain: string;
   iconName?: string;
   groupCode?: string;
   groupLabel?: string;
+  groupLabelEn?: string;
   sortOrder?: number;
   navVisible?: boolean;
 }
 
 export interface UpdateMenuRequest {
   screenName?: string;
+  screenNameEn?: string;
   path?: string;
   iconName?: string;
   groupCode?: string;
   groupLabel?: string;
+  groupLabelEn?: string;
   sortOrder?: number;
   navVisible?: boolean;
 }
