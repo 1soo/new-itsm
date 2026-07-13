@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-esm 도메인의 엔티티·enum·리포지토리 계약.
+esm 도메인 엔티티·enum·리포지토리 계약.
 
 ## 파일
 - `EsmCatalogItem.java` — 부서 카탈로그 항목 엔티티(담당 부서·체크리스트 템플릿 유형)

@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-auth 도메인의 엔티티·값(enum)·리포지토리 계약. 계정/역할/토큰/감사의 핵심 모델.
+auth 도메인 엔티티·값(enum)·리포지토리 계약. 계정/역할/토큰/감사 핵심 모델.
 
 ## 파일
 - `AppUser.java` — 계정 엔티티(BaseEntity 상속). email/비밀번호 해시/이름/상태/소속 부서(department, esm 도메인 담당 부서 판정용)

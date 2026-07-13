@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-알림 확인처리 애플리케이션 계층의 요청·응답 DTO(record).
+알림 확인처리 애플리케이션 계층 요청·응답 DTO(record).
 
 ## 파일
 - `DismissNotificationsRequest.java` — 확인처리 요청(items: 1개 이상, 각 항목 notificationType/sourceId)

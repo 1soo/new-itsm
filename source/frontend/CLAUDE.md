@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-ITSM(IT 서비스 관리) 프론트엔드. React 19(CSR) + Vite + TypeScript + Redux Toolkit + React Router + shadcn/ui(Tailwind v4) 기반. 인증(RBAC), 서비스 요청(SRM), 인시던트(INC), 문제(PRB) 도메인 화면을 제공하며, 백엔드(`source/backend`)와는 apiClient(`/api/v1`)로 통신한다. dev 서버는 `/api`를 백엔드(8080)로 프록시한다.
+ITSM(IT 서비스 관리) 프론트엔드. React 19(CSR) + Vite + TypeScript + Redux Toolkit + React Router + shadcn/ui(Tailwind v4) 기반. 인증(RBAC), 서비스 요청(SRM), 인시던트(INC), 문제(PRB) 도메인 화면 제공. 백엔드(`source/backend`)와 apiClient(`/api/v1`)로 통신. dev 서버는 `/api`를 백엔드(8080)로 프록시.
 
 ## 파일
 - `package.json` — 의존성·스크립트(`dev`/`build`/`preview`/`lint`).

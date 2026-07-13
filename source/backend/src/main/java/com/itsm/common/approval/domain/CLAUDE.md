@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-승인 엔진의 엔티티·enum·리포지토리 계약(`docs/02_plan/database/common.md` 4절).
+승인 엔진 엔티티·enum·리포지토리 계약(`docs/02_plan/database/common.md` 4절).
 
 ## 파일
 - `ApprovalProcess.java` — 승인 프로세스 정의 헤더(domain/requestSubtypeKey/priorityTier/name/description)

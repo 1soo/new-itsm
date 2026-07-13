@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-change 도메인의 엔티티·enum·리포지토리 계약.
+change 도메인 엔티티·enum·리포지토리 계약.
 
 ## 파일
 - `ChangeRequest.java` — 변경 요청(RFC) 엔티티(유형·위험도·상태·구현결과). 승인경로(approvalRoute) 필드는 2026-07-11 승인 프로세스 커스텀 기능으로 제거됨

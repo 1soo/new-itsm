@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-인증/계정/역할(RBAC) 기능. 로그인·내 프로필·비밀번호 변경 화면과 API·타입, 그리고 앱 전역에서 쓰는 역할 상수·RBAC 헬퍼를 제공한다. 전역 인증 상태는 `store/authSlice.ts`가 관리한다.
+인증/계정/역할(RBAC) 기능. 로그인·내 프로필·비밀번호 변경 화면·API·타입, 앱 전역 역할 상수·RBAC 헬퍼 제공. 전역 인증 상태는 `store/authSlice.ts`가 관리.
 
 ## 파일
 - `api.ts` — auth API 호출(`authApi`: login/logout/me/changePassword/getMyMenu). 공통 apiClient 경유.

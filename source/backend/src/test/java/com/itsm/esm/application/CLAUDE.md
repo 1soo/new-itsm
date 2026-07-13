@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-esm 애플리케이션 서비스의 단위 테스트.
+esm 애플리케이션 서비스 단위 테스트.
 
 ## 파일
 - `EsmCatalogServiceTest.java` — 카탈로그 CRUD 로직 및 PROCESS_OWNER 권한·IT 부서 거부 예외 테스트

@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-JWT 기반 인증·인가 공통 컴포넌트. 토큰 발급·검증, 인증 필터, 예외 진입점을 제공한다.
+JWT 기반 인증·인가 공통 컴포넌트. 토큰 발급·검증, 인증 필터, 예외 진입점 제공.
 
 ## 파일
 - `JwtTokenProvider.java` — Access/Refresh Token 생성·파싱·검증(jjwt)

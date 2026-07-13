@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-도메인별 스키마 DDL과 시드 데이터. 컨테이너 최초 기동 시 파일명 알파벳(번호) 순으로 실행된다. 단일 원천은 `docs/02_plan/database/*.md`이며 공통 컬럼 규칙(id, created_by/at, updated_by/at, is_deleted)을 따른다.
+도메인별 스키마 DDL과 시드 데이터. 컨테이너 최초 기동 시 파일명 알파벳(번호) 순 실행. 단일 원천은 `docs/02_plan/database/*.md`이며 공통 컬럼 규칙(id, created_by/at, updated_by/at, is_deleted)을 따름.
 
 ## 파일
 - `01_schema.sql` — auth 도메인 스키마: `role`, `app_user`, `user_role`, `screen`, `screen_role`(RBAC), `refresh_token`, `audit_log`(뒤 둘은 append-only).

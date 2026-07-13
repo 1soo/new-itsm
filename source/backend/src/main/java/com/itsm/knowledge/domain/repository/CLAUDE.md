@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-knowledge 도메인의 리포지토리 인터페이스.
+knowledge 도메인 리포지토리 인터페이스.
 
 ## 파일
 - `KnowledgeArticleRepository.java` — 지식 기사(KnowledgeArticle) 저장·조회·역할 기반 검색

@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-문제(problem) 도메인의 애플리케이션 서비스 계층.
+문제(problem) 도메인 애플리케이션 서비스 계층.
 
 ## 파일
 - `ProblemService.java` — 문제 생성·상태전이·RCA·워크어라운드·후속조치·연계·종료 및 기지 오류(Known Error) 유스케이스

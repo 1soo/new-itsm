@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-knowledge 도메인 애플리케이션 계층의 요청·응답 DTO(record).
+knowledge 도메인 애플리케이션 계층 요청·응답 DTO(record).
 
 ## 파일
 - `CreateArticleRequest.java` — 기사 작성 요청(제목·본문 필수, 카테고리, 라벨명 목록)

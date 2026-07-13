@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-언어별(ko/en) 네임스페이스 번역 리소스(common.md 6.3절). 네임스페이스 = `common` + 11개 업무 도메인 slug(`tech.md` 5절과 동일). 각 도메인 화면은 `useTranslation(["{domain-ns}", "common"])`로 필요한 네임스페이스만 로드한다.
+언어별(ko/en) 네임스페이스 번역 리소스(common.md 6.3절). 네임스페이스 = `common` + 11개 업무 도메인 slug(`tech.md` 5절과 동일). 각 도메인 화면은 `useTranslation(["{domain-ns}", "common"])`로 필요한 네임스페이스만 로드.
 
 키 컨벤션: `{section}.{itemKey}` 계층 구조(예: `header.dismissAll`, `notification.domainLabel.CHANGE`).
 

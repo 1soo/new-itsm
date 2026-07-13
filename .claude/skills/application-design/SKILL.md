@@ -9,8 +9,8 @@ description: API 명세서를 직관적이고 간결한 markdown으로 작성하
 
 ## 작성 원칙
 
-- 각 API마다 다음을 명시한다: **endpoint, method, header, request body, response body, response code**.
-- 각 요청이 **토큰이 포함된 요청인지, 포함되지 않은 요청인지** 명확히 표기한다. (예: `인증: 필요(Access Token)` / `인증: 불필요`)
+- 각 API마다 명시한다: **endpoint, method, header, request body, response body, response code**.
+- 각 요청이 **토큰 포함 요청인지, 미포함 요청인지** 명확히 표기한다. (예: `인증: 필요(Access Token)` / `인증: 불필요`)
 - 요구사항·기능 명세서에 없는 API는 만들지 않는다.
 
 ## 산출물 저장 위치

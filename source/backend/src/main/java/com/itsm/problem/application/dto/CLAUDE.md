@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-문제(problem) 도메인 애플리케이션 계층의 요청·응답 DTO(record).
+문제(problem) 도메인 애플리케이션 계층 요청·응답 DTO(record).
 
 ## 파일
 - `CreateProblemRequest.java` — 문제 생성 요청(요약·출처·영향도·긴급도·구성요소)

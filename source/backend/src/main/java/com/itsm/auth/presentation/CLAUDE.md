@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-auth 도메인의 REST 컨트롤러(프레젠테이션 계층).
+auth 도메인 REST 컨트롤러(프레젠테이션 계층).
 
 ## 파일
 - `AuthController.java` — `/api/v1/auth` 로그인/로그아웃/토큰 재발급/내 정보/비밀번호 변경. 유지보수(2026-07-12, 토큰 저장 Client Memory 전환): 로그인 성공 시 Refresh Token(httpOnly, `SameSite=Strict`) 쿠키와 함께 읽기 가능한 `XSRF-TOKEN` 쿠키(non-HttpOnly, `SameSite=Strict`)를 더블서밋 방식으로 발급. `/auth/refresh`는 `X-CSRF-Token` 헤더와 `XSRF-TOKEN` 쿠키 값을 비교해 불일치/누락 시 `BusinessException(CSRF_TOKEN_MISMATCH)`(403)를 Refresh Token 검증보다 먼저 던진다(우회 방지 위해 body-fallback 경로에도 동일 적용). 로그아웃 시 두 쿠키 모두 즉시 만료 처리

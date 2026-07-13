@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-problem 도메인의 엔티티·enum·리포지토리 계약.
+problem 도메인 엔티티·enum·리포지토리 계약.
 
 ## 파일
 - `Problem.java` — 문제 엔티티(요약·출처·상태·우선순위·영향도·긴급도·RCA·워크어라운드)

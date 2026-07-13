@@ -1,7 +1,6 @@
 # CLAUDE.md
 
-서비스 요청(srm) 도메인 애플리케이션 계층의 요청·응답 DTO(record/enum). 승인 결정·대기 관련 DTO(ApprovalDecision*, PendingApprovalResponse)는
-2026-07-11 승인 프로세스 커스텀 기능으로 `common.approval.application.dto`(전 도메인 공용)로 대체되어 제거되었다.
+서비스 요청(srm) 도메인 애플리케이션 계층 요청·응답 DTO(record/enum). 승인 결정·대기 관련 DTO(ApprovalDecision*, PendingApprovalResponse)는 2026-07-11 승인 프로세스 커스텀 기능으로 `common.approval.application.dto`(전 도메인 공용)로 대체·제거됨.
 
 ## 파일
 - `CreateRequestRequest.java` — 서비스 요청 생성(catalogItemId, 동적 formValues)
@@ -15,7 +14,7 @@
 - `CommentResponse.java` — 댓글 응답
 - `CsatRequest.java` — 만족도(CSAT) 제출 요청(score 1~5, comment)
 - `CsatResponse.java` — CSAT 응답
-- `CreateCatalogItemRequest.java` — 카탈로그 항목 생성 요청(SLA·동적 양식. 승인 필드는 제거됨)
+- `CreateCatalogItemRequest.java` — 카탈로그 항목 생성 요청(SLA·동적 양식. 승인 필드 제거됨)
 - `UpdateCatalogItemRequest.java` — 카탈로그 항목 수정 요청(양식 전체 교체 가능)
 - `CatalogItemSummaryResponse.java` — 카탈로그 항목 요약 응답
 - `CatalogItemDetailResponse.java` — 카탈로그 항목 상세 응답(양식 스키마 포함)

@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Gradle Wrapper 파일. 프로젝트 지정 Gradle 버전을 고정한다.
+Gradle Wrapper 파일. 프로젝트 지정 Gradle 버전 고정.
 
 ## 파일
 - `gradle-wrapper.jar` — Gradle Wrapper 실행 바이너리

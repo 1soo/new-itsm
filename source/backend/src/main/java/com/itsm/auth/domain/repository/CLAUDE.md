@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-auth 도메인의 리포지토리 인터페이스(영속성 기술 비의존, 구현은 infrastructure에 위임).
+auth 도메인 리포지토리 인터페이스(영속성 기술 비의존, 구현은 infrastructure에 위임).
 
 ## 파일
 - `AppUserRepository.java` — 계정(AppUser) 저장·조회

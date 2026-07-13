@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Redux Toolkit 전역 상태. 앱 전역에서 공유하는 인증 상태만 보관한다(Access Token 자체는 apiClient의 Client Memory가 단일 원천).
+Redux Toolkit 전역 상태. 앱 전역 공유 인증 상태만 보관(Access Token 자체는 apiClient의 Client Memory가 단일 원천).
 
 ## 파일
 - `index.ts` — 스토어 구성(`configureStore`)과 `RootState`/`AppDispatch` 타입.

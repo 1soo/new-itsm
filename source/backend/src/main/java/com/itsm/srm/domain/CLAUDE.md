@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-srm 도메인의 엔티티·enum·리포지토리 계약.
+srm 도메인 엔티티·enum·리포지토리 계약.
 
 ## 파일
 - `ServiceRequest.java` — 서비스 요청 엔티티(상태·SLA·담당자·요청자)

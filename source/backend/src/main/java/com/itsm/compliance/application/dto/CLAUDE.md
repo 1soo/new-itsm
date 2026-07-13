@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-compliance 도메인 애플리케이션 계층의 요청·응답 DTO(record).
+compliance 도메인 애플리케이션 계층 요청·응답 DTO(record).
 
 ## 파일
 - `CreateRequirementRequest.java` — 요구사항 등록 요청(name·basis 필수, scope 선택)

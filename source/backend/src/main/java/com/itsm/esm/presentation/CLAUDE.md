@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-esm 도메인의 REST 컨트롤러.
+esm 도메인 REST 컨트롤러.
 
 ## 파일
 - `EsmCatalogController.java` — `/api/v1/esm/catalog-items` 부서 카탈로그 목록/상세/생성/수정 API

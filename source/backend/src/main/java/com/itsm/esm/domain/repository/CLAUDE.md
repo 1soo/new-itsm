@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-esm 도메인의 리포지토리 인터페이스.
+esm 도메인 리포지토리 인터페이스.
 
 ## 파일
 - `EsmCatalogItemRepository.java` — 카탈로그 항목(EsmCatalogItem) 저장·조회·검색(department/keyword)

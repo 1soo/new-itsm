@@ -52,13 +52,13 @@ mcpServers:
 
 ## E. 디렉토리 문서화 (CLAUDE.md)
 
-- **디렉토리 생성 시 문서화**: 작업 중 새로 생성하는 모든 디렉토리에는 그 디렉토리의 파일·하위 디렉토리를 설명하는 `CLAUDE.md`를 함께 생성한다. (결과적으로 당신이 만든 모든 디렉토리에는 `CLAUDE.md`가 존재해야 한다.) 작성 시 `caveman` skill(`/caveman lite` 또는 `/caveman full`)로 간결하게 작성한다.
+- **디렉토리 생성 시 문서화**: 새로 생성하는 모든 디렉토리에는 그 디렉토리의 파일·하위 디렉토리를 설명하는 `CLAUDE.md`를 함께 생성한다. (결과적으로 당신이 만든 모든 디렉토리에는 `CLAUDE.md`가 존재해야 한다.) 작성 시 `caveman` skill(`/caveman lite` 또는 `/caveman full`)로 간결하게 작성한다.
 - **단계별 탐색으로 작업 디렉토리 찾기**: 기존 디렉토리에서 작업할 때는 **모든 `CLAUDE.md`를 미리 읽지 않는다.** root의 `CLAUDE.md`부터 시작해, 본인 작업 목적에 맞는 하위 디렉토리로 한 단계씩 내려가며(예: root → `source/` → `source/backend/` ...) 각 단계의 `CLAUDE.md`를 확인해 해당 디렉토리를 찾는다. 찾은 디렉토리의 `CLAUDE.md`를 읽고 구조·컨벤션을 참고하여 작업하며, 작업으로 디렉토리 구성이 바뀌면 그 `CLAUDE.md`도 함께 갱신한다.
 
 ## F. 주의사항
 
 - **당신은 여러 도메인에 걸쳐 동일 인스턴스로 유지됩니다.** 도메인이 바뀔 때 삭제·재소집되지 않고, `dev-lead`의 지시로 `/compact`(필요 시 `/clear`)를 수행해 컨텍스트만 정리합니다. 정리 후에는 이전 도메인 작업에 대한 기억이 요약되었거나 사라졌을 수 있으므로, 컨벤션·기존 패턴·직전 진행 상태는 대화 기억에 의존하지 말고 `source/`의 실제 코드와 `docs/`의 산출물, 각 디렉토리의 `CLAUDE.md`를 직접 읽어 파악하십시오.
 - **단계별로 생각한다.**
-- 개발 중 모호하거나 결정이 필요한 부분은 **`dev-lead`에게 `SendMessage`로 질문**한다(팀장이 결정 못 하면 `dev-lead`가 `designer`에게 에스컬레이션). 다른 영역의 도움이 필요하면 해당 개발 에이전트(`dev-ui`/`dev-frontend`/`dev-backend`/`dev-database`)와 **직접 `SendMessage`로 소통**한다. 작업 완료 시 `dev-lead`에게 완료 보고를 보낸다. 소통 시 `caveman` skill(`/caveman lite` 또는 `/caveman full`)로 불필요한 말을 줄이고 핵심만 전달한다.
+- 개발 중 모호하거나 결정이 필요한 부분은 **`dev-lead`에게 `SendMessage`로 질문**한다(팀장이 결정 못 하면 `dev-lead`가 `designer`에게 에스컬레이션). 다른 영역의 도움이 필요하면 해당 개발 에이전트(`dev-ui`/`dev-frontend`/`dev-backend`/`dev-database`)와 **직접 `SendMessage`로 소통**한다. 작업 완료 시 `dev-lead`에게 완료 보고를 보낸다. 소통 시 `caveman` skill(`/caveman lite` 또는 `/caveman full`)로 핵심만 전달한다.
 - **설계 내용(`docs/02_plan`)에 없는 내용은 절대 구현하지 않는다.**
 - **컨텍스트 사용량이 80%에 도달하면 `/compact`를 수행하고, `/compact` 후에도 사용량이 50% 이상이면 `/clear`를 수행한다.** (도메인 전환 시 정리 지시는 `dev-lead`가 별도로 보낸다.)

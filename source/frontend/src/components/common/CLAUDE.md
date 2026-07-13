@@ -1,15 +1,15 @@
 # CLAUDE.md
 
-프로젝트 공통 컴포넌트. `ui/`의 프리미티브를 조합해 도메인 무관한 재사용 패턴(상태 표시·목록/상세 셸·차트·폼)을 제공하며, 프레젠테이션만 담당하고 데이터·권한·라우팅은 기능 레이어(FE)가 주입한다. 화면 설계서(common.md SCR-COM-*)의 공통 UX를 구현한다.
+프로젝트 공통 컴포넌트. `ui/`의 프리미티브를 조합해 도메인 무관한 재사용 패턴(상태 표시·목록/상세 셸·차트·폼)을 제공하며, 프레젠테이션만 담당하고 데이터·권한·라우팅은 기능 레이어(FE)가 주입. 화면 설계서(common.md SCR-COM-*)의 공통 UX 구현.
 
 ## 파일
-- `index.ts` — 공통 컴포넌트 배럴. 기능 화면은 이 모듈에서 import 한다.
+- `index.ts` — 공통 컴포넌트 배럴. 기능 화면은 이 모듈에서 import.
 - `status-badge.tsx` — 상태 배지. tone(success/warning/danger/info/muted) + 라벨을 FE가 주입. `StatusTone` 타입 제공.
 - `priority-badge.tsx` — 우선순위 배지(P1~P4 → Danger~Muted). `Priority` 타입 제공.
 - `toast.ts` — 토스트 helper(success/error/info). 외부 API 불변, 내부는 SweetAlert2 toast mixin(우상단, `index.css`의 `itsm-swal-toast*` 클래스로 시맨틱 토큰 스타일링, 2026-07-12 SweetAlert2 도입).
 - `confirm-dialog.tsx` — 파괴적/비가역 동작 확인 다이얼로그. 선언형 API(props) 불변, 내부에서 `open` 변화를 감지해 SweetAlert2를 명령형으로 호출하는 래퍼(`index.css`의 `itsm-swal-popup`/`itsm-swal-btn*` 클래스, 2026-07-12 SweetAlert2 도입). 확인 시에만 `onConfirm` 호출, 닫힘은 호출측이 `onOpenChange`로 제어. `confirmLabel`/`cancelLabel` 미지정 시 `common:dialog.confirm`/`common:dialog.cancel`로 폴백.
 - `modal.tsx` — 범용 모달(폼/상세 등 비파괴 콘텐츠). 파괴적 확인은 ConfirmDialog 사용. SweetAlert2 도입 대상에서 제외되어 기존 Radix Dialog 그대로 유지.
-- `user-guide-content.tsx` — 사용자 가이드 전용 화면(`/guide`, SCR-COM-012)의 섹션 콘텐츠. `UserGuideOverview`(개요 1절, Markdown 순차 렌더링)·`UserGuideDomainSection`(11개 도메인 아코디언)·`UserGuideRoleSection`(16개 역할 아코디언, `myRoles?: string[]`로 "내 역할" 상단 고정+기본 펼침) 3개를 개별 export. 콘텐츠는 `docs/01_analyze/feature/user-guide-content.md`(한국어)·`user-guide-content.en.md`(영어, 2026-07-12 다국어 지원) 원문을 가공 없이 이관한 정적 데이터(`react-markdown`으로 굵게 등 인라인 서식 렌더링), `i18n.language`에 따라 언어별 콘텐츠 세트를 선택. 페이지 레이아웃(문서 헤더·TOC)은 담당하지 않음 — FE(`features/guide/GuidePage.tsx`)가 조립.
+- `user-guide-content.tsx` — 사용자 가이드 전용 화면(`/guide`, SCR-COM-012)의 섹션 콘텐츠. `UserGuideOverview`(개요 1절, Markdown 순차 렌더링)·`UserGuideDomainSection`(11개 도메인 아코디언)·`UserGuideRoleSection`(16개 역할 아코디언, `myRoles?: string[]`로 "내 역할" 상단 고정+기본 펼침) 3개를 개별 export. 콘텐츠는 `docs/01_analyze/feature/user-guide-content.md`(한국어)·`user-guide-content.en.md`(영어, 2026-07-12 다국어 지원) 원문을 가공 없이 이관한 정적 데이터(`react-markdown`으로 굵게 등 인라인 서식 렌더링), `i18n.language`에 따라 언어별 콘텐츠 세트 선택. 페이지 레이아웃(문서 헤더·TOC)은 담당하지 않음 — FE(`features/guide/GuidePage.tsx`)가 조립.
 - `multi-select.tsx` — 다중 선택(Popover + 체크 리스트). 필터바용. `MultiSelectOption` 타입 제공. `placeholder` prop 미지정 시 `common:multiSelect.defaultPlaceholder`로 폴백, 선택 개수·선택 해제 aria-label·빈 목록 문구는 `common:multiSelect.*` 키(2026-07-12 다국어 지원).
 - `pagination.tsx` — 페이지네이션(0-based, 최대 5개 번호 창). `nav`/이전·다음 버튼 `aria-label`은 `common:pagination.*` 키(2026-07-12 다국어 지원).
 - `data-table.tsx` — 제네릭 데이터 표. 로딩 스켈레톤·빈 상태·행 클릭 지원. `Column<T>` 타입 제공.
