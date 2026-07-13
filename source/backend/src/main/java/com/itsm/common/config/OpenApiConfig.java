@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 @OpenAPIDefinition(
-        info = @Info(title = "ITSM API", version = "0.1", description = "ITSM 플랫폼 API 문서 (auth 도메인)"),
+        info = @Info(title = "ITSM API", version = "0.1", description = "ITSM 플랫폼 API 문서"),
         servers = @Server(url = "/", description = "current")
 )
 @SecurityScheme(
