@@ -19,7 +19,7 @@
 | TC-I18N-001 | PASS | 언어 전환 전 사이드바 한국어(`screenName`/`groupLabel`) 정상 표시("메뉴 관리","승인 프로세스 목록","관리자" 등) | - |
 | TC-I18N-002 | PASS | 헤더 지구본→English 선택 시 새로고침 없이 즉시 `screenNameEn`/`groupLabelEn`로 전환("Menu Management","Admin","Approval Process List" 등), 원시 한국어 노출 없음 | shots/TC-I18N-002_sidebar_en_bg_white.png |
 | TC-MENU-001 | PASS | 메뉴 생성(그룹 신규 입력 포함, 영문명 포함)·수정(영문명·그룹영문명 변경) API 201/200 정상, 응답에 `screenNameEn`/`groupLabelEn` 값 일치 확인. 테스트 데이터는 이후 soft delete로 정리 | - |
-| TC-MENU-002 | **FAIL** | 신규 그룹 입력 시 그룹 영문명을 **공란으로 두고 저장해도 201 Created로 그대로 생성됨**(기대: 400). 요구사항(`api_spec/auth.md` API-AUTH-017 "400 groupCode 지정 시 groupLabelEn 누락 포함")과 불일치 | 아래 "실패 항목 분석" 참조 |
+| TC-MENU-002 | PASS(재테스트) | 최초 FAIL 후 dev-lead 수정 반영해 재검증 → `groupLabelEn` 공란 저장 시 400 정상 반환, UI 인라인 오류 표시 확인 | 아래 "실패 항목 분석"(최초 발견) 참조 |
 | TC-MENU-003 | PASS | INCIDENT_MANAGER(im@itsm.local)로 `/admin/menus` 접근 시 FE 라우트 가드가 `/403`으로 리다이렉트("접근 권한이 없습니다"). BE `GET /api/v1/admin/screens` 직접 호출도 403 확인(defense-in-depth) | shots/TC-MENU-003_403.png |
 | TC-APR-001 | PASS | "규칙 정보" 카드 필드 순서 Domain → Request Type(도메인 선택 후 hasRequestSubtype=true인 SERVICE_REQUEST에서만 노출) → Rule Name → Description(optional) 확인, 승인 단계 카드 스택과 분리되어 별도 카드로 렌더링 | - |
 | TC-APR-002 | PASS | 승인 단계 카드 스택이 "Step 1 · Requester"(고정)→"Step 2 · Approvers"(가변) 순서로 렌더링, 구 0/1단계(도메인/요청유형) 카드 없음 | - |
