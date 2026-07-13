@@ -14,6 +14,15 @@ Agent Teams는 실험적 기능이라 `.claude/settings.json`(또는 `settings.l
 }
 ```
 
+## 보조 스킬 (caveman / ponytail)
+
+`.claude/settings.json`에 프로젝트 범위(project-scoped) 플러그인으로 등록되어 있다 (`extraKnownMarketplaces` + `enabledPlugins`). 최초 사용 시 플러그인 신뢰 확인 프롬프트가 뜰 수 있다.
+
+| 스킬 | 목적 | 명령어 | 사용 대상 |
+|------|------|--------|-----------|
+| [caveman](https://github.com/JuliusBrussee/caveman) | CLAUDE.md 생성 시, teammate(agent) 간 `SendMessage` 소통 시 불필요한 말을 줄이고 핵심만 간결하게 압축 | `/caveman lite` 또는 `/caveman full` | 모든 Agent |
+| [ponytail](https://github.com/DietrichGebert/ponytail) | 작업 계획 수립 시 실제로 필요한 내용만 작업하도록 하고, 기존 컴포넌트·모듈 재사용을 우선하도록 유도 | `/ponytail lite` 또는 `/ponytail full` | `designer`, `dev-lead`, `developer`(UI/FE/BE/DB) |
+
 ## 팀 구성 (Roster)
 
 모든 에이전트는 **`model: sonnet`(Sonnet 5) + `effort: high`** 로 동작한다(Sonnet 5 사용이 불가능한 경우 `model: opus` + `effort: high`로 대체한다). **소집(spawn)은 Main만 가능**하며, 에이전트끼리는 `SendMessage`와 공유 task list로 협업한다(중첩 불가, flat peer).

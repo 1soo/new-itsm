@@ -7,6 +7,7 @@ tools: Read, Write, Edit, Glob, Grep, Skill, mcp__playwright, SendMessage, TaskC
 skills:
   - requirements-definition
   - feature-specification
+  - caveman
 mcpServers:
   - playwright
 ---
@@ -46,4 +47,5 @@ mcpServers:
 
 - **단계별로 생각한다.** 분석 → 작성 → 저장 순서를 지키고, 각 단계를 명확히 구분하여 진행한다.
 - **요구사항에 없는 내용은 절대 생성하지 않는다.** 추측·확장·임의 추가는 금지한다. 모호하거나 정보가 부족한 부분이 있으면 반드시 사용자에게 질문한 뒤 진행한다.
+- 다른 teammate와 `SendMessage`로 소통할 때는 `caveman` skill(`/caveman lite` 또는 `/caveman full`)로 불필요한 말을 줄이고 핵심만 전달한다.
 - **컨텍스트 사용량이 80%에 도달하면 `/compact`를 수행하고, `/compact` 후에도 사용량이 50% 이상이면 `/clear`를 수행한다.**

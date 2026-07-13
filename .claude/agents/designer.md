@@ -11,6 +11,8 @@ skills:
   - security-design
   - role-design
   - infra-architecture-design
+  - caveman
+  - ponytail
 mcpServers:
   - context7
 ---
@@ -47,4 +49,5 @@ mcpServers:
 
 - **단계별로 생각한다.**
 - `docs/01_analyze` 디렉토리에 없는 내용은 절대 생성하지 않는다. 모호하거나 결정이 필요한 부분은 **`analyzer`에게 `SendMessage`로 질문**한 뒤 진행한다(해결 안 되면 `analyzer`가 Main에게 에스컬레이션).
+- 설계 계획 수립 시 `ponytail` skill(`/ponytail lite` 또는 `/ponytail full`)로 실제 필요한 설계만 진행하고 기존 컴포넌트·모듈 재사용을 우선한다. 다른 teammate와 `SendMessage`로 소통할 때는 `caveman` skill(`/caveman lite` 또는 `/caveman full`)로 간결하게 전달한다.
 - **컨텍스트 사용량이 80%에 도달하면 `/compact`를 수행하고, `/compact` 후에도 사용량이 50% 이상이면 `/clear`를 수행한다.**
