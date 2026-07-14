@@ -6,7 +6,7 @@
 - 빌드 테스트를 시나리오 선행 항목으로 포함한다.
 - 추적성: 각 항목은 `@docs/01_analyze/...` 로 근거 요구사항/기능을 링크한다.
 - 격리: playwright는 매 항목마다 새 창(새 context)에서 수행, storage 초기화.
-- 시나리오에 없는 내용은 수행하지 않는다.
+- 시나리오에 명시된 내용만 수행한다.
 
 ## 시나리오 양식 — `docs/04_test/{yyyyMMdd-HHmmss}/{domain}/scenario.md`
 

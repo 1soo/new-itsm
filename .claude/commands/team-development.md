@@ -23,18 +23,18 @@ disable-model-invocation: true
 
 ## 1. 전체 Teammate 소집 (Main만 수행, 이 커맨드에서 유일하게 수행하는 소집)
 
-`Agent` 툴로 아래 전원을 **이름을 지정해 Teammate로(백그라운드)** 소집한다. 각 소집 시 반드시 **"단계별로 생각할 것"** 을 명시적으로 지시한다.
+`Agent` 툴로 아래 전원을 **이름을 지정해 Teammate로(백그라운드)** 소집한다.
 
 | name | subagent_type | 소집 시 지시 요지 |
 |---|---|---|
-| `analyzer` | `analyzer` | 요구사항 분석 담당. 단계별로 생각할 것. 모호하거나 결정이 필요한 부분은 Main에게 직접 질문할 것. |
-| `designer` | `designer` | 설계 담당. 단계별로 생각할 것. 모호하거나 결정이 필요한 부분은 `analyzer`에게 SendMessage로 질문할 것. |
-| `dev-lead` | `dev-lead` | 개발 조율 담당(코드 미구현). 단계별로 생각할 것. 결정하지 못하는 설계 이슈는 `designer`에게 질문할 것. |
-| `dev-ui` | `developer` | 역할: UI. `ui-ux-development` skill만 사용. 단계별로 생각할 것. |
-| `dev-frontend` | `developer` | 역할: FE. `react-development` 또는 `next-development` skill만 사용(확정 스택에 맞춰). 단계별로 생각할 것. |
-| `dev-backend` | `developer` | 역할: BE. `spring-boot-development` skill만 사용. 단계별로 생각할 것. |
-| `dev-database` | `developer` | 역할: DB. `database-development` skill만 사용. 단계별로 생각할 것. |
-| `tester` | `tester` | 도메인별 통합 테스트 담당. 단계별로 생각할 것. |
+| `analyzer` | `analyzer` | 요구사항 분석 담당. 모호하거나 결정이 필요한 부분은 Main에게 직접 질문할 것. |
+| `designer` | `designer` | 설계 담당. 모호하거나 결정이 필요한 부분은 `analyzer`에게 SendMessage로 질문할 것. |
+| `dev-lead` | `dev-lead` | 개발 조율 담당(코드 미구현). 결정하지 못하는 설계 이슈는 `designer`에게 질문할 것. |
+| `dev-ui` | `developer` | 역할: UI. `implementation` skill의 `references/ui-ux`만 사용. |
+| `dev-frontend` | `developer` | 역할: FE. `implementation` skill의 `references/react` 또는 `references/next`만 사용(확정 스택에 맞춰). |
+| `dev-backend` | `developer` | 역할: BE. `implementation` skill의 `references/spring-boot`(또는 SSR Next인 경우 `references/next`)만 사용. |
+| `dev-database` | `developer` | 역할: DB. `implementation` skill의 `references/database`(Supabase 지정 시 `references/database/supabase` 포함)만 사용. |
+| `tester` | `tester` | 도메인별 통합 테스트 담당. |
 
 > SSR Next 풀스택으로 확정되어 `dev-backend`가 불필요해지면, `dev-lead`가 이를 확인한 뒤 Main에게 SendMessage로 알리고, Main이 해당 teammate를 정리한다. 그 외의 경우 위 8개 전원을 그대로 유지한다.
 
@@ -46,7 +46,6 @@ disable-model-invocation: true
 - 참조파일 위치: $reference_path
 - 추가 요구사항: $additional_requirements
 - `CLAUDE.md`의 워크플로우(분석 → 설계 → 개발 → 테스트)를 따르고, 각 단계 산출물이 나오면 다음 에이전트에게 **직접 SendMessage로** 전달할 것. 추가 요구사항이 있으면 분석 산출물에 반영하고, 이후 단계로 전달할 때도 함께 전달할 것.
-- 단계별로 생각할 것.
 
 ## 3. Main의 역할 제한 (반드시 준수)
 
