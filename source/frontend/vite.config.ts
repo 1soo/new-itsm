@@ -14,7 +14,7 @@ export default defineConfig({
     port: 5173,
     // 쿠키 기반 refresh를 same-origin으로 처리하기 위한 dev proxy (cross-site Secure 이슈 회피)
     proxy: {
-      "/api": { target: "http://localhost:8081", changeOrigin: true },
+      "/api": { target: "http://localhost:8080", changeOrigin: true },
     },
   },
 });
