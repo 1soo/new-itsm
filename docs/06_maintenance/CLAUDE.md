@@ -41,3 +41,4 @@
 | 20260712-180448 | compliance | COMP 전 화면 다국어 전환, 감사 로그 이벤트 코드(auditEventTypeLabel) 원시값 노출 수정 | docs/06_maintenance/20260712-180448/compliance/report.md |
 | 20260712-180448 | infra-monitoring | IOM 전 화면 다국어 전환 | docs/06_maintenance/20260712-180448/infra-monitoring/report.md |
 | 20260714-102553 | common | 사이드바 폭/폰트 축소(190px/48px, 12px/10px), DataTable 컬럼폭 고정 인프라(colgroup+table-fixed) 도입 및 17개 목록화면 적용, 1920x1080 기준 PAGE_SIZE 재산정(10/20→13/14/16) | docs/06_maintenance/20260714-102553/common/report.md |
+| 20260714-151157 | runtime-upgrade | Java 25 + Spring Boot 4.1.0 + PostgreSQL 18 런타임 업그레이드(gradle 9.6.1, springdoc/jjwt/testcontainers 호환버전, Jackson3/RoleHierarchy 등 Framework7 대응) | docs/06_maintenance/20260714-151157/runtime-upgrade/report.md |
