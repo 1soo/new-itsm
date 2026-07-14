@@ -8,3 +8,4 @@
 - `JpaAuditingConfig.java` — JPA Auditing 활성화(생성/수정자·시각 자동 기록)
 - `JacksonConfig.java` — 전역 Jackson 커스터마이징(LocalDate 필드가 FE의 전체 ISO-8601 datetime 직렬화도 허용하도록 완화)
 - `LenientLocalDateDeserializer.java` — LocalDate 커스텀 역직렬화기("yyyy-MM-dd" 또는 전체 ISO-8601 datetime 모두 파싱)
+- `DotenvEnvironmentPostProcessor.java` — `.env` 파일을 Environment에 로드(`io.github.cdimascio:dotenv-java` 직접 사용, `META-INF/spring.factories`로 등록). spring-dotenv(me.paulschwarz)가 Boot 4의 `ConfigurableBootstrapContext` 패키지 이동으로 무동작하게 되어 대체(2026-07-14 런타임 업그레이드 유지보수)

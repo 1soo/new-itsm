@@ -4,3 +4,6 @@
 
 ## 파일
 - `application.yml` — Spring Boot 설정. DataSource(PostgreSQL)·JPA(ddl-auto validate)·JWT(만료시간)·CORS·springdoc(Swagger-UI). 환경변수(`${VAR}`)는 `.env`에서 주입
+
+## 하위 디렉토리
+- `META-INF/` — `spring.factories`(`DotenvEnvironmentPostProcessor` 등록)

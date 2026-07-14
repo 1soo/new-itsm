@@ -9,7 +9,7 @@ import com.itsm.auth.application.dto.MessageResponse;
 import com.itsm.auth.application.dto.PasswordChangeRequest;
 import com.itsm.auth.application.dto.RefreshRequest;
 import com.itsm.auth.application.dto.TokenResponse;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.common.exception.ErrorResponse;

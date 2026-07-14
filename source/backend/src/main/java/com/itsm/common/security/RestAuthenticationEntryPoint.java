@@ -1,6 +1,6 @@
 package com.itsm.common.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.common.exception.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;

@@ -1,6 +1,6 @@
 package com.itsm.auth.presentation;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.itsm.auth.application.AuthService;
 import com.itsm.auth.application.dto.LoginRequest;
 import com.itsm.auth.application.dto.LoginResponse;

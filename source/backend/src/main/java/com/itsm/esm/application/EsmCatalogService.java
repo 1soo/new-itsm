@@ -1,7 +1,7 @@
 package com.itsm.esm.application;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import com.itsm.auth.domain.Department;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;

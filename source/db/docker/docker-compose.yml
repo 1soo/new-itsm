@@ -12,7 +12,7 @@ services:
     ports:
       - "${POSTGRES_PORT}:5432"
     volumes:
-      - itsm_pgdata:/var/lib/postgresql/data
+      - itsm_pgdata:/var/lib/postgresql
       # 최초 기동 시 알파벳 순으로 실행 (01_schema.sql → 02_seed.sql)
       - ../sql:/docker-entrypoint-initdb.d:ro
     healthcheck:
