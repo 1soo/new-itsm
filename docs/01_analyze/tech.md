@@ -12,8 +12,8 @@
 |------|------|------|
 | **렌더링 방식** | CSR (Client-Side Rendering) | SPA 형태 |
 | **Frontend** | React (CSR) | 전역 상태 Redux Toolkit, 공통 apiClient 사용 |
-| **Backend** | Spring Boot | DDD·SOLID, Spring Security 기반 인증·인가, springdoc(OpenAPI) 문서화 |
-| **Database** | PostgreSQL | snake_case, 정규화, 공통 컬럼 규칙 |
+| **Backend** | Spring Boot 4.1.x (Java 25) | DDD·SOLID, Spring Security 기반 인증·인가, springdoc(OpenAPI) 문서화. 2026-07-14 유지보수로 Java 17→25, Spring Boot 3.3.5→4.1.x 업그레이드(`docs/02_plan/upgrade/backend-db-runtime-upgrade.md`) |
+| **Database** | PostgreSQL 18 | snake_case, 정규화, 공통 컬럼 규칙. 2026-07-14 유지보수로 16→18 업그레이드 |
 | **컨테이너** | Docker 사용 | docker-compose 기반 local DB/서비스 컨테이너 |
 | **배포 환경** | local | CSP(AWS/Azure) 인프라 아키텍처 설계는 이번 범위 제외 |
 

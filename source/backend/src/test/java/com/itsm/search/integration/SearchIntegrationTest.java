@@ -1,9 +1,9 @@
 package com.itsm.search.integration;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -11,7 +11,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
+import org.springframework.web.client.NoOpResponseErrorHandler;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.DefaultUriBuilderFactory;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.MountableFile;
@@ -23,15 +26,16 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 실 PostgreSQL(Testcontainers) + 실 HTTP(TestRestTemplate)로 통합 검색(API-SEARCH-001)을
- * 로그인→기사 작성→검색까지 end-to-end 재현한다.
+ * 실 PostgreSQL(Testcontainers) + 실 HTTP(RestTemplate)로 통합 검색(API-SEARCH-001)을
+ * 로그인→기사 작성→검색까지 end-to-end 재현한다. Spring Boot 4에서 TestRestTemplate이 제거되어
+ * RestTemplate에 랜덤 포트 base URL을 설정해 동등하게 대체한다.
  */
 @Testcontainers(disabledWithoutDocker = true)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class SearchIntegrationTest {
 
     @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
+    static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18-alpine")
             .withDatabaseName("itsm").withUsername("itsm").withPassword("itsm")
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/01_schema.sql").toAbsolutePath()),
                     "/docker-entrypoint-initdb.d/01_schema.sql")
@@ -79,7 +83,16 @@ class SearchIntegrationTest {
         registry.add("jwt.secret", () -> "Y2hhbmdlLW1lLXRoaXMtaXMtYS1kZXYtb25seS1zZWNyZXQtMzJieXRlcysrKw==");
     }
 
-    @Autowired TestRestTemplate rest;
+    @LocalServerPort int port;
+
+    RestTemplate rest;
+
+    @BeforeEach
+    void setUpRestTemplate() {
+        rest = new RestTemplate();
+        rest.setUriTemplateHandler(new DefaultUriBuilderFactory("http://localhost:" + port));
+        rest.setErrorHandler(new NoOpResponseErrorHandler());
+    }
 
     private String loginAndGetAccessToken(String email) {
         ResponseEntity<Map> response = rest.postForEntity("/api/v1/auth/login",

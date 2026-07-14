@@ -1,8 +1,9 @@
 package com.itsm.common.config;
 
-import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
+import org.springframework.boot.jackson.autoconfigure.JsonMapperBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import tools.jackson.databind.module.SimpleModule;
 
 import java.time.LocalDate;
 
@@ -13,7 +14,9 @@ import java.time.LocalDate;
 public class JacksonConfig {
 
     @Bean
-    public Jackson2ObjectMapperBuilderCustomizer lenientLocalDateCustomizer() {
-        return builder -> builder.deserializerByType(LocalDate.class, new LenientLocalDateDeserializer());
+    public JsonMapperBuilderCustomizer lenientLocalDateCustomizer() {
+        SimpleModule module = new SimpleModule();
+        module.addDeserializer(LocalDate.class, new LenientLocalDateDeserializer());
+        return builder -> builder.addModule(module);
     }
 }
