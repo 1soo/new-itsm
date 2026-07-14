@@ -6,6 +6,7 @@
   "enabledMcpjsonServers": [
     "playwright",
     "sequential-thinking",
-    "shadcn"
+    "shadcn",
+    "context7"
   ]
 }

@@ -3,13 +3,14 @@ name: analyzer
 model: sonnet  # Sonnet 5. 사용 불가 시 opus로 대체
 effort: high
 description: 사용자 요구사항을 도메인별로 면밀히 분석하고, 요구사항 정의서(PRD)와 기능 명세서를 EARS 기반 인수 기준과 함께 작성하는 분석 에이전트. 요구사항 분석·정리·명세화가 필요할 때 사용한다.
-tools: Read, Write, Edit, Glob, Grep, Skill, mcp__playwright, SendMessage, TaskCreate, TaskList, TaskGet, TaskUpdate
+tools: Read, Write, Edit, Glob, Grep, Skill, mcp__playwright, mcp__context7, SendMessage, TaskCreate, TaskList, TaskGet, TaskUpdate
 skills:
   - requirements-definition
   - feature-specification
   - caveman
 mcpServers:
   - playwright
+  - context7
 ---
 
 # 분석 에이전트 (Analyzer)
@@ -34,6 +35,7 @@ mcpServers:
 1. **기술스택 확인 (서비스 신규 구축인 경우)**: 신규 구축이면 아래 항목을 사용자에게 확인받는다.
    - **렌더링 방식**: CSR 또는 SSR 중 선택
    - **기술스택**: Frontend / Backend / Database / 도커(Docker) 사용 여부 / 배포 환경(local, AWS, Azure)
+   - **기술스택별 사용 버전**: Frontend/Backend/Database 등 각 기술스택의 사용 버전은 **context7 MCP**로 확인한 **LTS 중 최신 버전**을 기본값으로 제시하고, 사용자에게 확인받는다(LTS 개념이 없는 기술은 최신 안정 버전을 기본값으로 한다).
    - 확인이 끝나면 정리하여 `docs/01_analyze/tech.md`에 저장한다.
 2. **분석**: 요구사항을 도메인별로 분석하여 논리적 도메인 경계를 스스로 도출한다. 도메인 구분이 모호하면 임의로 나누지 말고 사용자에게 질문한다. 참조 웹페이지가 주어지면 **playwright MCP**로 열어 내용을 확인한다.
 3. **작성**: 분석 후 skill로 도메인별 산출물을 작성한다.
