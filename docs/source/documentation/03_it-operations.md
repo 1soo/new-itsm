@@ -300,19 +300,9 @@ Atlassian 문서 전반에서 강조·언급된 운영 지표입니다.
 
 ---
 
-## 🔗 IT 운영 관리(ITOM)·인시던트 관리와의 관계 및 차이
+## 🔗 ITOM·인시던트 관리와의 관계 및 차이
 
-Atlassian 문서는 ITOps 주변 용어를 다음과 같이 명확히 구분합니다.
-
-| 용어 | 정의 | ITOps와의 관계 |
-|---|---|---|
-| **ITOps** | 비즈니스 IT 인프라의 관리·유지(모니터링·트러블슈팅·이슈 해결 포함) | — (본체) |
-| **애플리케이션 관리** (Application management) | 소프트웨어 앱과 관련 프로세스 관리 | **거의 항상 ITOps의 일부** |
-| **IT 인프라** (IT infrastructure) | 데이터 저장·처리에 쓰이는 하드웨어·소프트웨어·통신 네트워크 | 인프라 관리는 **ITOps의 핵심 구성요소** |
-| **ITOM** (IT Operations Management) | ITSM에서 사용되고 ITIL(IT Infrastructure Library)에서 정의된 용어 | **ITOps와 상호 교환 가능한(interchangeable) 용어** |
-| **DevOps** | 소프트웨어 개발과 ITOps 팀 간 협업(자동화·모니터링·트러블슈팅) | **ITOps와 밀접하게 함께 감(go hand in hand)** |
-
-> 💡 **정리**: ITOps와 ITOM은 사실상 동의어이며, ITOM은 ITIL 계열에서 나온 명칭입니다. 인시던트 관리·문제 관리·보안 관리·서비스 데스크는 ITOps가 수행하는 **책임 영역**이고, DevOps는 개발과 운영이 **협업하는 접점**입니다.
+ITOps와 ITOM은 사실상 동의어로 함께 쓰이며(ITOM은 ITIL 계열에서 나온 명칭), ITOps vs ITOM vs ITSM의 상세한 구분은 [04_it-operations-management.md](./04_it-operations-management.md)를 참고한다. 인시던트 관리·문제 관리·보안 관리·서비스 데스크는 ITOps가 수행하는 **책임 영역**이고, DevOps는 개발과 운영이 **협업하는 접점**이다.
 
 ### 인시던트 관리와의 관계
 인시던트 관리는 ITOps의 핵심 책임 중 하나로, 소프트웨어·하드웨어·네트워크 실패에 대응합니다. 네트워크 인프라 영역에서는 인시던트 관리 프로세스가 고객 영향 이전에 장애를 신속히 식별·해결하며, **문제 관리(problem management)** 는 근본원인 대응으로 재발을 방지합니다. 취약점 관리는 인시던트 대응과 함께 사이버 위협 증가에 대응하는 축입니다.
