@@ -43,7 +43,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 인시던트 목록(SCR-INC-001) — 공통 목록/필터 패턴(SCR-COM-007).
  * 필터(상태·심각도·담당자·키워드·기간) / 표(식별키·요약·SEV·상태·담당자·갱신일·PM필요) / 등록 버튼.
  */
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 14;
 const ALL = "ALL";
 
 interface Filters {
@@ -95,31 +95,35 @@ export function IncidentListPage() {
   };
 
   const columns: Column<IncidentSummary>[] = [
-    { header: t("incidentList.columnTicketKey", { defaultValue: "식별키" }), cell: (i) => i.ticketKey },
+    { header: t("incidentList.columnTicketKey", { defaultValue: "식별키" }), width: 130, cell: (i) => i.ticketKey },
     {
       header: t("incidentList.columnSummary", { defaultValue: "요약" }),
       cell: (i) => <span className="line-clamp-1">{i.summary}</span>,
     },
     {
       header: t("incidentList.columnSeverity", { defaultValue: "심각도" }),
+      width: 110,
       cell: (i) => <StatusBadge tone={severityTone(i.severity)} label={i.severity} />,
     },
     {
       header: t("incidentList.columnStatus", { defaultValue: "상태" }),
+      width: 110,
       cell: (i) => <StatusBadge tone={statusTone(i.status)} label={statusLabel(t, i.status)} />,
     },
     {
       header: t("incidentList.columnAssignee", { defaultValue: "담당자" }),
+      width: 120,
       cell: (i) => i.assignee || t("incidentList.unassigned", { defaultValue: "미배정" }),
     },
     {
       header: "PM",
+      width: 90,
       cell: (i) =>
         i.postmortemRequired ? (
           <Badge variant="warning">{t("incidentList.pmRequired", { defaultValue: "PM 필요" })}</Badge>
         ) : null,
     },
-    { header: t("incidentList.columnUpdatedAt", { defaultValue: "갱신일" }), cell: (i) => formatDate(i.updatedAt) },
+    { header: t("incidentList.columnUpdatedAt", { defaultValue: "갱신일" }), width: 110, cell: (i) => formatDate(i.updatedAt) },
   ];
 
   const totalPages = data ? Math.ceil(data.totalElements / PAGE_SIZE) : 0;

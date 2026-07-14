@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
  * 큐 선택 시 해당 큐 요청으로 필터. "나에게 배정"으로 담당자 갱신(권한 없으면 BE 403).
  * 큐 목록은 API-SRM-016(GET /queues) 사용.
  */
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 16;
 const ALL_QUEUE = "__ALL__";
 
 function QueueButton({
@@ -127,23 +127,30 @@ export function RequestQueuePage() {
   };
 
   const columns: Column<RequestSummary>[] = [
-    { header: t("requestList.columnTicketKey", { defaultValue: "접수번호" }), cell: (r) => r.ticketKey },
-    { header: t("requestList.columnCatalogItem", { defaultValue: "유형" }), cell: (r) => r.catalogItemName },
+    { header: t("requestList.columnTicketKey", { defaultValue: "접수번호" }), width: 130, cell: (r) => r.ticketKey },
+    {
+      header: t("requestList.columnCatalogItem", { defaultValue: "유형" }),
+      cell: (r) => <span className="truncate block">{r.catalogItemName}</span>,
+    },
     {
       header: t("requestList.columnStatus", { defaultValue: "상태" }),
+      width: 110,
       cell: (r) => <StatusBadge tone={statusTone(r.status)} label={statusLabel(t, r.status)} />,
     },
     {
       header: "SLA",
+      width: 110,
       cell: (r) => <StatusBadge tone={slaTone(r.slaStatus)} label={slaLabel(t, r.slaStatus)} />,
     },
     {
       header: t("requestList.columnAssignee", { defaultValue: "담당자" }),
+      width: 120,
       cell: (r) => r.assignee || t("requestQueue.unassigned", { defaultValue: "미배정" }),
     },
-    { header: t("requestList.columnUpdatedAt", { defaultValue: "갱신일" }), cell: (r) => formatDate(r.updatedAt) },
+    { header: t("requestList.columnUpdatedAt", { defaultValue: "갱신일" }), width: 110, cell: (r) => formatDate(r.updatedAt) },
     {
       header: "",
+      width: 140,
       className: "text-right",
       cell: (r) => (
         <Button

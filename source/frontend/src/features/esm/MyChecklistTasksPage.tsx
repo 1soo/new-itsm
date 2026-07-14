@@ -28,7 +28,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 내 하위 작업 목록(SCR-ESM-010) — 본인 소속 부서에 배정된 체크리스트 하위 작업(scope=mine).
  * 대기 상태만 "완료 처리" 버튼 노출.
  */
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 13;
 const ALL = "ALL";
 
 const STATUS_OPTIONS: ChecklistTaskStatus[] = ["PENDING", "DONE"];
@@ -73,16 +73,26 @@ export function MyChecklistTasksPage() {
   const columns: Column<MyChecklistTask>[] = [
     {
       header: t("myChecklistTasks.columnChecklistType", { defaultValue: "체크리스트 유형" }),
+      width: 110,
       cell: (task) => checklistTypeLabel(t, task.checklistType),
     },
-    { header: t("myChecklistTasks.columnTargetUser", { defaultValue: "대상자" }), cell: (task) => task.targetUserName },
-    { header: t("myChecklistTasks.columnDescription", { defaultValue: "작업 설명" }), cell: (task) => task.description },
+    {
+      header: t("myChecklistTasks.columnTargetUser", { defaultValue: "대상자" }),
+      width: 120,
+      cell: (task) => task.targetUserName,
+    },
+    {
+      header: t("myChecklistTasks.columnDescription", { defaultValue: "작업 설명" }),
+      cell: (task) => <span className="truncate block">{task.description}</span>,
+    },
     {
       header: t("myChecklistTasks.columnStatus", { defaultValue: "상태" }),
+      width: 110,
       cell: (task) => <StatusBadge tone={checklistTaskStatusTone(task.status)} label={checklistTaskStatusLabel(t, task.status)} />,
     },
     {
       header: "",
+      width: 140,
       className: "text-right",
       cell: (task) =>
         task.status === "PENDING" ? (

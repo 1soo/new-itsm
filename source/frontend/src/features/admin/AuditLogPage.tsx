@@ -30,7 +30,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 감사 로그 조회(SCR-ADMIN-005) — 인증·계정/역할 변경 이벤트 이력.
  * 필터(이벤트 유형·주체·대상·기간) → 표(시각·이벤트·주체·대상·결과) → 페이지네이션. 읽기 전용.
  */
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 14;
 const ALL = "ALL";
 
 const EVENT_LABELS: Record<AuditEventType, string> = {
@@ -110,12 +110,20 @@ export function AuditLogPage() {
     });
 
   const columns: Column<AuditLog>[] = [
-    { header: t("admin.auditLog.columnOccurredAt", { defaultValue: "시각" }), cell: (l) => formatDateTime(l.occurredAt) },
-    { header: t("admin.auditLog.columnEvent", { defaultValue: "이벤트" }), cell: (l) => eventLabel(l.eventType) },
-    { header: t("admin.auditLog.columnActor", { defaultValue: "주체" }), cell: (l) => l.actor },
-    { header: t("admin.auditLog.columnTarget", { defaultValue: "대상" }), cell: (l) => l.target },
+    { header: t("admin.auditLog.columnOccurredAt", { defaultValue: "시각" }), width: 160, cell: (l) => formatDateTime(l.occurredAt) },
+    { header: t("admin.auditLog.columnEvent", { defaultValue: "이벤트" }), width: 130, cell: (l) => eventLabel(l.eventType) },
+    {
+      header: t("admin.auditLog.columnActor", { defaultValue: "주체" }),
+      width: 160,
+      cell: (l) => <span className="truncate block">{l.actor}</span>,
+    },
+    {
+      header: t("admin.auditLog.columnTarget", { defaultValue: "대상" }),
+      cell: (l) => <span className="truncate block">{l.target}</span>,
+    },
     {
       header: t("admin.auditLog.columnResult", { defaultValue: "결과" }),
+      width: 100,
       cell: (l) => (
         <StatusBadge
           tone={l.result === "SUCCESS" ? "success" : "danger"}

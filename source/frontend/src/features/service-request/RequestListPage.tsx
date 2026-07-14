@@ -41,7 +41,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 요청 목록(SCR-SRM-003) — 공통 목록/필터 패턴(SCR-COM-007).
  * END_USER는 본인 요청(scope=mine), SERVICE_DESK_AGENT는 전체(scope=all)를 조회한다.
  */
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 13;
 const ALL = "ALL";
 
 const STATUS_OPTIONS: SrStatus[] = [
@@ -104,18 +104,23 @@ export function RequestListPage() {
 
   const columns: Column<RequestSummary>[] = useMemo(
     () => [
-      { header: t("requestList.columnTicketKey", { defaultValue: "접수번호" }), cell: (r) => r.ticketKey },
-      { header: t("requestList.columnCatalogItem", { defaultValue: "유형" }), cell: (r) => r.catalogItemName },
+      { header: t("requestList.columnTicketKey", { defaultValue: "접수번호" }), width: 130, cell: (r) => r.ticketKey },
+      {
+        header: t("requestList.columnCatalogItem", { defaultValue: "유형" }),
+        cell: (r) => <span className="truncate block">{r.catalogItemName}</span>,
+      },
       {
         header: t("requestList.columnStatus", { defaultValue: "상태" }),
+        width: 110,
         cell: (r) => <StatusBadge tone={statusTone(r.status)} label={statusLabel(t, r.status)} />,
       },
       {
         header: "SLA",
+        width: 110,
         cell: (r) => <StatusBadge tone={slaTone(r.slaStatus)} label={slaLabel(t, r.slaStatus)} />,
       },
-      { header: t("requestList.columnAssignee", { defaultValue: "담당자" }), cell: (r) => r.assignee || "-" },
-      { header: t("requestList.columnUpdatedAt", { defaultValue: "갱신일" }), cell: (r) => formatDate(r.updatedAt) },
+      { header: t("requestList.columnAssignee", { defaultValue: "담당자" }), width: 120, cell: (r) => r.assignee || "-" },
+      { header: t("requestList.columnUpdatedAt", { defaultValue: "갱신일" }), width: 110, cell: (r) => formatDate(r.updatedAt) },
     ],
     [t],
   );

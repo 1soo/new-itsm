@@ -35,7 +35,7 @@ import { cn } from "@/lib/utils";
  * 목록/생성·수정 모달은 계정·역할 관리와 동일 패턴, 역할 매핑은 우측 슬라이드 패널(체크박스,
  * 토글마다 즉시 API 호출)로 처리한다. 삭제·역할 매핑은 sortOrder 오름차순 목록에 즉시 반영된다.
  */
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 16;
 const NO_GROUP = "";
 const NEW_GROUP = "__new__";
 
@@ -266,11 +266,22 @@ export function MenuManagementPage() {
   };
 
   const columns: Column<Screen>[] = [
-    { header: t("admin.menu.columnGroup", { defaultValue: "그룹" }), cell: (s) => s.groupLabel ?? s.groupCode ?? "-" },
-    { header: t("admin.menu.columnName", { defaultValue: "메뉴명" }), cell: (s) => s.screenName },
-    { header: t("admin.menu.columnPath", { defaultValue: "경로" }), cell: (s) => s.path },
+    {
+      header: t("admin.menu.columnGroup", { defaultValue: "그룹" }),
+      width: 110,
+      cell: (s) => s.groupLabel ?? s.groupCode ?? "-",
+    },
+    {
+      header: t("admin.menu.columnName", { defaultValue: "메뉴명" }),
+      cell: (s) => <span className="truncate block">{s.screenName}</span>,
+    },
+    {
+      header: t("admin.menu.columnPath", { defaultValue: "경로" }),
+      cell: (s) => <span className="truncate block">{s.path}</span>,
+    },
     {
       header: t("admin.menu.columnIcon", { defaultValue: "아이콘" }),
+      width: 140,
       cell: (s) => {
         const Icon = resolveIcon(s.iconName);
         return (
@@ -281,9 +292,15 @@ export function MenuManagementPage() {
         );
       },
     },
-    { header: t("admin.menu.columnSortOrder", { defaultValue: "순서" }), cell: (s) => s.sortOrder, className: "text-right" },
+    {
+      header: t("admin.menu.columnSortOrder", { defaultValue: "순서" }),
+      width: 80,
+      cell: (s) => s.sortOrder,
+      className: "text-right",
+    },
     {
       header: t("admin.menu.columnRoleCount", { defaultValue: "노출 역할 수" }),
+      width: 130,
       cell: (s) =>
         s.roles.length === 0 ? (
           <Badge variant="muted">{t("admin.menu.publicToAll", { defaultValue: "전체 공개" })}</Badge>
@@ -295,6 +312,7 @@ export function MenuManagementPage() {
     },
     {
       header: t("admin.menu.columnActions", { defaultValue: "액션" }),
+      width: 260,
       cell: (s) => (
         <div className="flex justify-end gap-2">
           <Button size="sm" variant="outline" onClick={() => setRolePanel(s)}>

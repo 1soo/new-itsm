@@ -24,6 +24,8 @@ export interface Column<T> {
   cell: (row: T) => ReactNode;
   /** 헤더/셀 정렬 클래스 등 */
   className?: string;
+  /** 컬럼 고정 폭(px). 미지정 시 잔여 폭을 흡수(auto). */
+  width?: number;
 }
 
 export interface DataTableProps<T> {
@@ -52,7 +54,16 @@ export function DataTable<T>({
 }: DataTableProps<T>) {
   return (
     <div className={cn("overflow-hidden rounded-lg border border-border", className)}>
-      <Table>
+      <Table className="table-fixed">
+        <colgroup>
+          {columns.map((col, i) =>
+            col.width ? (
+              <col key={i} style={{ width: col.width, minWidth: col.width, maxWidth: col.width }} />
+            ) : (
+              <col key={i} />
+            ),
+          )}
+        </colgroup>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             {columns.map((col, i) => (

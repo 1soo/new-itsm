@@ -23,7 +23,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 통합 검색 결과(SCR-COM-011) — 헤더 검색(SCR-COM-002)에서 Enter/전체 결과 보기 시 진입.
  * 지식+티켓(SRM/INC/PRB/CHG) 교차 도메인 결과를 updatedAt 내림차순 페이지네이션(size=20)으로 표시.
  */
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 13;
 
 export function SearchResultsPage() {
   const { t } = useTranslation("common");
@@ -66,25 +66,27 @@ export function SearchResultsPage() {
   const columns: Column<SearchResultItem>[] = [
     {
       header: t("search.columnDomain", { defaultValue: "도메인" }),
+      width: 130,
       cell: (r) => <StatusBadge tone="info" label={domainLabel(t, r.domain)} />,
     },
     {
       header: t("search.columnTitle", { defaultValue: "제목" }),
       cell: (r) => (
         <div className="space-y-0.5">
-          <p className="text-sm font-medium text-foreground">{r.title}</p>
-          <p className="text-xs text-muted-foreground">{r.key}</p>
+          <p className="truncate text-sm font-medium text-foreground">{r.title}</p>
+          <p className="truncate text-xs text-muted-foreground">{r.key}</p>
           {r.snippet ? <p className="line-clamp-1 text-xs text-muted-foreground">{r.snippet}</p> : null}
         </div>
       ),
     },
     {
       header: t("search.columnStatus", { defaultValue: "상태" }),
+      width: 130,
       cell: (r) => (
         <StatusBadge tone={resultStatusTone(r.domain, r.status)} label={resultStatusLabel(t, r.domain, r.status)} />
       ),
     },
-    { header: t("search.columnUpdatedAt", { defaultValue: "갱신일" }), cell: (r) => formatDateTime(r.updatedAt) },
+    { header: t("search.columnUpdatedAt", { defaultValue: "갱신일" }), width: 160, cell: (r) => formatDateTime(r.updatedAt) },
   ];
 
   const totalPages = data ? Math.ceil(data.totalElements / PAGE_SIZE) : 0;

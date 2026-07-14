@@ -35,7 +35,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 필터(이메일·이름·상태·역할) → 표(이름·이메일·역할·상태·생성일) → 페이지네이션.
  * 행 클릭 시 상세 이동. "계정 생성" 버튼으로 생성 화면 이동.
  */
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 14;
 const ALL = "ALL";
 
 interface Filters {
@@ -104,10 +104,14 @@ export function UserListPage() {
   };
 
   const columns: Column<UserSummary>[] = [
-    { header: t("admin.userList.columnName", { defaultValue: "이름" }), cell: (u) => u.name },
-    { header: t("admin.userList.columnEmail", { defaultValue: "이메일" }), cell: (u) => u.email },
+    { header: t("admin.userList.columnName", { defaultValue: "이름" }), width: 120, cell: (u) => u.name },
+    {
+      header: t("admin.userList.columnEmail", { defaultValue: "이메일" }),
+      cell: (u) => <span className="truncate block">{u.email}</span>,
+    },
     {
       header: t("admin.userList.columnRoles", { defaultValue: "역할" }),
+      width: 220,
       cell: (u) => (
         <span className="flex flex-wrap gap-1">
           {u.roles.map((r) => (
@@ -120,6 +124,7 @@ export function UserListPage() {
     },
     {
       header: t("admin.userList.columnStatus", { defaultValue: "상태" }),
+      width: 100,
       cell: (u) => (
         <StatusBadge
           tone={u.status === "ACTIVE" ? "success" : "warning"}
@@ -131,7 +136,7 @@ export function UserListPage() {
         />
       ),
     },
-    { header: t("admin.userList.columnCreatedAt", { defaultValue: "생성일" }), cell: (u) => formatDate(u.createdAt) },
+    { header: t("admin.userList.columnCreatedAt", { defaultValue: "생성일" }), width: 110, cell: (u) => formatDate(u.createdAt) },
   ];
 
   const totalPages = data ? Math.ceil(data.totalElements / PAGE_SIZE) : 0;

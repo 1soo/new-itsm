@@ -32,7 +32,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
 /*
  * HR 케이스 목록(SCR-ESM-007) — HR 담당자 전용. 필터(상태) + 우측 상단 "케이스 접수" 모달.
  */
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 13;
 const ALL = "ALL";
 
 const STATUS_OPTIONS: HrCaseStatus[] = ["INTAKE", "DOCUMENTATION", "INVESTIGATION", "RESOLUTION"];
@@ -93,13 +93,17 @@ export function HrCaseListPage() {
   };
 
   const columns: Column<HrCaseSummary>[] = [
-    { header: t("hrCaseList.columnCaseId", { defaultValue: "케이스ID" }), cell: (c) => `HR-${c.id}` },
-    { header: t("hrCaseList.columnTitle", { defaultValue: "제목" }), cell: (c) => c.title },
+    { header: t("hrCaseList.columnCaseId", { defaultValue: "케이스ID" }), width: 130, cell: (c) => `HR-${c.id}` },
+    {
+      header: t("hrCaseList.columnTitle", { defaultValue: "제목" }),
+      cell: (c) => <span className="truncate block">{c.title}</span>,
+    },
     {
       header: t("hrCaseList.columnStatus", { defaultValue: "상태" }),
+      width: 110,
       cell: (c) => <StatusBadge tone={hrCaseStatusTone(c.status)} label={hrCaseStatusLabel(t, c.status)} />,
     },
-    { header: t("hrCaseList.columnUpdatedAt", { defaultValue: "최종 갱신일" }), cell: (c) => formatDate(c.updatedAt) },
+    { header: t("hrCaseList.columnUpdatedAt", { defaultValue: "최종 갱신일" }), width: 110, cell: (c) => formatDate(c.updatedAt) },
   ];
 
   const totalPages = data ? Math.ceil(data.totalElements / PAGE_SIZE) : 0;

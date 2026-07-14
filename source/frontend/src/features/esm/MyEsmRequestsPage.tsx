@@ -30,7 +30,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 내 부서 요청 목록(SCR-ESM-003) — 요청자 본인 요청만 조회(scope=mine).
  * 공통 목록/필터 패턴(SCR-COM-007) 재사용.
  */
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 13;
 const ALL = "ALL";
 
 const STATUS_OPTIONS: EsmRequestStatus[] = ["SUBMITTED", "IN_PROGRESS", "COMPLETED", "REJECTED"];
@@ -79,17 +79,22 @@ export function MyEsmRequestsPage() {
   };
 
   const columns: Column<EsmRequestSummary>[] = [
-    { header: t("myEsmRequests.columnTicketKey", { defaultValue: "접수번호" }), cell: (r) => r.ticketKey },
+    { header: t("myEsmRequests.columnTicketKey", { defaultValue: "접수번호" }), width: 130, cell: (r) => r.ticketKey },
     {
       header: t("myEsmRequests.columnDepartment", { defaultValue: "부서" }),
+      width: 100,
       cell: (r) => <StatusBadge tone="info" label={departmentLabel(t, r.department)} />,
     },
-    { header: t("myEsmRequests.columnType", { defaultValue: "유형" }), cell: (r) => r.catalogItemName },
+    {
+      header: t("myEsmRequests.columnType", { defaultValue: "유형" }),
+      cell: (r) => <span className="truncate block">{r.catalogItemName}</span>,
+    },
     {
       header: t("myEsmRequests.columnStatus", { defaultValue: "상태" }),
+      width: 110,
       cell: (r) => <StatusBadge tone={requestStatusTone(r.status)} label={requestStatusLabel(t, r.status)} />,
     },
-    { header: t("myEsmRequests.columnUpdatedAt", { defaultValue: "갱신일" }), cell: (r) => formatDate(r.updatedAt) },
+    { header: t("myEsmRequests.columnUpdatedAt", { defaultValue: "갱신일" }), width: 110, cell: (r) => formatDate(r.updatedAt) },
   ];
 
   const totalPages = data ? Math.ceil(data.totalElements / PAGE_SIZE) : 0;

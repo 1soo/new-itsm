@@ -32,7 +32,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 지식베이스 검색/목록(SCR-KM-001) — 키워드·카테고리·라벨·상태 필터.
  * 최종 사용자는 게시 기사만, 기여자/게이트키퍼는 초안·검토 포함 조회(BE가 역할별 필터링).
  */
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 14;
 const ALL = "ALL";
 
 interface Filters {
@@ -97,16 +97,19 @@ export function KnowledgeListPage() {
       header: t("knowledgeList.columnCategory", { defaultValue: "카테고리" }),
       cell: (a) => a.category || "-",
       className: "whitespace-nowrap",
+      width: 110,
     },
     {
       header: t("knowledgeList.columnStatus", { defaultValue: "상태" }),
       cell: (a) => <StatusBadge tone={statusTone(a.status)} label={statusLabel(t, a.status)} />,
       className: "whitespace-nowrap",
+      width: 110,
     },
     {
       header: t("knowledgeList.columnHelpfulRate", { defaultValue: "유용성" }),
       cell: (a) => `${Math.round(a.helpfulRate)}%`,
       className: "whitespace-nowrap",
+      width: 90,
     },
   ];
 

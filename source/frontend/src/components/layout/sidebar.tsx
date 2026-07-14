@@ -44,8 +44,8 @@ export function Sidebar({ groups, collapsed = false, className }: SidebarProps) 
   return (
     <aside
       className={cn(
-        "flex h-full shrink-0 flex-col overflow-y-auto bg-sidebar text-sidebar-foreground transition-[width] duration-200 ease-[var(--motion-sidebar-easing)]",
-        collapsed ? "w-16" : "w-60",
+        "flex h-full shrink-0 flex-col overflow-y-auto scrollbar-hide bg-sidebar text-sidebar-foreground transition-[width] duration-200 ease-[var(--motion-sidebar-easing)]",
+        collapsed ? "w-12" : "w-[190px]",
         className,
       )}
       aria-label="주요 내비게이션"
@@ -63,7 +63,7 @@ export function Sidebar({ groups, collapsed = false, className }: SidebarProps) 
                 type="button"
                 onClick={() => toggleGroup(group.key)}
                 aria-expanded={!groupCollapsed}
-                className="flex items-center justify-between rounded-md px-3 py-1 text-xs font-semibold uppercase tracking-wide text-sidebar-foreground/60 outline-none hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex items-center justify-between rounded-md px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-sidebar-foreground/60 outline-none hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {group.label}
                 <ChevronDown
@@ -79,7 +79,7 @@ export function Sidebar({ groups, collapsed = false, className }: SidebarProps) 
                 aria-current={item.active ? "page" : undefined}
                 title={collapsed ? item.label : undefined}
                 className={cn(
-                  "flex items-center gap-3 overflow-hidden rounded-md px-3 py-2 text-sm font-medium outline-none transition-colors",
+                  "flex items-center gap-3 overflow-hidden rounded-md px-3 py-2 text-xs font-medium outline-none transition-colors",
                   "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-ring",
                   item.active
                     ? "bg-sidebar-primary text-sidebar-primary-foreground"

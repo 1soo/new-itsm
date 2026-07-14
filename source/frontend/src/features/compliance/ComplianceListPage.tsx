@@ -38,7 +38,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 컴플라이언스 요구사항 목록(SCR-COMP-001) — 공통 목록/필터 패턴(SCR-COM-007).
  * 필터(준수 상태·책임자 지정 여부) / 표(식별키·이름·근거·책임자·준수 상태·갱신일).
  */
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 14;
 const ALL = "ALL";
 
 interface Filters {
@@ -83,20 +83,22 @@ export function ComplianceListPage() {
   };
 
   const columns: Column<RequirementSummary>[] = [
-    { header: t("complianceList.columnRequirementKey", { defaultValue: "식별키" }), cell: (r) => r.requirementKey },
+    { header: t("complianceList.columnRequirementKey", { defaultValue: "식별키" }), width: 130, cell: (r) => r.requirementKey },
     { header: t("complianceList.columnName", { defaultValue: "이름" }), cell: (r) => <span className="line-clamp-1">{r.name}</span> },
     { header: t("complianceList.columnBasis", { defaultValue: "근거" }), cell: (r) => <span className="line-clamp-1">{r.basis}</span> },
     {
       header: t("complianceList.columnOwner", { defaultValue: "책임자" }),
+      width: 150,
       cell: (r) => (r.owner ? r.owner : <StatusBadge tone="danger" label={t("complianceList.ownerUnassigned", { defaultValue: "책임자 미지정" })} />),
     },
     {
       header: t("complianceList.columnComplianceStatus", { defaultValue: "준수 상태" }),
+      width: 120,
       cell: (r) => (
         <StatusBadge tone={complianceStatusTone(r.complianceStatus)} label={complianceStatusLabel(t, r.complianceStatus)} />
       ),
     },
-    { header: t("complianceList.columnUpdatedAt", { defaultValue: "갱신일" }), cell: (r) => formatDate(r.updatedAt) },
+    { header: t("complianceList.columnUpdatedAt", { defaultValue: "갱신일" }), width: 110, cell: (r) => formatDate(r.updatedAt) },
   ];
 
   const totalPages = data ? Math.ceil(data.totalElements / PAGE_SIZE) : 0;

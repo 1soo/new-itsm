@@ -47,7 +47,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 변경 목록(SCR-CHG-001) — 공통 목록/필터 패턴(SCR-COM-007).
  * 필터(유형·상태·위험도·기간) / 표(식별키·요약·유형·상태·위험도·예정일).
  */
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 14;
 const ALL = "ALL";
 
 interface Filters {
@@ -97,21 +97,24 @@ export function ChangeListPage() {
   };
 
   const columns: Column<ChangeSummary>[] = [
-    { header: t("changeList.columnTicketKey", { defaultValue: "식별키" }), cell: (c) => c.ticketKey },
+    { header: t("changeList.columnTicketKey", { defaultValue: "식별키" }), width: 130, cell: (c) => c.ticketKey },
     {
       header: t("changeList.columnSummary", { defaultValue: "요약" }),
       cell: (c) => <span className="line-clamp-1">{c.summary}</span>,
     },
     {
       header: t("changeList.columnType", { defaultValue: "유형" }),
+      width: 110,
       cell: (c) => <StatusBadge tone={typeTone(c.type)} label={typeLabel(t, c.type)} />,
     },
     {
       header: t("changeList.columnStatus", { defaultValue: "상태" }),
+      width: 110,
       cell: (c) => <StatusBadge tone={statusTone(c.status)} label={statusLabel(t, c.status)} />,
     },
     {
       header: t("changeList.columnRisk", { defaultValue: "위험도" }),
+      width: 110,
       cell: (c) =>
         c.risk ? (
           <StatusBadge tone={riskTone(c.risk)} label={riskLabel(t, c.risk)} />
@@ -123,6 +126,7 @@ export function ChangeListPage() {
     },
     {
       header: t("changeList.columnScheduledAt", { defaultValue: "예정일" }),
+      width: 110,
       cell: (c) => (c.scheduledAt ? formatDate(c.scheduledAt) : "-"),
     },
   ];

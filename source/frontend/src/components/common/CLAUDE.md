@@ -12,7 +12,7 @@
 - `user-guide-content.tsx` — 사용자 가이드 전용 화면(`/guide`, SCR-COM-012)의 섹션 콘텐츠. `UserGuideOverview`(개요 1절, Markdown 순차 렌더링)·`UserGuideDomainSection`(11개 도메인 아코디언)·`UserGuideRoleSection`(16개 역할 아코디언, `myRoles?: string[]`로 "내 역할" 상단 고정+기본 펼침) 3개를 개별 export. 콘텐츠는 `docs/01_analyze/feature/user-guide-content.md`(한국어)·`user-guide-content.en.md`(영어, 2026-07-12 다국어 지원) 원문을 가공 없이 이관한 정적 데이터(`react-markdown`으로 굵게 등 인라인 서식 렌더링), `i18n.language`에 따라 언어별 콘텐츠 세트 선택. 페이지 레이아웃(문서 헤더·TOC)은 담당하지 않음 — FE(`features/guide/GuidePage.tsx`)가 조립.
 - `multi-select.tsx` — 다중 선택(Popover + 체크 리스트). 필터바용. `MultiSelectOption` 타입 제공. `placeholder` prop 미지정 시 `common:multiSelect.defaultPlaceholder`로 폴백, 선택 개수·선택 해제 aria-label·빈 목록 문구는 `common:multiSelect.*` 키(2026-07-12 다국어 지원).
 - `pagination.tsx` — 페이지네이션(0-based, 최대 5개 번호 창). `nav`/이전·다음 버튼 `aria-label`은 `common:pagination.*` 키(2026-07-12 다국어 지원).
-- `data-table.tsx` — 제네릭 데이터 표. 로딩 스켈레톤·빈 상태·행 클릭 지원. `Column<T>` 타입 제공.
+- `data-table.tsx` — 제네릭 데이터 표. 로딩 스켈레톤·빈 상태·행 클릭 지원. `Column<T>` 타입 제공. `Column.width?: number`(px) 지정 시 `<colgroup>`+`table-fixed`로 컬럼 폭 고정(SCR-COM-007, 2026-07-14 유지보수 요청), 미지정 컬럼은 잔여 폭 흡수(auto).
 - `empty-state.tsx` — 결과 0건 빈 상태 안내.
 - `forbidden-view.tsx` — 403 접근 거부 뷰(프레젠테이션). `onBack` 주입. 문구는 `common:forbidden.*` 키(2026-07-12 다국어 지원).
 - `not-found-view.tsx` — 404 Not Found 뷰(프레젠테이션). `onHome` 주입. 문구는 `common:notFound.*` 키(2026-07-12 다국어 지원, "404" 숫자 자체는 번역 대상 아님).

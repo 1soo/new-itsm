@@ -45,7 +45,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 자산 목록(SCR-ITAM-001) — 공통 목록/필터 패턴(SCR-COM-007).
  * 필터(유형·상태·소유자·만료 임박·기간) / 표(식별키·이름·유형·상태·소유자·만료일).
  */
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 14;
 const ALL = "ALL";
 
 interface Filters {
@@ -96,22 +96,26 @@ export function AssetListPage() {
   };
 
   const columns: Column<AssetSummary>[] = [
-    { header: t("assetList.columnAssetKey", { defaultValue: "식별키" }), cell: (a) => a.assetKey },
+    { header: t("assetList.columnAssetKey", { defaultValue: "식별키" }), width: 130, cell: (a) => a.assetKey },
     { header: t("assetList.columnName", { defaultValue: "이름" }), cell: (a) => <span className="line-clamp-1">{a.name}</span> },
     {
       header: t("assetList.columnType", { defaultValue: "유형" }),
+      width: 110,
       cell: (a) => <StatusBadge tone={typeTone(a.type)} label={typeLabel(t, a.type)} />,
     },
     {
       header: t("assetList.columnStatus", { defaultValue: "상태" }),
+      width: 110,
       cell: (a) => <StatusBadge tone={statusTone(a.status)} label={statusLabel(t, a.status)} />,
     },
     {
       header: t("assetList.columnOwner", { defaultValue: "소유자" }),
+      width: 120,
       cell: (a) => a.owner || t("assetList.ownerUnassigned", { defaultValue: "미지정" }),
     },
     {
       header: t("assetList.columnExpiryDate", { defaultValue: "만료일" }),
+      width: 150,
       cell: (a) => (
         <span className="flex items-center gap-1.5">
           {formatDate(a.expiryDate)}

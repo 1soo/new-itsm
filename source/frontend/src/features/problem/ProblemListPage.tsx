@@ -45,7 +45,7 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 문제 목록(SCR-PRB-001) — 공통 목록/필터 패턴(SCR-COM-007).
  * 필터(상태·우선순위·출처·담당자·기간) / 표(식별키·요약·상태·우선순위·출처·담당자·갱신일).
  */
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 14;
 const ALL = "ALL";
 
 interface Filters {
@@ -97,17 +97,19 @@ export function ProblemListPage() {
   };
 
   const columns: Column<ProblemSummary>[] = [
-    { header: t("problemList.columnTicketKey", { defaultValue: "식별키" }), cell: (p) => p.ticketKey },
+    { header: t("problemList.columnTicketKey", { defaultValue: "식별키" }), width: 130, cell: (p) => p.ticketKey },
     {
       header: t("problemList.columnSummary", { defaultValue: "요약" }),
       cell: (p) => <span className="line-clamp-1">{p.summary}</span>,
     },
     {
       header: t("problemList.columnStatus", { defaultValue: "상태" }),
+      width: 110,
       cell: (p) => <StatusBadge tone={statusTone(p.status)} label={statusLabel(t, p.status)} />,
     },
     {
       header: t("problemList.columnPriority", { defaultValue: "우선순위" }),
+      width: 110,
       cell: (p) =>
         p.priority ? (
           <PriorityBadge priority={p.priority} />
@@ -117,12 +119,13 @@ export function ProblemListPage() {
           </span>
         ),
     },
-    { header: t("problemList.columnOrigin", { defaultValue: "출처" }), cell: (p) => originLabel(t, p.origin) },
+    { header: t("problemList.columnOrigin", { defaultValue: "출처" }), width: 100, cell: (p) => originLabel(t, p.origin) },
     {
       header: t("problemList.columnAssignee", { defaultValue: "담당자" }),
+      width: 120,
       cell: (p) => p.assignee || t("problemList.unassigned", { defaultValue: "미배정" }),
     },
-    { header: t("problemList.columnUpdatedAt", { defaultValue: "갱신일" }), cell: (p) => formatDate(p.updatedAt) },
+    { header: t("problemList.columnUpdatedAt", { defaultValue: "갱신일" }), width: 110, cell: (p) => formatDate(p.updatedAt) },
   ];
 
   const totalPages = data ? Math.ceil(data.totalElements / PAGE_SIZE) : 0;
