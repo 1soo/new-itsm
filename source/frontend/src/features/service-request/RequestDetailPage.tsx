@@ -209,6 +209,9 @@ export function RequestDetailPage() {
     (target) => !(target === "IN_FULFILLMENT" && approvalPending),
   );
   const showCsat = detail.status === "CLOSED" && isEndUser;
+  // 승인 게이트는 ROUTED→IN_FULFILLMENT 전이 시점에만 평가되므로, 그 전(SUBMITTED/VALIDATED/ROUTED)
+  // 상태에서는 인스턴스 유무와 무관하게 "미확정" 문구를, 게이트 평가 후에는 기존 "없음" 문구를 노출한다.
+  const gateEvaluated = !["SUBMITTED", "VALIDATED", "ROUTED"].includes(detail.status);
 
   const timelineItems: TimelineItem[] = detail.timeline.map((entry, i) => ({
     id: String(i),
@@ -253,7 +256,13 @@ export function RequestDetailPage() {
             matched={detail.approval.approvalRequestId != null}
             steps={approvalSteps}
             currentStepNo={approvalCurrentStepNo}
-            emptyMessage={t("requestDetail.noApproval", { defaultValue: "이 요청에는 승인 절차가 없습니다" })}
+            emptyMessage={
+              gateEvaluated
+                ? t("requestDetail.noApproval", { defaultValue: "이 요청에는 승인 절차가 없습니다" })
+                : t("requestDetail.approvalGatePending", {
+                    defaultValue: "이행 단계로 전환 시 승인 절차 적용 여부가 결정됩니다",
+                  })
+            }
           />
 
           <Card>

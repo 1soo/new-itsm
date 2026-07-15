@@ -97,7 +97,9 @@ class ChangeIntegrationTest {
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/30_auth_screen_i18n.sql").toAbsolutePath()),
                     "/docker-entrypoint-initdb.d/30_auth_screen_i18n.sql")
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/31_sidebar_menu_label_cleanup.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/31_sidebar_menu_label_cleanup.sql");
+                    "/docker-entrypoint-initdb.d/31_sidebar_menu_label_cleanup.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/32_approval_process_priority_redesign.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/32_approval_process_priority_redesign.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {

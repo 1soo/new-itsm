@@ -36,9 +36,11 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * 안에 있던 구 0/1단계를 이관), 승인 단계 카드 스택은 승인 요청자부터 1단계로 재시작한다. 편집 시
  * domain·requestSubtypeKey는 식별 스코프라 수정 대상에서 제외한다(API-AUTH-028). 카드 스택
  * 레이아웃·드래그 재정렬·역할 선택 패널·박스별 필수역할 검증·승인자 0개 확인 다이얼로그는 공용
- * `ApprovalProcessFlow`(components/common)가 담당한다.
+ * `ApprovalProcessFlow`(components/common)가 담당한다. 도메인 선택에는 클라이언트 전용 "전체 도메인"
+ * 의사 옵션(2026-07-15 우선순위 재설계)이 추가되며, 선택 시 `domain: null`로 저장한다.
  */
 const NO_SUBTYPE = "__ALL__";
+const ALL_DOMAIN = "__ALL_DOMAIN__";
 
 function newRequesterBox(roleIds: string[] = []): ApprovalStepBoxValue {
   return { id: "requester", roleIds, matchType: "AND" };
@@ -59,7 +61,7 @@ export function ApprovalProcessFormPage() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [subtypes, setSubtypes] = useState<RequestSubtypeOption[]>([]);
 
-  const [domain, setDomain] = useState<ApprovalDomain | "">("");
+  const [domain, setDomain] = useState<ApprovalDomain | typeof ALL_DOMAIN | "">("");
   const [requestSubtypeKey, setRequestSubtypeKey] = useState<string>(NO_SUBTYPE);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -82,7 +84,7 @@ export function ApprovalProcessFormPage() {
     adminApi
       .getApprovalProcess(id)
       .then((detail) => {
-        setDomain(detail.domain);
+        setDomain(detail.domain ?? ALL_DOMAIN);
         setRequestSubtypeKey(detail.requestSubtypeKey ?? NO_SUBTYPE);
         setName(detail.name);
         setDescription(detail.description ?? "");
@@ -105,9 +107,9 @@ export function ApprovalProcessFormPage() {
   const selectedDomainOption = domains.find((d) => d.domain === domain) ?? null;
   const hasRequestSubtype = !!selectedDomainOption?.hasRequestSubtype;
 
-  // 신규 생성 시에만 도메인 선택에 따라 요청유형 후보를 갱신한다(편집은 스코프 고정이라 재조회 불필요).
+  // 도메인이 확정되고 해당 도메인이 요청유형을 가지면 후보를 조회한다(편집 모드도 포함 — 상세 조회로
+  // domain이 채워진 뒤에도 select 옵션을 채워야 저장된 requestSubtypeKey가 표시된다, 2026-07-15 결함 수정).
   useEffect(() => {
-    if (isEdit) return;
     if (!domain || !hasRequestSubtype) {
       setSubtypes([]);
       return;
@@ -116,7 +118,7 @@ export function ApprovalProcessFormPage() {
       .listRequestSubtypes(domain)
       .then(setSubtypes)
       .catch((err) => toast.error(extractErrorMessage(err)));
-  }, [isEdit, domain, hasRequestSubtype]);
+  }, [domain, hasRequestSubtype]);
 
   const roleOptions: ApprovalRoleOption[] = roles.map((r) => ({ id: String(r.id), label: r.name }));
 
@@ -138,7 +140,7 @@ export function ApprovalProcessFormPage() {
         toast.success(t("admin.approvalProcessForm.updateSuccess", { defaultValue: "승인 프로세스가 저장되었습니다" }));
       } else {
         await adminApi.createApprovalProcess({
-          domain: domain as ApprovalDomain,
+          domain: domain === ALL_DOMAIN ? null : (domain as ApprovalDomain),
           requestSubtypeKey: hasRequestSubtype && requestSubtypeKey !== NO_SUBTYPE ? requestSubtypeKey : null,
           name: name.trim(),
           description: description.trim() || undefined,
@@ -182,13 +184,20 @@ export function ApprovalProcessFormPage() {
           <div className="space-y-1.5">
             <Label htmlFor="ap-domain">{t("admin.approvalProcessForm.domainLabel", { defaultValue: "도메인" })}</Label>
             {/* 편집 시 domain은 식별 스코프라 변경을 허용하지 않는다(API-AUTH-028). */}
-            <Select value={domain} onValueChange={(v) => setDomain(v as ApprovalDomain)} disabled={isEdit}>
+            <Select
+              value={domain}
+              onValueChange={(v) => setDomain(v as ApprovalDomain | typeof ALL_DOMAIN)}
+              disabled={isEdit}
+            >
               <SelectTrigger id="ap-domain" className="max-w-xs">
                 <SelectValue
                   placeholder={t("admin.approvalProcessForm.domainPlaceholder", { defaultValue: "도메인 선택" })}
                 />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value={ALL_DOMAIN}>
+                  {t("admin.approvalProcessForm.allDomainsOption", { defaultValue: "전체 도메인" })}
+                </SelectItem>
                 {domains.map((d) => (
                   <SelectItem key={d.domain} value={d.domain}>
                     {d.label}

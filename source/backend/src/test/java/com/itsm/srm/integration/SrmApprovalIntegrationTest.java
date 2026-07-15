@@ -92,7 +92,9 @@ class SrmApprovalIntegrationTest {
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/30_auth_screen_i18n.sql").toAbsolutePath()),
                     "/docker-entrypoint-initdb.d/30_auth_screen_i18n.sql")
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/31_sidebar_menu_label_cleanup.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/31_sidebar_menu_label_cleanup.sql");
+                    "/docker-entrypoint-initdb.d/31_sidebar_menu_label_cleanup.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/32_approval_process_priority_redesign.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/32_approval_process_priority_redesign.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {
@@ -144,6 +146,22 @@ class SrmApprovalIntegrationTest {
                 "select id from approval_process_step where approval_process_id = ? and step_no = 1", Long.class, processId);
         jdbc.update("insert into approval_process_step_role(step_id, role_id, created_by) values (?,?,?)",
                 stepId, roleIdOf(roleCode), "test");
+    }
+
+    /** 전체 도메인 캐치올(domain=NULL, tier=0) 규칙 1건 + 1차 OR 승인(주어진 역할)을 시딩한다. */
+    private Long seedCatchAllProcess(String roleCode, String name) {
+        jdbc.update("insert into approval_process(domain, priority_tier, name, created_by) values (null,0,?,?)",
+                name, "test");
+        Long processId = jdbc.queryForObject(
+                "select id from approval_process where domain is null and priority_tier = 0 and name = ?",
+                Long.class, name);
+        jdbc.update("insert into approval_process_step(approval_process_id, step_no, decision_mode, created_by) values (?,1,'OR',?)",
+                processId, "test");
+        Long stepId = jdbc.queryForObject(
+                "select id from approval_process_step where approval_process_id = ? and step_no = 1", Long.class, processId);
+        jdbc.update("insert into approval_process_step_role(step_id, role_id, created_by) values (?,?,?)",
+                stepId, roleIdOf(roleCode), "test");
+        return processId;
     }
 
     @Test
@@ -234,6 +252,53 @@ class SrmApprovalIntegrationTest {
         String approvalStatus = jdbc.queryForObject(
                 "select status from approval_request where id = ?", String.class, approvalRequestId);
         assertThat(approvalStatus).isEqualTo("APPROVED"); // 뒤집히지 않음
+    }
+
+    @Test
+    void gateMatchesDomainNullCatchAllRuleForDomainSpecificTicket() {
+        // 2026-07-15 우선순위 재설계: domain=NULL(전체 도메인) 규칙도 SERVICE_REQUEST 티켓의 게이트
+        // 매칭 후보에 포함돼야 한다(ApprovalGateService.matchProcess가 조회하는
+        // ApprovalProcessRepository.findByDomain이 domain=null 규칙도 함께 반환하는지 검증).
+        long ts = System.nanoTime();
+        String domain = "SERVICE_REQUEST";
+
+        Long requesterId = insertUser("catchall-req" + ts + "@itsm.local");
+        Long approverId = insertUser("catchall-apr" + ts + "@itsm.local");
+
+        as(1L, "PROCESS_OWNER");
+        CatalogItemDetailResponse item = catalogService.create(new CreateCatalogItemRequest(
+                "CatchAllItem" + ts, "d", null, null, null,
+                List.of(new FormFieldDto("note", "Note", "text", false, null))));
+        seedCatchAllProcess("APPROVER", "전체 도메인 캐치올 " + ts);
+
+        as(requesterId, "END_USER");
+        RequestCreatedResponse created = requestService.create(new CreateRequestRequest(item.id(), Map.of()));
+        Long rid = created.id();
+
+        as(2L, "SERVICE_DESK_AGENT");
+        requestService.transition(rid, new StatusTransitionRequest(RequestStatus.VALIDATED, null));
+        requestService.transition(rid, new StatusTransitionRequest(RequestStatus.ROUTED, null));
+
+        BusinessException blocked = (BusinessException) org.junit.jupiter.api.Assertions.assertThrows(
+                BusinessException.class,
+                () -> requestService.transition(rid, new StatusTransitionRequest(RequestStatus.IN_FULFILLMENT, null)));
+        assertThat(blocked.getErrorCode()).isEqualTo(ErrorCode.APPROVAL_PENDING);
+        Long approvalRequestId = blocked.getApprovalRequestId();
+        assertThat(approvalRequestId).isNotNull();
+
+        String matchedProcessDomain = jdbc.queryForObject("""
+                select ap.domain from approval_request ar join approval_process ap on ap.id = ar.approval_process_id
+                where ar.id = ?
+                """, String.class, approvalRequestId);
+        assertThat(matchedProcessDomain).isNull();
+
+        as(approverId, "APPROVER");
+        var decision = approvalInstanceService.decide(approvalRequestId, DecisionType.APPROVE, "ok");
+        assertThat(decision.requestStatus()).isEqualTo("APPROVED");
+
+        as(2L, "SERVICE_DESK_AGENT");
+        var status = requestService.transition(rid, new StatusTransitionRequest(RequestStatus.IN_FULFILLMENT, null));
+        assertThat(status.status()).isEqualTo("IN_FULFILLMENT");
     }
 
     @Test

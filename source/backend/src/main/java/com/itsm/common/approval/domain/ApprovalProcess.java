@@ -12,8 +12,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 승인 프로세스 정의(규칙 헤더, 전 도메인 공용). 런타임에는 (domain, requestSubtypeKey, 요청자 보유 역할)에
- * 매칭되는 규칙 중 priorityTier가 가장 큰(가장 좁은 범위) 규칙 하나만 적용한다.
+ * 승인 프로세스 정의(규칙 헤더, 전 도메인 공용). domain/requestSubtypeKey/requesterRole 3축을 각각 독립
+ * 지정할 수 있고, 축이 비어있으면(null 또는 역할 매핑 0개) 해당 축의 모든 값에 매칭되는 것으로 간주한다
+ * (domain=null은 전체 도메인 적용, 2026-07-15 우선순위 재설계). 런타임에는 (domain, requestSubtypeKey,
+ * 요청자 보유 역할)에 매칭되는 규칙 중 priorityTier가 가장 큰(가장 좁은 범위) 규칙 하나만 적용한다.
  */
 @Getter
 @Entity
@@ -25,7 +27,7 @@ public class ApprovalProcess extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 30)
+    @Column(length = 30)
     private String domain;
 
     @Column(name = "request_subtype_key", length = 50)

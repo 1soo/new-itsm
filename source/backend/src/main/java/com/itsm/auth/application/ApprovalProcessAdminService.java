@@ -34,17 +34,22 @@ import java.util.stream.Collectors;
 
 /**
  * 승인 프로세스 정의 관리자 CRUD 유스케이스(API-AUTH-023~029, SYSTEM_ADMIN 전용).
- * 규칙 우선순위(priorityTier): 1=도메인 기본, 2=요청유형 전용, 3=승인요청자 역할 전용
- * (docs/02_plan/database/common.md approval_process 상세).
+ * 규칙 우선순위(priorityTier, 2026-07-15 3축 재설계): domain/requestSubtypeKey/requesterRoleIds 3축을
+ * 각각 독립 지정 가능(축 비우면 해당 축 전체 매칭). 산정식 = (지정 축 개수×10) + (역할 지정 시 4) +
+ * (요청유형 지정 시 2) + (도메인 지정 시 1). 실제 발생 가능 값: 0(전체 미지정)/11(도메인만)/14(역할만)/
+ * 23(도메인+요청유형)/25(도메인+역할)/37(도메인+요청유형+역할) (docs/02_plan/database/common.md approval_process 상세).
  */
 @Service
 public class ApprovalProcessAdminService {
 
     /** 요청자가 제출해 진행되는 티켓/요청 개념이 있는 9개 도메인(maintainer 확인, 2026-07-11). */
     private static final Map<String, DomainMeta> DOMAINS = new LinkedHashMap<>();
-    private static final short TIER_DOMAIN = 1;
-    private static final short TIER_SUBTYPE = 2;
-    private static final short TIER_REQUESTER_ROLE = 3;
+    private static final short TIER_NONE = 0;
+    private static final short TIER_DOMAIN_ONLY = 11;
+    private static final short TIER_ROLE_ONLY = 14;
+    private static final short TIER_DOMAIN_SUBTYPE = 23;
+    private static final short TIER_DOMAIN_ROLE = 25;
+    private static final short TIER_DOMAIN_SUBTYPE_ROLE = 37;
     private static final int MAX_STEPS = 10;
 
     static {
@@ -129,9 +134,10 @@ public class ApprovalProcessAdminService {
     @Transactional
     public ApprovalProcessDetailResponse create(CreateApprovalProcessRequest request) {
         validateDomain(request.domain());
+        validateSubtypeRequiresDomain(request.domain(), request.requestSubtypeKey());
         validateSteps(request.steps());
         List<Long> requesterRoleIds = request.requesterRoleIds() == null ? List.of() : request.requesterRoleIds();
-        short tier = computeTier(requesterRoleIds, request.requestSubtypeKey());
+        short tier = computeTier(request.domain(), request.requestSubtypeKey(), requesterRoleIds);
         assertNoPriorityConflict(request.domain(), request.requestSubtypeKey(), tier, requesterRoleIds, null);
 
         ApprovalProcess process = approvalProcessRepository.save(new ApprovalProcess(
@@ -152,7 +158,7 @@ public class ApprovalProcessAdminService {
         if (request.steps() != null) {
             validateSteps(request.steps());
         }
-        short tier = computeTier(requesterRoleIds, process.getRequestSubtypeKey());
+        short tier = computeTier(process.getDomain(), process.getRequestSubtypeKey(), requesterRoleIds);
         assertNoPriorityConflict(process.getDomain(), process.getRequestSubtypeKey(), tier, requesterRoleIds, id);
 
         process.update(request.name(), request.description(), tier);
@@ -184,9 +190,17 @@ public class ApprovalProcessAdminService {
 
     // ---------- helpers ----------
 
+    /** domain은 선택(null=전체 도메인 적용). 지정 시에는 9개 후보 중 하나여야 한다. */
     private void validateDomain(String domain) {
-        if (!DOMAINS.containsKey(domain)) {
+        if (domain != null && !DOMAINS.containsKey(domain)) {
             throw new BusinessException(ErrorCode.INVALID_APPROVAL_DOMAIN);
+        }
+    }
+
+    /** requestSubtypeKey는 domain에 종속된 어휘라, domain이 null이면 반드시 null이어야 한다. */
+    private void validateSubtypeRequiresDomain(String domain, String requestSubtypeKey) {
+        if (domain == null && requestSubtypeKey != null) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "domain이 없으면 requestSubtypeKey도 지정할 수 없습니다.");
         }
     }
 
@@ -204,35 +218,43 @@ public class ApprovalProcessAdminService {
         }
     }
 
-    /** requesterRoleIds 있으면 tier=3, 없고 requestSubtypeKey 있으면 tier=2, 둘 다 없으면 tier=1. */
-    private short computeTier(List<Long> requesterRoleIds, String requestSubtypeKey) {
-        if (!requesterRoleIds.isEmpty()) {
-            return TIER_REQUESTER_ROLE;
-        }
-        return requestSubtypeKey != null ? TIER_SUBTYPE : TIER_DOMAIN;
+    /** (지정 축 개수×10) + (역할 지정 시 4) + (요청유형 지정 시 2) + (도메인 지정 시 1). */
+    private short computeTier(String domain, String requestSubtypeKey, List<Long> requesterRoleIds) {
+        boolean hasDomain = domain != null;
+        boolean hasSubtype = requestSubtypeKey != null;
+        boolean hasRole = !requesterRoleIds.isEmpty();
+        int axisCount = (hasDomain ? 1 : 0) + (hasSubtype ? 1 : 0) + (hasRole ? 1 : 0);
+        return (short) (axisCount * 10 + (hasRole ? 4 : 0) + (hasSubtype ? 2 : 0) + (hasDomain ? 1 : 0));
     }
 
     private void assertNoPriorityConflict(String domain, String requestSubtypeKey, short tier,
                                           List<Long> requesterRoleIds, Long excludeId) {
         boolean conflict = switch (tier) {
-            case TIER_DOMAIN -> excludeId == null
-                    ? approvalProcessRepository.existsByDomainAndPriorityTier(domain, TIER_DOMAIN)
-                    : approvalProcessRepository.existsByDomainAndPriorityTierAndIdNot(domain, TIER_DOMAIN, excludeId);
-            case TIER_SUBTYPE -> excludeId == null
-                    ? approvalProcessRepository.existsByDomainAndRequestSubtypeKeyAndPriorityTier(domain, requestSubtypeKey, TIER_SUBTYPE)
-                    : approvalProcessRepository.existsByDomainAndRequestSubtypeKeyAndPriorityTierAndIdNot(domain, requestSubtypeKey, TIER_SUBTYPE, excludeId);
-            default -> hasOverlappingRequesterRoles(domain, requestSubtypeKey, requesterRoleIds, excludeId);
+            case TIER_NONE -> excludeId == null
+                    ? approvalProcessRepository.existsByPriorityTier(TIER_NONE)
+                    : approvalProcessRepository.existsByPriorityTierAndIdNot(TIER_NONE, excludeId);
+            case TIER_DOMAIN_ONLY -> excludeId == null
+                    ? approvalProcessRepository.existsByDomainAndPriorityTier(domain, TIER_DOMAIN_ONLY)
+                    : approvalProcessRepository.existsByDomainAndPriorityTierAndIdNot(domain, TIER_DOMAIN_ONLY, excludeId);
+            case TIER_DOMAIN_SUBTYPE -> excludeId == null
+                    ? approvalProcessRepository.existsByDomainAndRequestSubtypeKeyAndPriorityTier(domain, requestSubtypeKey, TIER_DOMAIN_SUBTYPE)
+                    : approvalProcessRepository.existsByDomainAndRequestSubtypeKeyAndPriorityTierAndIdNot(domain, requestSubtypeKey, TIER_DOMAIN_SUBTYPE, excludeId);
+            case TIER_ROLE_ONLY -> hasOverlappingRequesterRoles(
+                    approvalProcessRepository.findByPriorityTier(TIER_ROLE_ONLY), requesterRoleIds, excludeId);
+            case TIER_DOMAIN_ROLE -> hasOverlappingRequesterRoles(
+                    approvalProcessRepository.findByDomainAndPriorityTier(domain, TIER_DOMAIN_ROLE), requesterRoleIds, excludeId);
+            default -> hasOverlappingRequesterRoles(
+                    approvalProcessRepository.findByDomainAndRequestSubtypeKeyAndPriorityTier(domain, requestSubtypeKey, TIER_DOMAIN_SUBTYPE_ROLE),
+                    requesterRoleIds, excludeId);
         };
         if (conflict) {
             throw new BusinessException(ErrorCode.APPROVAL_PROCESS_PRIORITY_CONFLICT);
         }
     }
 
-    private boolean hasOverlappingRequesterRoles(String domain, String requestSubtypeKey,
-                                                 List<Long> requesterRoleIds, Long excludeId) {
+    private boolean hasOverlappingRequesterRoles(List<ApprovalProcess> candidates, List<Long> requesterRoleIds, Long excludeId) {
         Set<Long> mine = Set.copyOf(requesterRoleIds);
-        for (ApprovalProcess candidate : approvalProcessRepository
-                .findByDomainAndRequestSubtypeKeyAndPriorityTier(domain, requestSubtypeKey, TIER_REQUESTER_ROLE)) {
+        for (ApprovalProcess candidate : candidates) {
             if (excludeId != null && candidate.getId().equals(excludeId)) {
                 continue;
             }

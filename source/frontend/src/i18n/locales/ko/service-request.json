@@ -65,6 +65,7 @@
     "assignee": "담당자",
     "queue": "큐",
     "noApproval": "이 요청에는 승인 절차가 없습니다",
+    "approvalGatePending": "이행 단계로 전환 시 승인 절차 적용 여부가 결정됩니다",
     "slaResponse": "응답",
     "slaResolve": "해결",
     "linkedAssetsTitle": "연결 자산",

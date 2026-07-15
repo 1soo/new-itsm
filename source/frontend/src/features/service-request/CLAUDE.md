@@ -11,6 +11,6 @@
 - `RequestSubmitPage.tsx` — 요청 제출(동적 폼)(SCR-SRM-002).
 - `RequestListPage.tsx` — 요청 목록(SCR-SRM-003).
 - `RequestQueuePage.tsx` — 요청 큐(Agent)(SCR-SRM-004).
-- `RequestDetailPage.tsx` — 요청 상세·상태 전이·코멘트·CSAT(SCR-SRM-005). 승인 패널은 공용 `ApprovalPanel`(`components/common`)에 API-COM-004 조회 결과(`steps`/`currentStepNo`) 주입해 진행 상태만 표시(결정 액션 없음, 처리는 SCR-COM-014에서).
+- `RequestDetailPage.tsx` — 요청 상세·상태 전이·코멘트·CSAT(SCR-SRM-005). 승인 패널은 공용 `ApprovalPanel`(`components/common`)에 API-COM-004 조회 결과(`steps`/`currentStepNo`) 주입해 진행 상태만 표시(결정 액션 없음, 처리는 SCR-COM-014에서). 미매칭(`emptyMessage`) 문구는 요청 상태 기준으로 분기(2026-07-15 유지보수 요청) — 승인 게이트가 ROUTED→IN_FULFILLMENT 전이 시점에만 평가되므로, 그 전(SUBMITTED/VALIDATED/ROUTED)에는 "미확정" 문구를, 게이트 평가 후(그 외 상태)에 인스턴스가 없으면 기존 "승인 절차 없음" 문구를 표시.
 - `CatalogManagePage.tsx` — 서비스 카탈로그 관리(양식 빌더)(SCR-SRM-007). 승인 필요 토글 제거(승인 프로세스 커스텀 기능으로 SCR-ADMIN-008에서 별도 설정).
 - `MetricsPage.tsx` — 요청 지표(CSAT·SLA 등)(SCR-SRM-008).

@@ -18,6 +18,8 @@ import com.itsm.auth.domain.repository.RoleRepository;
 import com.itsm.auth.domain.repository.UserRoleRepository;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
+import com.itsm.common.security.AuthPrincipal;
+import com.itsm.common.security.SecurityUtils;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -75,7 +77,7 @@ public class UserAdminService {
         AppUser saved = appUserRepository.save(user);
         roles.forEach(role -> userRoleRepository.save(new UserRole(saved.getId(), role.getId())));
 
-        auditLogService.record(EventType.USER_CHANGE, saved.getId(), saved.getEmail(), saved.getEmail(), AuditResult.SUCCESS);
+        recordChange(EventType.USER_CHANGE, saved.getEmail());
         return detail(saved);
     }
 
@@ -90,7 +92,7 @@ public class UserAdminService {
         if (StringUtils.hasText(request.name())) {
             user.changeName(request.name());
             appUserRepository.save(user);
-            auditLogService.record(EventType.USER_CHANGE, user.getId(), user.getEmail(), user.getEmail(), AuditResult.SUCCESS);
+            recordChange(EventType.USER_CHANGE, user.getEmail());
         }
         return detail(user);
     }
@@ -103,7 +105,7 @@ public class UserAdminService {
             user.clearAccessTokenJti(); // 비활성화 시 현재 세션 강제 종료
         }
         appUserRepository.save(user);
-        auditLogService.record(EventType.USER_CHANGE, user.getId(), user.getEmail(), user.getEmail(), AuditResult.SUCCESS);
+        recordChange(EventType.USER_CHANGE, user.getEmail());
         return new StatusChangeResponse(user.getId(), user.getStatus().name());
     }
 
@@ -116,7 +118,7 @@ public class UserAdminService {
         if (!userRoleRepository.existsByUserIdAndRoleId(userId, roleId)) {
             userRoleRepository.save(new UserRole(userId, roleId));
         }
-        auditLogService.record(EventType.ROLE_CHANGE, user.getId(), user.getEmail(), user.getEmail(), AuditResult.SUCCESS);
+        recordChange(EventType.ROLE_CHANGE, user.getEmail());
         return new UserRolesResponse(userId, roleCodes(userId));
     }
 
@@ -125,8 +127,13 @@ public class UserAdminService {
         AppUser user = findUser(userId);
         userRoleRepository.findByUserIdAndRoleId(userId, roleId)
                 .ifPresent(userRoleRepository::delete);
-        auditLogService.record(EventType.ROLE_CHANGE, user.getId(), user.getEmail(), user.getEmail(), AuditResult.SUCCESS);
+        recordChange(EventType.ROLE_CHANGE, user.getEmail());
         return new UserRolesResponse(userId, roleCodes(userId));
+    }
+
+    private void recordChange(EventType eventType, String target) {
+        AuthPrincipal principal = SecurityUtils.currentPrincipal();
+        auditLogService.record(eventType, principal.userId(), principal.email(), target, AuditResult.SUCCESS);
     }
 
     private AppUser findUser(Long userId) {

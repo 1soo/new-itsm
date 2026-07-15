@@ -179,11 +179,13 @@ export function ApprovalProcessFlow({
     if (fromRaw !== "") swapApprovers(Number(fromRaw), targetIndex);
   };
 
-  const hasEmptyBox = requester.roleIds.length === 0 || approvers.some((a) => a.roleIds.length === 0);
+  // 요청자 축은 0개(전체 요청자, 우선순위 미지정 축)를 허용한다(2026-07-15 우선순위 재설계 —
+  // 승인자 박스(steps)만 roleIds 1개 이상이 API-AUTH-027 계약상 필수, 요청자는 아님).
+  const hasEmptyApproverBox = approvers.some((a) => a.roleIds.length === 0);
 
   const handleSubmitClick = () => {
     setAttemptedSubmit(true);
-    if (hasEmptyBox) return;
+    if (hasEmptyApproverBox) return;
     if (approvers.length === 0) {
       setConfirmOpen(true);
       return;
@@ -226,7 +228,7 @@ export function ApprovalProcessFlow({
                 roleIds={requester.roleIds}
                 onOpenPicker={() => setRolePanelTarget({ kind: "requester", id: requester.id })}
                 onRemoveRole={(roleId) => removeRole("requester", requester.id, roleId)}
-                showError={attemptedSubmit && requester.roleIds.length === 0}
+                showError={false}
                 t={t}
               />
               {requester.roleIds.length >= 2 ? (

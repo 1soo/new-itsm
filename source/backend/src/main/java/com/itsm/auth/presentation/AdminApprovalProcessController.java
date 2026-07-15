@@ -86,7 +86,7 @@ public class AdminApprovalProcessController {
     @Operation(summary = "승인 프로세스 생성", description = "API-AUTH-027 · steps가 빈 배열이면 승인자 없이 요청자만 설정된 프로세스로 저장")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "생성 성공"),
-            @ApiResponse(responseCode = "400", description = "domain 누락 · step roleIds 비어있음 · steps 10개 초과", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "400", description = "domain 지정 시 9개 후보 외 값 · domain이 null인데 requestSubtypeKey 지정 · step roleIds 비어있음 · steps 10개 초과", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "409", description = "우선순위 충돌", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping

@@ -1,6 +1,7 @@
 # 테이블 정의서 — 공통 (Common)
 
-> 도메인: common · 버전: 0.3 · 작성일: 2026-07-11 · 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 기존 단일 승인 테이블 `approval`을 전 도메인 대상 커스텀 다차 승인 엔진(`approval_process*`/`approval_request*`/`approval_decision`)으로 완전 대체
+> 도메인: common · 버전: 0.4 · 작성일: 2026-07-15 · 승인 프로세스 범위 우선순위 재설계(유지보수 요청) — `approval_process.domain`을 nullable로 변경(도메인 미지정=전체 도메인 적용), `priority_tier` 산정식을 3축(도메인/요청유형/요청자역할) 독립 스코프 기반으로 재정의, 부분 유니크 제약에 `is_deleted=false` 조건 명시(soft delete 재생성 결함 재발 방지)
+> 이전 버전: 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 기존 단일 승인 테이블 `approval`을 전 도메인 대상 커스텀 다차 승인 엔진(`approval_process*`/`approval_request*`/`approval_decision`)으로 완전 대체
 
 여러 도메인이 공유하는 교차 관심사 테이블을 정의한다. 티켓 간 링크(인시던트↔문제↔변경, 자산/CI↔티켓, 지식↔티켓), 코멘트, 타임라인 이벤트, 승인 프로세스 커스텀 엔진(전 도메인 공용)을 다형(polymorphic) 구조로 관리한다.
 
@@ -83,19 +84,24 @@
 
 ### approval_process
 
-승인 프로세스 정의(관리자가 SCR-ADMIN-007에서 생성하는 규칙 헤더). **전 도메인 공용**이며, 하나의 도메인 안에 도메인 기본 규칙 1개·요청유형 전용 규칙 여러 개·승인요청자 역할 전용 규칙 여러 개가 동시에 존재할 수 있다(우선순위: 요청자 역할 > 요청유형 > 도메인). 런타임에는 대상 티켓의 (도메인, 요청유형값, 요청자 보유 역할)에 매칭되는 규칙 중 `priority_tier`가 가장 큰(가장 좁은 범위) 규칙 하나만 적용한다. 매칭되는 규칙이 없거나, 매칭된 규칙에 승인자 차수(`approval_process_step`)가 0개면 승인 없이 바로 진행한다(승인 인스턴스 미생성).
+승인 프로세스 정의(관리자가 SCR-ADMIN-007에서 생성하는 규칙 헤더). **전 도메인 공용**이며, 도메인·요청유형·승인요청자 역할 3축을 각각 독립적으로 지정할 수 있고 각 축이 비어있으면(NULL 또는 역할 매핑 0개) 해당 축의 모든 값에 매칭되는 것으로 간주한다(2026-07-15 유지보수 요청 — 기존에는 `domain`이 9개 고정값 중 필수 선택이었으나 "도메인 미지정=전체 적용" 개념을 반영해 nullable로 변경). 단, `request_subtype_key`는 도메인별 하위유형 어휘를 참조하므로 **`domain`이 NULL이면 `request_subtype_key`도 반드시 NULL**이어야 한다(도메인 없이 하위유형만 지정하는 조합은 허용하지 않음, 애플리케이션 검증). 런타임에는 대상 티켓의 (도메인, 요청유형값, 요청자 보유 역할)에 매칭되는 규칙 중 `priority_tier`가 가장 큰(가장 좁은 범위) 규칙 하나만 적용한다. 매칭되는 규칙이 없거나, 매칭된 규칙에 승인자 차수(`approval_process_step`)가 0개면 승인 없이 바로 진행한다(승인 인스턴스 미생성).
 
 | 컬럼 | 타입 | 제약 | 설명 |
 |------|------|------|------|
 | id | BIGINT | PK | |
-| domain | VARCHAR(30) | NOT NULL | 대상 도메인 코드(SERVICE_REQUEST/INCIDENT/PROBLEM/CHANGE/KNOWLEDGE 등, `ticket_link.*_type`과 동일 코드 체계) |
-| request_subtype_key | VARCHAR(50) | NULL | 요청 유형 스코프 값. 하위유형 개념이 있는 도메인만 사용(SRM=`service_catalog_item.id` 문자열화, CHANGE=`change_request.type` 코드값). NULL=하위유형 무관(전체). 하위유형 개념이 없는 도메인(INCIDENT/PROBLEM 등)은 항상 NULL |
-| priority_tier | SMALLINT | NOT NULL | 우선순위 캐시(1=도메인 기본, 2=요청유형 전용, 3=승인요청자 역할 전용). `request_subtype_key`·`approval_process_requester_role` 존재 여부로 저장 시 산정(조회 성능 목적, 재계산 가능한 비정규 캐시) |
+| domain | VARCHAR(30) | NULL | 대상 도메인 코드(SERVICE_REQUEST/INCIDENT/PROBLEM/CHANGE/KNOWLEDGE 등, `ticket_link.*_type`과 동일 코드 체계). NULL=도메인 무관(전체 도메인 적용, 2026-07-15 유지보수 요청으로 NOT NULL → NULL 허용 변경) |
+| request_subtype_key | VARCHAR(50) | NULL | 요청 유형 스코프 값. 하위유형 개념이 있는 도메인만 사용(SRM=`service_catalog_item.id` 문자열화, CHANGE=`change_request.type` 코드값). NULL=하위유형 무관(전체). 하위유형 개념이 없는 도메인(INCIDENT/PROBLEM 등)과 `domain`이 NULL인 경우는 항상 NULL |
+| priority_tier | SMALLINT | NOT NULL | 우선순위 캐시(축별 지정 여부로 저장 시 산정, 조회 성능 목적의 재계산 가능한 비정규 캐시). **산정식(2026-07-15 재설계)**: `priority_tier = (지정된 축 개수 × 10) + (요청자역할 지정 시 4) + (요청유형 지정 시 2) + (도메인 지정 시 1)`. 축 개수를 최상위 자릿수로 둬 "지정 축이 많을수록 우선"을 보장하고, 동일 개수 내에서는 가중치(역할4 > 요청유형2 > 도메인1)로 "역할 > 요청유형 > 도메인" 동률 우선순위를 보장한다. 실제 발생 가능한 값(요청유형은 도메인 지정 시에만 존재): 전체 미지정=0, 도메인만=11, 역할만=14, 도메인+요청유형=23, 도메인+역할=25, 도메인+요청유형+역할=37 (값이 클수록 우선 적용) |
 | name | VARCHAR(150) | NOT NULL | 프로세스명(관리자 식별용) |
 | description | VARCHAR(500) | NULL | 설명 |
 | ...공통 컬럼... | | | |
 
-> 부분 유니크 제약(PostgreSQL partial unique index): `UNIQUE(domain) WHERE priority_tier=1`(도메인 기본 규칙은 도메인당 1개), `UNIQUE(domain, request_subtype_key) WHERE priority_tier=2`(요청유형 전용 규칙은 도메인+유형 조합당 1개). `priority_tier=3`(승인요청자 역할 전용)은 역할 "조합"의 교집합 여부를 판정해야 하므로 DB 제약만으로 표현 불가 — 생성/수정 시 애플리케이션이 동일 (domain, request_subtype_key) 스코프 내 기존 tier=3 규칙들의 `approval_process_requester_role.role_id` 집합과 겹치는지 조회해 검증하고, 겹치면 409로 저장을 막는다(Q3 확정 답변).
+> **부분 유니크 제약(PostgreSQL partial unique index, 2026-07-15 재설계 — 모든 조건에 `is_deleted=false` 명시)**:
+> - `UNIQUE(priority_tier) WHERE priority_tier=0 AND is_deleted=false` (전체 미지정 캐치올 규칙은 전 시스템에 1개만)
+> - `UNIQUE(domain) WHERE priority_tier=11 AND is_deleted=false` (도메인만 지정 규칙은 도메인당 1개)
+> - `UNIQUE(domain, request_subtype_key) WHERE priority_tier=23 AND is_deleted=false` (도메인+요청유형 지정 규칙은 도메인+유형 조합당 1개)
+> - `priority_tier`가 14(역할만)/25(도메인+역할)/37(도메인+요청유형+역할)인 경우는 역할 "조합"의 교집합 여부를 판정해야 하므로 DB 제약만으로 표현 불가 — 생성/수정 시 애플리케이션이 **동일 `priority_tier` 버킷 + 동일 (domain, request_subtype_key) 매칭 조건**(tier=14는 domain도 request_subtype_key도 모두 NULL인 규칙 전체가 대상, tier=25는 동일 domain의 request_subtype_key NULL 규칙들이 대상, tier=37은 동일 (domain, request_subtype_key) 규칙들이 대상) 내 기존 규칙들의 `approval_process_requester_role.role_id` 집합과 겹치는지 조회해 검증하고, 겹치면 409로 저장을 막는다(Q3 확정 답변 기준 일반화).
+> - **주의(재발 방지)**: 기존 partial unique index는 `is_deleted` 조건이 없어 soft delete 후 재생성 시 유니크 위반이 발생하는 결함이 있었다(`docs/06_maintenance/20260712-014911` 이력 참조). 이번 재설계로 모든 partial unique index에 `is_deleted=false` 조건을 명시해 동일 결함이 재발하지 않도록 한다.
 
 ### approval_process_requester_role
 
@@ -220,7 +226,7 @@ RBAC/화면 매핑 테이블(`screen`, `user_role`, `screen_role`)은 [auth.md](
 - approval_process_requester_role.approval_process_id → approval_process.id, role_id → role.id (FK), UNIQUE(approval_process_id, role_id)
 - approval_process_step.approval_process_id → approval_process.id (FK), UNIQUE(approval_process_id, step_no), CHECK(step_no BETWEEN 1 AND 10)
 - approval_process_step_role.step_id → approval_process_step.id, role_id → role.id (FK), UNIQUE(step_id, role_id)
-- approval_process: 부분 유니크(tier=1 도메인당 1개, tier=2 도메인+요청유형당 1개), tier=3 역할 조합 중복은 애플리케이션 검증(4절 approval_process 상세 참조)
+- approval_process: 부분 유니크(tier=0 전체 1개, tier=11 도메인당 1개, tier=23 도메인+요청유형당 1개, 모두 `is_deleted=false` 조건 포함), tier=14/25/37 역할 조합 중복은 애플리케이션 검증(4절 approval_process 상세 참조, 2026-07-15 3축 우선순위 재설계)
 - approval_request.approval_process_id → approval_process.id (FK), (ticket_type, ticket_id) 인덱스 권장
 - approval_request_step.approval_request_id → approval_request.id (FK), UNIQUE(approval_request_id, step_no)
 - approval_request_step_role.step_id → approval_request_step.id, role_id → role.id (FK), UNIQUE(step_id, role_id)

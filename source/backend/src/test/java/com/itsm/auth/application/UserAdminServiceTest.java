@@ -5,6 +5,8 @@ import com.itsm.auth.application.dto.StatusChangeResponse;
 import com.itsm.auth.application.dto.UserDetailResponse;
 import com.itsm.auth.application.dto.UserRolesResponse;
 import com.itsm.auth.domain.AppUser;
+import com.itsm.auth.domain.AuditResult;
+import com.itsm.auth.domain.EventType;
 import com.itsm.auth.domain.Role;
 import com.itsm.auth.domain.UserRole;
 import com.itsm.auth.domain.UserStatus;
@@ -13,6 +15,8 @@ import com.itsm.auth.domain.repository.RoleRepository;
 import com.itsm.auth.domain.repository.UserRoleRepository;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
+import com.itsm.common.security.AuthPrincipal;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,15 +24,19 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -51,6 +59,14 @@ class UserAdminServiceTest {
         when(passwordEncoder.encode(anyString())).thenReturn("hash");
         when(appUserRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(roleRepository.findRolesByUserId(any())).thenReturn(List.of(new Role("END_USER", "사용자", null)));
+        AuthPrincipal principal = new AuthPrincipal(1L, "admin@itsm.local", List.of("SYSTEM_ADMIN"), UUID.randomUUID());
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(principal, null, List.of()));
+    }
+
+    @AfterEach
+    void clear() {
+        SecurityContextHolder.clearContext();
     }
 
     private AppUser user() {
@@ -96,6 +112,9 @@ class UserAdminServiceTest {
         assertThat(response.status()).isEqualTo("ACTIVE");
         verify(passwordEncoder).encode("Welcome123!");
         verify(userRoleRepository).save(any(UserRole.class));
+        // actor는 대상 계정(u@itsm.local)이 아니라 현재 로그인한 관리자(admin@itsm.local)여야 한다.
+        verify(auditLogService).record(eq(EventType.USER_CHANGE), eq(1L), eq("admin@itsm.local"),
+                eq("u@itsm.local"), eq(AuditResult.SUCCESS));
     }
 
     @Test
@@ -148,6 +167,9 @@ class UserAdminServiceTest {
 
         assertThat(response.userId()).isEqualTo(1L);
         verify(userRoleRepository).save(any(UserRole.class));
+        // actor는 대상 계정(u@itsm.local)이 아니라 현재 로그인한 관리자(admin@itsm.local)여야 한다.
+        verify(auditLogService).record(eq(EventType.ROLE_CHANGE), eq(1L), eq("admin@itsm.local"),
+                eq("u@itsm.local"), eq(AuditResult.SUCCESS));
     }
 
     @Test

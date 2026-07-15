@@ -9,10 +9,15 @@ import com.itsm.auth.application.dto.LoginRequest;
 import com.itsm.auth.application.dto.RoleCreatedResponse;
 import com.itsm.auth.application.dto.UserDetailResponse;
 import com.itsm.common.exception.BusinessException;
+import com.itsm.common.security.AuthPrincipal;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -22,6 +27,7 @@ import org.testcontainers.utility.MountableFile;
 
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -104,7 +110,10 @@ class AuthAdminIntegrationTest {
                     "/docker-entrypoint-initdb.d/30_auth_screen_i18n.sql")
             .withCopyFileToContainer(
                     MountableFile.forHostPath(Paths.get("../db/sql/31_sidebar_menu_label_cleanup.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/31_sidebar_menu_label_cleanup.sql");
+                    "/docker-entrypoint-initdb.d/31_sidebar_menu_label_cleanup.sql")
+            .withCopyFileToContainer(
+                    MountableFile.forHostPath(Paths.get("../db/sql/32_approval_process_priority_redesign.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/32_approval_process_priority_redesign.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {
@@ -119,6 +128,18 @@ class AuthAdminIntegrationTest {
     @Autowired RoleService roleService;
     @Autowired AuthService authService;
     @Autowired JdbcTemplate jdbcTemplate;
+
+    @BeforeEach
+    void login() {
+        AuthPrincipal principal = new AuthPrincipal(1L, "admin@itsm.local", List.of("SYSTEM_ADMIN"), UUID.randomUUID());
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(principal, null, List.of()));
+    }
+
+    @AfterEach
+    void clear() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Test
     void createUserPersistsUserAndAuditWithoutFkViolation() {

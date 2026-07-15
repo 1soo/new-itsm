@@ -3,7 +3,7 @@
 승인 엔진 엔티티·enum·리포지토리 계약(`docs/02_plan/database/common.md` 4절).
 
 ## 파일
-- `ApprovalProcess.java` — 승인 프로세스 정의 헤더(domain/requestSubtypeKey/priorityTier/name/description)
+- `ApprovalProcess.java` — 승인 프로세스 정의 헤더(domain(nullable, null=전체 도메인)/requestSubtypeKey/priorityTier/name/description, 2026-07-15 domain nullable 재설계)
 - `ApprovalProcessRequesterRole.java` — 규칙의 승인요청자 역할 스코프(ANY 매칭, 0개=요청자 무관)
 - `ApprovalProcessStep.java` — 규칙의 승인자 차수(n차, decisionMode)
 - `ApprovalProcessStepRole.java` — 차수별 승인 역할(1개 이상)

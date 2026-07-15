@@ -16,7 +16,7 @@ import java.util.List;
 public interface ApprovalProcessJpaRepository extends JpaRepository<ApprovalProcess, Long>, ApprovalProcessRepository {
 
     @Override
-    @Query("select p from ApprovalProcess p where p.isDeleted = false and p.domain = :domain")
+    @Query("select p from ApprovalProcess p where p.isDeleted = false and (p.domain = :domain or p.domain is null)")
     List<ApprovalProcess> findByDomain(@Param("domain") String domain);
 
     @Override
@@ -26,6 +26,20 @@ public interface ApprovalProcessJpaRepository extends JpaRepository<ApprovalProc
               and (:domain is null or p.domain = cast(:domain as string))
             """)
     Page<ApprovalProcess> search(@Param("domain") String domain, Pageable pageable);
+
+    @Override
+    @Query("""
+            select case when count(p) > 0 then true else false end from ApprovalProcess p
+            where p.isDeleted = false and p.priorityTier = :tier
+            """)
+    boolean existsByPriorityTier(@Param("tier") short priorityTier);
+
+    @Override
+    @Query("""
+            select case when count(p) > 0 then true else false end from ApprovalProcess p
+            where p.isDeleted = false and p.priorityTier = :tier and p.id <> :excludeId
+            """)
+    boolean existsByPriorityTierAndIdNot(@Param("tier") short priorityTier, @Param("excludeId") Long excludeId);
 
     @Override
     @Query("""
@@ -69,4 +83,15 @@ public interface ApprovalProcessJpaRepository extends JpaRepository<ApprovalProc
             """)
     List<ApprovalProcess> findByDomainAndRequestSubtypeKeyAndPriorityTier(
             @Param("domain") String domain, @Param("key") String requestSubtypeKey, @Param("tier") short priorityTier);
+
+    @Override
+    @Query("select p from ApprovalProcess p where p.isDeleted = false and p.priorityTier = :tier")
+    List<ApprovalProcess> findByPriorityTier(@Param("tier") short priorityTier);
+
+    @Override
+    @Query("""
+            select p from ApprovalProcess p
+            where p.isDeleted = false and p.domain = :domain and p.priorityTier = :tier
+            """)
+    List<ApprovalProcess> findByDomainAndPriorityTier(@Param("domain") String domain, @Param("tier") short priorityTier);
 }

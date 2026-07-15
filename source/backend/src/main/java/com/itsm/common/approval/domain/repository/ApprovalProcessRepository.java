@@ -16,22 +16,35 @@ public interface ApprovalProcessRepository {
 
     Optional<ApprovalProcess> findById(Long id);
 
-    /** 게이트 매칭용: 도메인의 활성(is_deleted=false) 규칙 전체. */
+    /** 게이트 매칭용: 도메인의 활성(is_deleted=false) 규칙 + 전체 도메인(domain null) 규칙. */
     List<ApprovalProcess> findByDomain(String domain);
 
     /** 관리자 목록 조회(domain 선택 필터). */
     Page<ApprovalProcess> search(String domain, Pageable pageable);
 
+    /** tier=0(전체 미지정 캐치올) 존재 검증. */
+    boolean existsByPriorityTier(short priorityTier);
+
+    boolean existsByPriorityTierAndIdNot(short priorityTier, Long excludeId);
+
+    /** tier=11(도메인만) 존재 검증. */
     boolean existsByDomainAndPriorityTier(String domain, short priorityTier);
 
     boolean existsByDomainAndPriorityTierAndIdNot(String domain, short priorityTier, Long excludeId);
 
+    /** tier=23(도메인+요청유형) 존재 검증. */
     boolean existsByDomainAndRequestSubtypeKeyAndPriorityTier(String domain, String requestSubtypeKey, short priorityTier);
 
     boolean existsByDomainAndRequestSubtypeKeyAndPriorityTierAndIdNot(
             String domain, String requestSubtypeKey, short priorityTier, Long excludeId);
 
-    /** tier=3(승인요청자 역할 전용) 역할 조합 중복 검증 대상 후보(동일 domain+requestSubtypeKey 스코프). */
+    /** tier=14(역할만) 역할 조합 중복 검증 대상 후보(전체 스코프). */
+    List<ApprovalProcess> findByPriorityTier(short priorityTier);
+
+    /** tier=25(도메인+역할) 역할 조합 중복 검증 대상 후보(동일 domain 스코프, requestSubtypeKey는 항상 null). */
+    List<ApprovalProcess> findByDomainAndPriorityTier(String domain, short priorityTier);
+
+    /** tier=37(도메인+요청유형+역할) 역할 조합 중복 검증 대상 후보(동일 domain+requestSubtypeKey 스코프). */
     List<ApprovalProcess> findByDomainAndRequestSubtypeKeyAndPriorityTier(
             String domain, String requestSubtypeKey, short priorityTier);
 }

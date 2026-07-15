@@ -65,6 +65,7 @@
     "assignee": "Assignee",
     "queue": "Queue",
     "noApproval": "This request has no approval process",
+    "approvalGatePending": "Whether an approval process applies will be determined when this request moves to fulfillment",
     "slaResponse": "Response",
     "slaResolve": "Resolution",
     "linkedAssetsTitle": "Linked Assets",

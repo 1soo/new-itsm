@@ -173,7 +173,8 @@ export interface ApprovalProcessStep {
 
 export interface ApprovalProcessSummary {
   id: number;
-  domain: ApprovalDomain;
+  /** null이면 전체 도메인 적용(2026-07-15 우선순위 재설계). */
+  domain: ApprovalDomain | null;
   requestSubtypeKey: string | null;
   requestSubtypeLabel: string | null;
   priorityTier: number;
@@ -184,7 +185,8 @@ export interface ApprovalProcessSummary {
 
 export interface ApprovalProcessDetail {
   id: number;
-  domain: ApprovalDomain;
+  /** null이면 전체 도메인 적용(2026-07-15 우선순위 재설계). */
+  domain: ApprovalDomain | null;
   requestSubtypeKey: string | null;
   name: string;
   description: string | null;
@@ -199,7 +201,8 @@ export interface ApprovalProcessListQuery {
 }
 
 export interface CreateApprovalProcessRequest {
-  domain: ApprovalDomain;
+  /** null이면 전체 도메인 적용(2026-07-15 우선순위 재설계로 필수→선택 변경). */
+  domain: ApprovalDomain | null;
   requestSubtypeKey: string | null;
   name: string;
   description?: string;

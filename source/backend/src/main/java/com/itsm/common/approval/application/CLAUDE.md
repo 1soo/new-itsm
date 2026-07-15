@@ -3,7 +3,7 @@
 승인 엔진 애플리케이션 서비스 계층.
 
 ## 파일
-- `ApprovalGateService.java` — 게이트 체크(common.md 0절). `checkGate`(SRM/CHANGE류, 던지는 방식): 우선순위 매칭 → 0차/무매칭 통과 → 인스턴스 없음 시 스냅샷 생성+409 → 진행중/반려 409 → 승인완료 통과. `evaluateAndCreateIfNeeded`(KNOWLEDGE류, 논-스로잉): 항상 200 성공해야 하는 도메인용, `GateDecision`(passed, approvalRequestId) 반환, 매칭 시 이전 인스턴스 상태 무관하게 항상 새 인스턴스 생성
+- `ApprovalGateService.java` — 게이트 체크(common.md 0절). `matchProcess`는 티켓 도메인 규칙 + 전체 도메인(domain null) 규칙을 함께 후보로 조회해 priorityTier가 가장 큰 규칙을 선택(2026-07-15 3축 재설계). `checkGate`(SRM/CHANGE류, 던지는 방식): 우선순위 매칭 → 0차/무매칭 통과 → 인스턴스 없음 시 스냅샷 생성+409 → 진행중/반려 409 → 승인완료 통과. `evaluateAndCreateIfNeeded`(KNOWLEDGE류, 논-스로잉): 항상 200 성공해야 하는 도메인용, `GateDecision`(passed, approvalRequestId) 반환, 매칭 시 이전 인스턴스 상태 무관하게 항상 새 인스턴스 생성
 - `ApprovalInstanceService.java` — 대기함 목록(API-COM-003)·상세(API-COM-004)·결정(API-COM-005) 유스케이스. OR(최초 1건 확정)/AND(역할별 전원 승인 또는 즉시 반려) 집계, 차수 진행·SKIPPED 처리. 인스턴스 최종 확정(APPROVED/REJECTED) 시 `ApprovalDecisionCallback` 구현 빈(ticketType별) 호출
 - `ApprovalDecisionCallback.java` — 승인 인스턴스 최종 확정 시 도메인 반응용 확장 포인트(onApproved/onRejected). 전이 재시도하는 SRM/CHANGE는 불필요, 결정 즉시 자동 전환 필요한 KNOWLEDGE가 구현
 - `ApprovalRoleResolver.java` — role_id ↔ role_code(role claim) 상호 변환 공용 헬퍼(auth.domain.repository.RoleRepository 위임)
