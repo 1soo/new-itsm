@@ -42,3 +42,6 @@
 | 20260712-180448 | infra-monitoring | IOM 전 화면 다국어 전환 | docs/06_maintenance/20260712-180448/infra-monitoring/report.md |
 | 20260714-102553 | common | 사이드바 폭/폰트 축소(190px/48px, 12px/10px), DataTable 컬럼폭 고정 인프라(colgroup+table-fixed) 도입 및 17개 목록화면 적용, 1920x1080 기준 PAGE_SIZE 재산정(10/20→13/14/16) | docs/06_maintenance/20260714-102553/common/report.md |
 | 20260714-151157 | runtime-upgrade | Java 25 + Spring Boot 4.1.0 + PostgreSQL 18 런타임 업그레이드(gradle 9.6.1, springdoc/jjwt/testcontainers 호환버전, Jackson3/RoleHierarchy 등 Framework7 대응) | docs/06_maintenance/20260714-151157/runtime-upgrade/report.md |
+| 20260715-031710 | auth | 감사 로그 actor 오기록 수정(관리자→대상자 오기록), 승인 프로세스 범위 우선순위 3축(도메인/요청유형/역할) 독립 재설계·삭제 기능 추가·상세화면 요청유형 select 미렌더링 결함 수정 | docs/06_maintenance/20260715-031710/auth/report.md |
+| 20260715-031710 | common | 공용 승인 엔진 도메인 미지정(전체 도메인) 규칙 지원(approval_process.domain nullable화, 매칭·우선순위 로직 확장) | docs/06_maintenance/20260715-031710/common/report.md |
+| 20260715-031710 | srm | 서비스 요청 상세 승인 패널 "승인 절차 없음" 오해 문구를 게이트 평가 전/후 상태에 따라 분기 표시하도록 개선 | docs/06_maintenance/20260715-031710/srm/report.md |
