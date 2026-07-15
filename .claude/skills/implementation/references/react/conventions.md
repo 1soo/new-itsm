@@ -12,6 +12,7 @@
 - **전역 state는 Redux(Redux Toolkit)** 사용.
 - **모든 API 요청은 공통 `apiClient`** 통해 수행한다. (직접 fetch/axios 호출 금지)
 - UI 구현은 [references/ui-ux/conventions.md](../ui-ux/conventions.md)의 디자인 시스템을 따른다.
+- 컴포넌트 설계 패턴(SOLID·Composition·Custom Hook 등) 상세는 [references/react/patterns.md](patterns.md)를 따른다.
 - Frontend는 `source/frontend/` 디렉토리에서 개발하고, 자체 `.env`를 둔다.
 
 ## 1. 전역 상태 — Redux
@@ -35,8 +36,10 @@
 
 - feature(도메인) 기반 폴더 구조를 권장한다: `features/{domain}/{components,hooks,api,slice}`.
 - 라우팅은 react-router 등 표준 라이브러리를 사용한다. 화면 ID(SCR-...)와 라우트를 매핑한다.
+- feature 구조를 계층(표현/로직/데이터접근) 관점으로 보는 상세 패턴은 [references/react/patterns.md](patterns.md) 4항을 따른다.
 
 ## 개발 후 검증
 
 1. 빌드 테스트를 수행한다.
 2. playwright MCP로 주요 화면/플로우 E2E 테스트를 수행한다.
+3. playwright MCP로 **뷰포트를 Mobile/Tablet/Desktop 각 breakpoint로 조정**해 레이아웃이 깨지지 않는지, 모바일에서 [references/ui-ux/conventions.md](../ui-ux/conventions.md) "2. 레이아웃·그리드"에 정의한 맞춤 레이아웃(내비게이션 전환 등)이 적용되는지 확인한다.

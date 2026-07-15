@@ -14,6 +14,7 @@
 - **local 환경에서는 docker-compose로 DB 컨테이너를 실행**한다.
 - `create table`, `insert data` 등 세팅용 **DDL/DML은 `source/db/sql/`에 `.sql` 파일로 저장**한다.
 - docker-compose 파일은 `source/db/docker/`에 둔다.
+- 데이터 접근 패턴(Repository·정규화·인덱싱·트랜잭션) 상세는 [references/database/patterns.md](patterns.md)를 따른다.
 
 ## 1. 암호화 정책
 
@@ -29,6 +30,7 @@
 - snake_case 식별자.
 - 공통 컬럼: `id`(seq PK), `created_by/at`, `updated_by/at`, `is_deleted`(soft delete).
 - FK·UNIQUE·NOT NULL 제약조건, RBAC 매핑 테이블(`user_role`, `screen_role`, `screen`).
+- 정규화(1NF~3NF)·비정규화 판단 기준은 [references/database/patterns.md](patterns.md) "2. 정규화 원칙"을 따른다.
 
 ## 3. Local 실행 (docker-compose)
 

@@ -15,6 +15,7 @@
 - **렌더링과 역할**: `tech.md`의 SSR/CSR 결정을 따른다. CSR이면 클라이언트 컴포넌트 중심의 순수 Frontend, SSR이면 서버 컴포넌트·Route Handler·Server Action으로 서버 역할까지 겸한다. 화면 특성에 맞게 서버/클라이언트 컴포넌트를 구분한다.
 - **모든 API 요청(클라이언트 측)은 공통 apiClient**로 수행한다.
 - UI 구현은 [references/ui-ux/conventions.md](../ui-ux/conventions.md)의 디자인 시스템을 따른다.
+- 서버/클라이언트 합성 패턴·데이터 패칭·서버 로직 분리·SOLID 적용 상세는 [references/next/patterns.md](patterns.md)를 따른다.
 
 ## 1. 라우터 선택
 
@@ -29,6 +30,7 @@
 - **SSR + Next가 지정된 경우**: Next가 서버 역할을 겸한다. Route Handler(`app/api/**`)·Server Action·서버 컴포넌트의 데이터 패칭에서 API 명세서(`docs/02_plan`)의 엔드포인트·비즈니스 로직·DB 연동을 직접 구현한다.
 - 화면별로 서버 컴포넌트(데이터 패칭·SEO 필요) / 클라이언트 컴포넌트(상호작용)를 구분한다.
 - 데이터 패칭은 Next 표준 방식(server component fetch / route handler)을 사용한다.
+- 서버/클라이언트 합성·데이터 패칭·서버 로직 분리 패턴은 [references/next/patterns.md](patterns.md) 참조.
 
 ## 3. API 요청 — 공통 apiClient
 
@@ -50,3 +52,4 @@
 
 1. 빌드 테스트를 수행한다.
 2. playwright로 로그인·주요 화면·권한 분기 플로우를 E2E 검증한다.
+3. playwright로 **뷰포트를 Mobile/Tablet/Desktop 각 breakpoint로 조정**해 레이아웃이 깨지지 않는지, 모바일에서 [references/ui-ux/conventions.md](../ui-ux/conventions.md) "2. 레이아웃·그리드"에 정의한 맞춤 레이아웃(내비게이션 전환 등)이 적용되는지 확인한다.

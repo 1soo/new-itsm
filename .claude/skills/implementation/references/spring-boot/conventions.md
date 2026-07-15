@@ -10,6 +10,7 @@ API 명세서·테이블 정의서·인증/인가 설계 기반 Backend 구현.
 
 - **DDD(Domain Driven Design)**로 계층을 구성한다. (domain / application / infrastructure / presentation)
 - **SOLID 원칙**을 준수한다.
+- 디자인 패턴(MVC·SOLID·GoF·DDD 전술 패턴) 상세는 [references/spring-boot/patterns.md](patterns.md)를 따른다.
 - **핵심 도메인 로직·예외 처리는 test-first로 작성**한다: 실패하는 JUnit 테스트를 먼저 작성해 확인하고(Red) → 통과하는 최소 구현을 작성하고(Green) → 통과 유지한 채 구조를 정리한다(Refactor).
 - **모든 예외에 대해 JUnit 테스트를 필수 작성**한다.
 - **공통 예외처리 모듈**을 둔다. (`@RestControllerAdvice` + 표준 에러 응답)
@@ -33,7 +34,8 @@ API 명세서·테이블 정의서·인증/인가 설계 기반 Backend 구현.
 
 ## 2. SOLID
 
-- 단일 책임·의존성 역전을 우선한다. Service는 인터페이스에 의존, 구현은 주입.
+- 단일 책임·의존성 역전을 우선한다. Service는 인터페이스에 의존, 구현은 주입(생성자 주입).
+- 5원칙 상세와 코드 예시는 [patterns.md](patterns.md#2-solid-5원칙)를 따른다.
 
 ## 3. 예외 처리
 
