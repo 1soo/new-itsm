@@ -45,3 +45,6 @@
 | 20260715-031710 | auth | 감사 로그 actor 오기록 수정(관리자→대상자 오기록), 승인 프로세스 범위 우선순위 3축(도메인/요청유형/역할) 독립 재설계·삭제 기능 추가·상세화면 요청유형 select 미렌더링 결함 수정 | docs/06_maintenance/20260715-031710/auth/report.md |
 | 20260715-031710 | common | 공용 승인 엔진 도메인 미지정(전체 도메인) 규칙 지원(approval_process.domain nullable화, 매칭·우선순위 로직 확장) | docs/06_maintenance/20260715-031710/common/report.md |
 | 20260715-031710 | srm | 서비스 요청 상세 승인 패널 "승인 절차 없음" 오해 문구를 게이트 평가 전/후 상태에 따라 분기 표시하도록 개선 | docs/06_maintenance/20260715-031710/srm/report.md |
+| 20260715-061016 | service-request | 카탈로그 요청유형별 담당자(역할기반 배정 후보 필터)·담당 큐 Select 전환 신규, 요청 큐 배정버튼 노출조건(본인배정/ROUTED이후 숨김)·라우팅 버튼 담당자 미배정 시 비활성화(BE 409) 추가 | docs/06_maintenance/20260715-061016/service-request/report.md |
+| 20260715-061016 | auth | 공용 역할 목록 조회 API(API-AUTH-030) 신규(카탈로그 담당자 역할 선택 등 타 도메인 재사용) | docs/06_maintenance/20260715-061016/auth/report.md |
+| 20260715-061016 | common | 승인 프로세스 승인자(StepRole) 역할 기반 동적 상세조회 권한(`ApprovalGateService.canApproverView`) 신설, SRM/CHANGE 기존 정적 APPROVER 전체조회 폐지·대체, 승인 프로세스 있는 8개 도메인 전체 적용(INCIDENT 상세조회 역할체크 부재 결함 동시 정리, ESM 댓글권한 범위초과 결함 수정) | docs/06_maintenance/20260715-061016/common/report.md |
