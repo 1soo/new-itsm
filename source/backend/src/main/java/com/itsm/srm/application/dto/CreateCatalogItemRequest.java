@@ -14,6 +14,7 @@ public record CreateCatalogItemRequest(
         Long queueId,
         Integer slaResponseMinutes,
         Integer slaResolveMinutes,
+        @Schema(description = "담당자 역할(선택, 요청 큐 배정 후보 역할)") Long assigneeRoleId,
         @Schema(description = "동적 양식(1개 이상)")
         @NotEmpty List<FormFieldDto> formSchema
 ) {

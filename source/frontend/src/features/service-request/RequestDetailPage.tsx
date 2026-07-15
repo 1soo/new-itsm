@@ -39,7 +39,7 @@ import type {
 } from "@/features/service-request/types";
 import { commonApi } from "@/features/common/api";
 import { useAppSelector } from "@/store/hooks";
-import { extractErrorMessage } from "@/lib/apiClient";
+import { extractErrorMessage, getStatusCode } from "@/lib/apiClient";
 
 /*
  * 요청 상세(SCR-SRM-005) — 검증·승인 상태·이행·종료·코멘트·SLA·CSAT 관리.
@@ -137,6 +137,10 @@ export function RequestDetailPage() {
 
   useEffect(load, [load]);
 
+  const routingBlockedMessage = t("requestDetail.routingBlockedTooltip", {
+    defaultValue: "담당자 미배정 상태로는 라우팅 단계로 전이할 수 없습니다",
+  });
+
   const handleTransition = async (target: TargetStatus) => {
     setTransitioning(target);
     try {
@@ -149,7 +153,13 @@ export function RequestDetailPage() {
       );
       load();
     } catch (err) {
-      toast.error(extractErrorMessage(err));
+      // 담당자 미배정 상태로 라우팅 전이 시도 시 서버도 409로 거부(ASSIGNEE_REQUIRED_FOR_ROUTING) —
+      // FE 버튼 비활성화를 우회한 경우를 대비한 방어적 처리, 버튼 tooltip과 동일 문구로 안내.
+      if (target === "ROUTED" && getStatusCode(err) === 409) {
+        toast.error(routingBlockedMessage);
+      } else {
+        toast.error(extractErrorMessage(err));
+      }
       // 이행(IN_FULFILLMENT) 전이가 게이트(409)로 거부된 경우 BE가 이미 승인 인스턴스를 생성했을
       // 수 있으므로, 전체 로딩 화면 없이 조용히 다시 조회해 승인 패널에 반영한다.
       refreshDetail(true);
@@ -226,16 +236,21 @@ export function RequestDetailPage() {
       ticketKey={detail.ticketKey}
       title={detail.catalogItemName}
       badges={<StatusBadge tone={statusTone(detail.status)} label={statusLabel(t, detail.status)} />}
-      actions={transitions.map((target) => (
-        <Button
-          key={target}
-          variant={target === "CLOSED" ? "outline" : "default"}
-          loading={transitioning === target}
-          onClick={() => handleTransition(target)}
-        >
-          {statusLabel(t, target)}
-        </Button>
-      ))}
+      actions={transitions.map((target) => {
+        const routingBlocked = target === "ROUTED" && !detail.assignee;
+        return (
+          <Button
+            key={target}
+            variant={target === "CLOSED" ? "outline" : "default"}
+            loading={transitioning === target}
+            disabled={routingBlocked}
+            title={routingBlocked ? routingBlockedMessage : undefined}
+            onClick={() => handleTransition(target)}
+          >
+            {statusLabel(t, target)}
+          </Button>
+        );
+      })}
       meta={
         <>
           <Card>

@@ -337,3 +337,42 @@
 - 뱃지 카운트가 5초마다 서버 기준으로 갱신되는지, merge된 표시 목록 건수와 뱃지 값이 달라질 수 있는지(정상 동작) 확인.
 - API 연속 실패 시 화면이 비워지지 않고 유지되며, 복구 후 정상 반영되는지 확인(가능한 범위 내 재현).
 - tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → 완료 시 커밋.
+
+## 승인 대상자 역할 기반 동적 상세조회 권한 (유지보수 요청, 2026-07-15)
+
+> Main 요청(유지보수). SRM/CHANGE의 정적 "APPROVER=도메인 전체조회" 권한을 폐지하고, 8개 도메인(SRM/CHANGE/INCIDENT/PROBLEM/ASSET/VULNERABILITY/COMPLIANCE/ESM) 상세조회에 공용 동적 판정을 적용한다. UI 신규 소집 없음(FE는 라우트 가드 1줄 추가만).
+
+### 설계 근거
+
+- API: `docs/02_plan/api_spec/common.md` 0-1절(판정 절차)
+- 권한: `docs/02_plan/security/authorization/approver.md` v0.3
+- 참고 기존 코드: `source/backend/src/main/java/com/itsm/common/approval/application/ApprovalGateService.java`(private `matchProcess` — 도메인/요청유형/요청자역할 3축 매칭 로직 재사용), `source/frontend/src/routes/index.tsx`(`RequireRoles` 가드)
+- 8개 도메인 모두 이미 `ApprovalGateService.checkGate(DOMAIN, requestSubtypeKey, requesterIdOf(entity), TT, id)` 패턴으로 게이트를 호출 중이므로(각 도메인 서비스에 `DOMAIN` 상수·`requesterIdOf` 헬퍼 기존 존재), 이번 작업은 그 값들을 그대로 재사용해 조회 가드에 OR 조건만 추가하면 된다.
+
+### 담당 범위
+
+#### BE (dev-backend) — `source/backend/src/main/java/com/itsm/common/approval/application/ApprovalGateService.java`
+
+- 신규 public 메서드 `canApproverView(String domain, String requestSubtypeKey, Long requesterId)`: 기존 private `matchProcess(domain, requestSubtypeKey, requesterId)`로 매칭 규칙 1개 조회 → 없으면 false. 매칭되면 그 규칙의 **전체 차수**(`processStepRepository.findByApprovalProcessIdOrderByStepNoAsc`)를 순회하며 각 차수의 `processStepRoleRepository.findByStepId`로 역할 id를 전부 모은다(현재 차수만이 아니라 전체 차수 — 인스턴스 생성 전에도 조회 가능해야 하므로, common.md 0-1절 2번). 로그인 사용자(`SecurityUtils.currentPrincipal().roles()`, role code 집합)를 `roleResolver.roleIdsOf(...)`로 role_id 집합 변환 후 교집합 있으면 true, 없거나 승인자 역할 자체가 0개면 false.
+- 8개 도메인 상세조회 서비스에 이 메서드를 **기존 조건과 OR**로 추가한다(각 담당 개발이 실제 코드를 열어 최소 변경으로 적용, 현재 가드 위치):
+  | 도메인 | 파일 · 현재 가드 | 적용 방식 |
+  |---|---|---|
+  | SRM | `srm/application/ServiceRequestService.java` `assertCanView` (`hasAnyRole(AGENT, PROCESS_OWNER, APPROVER)`) | **APPROVER 조건 제거** 후 `\|\| approvalGateService.canApproverView("SERVICE_REQUEST", String.valueOf(sr.getCatalogItemId()), sr.getRequesterId())`로 대체(상세 계획 `docs/03_develop/plan/service-request.md` 참조) |
+  | CHANGE | `change/application/ChangeService.java` 상세조회 가드(정적 APPROVER 전체조회 조건) | 그 조건 제거 후 canApproverView(domain="CHANGE", requestSubtypeKey=변경유형 코드, requesterIdOf(change)) OR로 대체 |
+  | INCIDENT | `incident/application/IncidentService.java` `detail()`(현재 역할 체크 자체 없음 — 결함) | **신규로** `SecurityUtils.hasAnyRole("SERVICE_DESK_AGENT", "INCIDENT_MANAGER") \|\| approvalGateService.canApproverView("INCIDENT", null, requesterIdOf(inc))` 가드 추가, 불만족 시 403(둘 다 없으면 접근 불가) |
+  | PROBLEM | `problem/application/ProblemService.java` 상세조회 가드(PROBLEM_MANAGER 전용) | canApproverView(domain="PROBLEM", requestSubtypeKey=null, requesterIdOf(problem)) OR 추가 |
+  | ASSET | `asset/application/AssetService.java` `detail()` | **스킵(코드 변경 없음, designer 확인 완료)** — ASSET 상세조회의 의도된 RBAC는 코드 그대로 "인증된 사용자 전반 허용"이 맞다(`AssetService` 클래스 주석 근거). `approver.md` v0.3이 ASSET을 PROBLEM/VULNERABILITY/COMPLIANCE와 같은 "매니저 전용" 묶음으로 잘못 분류했던 설계 문서 오류였고, designer가 `common.md`(api_spec) 0-1절·`approver.md` 2/3/4절을 정정 완료했다. INCIDENT(근거 없는 결함)와 달리 ASSET은 코드 주석에 의도가 명확해 이번 유지보수에서 신규 제한을 추가하지 않는다(2026-07-15 designer 확인) |
+  | VULNERABILITY | `vulnerability/application/VulnerabilityService.java` 상세조회 가드(VULNERABILITY_MANAGER 전용) | canApproverView(domain="VULNERABILITY", requestSubtypeKey=null, requesterIdOf(vulnerability)) OR 추가 |
+  | COMPLIANCE | `compliance/application/ComplianceService.java` 상세조회 가드(COMPLIANCE_OFFICER 전용, requirement 단위) | requirement은 자체 requester 개념이 없고 0~n개 CorrectiveAction이 딸려있다(각기 다른 등록자 가능) — 해당 requirement의 action들을 순회하며 각각 `canApproverView("COMPLIANCE", null, requesterIdOf(action))` 호출해 **하나라도 true면 허용**, action이 0건이면 매칭 문맥이 없으므로 false(2026-07-15 확인, dev-lead) |
+  | ESM | `esm/application/EsmRequestService.java` `assertCanView`(요청자 본인+DEPT_COORDINATOR) | canApproverView(domain="ESM", requestSubtypeKey=null, esmRequest.getRequesterId()) OR 추가 |
+- `requestSubtypeKey`는 각 도메인이 기존 `checkGate` 호출부에 넘기는 값과 동일하게 맞춘다(하위유형 없는 도메인은 null, CHANGE는 변경유형 코드, SRM은 `catalogItemId` 문자열화). **상세조회(단건) API에만 적용**하며 목록 API에는 적용하지 않는다.
+
+#### FE (dev-frontend) — `source/frontend/src/routes/index.tsx`
+
+- SRM/CHANGE/PROBLEM/ASSET/VULNERABILITY/COMPLIANCE/ESM **7개 도메인**(INCIDENT 제외 — 백엔드 신규 역할체크로 커버)의 상세 라우트 `RequireRoles` 역할 목록에 `ROLE_APPROVER`를 추가한다(기존 목록에 추가만, 다른 로직 변경 없음). 실제 조회 가능 여부는 백엔드 403으로 최종 판정(매칭 안 되면 화면 진입 후 403 처리, 기존 패턴과 동일).
+
+### 완료(테스트 통과) 기준
+
+- BE: SRM/CHANGE는 매칭 안 되는 APPROVER 403(기존 전체조회 회귀 없음), 매칭되면 200. INCIDENT는 SERVICE_DESK_AGENT/INCIDENT_MANAGER 미보유 + 매칭 안 되는 APPROVER 403(결함 정리 확인), 매칭되면 200. PROBLEM/ASSET/VULNERABILITY/COMPLIANCE/ESM은 매칭되는 APPROVER 200, 매칭 안 되면 403(기존 매니저 전용 조건은 그대로 유지).
+- FE: 7개 도메인 상세 라우트에 APPROVER 역할 계정으로 내비게이션 가능.
+- tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → 완료 시 커밋.

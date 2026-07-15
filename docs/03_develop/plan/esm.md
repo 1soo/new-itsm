@@ -79,3 +79,7 @@
 ### 완료 기준
 - English 전환 시 11개 화면 전체 텍스트(부서·상태·체크리스트 라벨 포함) 영어 전환.
 - 부서 요청 제출/처리/체크리스트 완료·HR 케이스 상태 전이 등 기존 기능 회귀 없음(텍스트만 치환).
+
+## 승인 대상자 역할 기반 동적 상세조회 권한 — ESM 부분 (유지보수 요청, 2026-07-15)
+
+> 8개 도메인 공용 작업. 전체 설계·담당범위·완료기준은 `docs/03_develop/plan/common.md` 동일 제목 절 참조. 이 도메인 BE 작업: `esm/application/EsmRequestService.java` `assertCanView`(요청자 본인+DEPT_COORDINATOR)에 `approvalGateService.canApproverView("ESM", null, esmRequest.getRequesterId())` OR 추가(신규 권한, 기존 조건은 유지). FE 라우트 가드(`routes/index.tsx`)는 공용 작업에 포함되어 별도 진행 불필요.

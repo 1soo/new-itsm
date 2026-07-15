@@ -1,6 +1,7 @@
 package com.itsm.srm.application;
 
 import tools.jackson.databind.ObjectMapper;
+import com.itsm.auth.domain.repository.RoleRepository;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.srm.application.dto.CatalogItemDetailResponse;
@@ -32,12 +33,13 @@ class ServiceCatalogServiceTest {
 
     @Mock ServiceCatalogItemRepository catalogItemRepository;
     @Mock CatalogFormFieldRepository formFieldRepository;
+    @Mock RoleRepository roleRepository;
 
     ServiceCatalogService service;
 
     @BeforeEach
     void setUp() {
-        service = new ServiceCatalogService(catalogItemRepository, formFieldRepository, new ObjectMapper());
+        service = new ServiceCatalogService(catalogItemRepository, formFieldRepository, roleRepository, new ObjectMapper());
     }
 
     @Test
@@ -56,7 +58,7 @@ class ServiceCatalogServiceTest {
                 .thenReturn(List.of(new CatalogFormField(1L, "reason", "사유", "text", true, null, 0)));
 
         CreateCatalogItemRequest request = new CreateCatalogItemRequest(
-                "Laptop", "desc", 1L, 60, 480,
+                "Laptop", "desc", 1L, 60, 480, null,
                 List.of(new FormFieldDto("reason", "Reason", "text", true, null)));
 
         CatalogItemDetailResponse response = service.create(request);

@@ -2,7 +2,10 @@ package com.itsm.srm.application;
 
 import com.itsm.asset.application.AssetService;
 import com.itsm.auth.domain.AppUser;
+import com.itsm.auth.domain.Role;
+import com.itsm.auth.domain.UserStatus;
 import com.itsm.auth.domain.repository.AppUserRepository;
+import com.itsm.auth.domain.repository.RoleRepository;
 import com.itsm.common.approval.application.ApprovalGateService;
 import com.itsm.common.approval.domain.ApprovalRequest;
 import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
@@ -18,6 +21,7 @@ import com.itsm.common.ticket.repository.TicketLinkRepository;
 import com.itsm.common.ticket.repository.TimelineEventRepository;
 import com.itsm.auth.application.dto.PageResponse;
 import com.itsm.srm.application.dto.AssignRequest;
+import com.itsm.srm.application.dto.AssigneeCandidateResponse;
 import com.itsm.srm.application.dto.CommentCreateRequest;
 import com.itsm.srm.application.dto.CommentResponse;
 import com.itsm.srm.application.dto.CreateRequestRequest;
@@ -63,7 +67,6 @@ public class ServiceRequestService {
 
     private static final String AGENT = "SERVICE_DESK_AGENT";
     private static final String PROCESS_OWNER = "PROCESS_OWNER";
-    private static final String APPROVER = "APPROVER";
     private static final TicketType TT = TicketType.SERVICE_REQUEST;
     private static final String DOMAIN = "SERVICE_REQUEST";
 
@@ -76,6 +79,7 @@ public class ServiceRequestService {
     private final CommentRepository commentRepository;
     private final TimelineEventRepository timelineRepository;
     private final AppUserRepository appUserRepository;
+    private final RoleRepository roleRepository;
     private final TicketLinkRepository ticketLinkRepository;
     private final AssetService assetService;
     private final ApprovalGateService approvalGateService;
@@ -90,6 +94,7 @@ public class ServiceRequestService {
                                  CommentRepository commentRepository,
                                  TimelineEventRepository timelineRepository,
                                  AppUserRepository appUserRepository,
+                                 RoleRepository roleRepository,
                                  TicketLinkRepository ticketLinkRepository,
                                  AssetService assetService,
                                  ApprovalGateService approvalGateService,
@@ -103,6 +108,7 @@ public class ServiceRequestService {
         this.commentRepository = commentRepository;
         this.timelineRepository = timelineRepository;
         this.appUserRepository = appUserRepository;
+        this.roleRepository = roleRepository;
         this.ticketLinkRepository = ticketLinkRepository;
         this.assetService = assetService;
         this.approvalGateService = approvalGateService;
@@ -227,6 +233,25 @@ public class ServiceRequestService {
         return result;
     }
 
+    // ---------- assignee candidates (API-SRM-017) ----------
+
+    @Transactional(readOnly = true)
+    public List<AssigneeCandidateResponse> assigneeCandidates(Long id) {
+        ServiceRequest sr = findRequest(id);
+        ServiceCatalogItem item = catalogItemRepository.findById(sr.getCatalogItemId()).orElse(null);
+        if (item == null || item.getAssigneeRoleId() == null) {
+            return List.of();
+        }
+        String roleCode = roleRepository.findById(item.getAssigneeRoleId()).map(Role::getRoleCode).orElse(null);
+        if (roleCode == null) {
+            return List.of();
+        }
+        return appUserRepository.search(null, null, UserStatus.ACTIVE, roleCode, Pageable.unpaged())
+                .stream()
+                .map(u -> new AssigneeCandidateResponse(u.getId(), u.getName()))
+                .toList();
+    }
+
     // ---------- assign ----------
 
     @Transactional
@@ -257,6 +282,9 @@ public class ServiceRequestService {
         assertTransitionRole(principal, sr, target);
         if (!RequestStateMachine.isAllowed(sr.getStatus(), target)) {
             throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION);
+        }
+        if (target == RequestStatus.ROUTED && sr.getAssigneeId() == null) {
+            throw new BusinessException(ErrorCode.ASSIGNEE_REQUIRED_FOR_ROUTING);
         }
 
         if (target == RequestStatus.IN_FULFILLMENT) {
@@ -335,7 +363,10 @@ public class ServiceRequestService {
         if (sr.getRequesterId().equals(principal.userId())) {
             return;
         }
-        if (!SecurityUtils.hasAnyRole(AGENT, PROCESS_OWNER, APPROVER)) {
+        if (SecurityUtils.hasAnyRole(AGENT, PROCESS_OWNER)) {
+            return;
+        }
+        if (!approvalGateService.canApproverView(DOMAIN, String.valueOf(sr.getCatalogItemId()), sr.getRequesterId())) {
             throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
     }
@@ -347,7 +378,7 @@ public class ServiceRequestService {
     private RequestSummaryResponse toSummary(ServiceRequest r) {
         SlaStatus sla = SlaCalculator.status(r.getCreatedAt(), r.getSlaResolveDue(), isResolved(r.getStatus()));
         return new RequestSummaryResponse(r.getId(), r.getTicketKey(), catalogName(r.getCatalogItemId()),
-                r.getStatus().name(), sla.name(), userName(r.getAssigneeId()), r.getUpdatedAt());
+                r.getStatus().name(), sla.name(), userName(r.getAssigneeId()), r.getAssigneeId(), r.getUpdatedAt());
     }
 
     private ServiceRequest findRequest(Long id) {

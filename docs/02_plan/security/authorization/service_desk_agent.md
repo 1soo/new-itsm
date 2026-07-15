@@ -1,6 +1,8 @@
 # 역할 정의 — SERVICE_DESK_AGENT
 
-> 역할: SERVICE_DESK_AGENT · 버전: 0.1 · 작성일: 2026-07-09
+> 역할: SERVICE_DESK_AGENT · 버전: 0.2 · 작성일: 2026-07-15 · 요청 유형별 담당자 역할 지정 기능(유지보수 요청) 반영 — 담당자 후보 목록 조회 API(API-SRM-017) 접근 권한 추가
+>
+> 이전 버전: 2026-07-09 최초 작성
 
 ## 공통 기본 접근 (전 역할 공통)
 
@@ -32,6 +34,7 @@
 | API-SRM-007 | /api/v1/service-requests?scope=all&queue= | GET | 큐/전체 목록 |
 | API-SRM-008 | /api/v1/service-requests/{id} | GET | 상세 |
 | API-SRM-009 | /api/v1/service-requests/{id}/assign | POST | 배정 |
+| API-SRM-017 | /api/v1/service-requests/{id}/assignee-candidates | GET | 담당자 후보 목록(2026-07-15 유지보수 요청, 요청 큐 배정 팝업용) |
 | API-SRM-010 | /api/v1/service-requests/{id}/status | PATCH | 이행·상태 전이 |
 | API-SRM-013 | /api/v1/service-requests/{id}/comments | POST | 코멘트 |
 | API-INC-001 | /api/v1/incidents | GET | 목록 |

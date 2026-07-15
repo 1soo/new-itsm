@@ -48,11 +48,20 @@ export function ComplianceDetailPage() {
   const refreshDetail = useCallback(
     (silent: boolean) => {
       if (!silent) setLoading(true);
-      return Promise.all([complianceApi.get(id), complianceApi.auditLogs({ requirementId: id })])
-        .then(([d, l]) => {
+      return complianceApi
+        .get(id)
+        .then((d) => {
           setDetail(d);
-          setLogs(l);
           setNotFound(false);
+
+          // 감사 로그 조회(COMPLIANCE_OFFICER 전용)는 상세조회와 별도 권한이라 승인자(APPROVER)
+          // 동적 열람 등 감사 로그 권한이 없는 사용자에게는 403이 날 수 있다. 상세조회 성공이
+          // 감사 로그 실패로 함께 실패 처리되지 않도록 분리하고, 실패 시 그 섹션만 비운다.
+          complianceApi
+            .auditLogs({ requirementId: id })
+            .then(setLogs)
+            .catch(() => setLogs([]));
+
           const matched = d.correctiveActions.filter((a) => a.approval.approvalRequestId != null);
           if (matched.length === 0) {
             setActionApprovals({});

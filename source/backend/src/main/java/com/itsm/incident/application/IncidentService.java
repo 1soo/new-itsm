@@ -159,6 +159,10 @@ public class IncidentService {
     public IncidentDetailResponse detail(Long id) {
         AuthPrincipal principal = SecurityUtils.currentPrincipal();
         Incident inc = findIncident(id);
+        if (!SecurityUtils.hasAnyRole(AGENT, IM)
+                && !approvalGateService.canApproverView(DOMAIN, null, requesterIdOf(inc))) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
+        }
 
         List<ResponderDto> responders = responderRepository.findByIncidentId(id).stream()
                 .map(r -> new ResponderDto(r.getUserId(), userName(r.getUserId()), r.getResponseRole().name()))

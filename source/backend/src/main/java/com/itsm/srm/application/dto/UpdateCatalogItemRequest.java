@@ -11,6 +11,7 @@ public record UpdateCatalogItemRequest(
         Long queueId,
         Integer slaResponseMinutes,
         Integer slaResolveMinutes,
+        @Schema(description = "담당자 역할(선택)") Long assigneeRoleId,
         @Schema(description = "제공 시 양식 전체 교체") List<FormFieldDto> formSchema
 ) {
 }

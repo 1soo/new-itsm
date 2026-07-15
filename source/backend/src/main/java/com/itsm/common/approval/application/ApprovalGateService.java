@@ -17,11 +17,13 @@ import com.itsm.common.approval.domain.repository.ApprovalRequestStepRepository;
 import com.itsm.common.approval.domain.repository.ApprovalRequestStepRoleRepository;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
+import com.itsm.common.security.SecurityUtils;
 import com.itsm.common.ticket.TicketType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -91,6 +93,30 @@ public class ApprovalGateService {
             return;
         }
         throw new BusinessException(ErrorCode.APPROVAL_PENDING, ErrorCode.APPROVAL_PENDING.getDefaultMessage(), latest.getId());
+    }
+
+    /**
+     * 승인 대상자 역할 기반 동적 상세조회 권한(common.md 0-1절). 티켓의 (도메인, 요청유형, 요청자 역할)로 매칭되는
+     * 규칙의 전체 차수(현재 차수만이 아님 — 인스턴스 생성 전에도 조회 가능해야 하므로)에 지정된 승인자 역할 중
+     * 로그인 사용자(조회 요청자)가 하나라도 보유하면 true.
+     */
+    public boolean canApproverView(String domain, String requestSubtypeKey, Long requesterId) {
+        ApprovalProcess matched = matchProcess(domain, requestSubtypeKey, requesterId);
+        if (matched == null) {
+            return false;
+        }
+        List<ApprovalProcessStep> steps = processStepRepository.findByApprovalProcessIdOrderByStepNoAsc(matched.getId());
+        Set<Long> approverRoleIds = new HashSet<>();
+        for (ApprovalProcessStep step : steps) {
+            processStepRoleRepository.findByStepId(step.getId())
+                    .forEach(role -> approverRoleIds.add(role.getRoleId()));
+        }
+        if (approverRoleIds.isEmpty()) {
+            return false;
+        }
+        Set<Long> viewerRoleIds = new HashSet<>(
+                roleResolver.roleIdsOf(SecurityUtils.currentPrincipal().roles()));
+        return !Collections.disjoint(approverRoleIds, viewerRoleIds);
     }
 
     private ApprovalProcess matchProcess(String domain, String requestSubtypeKey, Long requesterId) {

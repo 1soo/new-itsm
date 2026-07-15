@@ -6,11 +6,21 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { FieldBuilder, type FormFieldSchema, toast } from "@/components/common";
+import { authApi } from "@/features/auth/api";
+import type { Role } from "@/features/auth/types";
 import { srmApi } from "@/features/service-request/api";
 import type {
   CatalogItemInput,
   CatalogItemSummary,
+  Queue,
 } from "@/features/service-request/types";
 import { extractErrorMessage } from "@/lib/apiClient";
 import { cn } from "@/lib/utils";
@@ -20,10 +30,14 @@ import { cn } from "@/lib/utils";
  * 승인 여부·경로는 SCR-ADMIN-008(승인 프로세스 생성/편집)에서 별도 설정(승인 프로세스 커스텀 기능으로 대체).
  * 좌: 카탈로그 목록 / 우: 편집·생성 폼(FieldBuilder로 동적 필드 정의). 이름·양식 누락 시 400 인라인.
  */
+/** Select value sentinel — "미분류"/"선택 안 함"(Radix Select는 빈 문자열 value를 허용하지 않음). */
+const NONE_VALUE = "__NONE__";
+
 interface FormState {
   name: string;
   description: string;
   queueId: string;
+  assigneeRoleId: string;
   slaResponseMinutes: string;
   slaResolveMinutes: string;
   formSchema: FormFieldSchema[];
@@ -32,7 +46,8 @@ interface FormState {
 const EMPTY_FORM: FormState = {
   name: "",
   description: "",
-  queueId: "",
+  queueId: NONE_VALUE,
+  assigneeRoleId: NONE_VALUE,
   slaResponseMinutes: "",
   slaResolveMinutes: "",
   formSchema: [],
@@ -41,6 +56,8 @@ const EMPTY_FORM: FormState = {
 export function CatalogManagePage() {
   const { t } = useTranslation("service-request");
   const [items, setItems] = useState<CatalogItemSummary[]>([]);
+  const [queues, setQueues] = useState<Queue[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +72,11 @@ export function CatalogManagePage() {
 
   useEffect(loadList, []);
 
+  useEffect(() => {
+    srmApi.listQueues().then(setQueues).catch((err) => toast.error(extractErrorMessage(err)));
+    authApi.getRoles().then(setRoles).catch((err) => toast.error(extractErrorMessage(err)));
+  }, []);
+
   const selectItem = async (id: number) => {
     setError(null);
     try {
@@ -63,7 +85,8 @@ export function CatalogManagePage() {
       setForm({
         name: detail.name,
         description: detail.description ?? "",
-        queueId: "",
+        queueId: detail.queueId != null ? String(detail.queueId) : NONE_VALUE,
+        assigneeRoleId: detail.assigneeRoleId != null ? String(detail.assigneeRoleId) : NONE_VALUE,
         slaResponseMinutes: String(detail.slaResponseMinutes ?? ""),
         slaResolveMinutes: String(detail.slaResolveMinutes ?? ""),
         formSchema: detail.formSchema as FormFieldSchema[],
@@ -95,7 +118,8 @@ export function CatalogManagePage() {
     const payload: CatalogItemInput = {
       name: form.name.trim(),
       description: form.description.trim(),
-      queueId: form.queueId ? Number(form.queueId) : undefined,
+      queueId: form.queueId === NONE_VALUE ? undefined : Number(form.queueId),
+      assigneeRoleId: form.assigneeRoleId === NONE_VALUE ? undefined : Number(form.assigneeRoleId),
       slaResponseMinutes: Number(form.slaResponseMinutes) || 0,
       slaResolveMinutes: Number(form.slaResolveMinutes) || 0,
       formSchema: form.formSchema,
@@ -206,14 +230,51 @@ export function CatalogManagePage() {
                   />
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="queue">{t("catalogManage.queueId", { defaultValue: "담당 큐 ID(선택)" })}</Label>
-                <Input
-                  id="queue"
-                  type="number"
-                  value={form.queueId}
-                  onChange={(e) => setForm((f) => ({ ...f, queueId: e.target.value }))}
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="queue">{t("catalogManage.queueId", { defaultValue: "담당 큐" })}</Label>
+                  <Select
+                    value={form.queueId}
+                    onValueChange={(v) => setForm((f) => ({ ...f, queueId: v }))}
+                  >
+                    <SelectTrigger id="queue">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE_VALUE}>
+                        {t("catalogManage.queueUnassigned", { defaultValue: "미분류" })}
+                      </SelectItem>
+                      {queues.map((q) => (
+                        <SelectItem key={q.id} value={String(q.id)}>
+                          {q.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="assignee-role">
+                    {t("catalogManage.assigneeRoleId", { defaultValue: "담당자 역할" })}
+                  </Label>
+                  <Select
+                    value={form.assigneeRoleId}
+                    onValueChange={(v) => setForm((f) => ({ ...f, assigneeRoleId: v }))}
+                  >
+                    <SelectTrigger id="assignee-role">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE_VALUE}>
+                        {t("catalogManage.assigneeRoleUnselected", { defaultValue: "선택 안 함" })}
+                      </SelectItem>
+                      {roles.map((r) => (
+                        <SelectItem key={r.id} value={String(r.id)}>
+                          {r.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="space-y-1.5">
                 <Label>{t("catalogManage.formSchema", { defaultValue: "양식 필드" })}</Label>

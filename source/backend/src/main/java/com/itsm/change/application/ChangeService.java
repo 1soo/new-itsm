@@ -59,7 +59,8 @@ import java.util.List;
 /**
  * 변경(change) 유스케이스: RFC 등록·조회·6단계 전이·분류·구현결과·
  * 인시던트/문제 연계·일정·표준 변경 템플릿·지표.
- * RBAC(change_manager.md/approver.md): 대부분 CHANGE_MANAGER 전용이며, 상세 조회는 APPROVER도 가능.
+ * RBAC(change_manager.md/approver.md): 대부분 CHANGE_MANAGER 전용이며, 상세 조회는 승인 대상자 역할 동적 판정
+ * (ApprovalGateService.canApproverView) 매칭 시에만 APPROVER도 가능(2026-07-15, 기존 정적 전체조회 권한 폐지).
  * 승인 경로 자동 라우팅·승인 결정·대기 목록은 승인 프로세스 커스텀 기능(2026-07-11)으로 제거되었다(공용 승인 엔진이 대체).
  * IMPLEMENTATION 전이 시 공용 승인 게이트(domain=CHANGE, requestSubtypeKey=change_request.type)를 통과해야 한다
  * (Stage 2, docs/02_plan/api_spec/change.md API-CHG-004 0절).
@@ -68,7 +69,6 @@ import java.util.List;
 public class ChangeService {
 
     private static final String CM = "CHANGE_MANAGER";
-    private static final String APPROVER = "APPROVER";
     private static final TicketType TT = TicketType.CHANGE;
     private static final String DOMAIN = "CHANGE";
 
@@ -153,8 +153,12 @@ public class ChangeService {
 
     @Transactional(readOnly = true)
     public ChangeDetailResponse detail(Long id) {
-        requireRole(CM, APPROVER);
-        return toDetail(findChange(id));
+        ChangeRequest change = findChange(id);
+        if (!SecurityUtils.hasAnyRole(CM)
+                && !approvalGateService.canApproverView(DOMAIN, change.getType().name(), requesterIdOf(change))) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
+        }
+        return toDetail(change);
     }
 
     // ---------- status transition (API-CHG-004) ----------

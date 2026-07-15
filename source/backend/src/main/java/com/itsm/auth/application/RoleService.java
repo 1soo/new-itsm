@@ -2,6 +2,7 @@ package com.itsm.auth.application;
 
 import com.itsm.auth.application.dto.CreateRoleRequest;
 import com.itsm.auth.application.dto.RoleCreatedResponse;
+import com.itsm.auth.application.dto.RoleOptionResponse;
 import com.itsm.auth.application.dto.RoleResponse;
 import com.itsm.auth.domain.Role;
 import com.itsm.auth.domain.repository.RoleRepository;
@@ -32,6 +33,13 @@ public class RoleService {
         return roleRepository.findAll().stream()
                 .map(r -> new RoleResponse(r.getId(), r.getRoleCode(), r.getRoleName(), r.getDescription(),
                         userRoleRepository.countByRoleId(r.getId())))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<RoleOptionResponse> listOptions() {
+        return roleRepository.findAll().stream()
+                .map(r -> new RoleOptionResponse(r.getId(), r.getRoleCode(), r.getRoleName()))
                 .toList();
     }
 

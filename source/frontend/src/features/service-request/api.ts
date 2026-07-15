@@ -1,5 +1,6 @@
 import { apiClient } from "@/lib/apiClient";
 import type {
+  AssigneeCandidate,
   CatalogItemDetail,
   CatalogItemInput,
   CatalogItemSummary,
@@ -90,6 +91,12 @@ export const srmApi = {
   // API-SRM-009 담당자 배정 (Agent). 미지정 시 본인.
   async assign(id: number, assigneeId?: number): Promise<void> {
     await apiClient.post(`/service-requests/${id}/assign`, assigneeId ? { assigneeId } : {});
+  },
+
+  // API-SRM-017 요청 담당자 후보 목록 조회 (Agent)
+  async getAssigneeCandidates(id: number): Promise<AssigneeCandidate[]> {
+    const res = await apiClient.get<AssigneeCandidate[]>(`/service-requests/${id}/assignee-candidates`);
+    return res.data;
   },
 
   // API-SRM-010 상태 전이

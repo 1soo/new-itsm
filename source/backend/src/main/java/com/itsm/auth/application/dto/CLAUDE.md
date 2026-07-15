@@ -23,6 +23,7 @@
 - `CreateRoleRequest.java` — 역할 생성 요청(roleCode, name, description)
 - `RoleCreatedResponse.java` — 역할 생성 응답
 - `RoleResponse.java` — 역할 조회 응답(userCount 포함)
+- `RoleOptionResponse.java` — 역할 옵션 응답(id/roleCode/name만, API-AUTH-030 비관리자 공개용, 2026-07-15)
 - `AuditLogResponse.java` — 감사 로그 응답(eventType, actor, target, result, occurredAt)
 - `ScreenResponse.java` — 메뉴(화면) 응답(사이드바 표시 컬럼 + screenNameEn/groupLabelEn + 매핑된 roles 포함, 2026-07-13 i18n 유지보수)
 - `CreateScreenRequest.java` — 메뉴 생성 요청(screenCode/screenName/screenNameEn/path/domain 필수, groupCode 지정 시 groupLabelEn 필수(서비스에서 검증), 나머지 선택+기본값)

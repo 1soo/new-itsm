@@ -1,6 +1,8 @@
 # 역할 정의 — PROCESS_OWNER
 
-> 역할: PROCESS_OWNER · 버전: 0.2 · 작성일: 2026-07-11 · 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 카탈로그 항목의 승인 설정 권한 제거(SYSTEM_ADMIN 전용 SCR-ADMIN-008로 이관)
+> 역할: PROCESS_OWNER · 버전: 0.3 · 작성일: 2026-07-15 · 요청 유형별 담당자 역할 지정 기능(유지보수 요청) 반영 — 카탈로그 항목 생성/수정(API-SRM-003/004)에 담당자 역할(assigneeRoleId) 필드 추가, 역할 선택용 API-AUTH-030 접근 권한 추가
+>
+> 이전 버전: 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 카탈로그 항목의 승인 설정 권한 제거(SYSTEM_ADMIN 전용 SCR-ADMIN-008로 이관)
 
 ## 공통 기본 접근 (전 역할 공통)
 
@@ -27,8 +29,9 @@
 |--------|----------|--------|------|
 | API-SRM-001 | /api/v1/service-catalog/items | GET | 카탈로그 목록 |
 | API-SRM-002 | /api/v1/service-catalog/items/{id} | GET | 항목 상세 |
-| API-SRM-003 | /api/v1/service-catalog/items | POST | 항목 생성(이름·설명·양식·큐·SLA. 승인 설정은 포함하지 않음 — SYSTEM_ADMIN이 SCR-ADMIN-008에서 도메인=SERVICE_REQUEST·요청유형=이 항목으로 별도 설정) |
+| API-SRM-003 | /api/v1/service-catalog/items | POST | 항목 생성(이름·설명·양식·큐·담당자 역할(선택, 2026-07-15 유지보수 요청)·SLA. 승인 설정은 포함하지 않음 — SYSTEM_ADMIN이 SCR-ADMIN-008에서 도메인=SERVICE_REQUEST·요청유형=이 항목으로 별도 설정) |
 | API-SRM-004 | /api/v1/service-catalog/items/{id} | PATCH | 항목 수정(승인 관련 필드 없음) |
+| API-AUTH-030 | /api/v1/roles | GET | 역할 목록 조회(공개, 2026-07-15 유지보수 요청 — 담당자 역할 select 후보 조회용) |
 | API-SRM-015 | /api/v1/service-requests/metrics | GET | 요청 지표 |
 | API-ESM-001 | /api/v1/esm/catalog-items | GET | 부서 카탈로그 목록 |
 | API-ESM-002 | /api/v1/esm/catalog-items/{id} | GET | 항목 상세(체크리스트 템플릿 포함) |

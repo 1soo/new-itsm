@@ -74,3 +74,49 @@
 ### 완료 기준
 - English 전환 시 서비스 포털·요청 제출·내 요청 목록·요청 큐·요청 상세·카탈로그 관리·지표 대시보드 전체 텍스트(상태 라벨 포함) 영어 전환.
 - 기존 요청 제출/승인/이행/CSAT 등 기능 회귀 없음(텍스트만 치환).
+
+## 요청 유형별 담당자 역할 지정 (유지보수 요청, 2026-07-15)
+
+> Main 요청(유지보수). 요청 유형(카탈로그 항목)에 담당자 역할을 지정해 요청 큐 배정 팝업에서 그 역할 보유자 중 담당자를 선택할 수 있게 한다(자동배정 아님). 큐 배정 버튼 노출조건·라우팅 버튼 비활성화·카탈로그 관리 화면 Select 전환/프리필 결함도 함께 정리한다. UI 신규 소집 없음(기존 Modal/Select 컴포넌트 재사용).
+
+### 설계 근거
+
+- DB: `docs/02_plan/database/service-request.md` v0.3(`service_catalog_item.assignee_role_id`)
+- API: `docs/02_plan/api_spec/service-request.md` v0.3(API-SRM-002/003/004 assigneeRoleId, API-SRM-017 신규, API-SRM-010 409), `docs/02_plan/api_spec/auth.md` v0.7 API-AUTH-030(역할 목록 — 구현 계획은 `docs/03_develop/plan/auth.md` 별도 절)
+- 화면: `docs/02_plan/screen/service-request.md` v0.5 SCR-SRM-004/005/007
+- 권한: `docs/02_plan/security/authorization/process_owner.md` v0.3, `service_desk_agent.md` v0.2
+- 상세조회 APPROVER 정적 권한 폐지·동적 판정 전환은 별도 공용 작업(`docs/03_develop/plan/common.md` "승인 대상자 역할 기반 동적 상세조회 권한" 절) — 이 절에서는 그 결과만 반영(assertCanView 수정)
+- 참고 기존 코드: `source/backend/src/main/java/com/itsm/srm/`(ServiceCatalogService/ServiceRequestService/ServiceCatalogController/ServiceRequestController), `source/frontend/src/features/service-request/`(QueuePage/RequestDetailPage/CatalogManagementPage), `source/backend/src/main/java/com/itsm/vulnerability/`(ASSIGNEE_REQUIRED_FOR_REMEDIATION 패턴)
+
+### 담당 범위
+
+#### DB (dev-database) — `source/db/sql/`
+
+- 신규 파일 `33_srm_catalog_assignee_role.sql`(다음 순번): `ALTER TABLE service_catalog_item ADD COLUMN assignee_role_id BIGINT NULL REFERENCES role(id);`
+- 시드: 기존 카탈로그 항목 중 최소 1건에 기존 시드된 역할(예: SERVICE_DESK_AGENT)로 `assignee_role_id`를 채워 tester가 후보 목록 조회(API-SRM-017)를 검증할 수 있게 한다(선택, 나머지는 NULL 유지).
+- 완료 후 `source/db/sql/CLAUDE.md`에 파일 추가 반영.
+
+#### BE (dev-backend) — `source/backend/src/main/java/com/itsm/srm/`
+
+- **domain/ServiceCatalogItem.java**: `assigneeRoleId` 필드 추가(nullable).
+- **application/dto/**: `CatalogItemDetailResponse`에 `assigneeRoleId`/`assigneeRoleName`(RoleRepository로 resolve) 추가, `CreateCatalogItemRequest`/`UpdateCatalogItemRequest`에 `assigneeRoleId`(선택) 추가. 목록 응답(`CatalogItemSummaryResponse`, API-SRM-001)은 스펙대로 변경 없음.
+- **application/ServiceCatalogService.java**: create/update 시 `assigneeRoleId` 저장.
+- **application/ServiceRequestService.java**:
+  - 신규 메서드 `assigneeCandidates(Long requestId)`(API-SRM-017): 요청의 catalogItem.assigneeRoleId가 null이면 빈 리스트. 아니면 그 역할을 보유하고 `app_user.status='ACTIVE'`인 사용자 목록을 `{id, name}`으로 반환(기존 `UserRoleRepository`/`AppUserRepository`로 부족하면 신규 쿼리 메서드 추가).
+  - `transition()`: target==ROUTED이고 `sr.getAssigneeId() == null`이면 신규 `ErrorCode.ASSIGNEE_REQUIRED_FOR_ROUTING`(409)로 거부(승인 게이트 체크보다 먼저 판정 — `vulnerability` 도메인 `ASSIGNEE_REQUIRED_FOR_REMEDIATION`과 동일 패턴).
+  - `assertCanView`: 정적 APPROVER 조건 제거 후 `approvalGateService.canApproverView(...)` OR 추가(`docs/03_develop/plan/common.md` 절 그대로 적용).
+- **presentation/ServiceRequestController.java**: `GET /{id}/assignee-candidates` 추가(API-SRM-017, SERVICE_DESK_AGENT 권한).
+- `common/exception/ErrorCode.java`에 `ASSIGNEE_REQUIRED_FOR_ROUTING`(409) 추가.
+
+#### FE (dev-frontend) — `source/frontend/src/features/service-request/`
+
+- **SCR-SRM-004 요청 큐**: 배정 버튼 라벨 "나에게 배정"→"배정". 클릭 시 담당자 배정 팝업(기존 Modal 재사용) 오픈 → `GET /assignee-candidates` 호출 → 후보 있으면 이름 클릭 선택, 후보가 없거나 후보 중 본인이 있으면 "나에게 배정" 버튼도 함께 노출 → 확정 시 `POST /assign`(assigneeId). 배정 버튼은 (1) 목록 응답 `assigneeId`가 로그인 사용자 id와 일치, (2) 상태가 ROUTED/IN_FULFILLMENT/FULFILLED/CLOSED 중 하나 — 둘 중 하나라도 해당하면 숨김(목록 API에 `assigneeId` 필드 이미 추가됨, API-SRM-007).
+- **SCR-SRM-005 요청 상세**: ROUTED 전이 버튼을 `assignee` 없으면 비활성화 + tooltip("담당자 미배정 상태로는 라우팅 단계로 전이할 수 없습니다"). 서버 409(`ASSIGNEE_REQUIRED_FOR_ROUTING`)도 동일 메시지 토스트 처리(방어적).
+- **SCR-SRM-007 카탈로그 관리**: 담당 큐 select 옆에 담당자 역할 select 추가(`GET /api/v1/roles`, API-AUTH-030 — auth BE 작업 완료 후 연동). 항목 편집 진입 시 두 select 모두 상세 조회 응답(`queueId`/`assigneeRoleId`)으로 프리필(기존 큐 select가 편집 진입 시 항상 빈 값으로 리셋되던 결함도 함께 수정 — 폼 초기값이 상세 응답 로딩 전에 세팅되는 타이밍 문제 확인).
+- `features/service-request/api.ts`에 `getAssigneeCandidates(requestId)` 추가. 역할 목록 조회(`getRoles`, API-AUTH-030)는 auth FE 소유 파일과 겹치지 않게 위치 확인 후 추가(애매하면 dev-lead에게 확인).
+
+### 완료(테스트 통과) 기준
+
+- BE: 카탈로그 생성/수정 시 assigneeRoleId 저장·조회, API-SRM-017 역할 미지정 시 빈 배열/지정 시 해당 역할 ACTIVE 사용자만 반환, ROUTED 전이 시 담당자 미배정 409, 배정 후 정상 라우팅.
+- FE: 큐 화면 배정 팝업 후보 선택/본인배정 동작, 노출조건 2가지 정상 동작, 상세 화면 라우팅 버튼 비활성화+tooltip, 카탈로그 관리 화면 담당자 역할 select 및 프리필 결함 수정 확인(구 버그 재현 후 해결 확인).
+- tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → 완료 시 커밋.

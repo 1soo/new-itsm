@@ -12,6 +12,8 @@ public record RequestSummaryResponse(
         String status,
         String slaStatus,
         String assignee,
+        @Schema(description = "배정 담당자 id(미배정 시 null) — 요청 큐 배정 버튼 노출 조건(본인 배정 여부) 판정용, 2026-07-15")
+        Long assigneeId,
         OffsetDateTime updatedAt
 ) {
 }

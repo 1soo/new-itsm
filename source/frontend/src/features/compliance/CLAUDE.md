@@ -9,5 +9,5 @@
 - `format.ts` — 날짜·일시 표시 포맷터.
 - `ComplianceListPage.tsx` — 요구사항 목록(SCR-COMP-001). 필터: 준수 상태·책임자 지정 여부.
 - `ComplianceCreatePage.tsx` — 요구사항 등록(SCR-COMP-002). 이름·근거(필수)·적용범위(선택).
-- `ComplianceDetailPage.tsx` — 요구사항 상세·책임자 지정·시정조치 등록/전이(RESOLVED 전이는 시정조치별 승인 게이트로 버튼 disable+tooltip)·변경 연계·감사 로그(SCR-COMP-003). 상단 "수정" 버튼으로 이름·근거·적용범위 인라인 편집 폼 전환(API-COMP-004, 구성요소 표에 명시 안 됐으나 dev-lead 판단으로 최소 UI 추가 — 등록 폼(SCR-COMP-002) 필드 재사용). 시정조치 목록의 각 항목마다 매칭 승인 프로세스 있으면 공용 `ApprovalPanel`(`components/common`)을 항목별로 렌더링(전 도메인 중 유일하게 승인 패널이 단일 아니라 항목 개수만큼 반복).
+- `ComplianceDetailPage.tsx` — 요구사항 상세·책임자 지정·시정조치 등록/전이(RESOLVED 전이는 시정조치별 승인 게이트로 버튼 disable+tooltip)·변경 연계·감사 로그(SCR-COMP-003). 상단 "수정" 버튼으로 이름·근거·적용범위 인라인 편집 폼 전환(API-COMP-004, 구성요소 표에 명시 안 됐으나 dev-lead 판단으로 최소 UI 추가 — 등록 폼(SCR-COMP-002) 필드 재사용). 시정조치 목록의 각 항목마다 매칭 승인 프로세스 있으면 공용 `ApprovalPanel`(`components/common`)을 항목별로 렌더링(전 도메인 중 유일하게 승인 패널이 단일 아니라 항목 개수만큼 반복). 상세조회(`complianceApi.get`)와 감사 로그 조회(`complianceApi.auditLogs`, COMPLIANCE_OFFICER 전용)는 별도 호출로 분리 — 감사 로그 403(예: 동적 승인자 열람 권한만 있는 APPROVER)이 상세조회 성공까지 함께 실패 처리되지 않도록 하고, 실패 시 그 섹션만 빈 목록으로 표시(2026-07-15 결함 수정, 기존에는 `Promise.all`로 묶여 있어 감사 로그 403 하나로 전체가 "요구사항을 찾을 수 없습니다"로 오표시됐음).
 - `ComplianceMetricsPage.tsx` — 준수 현황 대시보드(SCR-COMP-004). KPI(준수율·미해결 시정조치 건수)는 metrics API, 요구사항별 상태 표는 목록 API(전체 조회, size=100)로 채움(metrics API가 집계값만 제공).

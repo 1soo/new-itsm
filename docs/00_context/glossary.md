@@ -1,0 +1,9 @@
+# 용어집 (Glossary)
+
+도메인 용어(엔티티명·상태값·약어 등)를 정의한다. `analyzer`가 요구사항 분석 중 신규 용어를 정의하고, `designer`가 설계 중 구체화·추가한다. 간결하게 유지하며 정의가 바뀌면 그 자리에서 갱신한다(이력 남기지 않음).
+
+- **승인요청자 역할(Requester Role Scope)**: `approval_process_requester_role`. 승인 프로세스 규칙이 매칭되는 대상을 좁히는 스코프 축 — 티켓의 **요청자**가 보유한 역할이 이 스코프에 하나라도 포함되어야 규칙이 매칭된다(ANY, 0개면 요청자 무관). (승인 프로세스 공용 엔진)
+- **승인자 역할 / 승인 대상자(Approver Step Role)**: `approval_process_step_role`. 승인 프로세스 규칙의 각 차수(step)에 지정된, **실제로 승인/반려를 수행할** 역할 — "승인 대상자로 할당된 역할"은 이 축을 가리킨다. 승인요청자 역할과는 별개 축(전자는 "누구의 요청에 적용되는가", 후자는 "누가 승인하는가"). (승인 프로세스 공용 엔진)
+- **동적 상세조회 권한(Dynamic Detail-View Authorization)**: 승인자 역할이 어떤 티켓의 상세를 조회할 수 있는지를, 고정 역할 목록이 아니라 해당 티켓의 (도메인, 요청유형, 요청자 보유 역할)에 매칭되는 `approval_process` 규칙의 승인자 역할(step role) 보유 여부로 동적으로 판정하는 방식. 실제 승인 인스턴스(`approval_request`) 생성 여부와 무관하게 규칙 설정 자체와의 매칭만으로 판정한다(2026-07-15 유지보수 요청, SRM/CHANGE의 기존 정적 "APPROVER=도메인 전체조회" 권한을 대체하고 INCIDENT/PROBLEM/ASSET/VULNERABILITY/COMPLIANCE/ESM까지 확장). (승인 프로세스 공용 엔진, `common/approval` 캡슐화)
+- **카탈로그 담당자 역할(Catalog Assignee Role)**: `service_catalog_item.assignee_role_id`. 요청 유형(카탈로그 항목)에 지정하는 처리 담당 역할(선택). 자동 배정에 쓰이지 않고, 상담원이 라우팅/배정 시점에 이 역할 보유자 후보 목록 중에서 수동으로 담당자를 선택하는 데에만 사용된다. (서비스 요청 관리)
+- **미분류(Unclassified)**: 서비스 요청의 담당 큐가 지정되지 않은 상태. 카탈로그 항목에 담당 큐(`queue_id`)를 지정하지 않으면 요청 생성 시 기본 큐(`queue.is_default=true`)로 배정되며, 요청 큐 화면(SCR-SRM-004)에서 "미분류"로 표시된다. (서비스 요청 관리)

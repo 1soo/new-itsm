@@ -36,6 +36,10 @@ export interface CatalogItemDetail {
   id: number;
   name: string;
   description: string;
+  queueId: number | null;
+  /** 담당자 역할(2026-07-15 유지보수 요청) — 지정 시 요청 큐 배정 팝업의 후보 조회(API-SRM-017)에 사용. */
+  assigneeRoleId: number | null;
+  assigneeRoleName?: string | null;
   slaResponseMinutes: number;
   slaResolveMinutes: number;
   formSchema: FormFieldSchema[];
@@ -45,6 +49,7 @@ export interface CatalogItemInput {
   name: string;
   description: string;
   queueId?: number;
+  assigneeRoleId?: number;
   slaResponseMinutes: number;
   slaResolveMinutes: number;
   formSchema: FormFieldSchema[];
@@ -75,7 +80,15 @@ export interface RequestSummary {
   status: SrStatus;
   slaStatus: SlaStatus;
   assignee?: string;
+  /** 배정 버튼 노출 조건(본인 배정 여부) 판정용(2026-07-15 유지보수 요청). */
+  assigneeId?: number | null;
   updatedAt: string;
+}
+
+/** 요청 담당자 후보(API-SRM-017) — 카탈로그 항목에 지정된 담당자 역할 보유자. */
+export interface AssigneeCandidate {
+  id: number;
+  name: string;
 }
 
 export interface RequestComment {

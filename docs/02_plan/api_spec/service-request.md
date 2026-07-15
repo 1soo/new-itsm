@@ -1,6 +1,8 @@
 # API 명세서 — 서비스 요청 관리 (Service Request)
 
-> 도메인: service-request · 버전: 0.2 · 작성일: 2026-07-11 · 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 카탈로그 항목별 approvalRequired/approverRole 필드 제거, 전용 승인 API(API-SRM-011/012) 삭제 후 공통 승인 API([common.md](common.md) API-COM-003~005)로 대체
+> 도메인: service-request · 버전: 0.3 · 작성일: 2026-07-15 · 요청 유형별 담당자 역할 지정 기능(유지보수 요청) 반영 — 카탈로그 CRUD(API-SRM-002/003/004)에 `assigneeRoleId` 필드 추가, 담당자 후보 목록 조회 API(API-SRM-017) 신규
+>
+> 이전 버전: 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 카탈로그 항목별 approvalRequired/approverRole 필드 제거, 전용 승인 API(API-SRM-011/012) 삭제 후 공통 승인 API([common.md](common.md) API-COM-003~005)로 대체
 
 ## 공통 규약
 
@@ -25,6 +27,7 @@
 | API-SRM-014 | CSAT 제출 | POST | /api/v1/service-requests/{id}/csat | 필요(요청자) |
 | API-SRM-015 | 요청 지표 조회 | GET | /api/v1/service-requests/metrics | 필요 |
 | API-SRM-016 | 큐 목록·건수 조회 | GET | /api/v1/queues | 필요(Agent) |
+| API-SRM-017 | 요청 담당자 후보 목록 조회 | GET | /api/v1/service-requests/{id}/assignee-candidates | 필요(Agent) |
 
 ## 2. API 상세
 
@@ -47,6 +50,7 @@
   ```json
   {
     "id": "number", "name": "string", "description": "string",
+    "queueId": "number|null", "assigneeRoleId": "number|null", "assigneeRoleName": "string|null · assigneeRoleId 표시용(2026-07-15 유지보수 요청)",
     "slaResponseMinutes": "number", "slaResolveMinutes": "number",
     "formSchema": [ { "key": "string", "label": "string", "type": "text|select|number|date|file", "required": "boolean", "options": ["string"] } ]
   }
@@ -62,11 +66,13 @@
   ```json
   {
     "name": "string · 필수", "description": "string",
-    "queueId": "number", "slaResponseMinutes": "number", "slaResolveMinutes": "number",
+    "queueId": "number · 선택(미지정 시 요청 생성 시점 기본 큐로 배정, 미분류)",
+    "assigneeRoleId": "number · 선택(2026-07-15 유지보수 요청, 담당자 역할. 지정 시 라우팅/배정 시점 후보 목록 조회(API-SRM-017)에 사용, 자동배정 아님)",
+    "slaResponseMinutes": "number", "slaResolveMinutes": "number",
     "formSchema": [ { "key": "string", "label": "string", "type": "string", "required": "boolean", "options": ["string"] } ]
   }
   ```
-  > 승인 필요 여부·승인 담당 역할은 더 이상 카탈로그 항목 생성 시 지정하지 않는다(승인 프로세스 커스텀 기능으로 완전 대체 — [auth.md](auth.md) API-AUTH-027에서 SYSTEM_ADMIN이 도메인=SERVICE_REQUEST, 요청유형=이 카탈로그 항목으로 별도 설정).
+  > 승인 필요 여부·승인 담당 역할은 더 이상 카탈로그 항목 생성 시 지정하지 않는다(승인 프로세스 커스텀 기능으로 완전 대체 — [auth.md](auth.md) API-AUTH-027에서 SYSTEM_ADMIN이 도메인=SERVICE_REQUEST, 요청유형=이 카탈로그 항목으로 별도 설정). `assigneeRoleId`는 [auth.md](auth.md) API-AUTH-030(역할 목록 조회)로 후보를 조회해 선택한다.
 - **Response Body** (201): 생성된 항목
 - **Response Code**: 201 / 400 이름·양식 누락 / 403 권한 부족
 
@@ -109,7 +115,7 @@
 - **Response Body** (200):
   ```json
   {
-    "content": [ { "id": "number", "ticketKey": "string", "catalogItemName": "string", "status": "string", "slaStatus": "OK|WARNING|BREACHED", "assignee": "string", "updatedAt": "ISO-8601" } ],
+    "content": [ { "id": "number", "ticketKey": "string", "catalogItemName": "string", "status": "string", "slaStatus": "OK|WARNING|BREACHED", "assignee": "string", "assigneeId": "number|null · 2026-07-15 유지보수 요청, 요청 큐(SCR-SRM-004) 배정 버튼 노출 조건(본인 배정 여부) 판정용", "updatedAt": "ISO-8601" } ],
     "page": "number", "size": "number", "totalElements": "number"
   }
   ```
@@ -139,7 +145,19 @@
 - **Endpoint**: `POST /api/v1/service-requests/{id}/assign`
 - **인증**: 필요(Agent)
 - **Request Body**: `{ "assigneeId": "number · 미지정 시 본인" }`
+  > 2026-07-15 유지보수 요청부터 요청 큐(SCR-SRM-004)의 담당자 배정 UI가 API-SRM-017 후보 목록 중 하나를 선택해 `assigneeId`로 명시 전달하는 방식이 추가되었다(자동배정 아님, 계약 자체는 변경 없음 — 기존처럼 미지정 시 본인도 그대로 지원).
 - **Response Code**: 200 / 403 권한 없는 배정 / 404
+
+### API-SRM-017 · 요청 담당자 후보 목록 조회
+
+- **Endpoint**: `GET /api/v1/service-requests/{id}/assignee-candidates`
+- **인증**: 필요(Agent) — 요청 큐(SCR-SRM-004) 담당자 배정 팝업이 사용.
+- **Response Body** (200):
+  ```json
+  [ { "id": "number", "name": "string" } ]
+  ```
+  > 대상 요청의 카탈로그 항목(`service_catalog_item.assignee_role_id`)에 지정된 역할을 보유한 ACTIVE 상태 사용자 목록(2026-07-15 유지보수 요청). 카탈로그 항목에 담당자 역할이 지정되지 않았으면 빈 배열을 반환한다(이 경우 FE는 본인 배정만 노출).
+- **Response Code**: 200(빈 배열 가능) / 401 / 403 / 404
 
 ### API-SRM-010 · 요청 상태 전이
 
@@ -156,7 +174,7 @@
   | 200 | 전이 성공 |
   | 400 | 허용되지 않은 전이 / 이미 종료된 요청 재종료 |
   | 403 | 권한 부족(이행 등) |
-  | 409 | 승인 완료 전 이행(IN_FULFILLMENT) 전이 시도 — [common.md](common.md) 0절 공통 게이트 로직(domain=SERVICE_REQUEST, requestSubtypeKey=service_catalog_item.id) 적용. 매칭되는 승인 프로세스가 없거나 0차 승인이면 게이트 없이 통과 |
+  | 409 | 담당자 미배정 상태로 라우팅(ROUTED) 전이 시도(2026-07-15 유지보수 요청, VULNERABILITY 도메인의 `ASSIGNEE_REQUIRED_FOR_REMEDIATION`과 동일 패턴 재사용 — `ASSIGNEE_REQUIRED_FOR_ROUTING`) / 승인 완료 전 이행(IN_FULFILLMENT) 전이 시도 — [common.md](common.md) 0절 공통 게이트 로직(domain=SERVICE_REQUEST, requestSubtypeKey=service_catalog_item.id) 적용. 매칭되는 승인 프로세스가 없거나 0차 승인이면 게이트 없이 통과 |
 
 ### API-SRM-013 · 요청 코멘트 등록
 

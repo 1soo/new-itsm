@@ -44,23 +44,30 @@ public class ServiceCatalogItem extends BaseEntity {
     @Column(name = "sla_resolve_minutes")
     private Integer slaResolveMinutes;
 
+    @Column(name = "assignee_role_id")
+    private Long assigneeRoleId;
+
     public ServiceCatalogItem(String name, String description, String category,
-                              Long queueId, Integer slaResponseMinutes, Integer slaResolveMinutes) {
+                              Long queueId, Integer slaResponseMinutes, Integer slaResolveMinutes,
+                              Long assigneeRoleId) {
         this.name = name;
         this.description = description;
         this.category = category;
         this.queueId = queueId;
         this.slaResponseMinutes = slaResponseMinutes;
         this.slaResolveMinutes = slaResolveMinutes;
+        this.assigneeRoleId = assigneeRoleId;
     }
 
     public void update(String name, String description, String category,
-                       Long queueId, Integer slaResponseMinutes, Integer slaResolveMinutes) {
+                       Long queueId, Integer slaResponseMinutes, Integer slaResolveMinutes,
+                       Long assigneeRoleId) {
         if (name != null) this.name = name;
         if (description != null) this.description = description;
         if (category != null) this.category = category;
         if (queueId != null) this.queueId = queueId;
         if (slaResponseMinutes != null) this.slaResponseMinutes = slaResponseMinutes;
         if (slaResolveMinutes != null) this.slaResolveMinutes = slaResolveMinutes;
+        if (assigneeRoleId != null) this.assigneeRoleId = assigneeRoleId;
     }
 }

@@ -5,6 +5,7 @@ import com.itsm.common.exception.ErrorResponse;
 import com.itsm.srm.application.MetricsService;
 import com.itsm.srm.application.ServiceRequestService;
 import com.itsm.srm.application.dto.AssignRequest;
+import com.itsm.srm.application.dto.AssigneeCandidateResponse;
 import com.itsm.srm.application.dto.CommentCreateRequest;
 import com.itsm.srm.application.dto.CommentResponse;
 import com.itsm.srm.application.dto.CreateRequestRequest;
@@ -42,6 +43,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 
 @Tag(name = "SRM - Service Requests", description = "서비스 요청 API")
 @SecurityRequirement(name = "bearerAuth")
@@ -103,6 +105,18 @@ public class ServiceRequestController {
     @GetMapping("/{id}")
     public ResponseEntity<RequestDetailResponse> detail(@PathVariable Long id) {
         return ResponseEntity.ok(requestService.detail(id));
+    }
+
+    @Operation(summary = "담당자 배정 후보 조회(Agent)", description = "카탈로그 항목에 담당자 역할이 지정되지 않았으면 빈 배열")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "정상(후보 없으면 빈 배열)"),
+            @ApiResponse(responseCode = "403", description = "권한 부족", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "요청 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PreAuthorize("hasRole('SERVICE_DESK_AGENT')")
+    @GetMapping("/{id}/assignee-candidates")
+    public ResponseEntity<List<AssigneeCandidateResponse>> assigneeCandidates(@PathVariable Long id) {
+        return ResponseEntity.ok(requestService.assigneeCandidates(id));
     }
 
     @Operation(summary = "요청 담당자 배정(Agent)")

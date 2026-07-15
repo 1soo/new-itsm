@@ -69,3 +69,7 @@
 ### 완료 기준
 - English 전환 시 목록/등록/상세/포스트모템/지표 대시보드 전체 텍스트(상태·심각도 라벨 포함) 영어 전환.
 - 상태 전이·에스컬레이션·타임라인·문제 연계·5 Whys 등 기존 기능 회귀 없음(텍스트만 치환).
+
+## 승인 대상자 역할 기반 동적 상세조회 권한 — INCIDENT 부분 (유지보수 요청, 2026-07-15)
+
+> 8개 도메인 공용 작업. 전체 설계·담당범위·완료기준은 `docs/03_develop/plan/common.md` 동일 제목 절 참조. 이 도메인 BE 작업: `incident/application/IncidentService.java` `detail()`은 현재 역할 체크가 전혀 없는 결함 상태 — **신규로** `SecurityUtils.hasAnyRole("SERVICE_DESK_AGENT", "INCIDENT_MANAGER") || approvalGateService.canApproverView("INCIDENT", null, requesterIdOf(inc))` 가드를 추가하고 불만족 시 403(결함 정리 겸 신규 기능). FE 라우트 가드는 이 도메인 **제외**(백엔드 신규 역할체크로 커버, `routes/index.tsx`에 ROLE_APPROVER 추가 안 함).

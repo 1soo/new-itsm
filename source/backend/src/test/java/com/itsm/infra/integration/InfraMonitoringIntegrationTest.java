@@ -90,7 +90,9 @@ class InfraMonitoringIntegrationTest {
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/31_sidebar_menu_label_cleanup.sql").toAbsolutePath()),
                     "/docker-entrypoint-initdb.d/31_sidebar_menu_label_cleanup.sql")
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/32_approval_process_priority_redesign.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/32_approval_process_priority_redesign.sql");
+                    "/docker-entrypoint-initdb.d/32_approval_process_priority_redesign.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/33_srm_catalog_assignee_role.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/33_srm_catalog_assignee_role.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {

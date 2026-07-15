@@ -73,3 +73,7 @@
 ### 완료 기준
 - English 전환 시 목록/등록/상세/KEDB 검색 전체 텍스트(상태·우선순위·영향도/긴급도 라벨 포함) 영어 전환.
 - RCA·워크어라운드·인시던트 연계·후속조치·종료 등 기존 기능 회귀 없음(텍스트만 치환).
+
+## 승인 대상자 역할 기반 동적 상세조회 권한 — PROBLEM 부분 (유지보수 요청, 2026-07-15)
+
+> 8개 도메인 공용 작업. 전체 설계·담당범위·완료기준은 `docs/03_develop/plan/common.md` 동일 제목 절 참조. 이 도메인 BE 작업: `problem/application/ProblemService.java` 상세조회 가드(PROBLEM_MANAGER 전용)에 `approvalGateService.canApproverView("PROBLEM", null, requesterIdOf(problem))` OR 추가(신규 권한, 매니저 전용 조건은 유지). FE 라우트 가드(`routes/index.tsx`)는 공용 작업에 포함되어 별도 진행 불필요.

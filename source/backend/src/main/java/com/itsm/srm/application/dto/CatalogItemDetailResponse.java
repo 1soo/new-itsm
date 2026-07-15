@@ -12,6 +12,8 @@ public record CatalogItemDetailResponse(
         Long queueId,
         Integer slaResponseMinutes,
         Integer slaResolveMinutes,
+        Long assigneeRoleId,
+        String assigneeRoleName,
         List<FormFieldDto> formSchema
 ) {
 }

@@ -191,8 +191,13 @@ export const router = createBrowserRouter([
             children: [
               { path: "/problems", element: <ProblemListPage /> }, // SCR-PRB-001
               { path: "/problems/new", element: <ProblemCreatePage /> }, // SCR-PRB-002
-              { path: "/problems/:id", element: <ProblemDetailPage /> }, // SCR-PRB-003
               { path: "/known-errors", element: <KnownErrorSearchPage /> }, // SCR-PRB-004
+            ],
+          },
+          {
+            element: <RequireRoles roles={[ROLE_PROBLEM_MANAGER, ROLE_APPROVER]} />,
+            children: [
+              { path: "/problems/:id", element: <ProblemDetailPage /> }, // SCR-PRB-003
             ],
           },
 
@@ -251,9 +256,14 @@ export const router = createBrowserRouter([
               { path: "/assets", element: <AssetListPage /> }, // SCR-ITAM-001
               { path: "/assets/new", element: <AssetFormPage /> }, // SCR-ITAM-002
               { path: "/assets/:id/edit", element: <AssetFormPage /> }, // SCR-ITAM-002
-              { path: "/assets/:id", element: <AssetDetailPage /> }, // SCR-ITAM-003
               { path: "/assets/cis", element: <CiRelationPage /> }, // SCR-ITAM-004
               { path: "/assets/metrics", element: <AssetMetricsPage /> }, // SCR-ITAM-005
+            ],
+          },
+          {
+            element: <RequireRoles roles={[ROLE_ASSET_MANAGER, ROLE_APPROVER]} />,
+            children: [
+              { path: "/assets/:id", element: <AssetDetailPage /> }, // SCR-ITAM-003
             ],
           },
 
@@ -274,9 +284,14 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            element: <RequireRoles roles={[ROLE_END_USER, ROLE_DEPT_COORDINATOR]} />,
+            element: <RequireRoles roles={[ROLE_END_USER, ROLE_DEPT_COORDINATOR, ROLE_APPROVER]} />,
             children: [
               { path: "/esm/requests/:id", element: <EsmRequestDetailPage /> }, // SCR-ESM-005
+            ],
+          },
+          {
+            element: <RequireRoles roles={[ROLE_END_USER, ROLE_DEPT_COORDINATOR]} />,
+            children: [
               { path: "/esm/checklists/:id", element: <ChecklistDetailPage /> }, // SCR-ESM-009
             ],
           },
@@ -303,8 +318,13 @@ export const router = createBrowserRouter([
             children: [
               { path: "/vulnerabilities", element: <VulnerabilityListPage /> }, // SCR-VULN-001
               { path: "/vulnerabilities/new", element: <VulnerabilityCreatePage /> }, // SCR-VULN-002
-              { path: "/vulnerabilities/:id", element: <VulnerabilityDetailPage /> }, // SCR-VULN-003
               { path: "/vulnerabilities/metrics", element: <VulnerabilityMetricsPage /> }, // SCR-VULN-004
+            ],
+          },
+          {
+            element: <RequireRoles roles={[ROLE_VULNERABILITY_MANAGER, ROLE_APPROVER]} />,
+            children: [
+              { path: "/vulnerabilities/:id", element: <VulnerabilityDetailPage /> }, // SCR-VULN-003
             ],
           },
 
@@ -314,8 +334,13 @@ export const router = createBrowserRouter([
             children: [
               { path: "/compliance/requirements", element: <ComplianceListPage /> }, // SCR-COMP-001
               { path: "/compliance/requirements/new", element: <ComplianceCreatePage /> }, // SCR-COMP-002
-              { path: "/compliance/requirements/:id", element: <ComplianceDetailPage /> }, // SCR-COMP-003
               { path: "/compliance/metrics", element: <ComplianceMetricsPage /> }, // SCR-COMP-004
+            ],
+          },
+          {
+            element: <RequireRoles roles={[ROLE_COMPLIANCE_OFFICER, ROLE_APPROVER]} />,
+            children: [
+              { path: "/compliance/requirements/:id", element: <ComplianceDetailPage /> }, // SCR-COMP-003
             ],
           },
 

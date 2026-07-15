@@ -81,3 +81,7 @@
 ### 완료 기준
 - English 전환 시 목록/RFC 생성/상세/일정 캘린더/지표 대시보드 전체 텍스트(상태·유형·위험도 라벨 포함) 영어 전환.
 - CAB 승인(공용 패널)·구현결과·인시던트/문제 연계 등 기존 기능 회귀 없음(텍스트만 치환).
+
+## 승인 대상자 역할 기반 동적 상세조회 권한 — CHANGE 부분 (유지보수 요청, 2026-07-15)
+
+> 8개 도메인 공용 작업. 전체 설계·담당범위·완료기준은 `docs/03_develop/plan/common.md` 동일 제목 절 참조. 이 도메인 BE 작업: `change/application/ChangeService.java` 상세조회 가드의 기존 정적 APPROVER 전체조회 조건을 제거하고 `approvalGateService.canApproverView("CHANGE", 변경유형 코드, requesterIdOf(change))` OR로 대체(변경유형 코드·requesterIdOf는 기존 `checkGate` 호출부와 동일 값 재사용). FE 라우트 가드(`routes/index.tsx`)는 공용 작업에 포함되어 별도 진행 불필요.

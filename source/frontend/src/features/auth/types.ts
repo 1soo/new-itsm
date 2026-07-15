@@ -59,3 +59,10 @@ export interface MenuGroup {
 export interface MyMenuResponse {
   groups: MenuGroup[];
 }
+
+/** 역할 목록(API-AUTH-030, 공개) — 역할 선택 UI(예: SRM 카탈로그 관리 담당자 역할 select)용. */
+export interface Role {
+  id: number;
+  roleCode: string;
+  name: string;
+}

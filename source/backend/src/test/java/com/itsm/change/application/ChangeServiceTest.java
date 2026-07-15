@@ -161,11 +161,24 @@ class ChangeServiceTest {
     }
 
     @Test
-    void detailAllowedForApprover() {
+    void detailDeniedForApproverWithoutMatch() {
+        login("APPROVER");
+        when(changeRequestRepository.findById(1L)).thenReturn(Optional.of(change(ChangeStatus.REQUESTED)));
+
+        assertThatThrownBy(() -> service.detail(1L))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.ACCESS_DENIED));
+    }
+
+    @Test
+    void detailAllowedForApproverWithMatchingApprovalRule() {
         login("APPROVER");
         when(changeRequestRepository.findById(1L)).thenReturn(Optional.of(change(ChangeStatus.REQUESTED)));
         when(ticketLinkRepository.findBySourceTypeAndSourceId(any(), any())).thenReturn(List.of());
+        when(approvalGateService.canApproverView(any(), any(), any())).thenReturn(true);
+
         var detail = service.detail(1L);
+
         assertThat(detail.status()).isEqualTo("REQUESTED");
     }
 

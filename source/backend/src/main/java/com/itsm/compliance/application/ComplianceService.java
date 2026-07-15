@@ -123,8 +123,11 @@ public class ComplianceService {
 
     @Transactional(readOnly = true)
     public RequirementDetailResponse detail(Long id) {
-        requireRole();
-        return toDetail(findRequirement(id));
+        ComplianceRequirement requirement = findRequirement(id);
+        if (!SecurityUtils.hasRole(CO) && !canApproverViewRequirement(requirement.getId())) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
+        }
+        return toDetail(requirement);
     }
 
     // ---------- update (API-COMP-004) ----------
@@ -301,6 +304,16 @@ public class ComplianceService {
     /** 승인 게이트의 "요청자"는 시정조치를 등록한 사용자(created_by, 이메일)로 판정한다. */
     private Long requesterIdOf(CorrectiveAction action) {
         return appUserRepository.findByEmail(action.getCreatedBy()).map(AppUser::getId).orElse(null);
+    }
+
+    /**
+     * 승인 대상자 역할 기반 동적 상세조회 권한(2026-07-15). 요구사항 자체엔 요청자 개념이 없어, 그 요구사항에
+     * 속한 시정조치(각각 별도 요청자·승인 인스턴스를 가짐) 중 하나라도 매칭되면 조회를 허용한다. 시정조치가
+     * 없으면 판정할 요청자 문맥이 없으므로 매칭 규칙 없음과 동일하게 false(dev-lead 확인, 2026-07-15).
+     */
+    private boolean canApproverViewRequirement(Long requirementId) {
+        return correctiveActionRepository.findByRequirementId(requirementId).stream()
+                .anyMatch(action -> approvalGateService.canApproverView(DOMAIN, null, requesterIdOf(action)));
     }
 
     private RequirementDetailResponse.CorrectiveActionDto.ApprovalInfo approvalInfoOf(Long actionId) {

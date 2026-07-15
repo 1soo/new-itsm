@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   type Column,
   DataTable,
+  Modal,
   Pagination,
   StatusBadge,
   toast,
@@ -15,8 +16,14 @@ import {
 import { srmApi } from "@/features/service-request/api";
 import { formatDate } from "@/features/service-request/format";
 import { slaLabel, slaTone, statusLabel, statusTone } from "@/features/service-request/status";
-import type { PageResponse, Queue, RequestSummary } from "@/features/service-request/types";
+import type {
+  AssigneeCandidate,
+  PageResponse,
+  Queue,
+  RequestSummary,
+} from "@/features/service-request/types";
 import { extractErrorMessage } from "@/lib/apiClient";
+import { useAppSelector } from "@/store/hooks";
 import { cn } from "@/lib/utils";
 
 /*
@@ -26,6 +33,13 @@ import { cn } from "@/lib/utils";
  */
 const PAGE_SIZE = 16;
 const ALL_QUEUE = "__ALL__";
+/** 라우팅(ROUTED) 이후 상태 — 배정 버튼 노출 조건 판정용(2026-07-15 유지보수 요청). */
+const POST_ROUTING_STATUSES = new Set(["ROUTED", "IN_FULFILLMENT", "FULFILLED", "CLOSED"]);
+
+function canAssign(r: RequestSummary, myId?: number): boolean {
+  if (myId != null && r.assigneeId === myId) return false;
+  return !POST_ROUTING_STATUSES.has(r.status);
+}
 
 function QueueButton({
   t,
@@ -71,12 +85,17 @@ function QueueButton({
 export function RequestQueuePage() {
   const { t } = useTranslation("service-request");
   const navigate = useNavigate();
+  const user = useAppSelector((s) => s.auth.user);
   const [queues, setQueues] = useState<Queue[]>([]);
   const [selected, setSelected] = useState<string>(ALL_QUEUE);
   const [page, setPage] = useState(0);
   const [data, setData] = useState<PageResponse<RequestSummary> | null>(null);
   const [loading, setLoading] = useState(true);
-  const [assigningId, setAssigningId] = useState<number | null>(null);
+
+  const [assignTarget, setAssignTarget] = useState<RequestSummary | null>(null);
+  const [candidates, setCandidates] = useState<AssigneeCandidate[]>([]);
+  const [candidatesLoading, setCandidatesLoading] = useState(false);
+  const [assigning, setAssigning] = useState(false);
 
   const loadQueues = useCallback(() => {
     srmApi
@@ -112,19 +131,43 @@ export function RequestQueuePage() {
     setSelected(key);
   };
 
-  const handleAssign = async (id: number) => {
-    setAssigningId(id);
+  const openAssignModal = async (r: RequestSummary) => {
+    setAssignTarget(r);
+    setCandidates([]);
+    setCandidatesLoading(true);
     try {
-      await srmApi.assign(id);
-      toast.success(t("requestQueue.assignSuccess", { defaultValue: "본인에게 배정되었습니다" }));
+      const list = await srmApi.getAssigneeCandidates(r.id);
+      setCandidates(list);
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
+    } finally {
+      setCandidatesLoading(false);
+    }
+  };
+
+  const closeAssignModal = () => {
+    setAssignTarget(null);
+    setCandidates([]);
+  };
+
+  const confirmAssign = async (assigneeId?: number) => {
+    if (!assignTarget) return;
+    setAssigning(true);
+    try {
+      await srmApi.assign(assignTarget.id, assigneeId);
+      toast.success(t("requestQueue.assignSuccess", { defaultValue: "담당자가 배정되었습니다" }));
+      closeAssignModal();
       loadRequests();
       loadQueues();
     } catch (err) {
       toast.error(extractErrorMessage(err));
     } finally {
-      setAssigningId(null);
+      setAssigning(false);
     }
   };
+
+  const canSelfAssign =
+    candidates.length === 0 || (user != null && candidates.some((c) => c.id === user.id));
 
   const columns: Column<RequestSummary>[] = [
     { header: t("requestList.columnTicketKey", { defaultValue: "접수번호" }), width: 130, cell: (r) => r.ticketKey },
@@ -152,19 +195,19 @@ export function RequestQueuePage() {
       header: "",
       width: 140,
       className: "text-right",
-      cell: (r) => (
-        <Button
-          size="sm"
-          variant="outline"
-          loading={assigningId === r.id}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleAssign(r.id);
-          }}
-        >
-          {t("requestQueue.assignToMe", { defaultValue: "나에게 배정" })}
-        </Button>
-      ),
+      cell: (r) =>
+        canAssign(r, user?.id) ? (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={(e) => {
+              e.stopPropagation();
+              openAssignModal(r);
+            }}
+          >
+            {t("requestQueue.assign", { defaultValue: "배정" })}
+          </Button>
+        ) : null,
     },
   ];
 
@@ -212,6 +255,54 @@ export function RequestQueuePage() {
           <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </div>
       </div>
+
+      <Modal
+        open={assignTarget != null}
+        onOpenChange={(open) => !open && closeAssignModal()}
+        title={t("requestQueue.assignModalTitle", { defaultValue: "담당자 배정" })}
+        description={assignTarget ? `${assignTarget.ticketKey} · ${assignTarget.catalogItemName}` : undefined}
+      >
+        {candidatesLoading ? (
+          <p className="text-sm text-muted-foreground">
+            {t("requestQueue.assignCandidatesLoading", { defaultValue: "후보를 불러오는 중..." })}
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {candidates.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {t("requestQueue.assignNoCandidates", {
+                  defaultValue: "지정된 담당자 역할이 없습니다.",
+                })}
+              </p>
+            ) : (
+              <ul className="space-y-1">
+                {candidates.map((c) => (
+                  <li key={c.id}>
+                    <button
+                      type="button"
+                      disabled={assigning}
+                      onClick={() => confirmAssign(c.id)}
+                      className="w-full rounded-md px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
+                    >
+                      {c.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {canSelfAssign ? (
+              <Button
+                variant="outline"
+                className="w-full"
+                loading={assigning}
+                onClick={() => confirmAssign(undefined)}
+              >
+                {t("requestQueue.assignToMe", { defaultValue: "나에게 배정" })}
+              </Button>
+            ) : null}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

@@ -280,6 +280,31 @@ class EsmRequestServiceTest {
     }
 
     @Test
+    void detailAllowedForMatchingApproverViaCanApproverView() {
+        login(1L, "APPROVER");
+        when(requestRepository.findById(1L)).thenReturn(Optional.of(esmRequest(2L, Department.LEGAL, EsmRequestStatus.SUBMITTED)));
+        when(approvalGateService.canApproverView(any(), any(), any())).thenReturn(true);
+        when(commentRepository.findByTicketTypeAndTicketIdOrderByCreatedAtAsc(any(), any())).thenReturn(List.of());
+        when(timelineRepository.findByTicketTypeAndTicketIdOrderByOccurredAtAsc(any(), any())).thenReturn(List.of());
+
+        var response = service.detail(1L);
+
+        assertThat(response.department()).isEqualTo(Department.LEGAL);
+    }
+
+    @Test
+    void addCommentForbiddenForMatchingApproverViaCanApproverView() {
+        // 코드리뷰 지적 수정 확인: 상세조회는 canApproverView로 허용되더라도 댓글 작성 권한까지 확대되지 않음.
+        login(1L, "APPROVER");
+        when(requestRepository.findById(1L)).thenReturn(Optional.of(esmRequest(2L, Department.LEGAL, EsmRequestStatus.SUBMITTED)));
+        when(approvalGateService.canApproverView(any(), any(), any())).thenReturn(true);
+
+        assertThatThrownBy(() -> service.addComment(1L, new CommentCreateRequest("코멘트")))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.ACCESS_DENIED));
+    }
+
+    @Test
     void detailForbiddenForMismatchedDeptCoordinator() {
         login(3L, "DEPT_COORDINATOR");
         when(requestRepository.findById(1L)).thenReturn(Optional.of(esmRequest(2L, Department.LEGAL, EsmRequestStatus.SUBMITTED)));

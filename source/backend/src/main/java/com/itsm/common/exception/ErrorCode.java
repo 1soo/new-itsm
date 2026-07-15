@@ -36,6 +36,7 @@ public enum ErrorCode {
     REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "서비스 요청을 찾을 수 없습니다."),
     APPROVAL_NOT_FOUND(HttpStatus.NOT_FOUND, "승인 정보를 찾을 수 없습니다."),
     ASSIGNEE_NOT_FOUND(HttpStatus.NOT_FOUND, "배정 대상 사용자를 찾을 수 없습니다."),
+    ASSIGNEE_REQUIRED_FOR_ROUTING(HttpStatus.CONFLICT, "담당자가 배정되지 않아 라우팅(ROUTED) 단계로 전이할 수 없습니다."),
     INVALID_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "허용되지 않은 상태 전이입니다."),
     REQUEST_ALREADY_CLOSED(HttpStatus.BAD_REQUEST, "이미 종료된 요청입니다."),
     REJECT_REASON_REQUIRED(HttpStatus.BAD_REQUEST, "반려 사유는 필수입니다."),

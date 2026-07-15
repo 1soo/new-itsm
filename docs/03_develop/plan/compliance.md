@@ -82,3 +82,7 @@
 ### 완료 기준
 - English 전환 시 목록/등록/상세(책임자·시정조치·변경 연계·감사 로그)/준수 현황 대시보드 전체 텍스트(준수 상태 라벨 포함) 영어 전환.
 - 시정조치 등록·변경 연계·감사 로그 조회 등 기존 기능 회귀 없음(텍스트만 치환).
+
+## 승인 대상자 역할 기반 동적 상세조회 권한 — COMPLIANCE 부분 (유지보수 요청, 2026-07-15)
+
+> 8개 도메인 공용 작업. 전체 설계·담당범위·완료기준은 `docs/03_develop/plan/common.md` 동일 제목 절 참조. 이 도메인 BE 작업: `compliance/application/ComplianceService.java` 상세조회 가드(COMPLIANCE_OFFICER 전용)에 `approvalGateService.canApproverView("COMPLIANCE", null, requesterIdOf(action))` OR 추가(신규 권한, 담당자 전용 조건은 유지). FE 라우트 가드(`routes/index.tsx`)는 공용 작업에 포함되어 별도 진행 불필요.

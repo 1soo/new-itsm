@@ -2,6 +2,8 @@ package com.itsm.srm.application;
 
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
+import com.itsm.auth.domain.Role;
+import com.itsm.auth.domain.repository.RoleRepository;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.srm.application.dto.CatalogItemDetailResponse;
@@ -28,13 +30,16 @@ public class ServiceCatalogService {
 
     private final ServiceCatalogItemRepository catalogItemRepository;
     private final CatalogFormFieldRepository formFieldRepository;
+    private final RoleRepository roleRepository;
     private final ObjectMapper objectMapper;
 
     public ServiceCatalogService(ServiceCatalogItemRepository catalogItemRepository,
                                  CatalogFormFieldRepository formFieldRepository,
+                                 RoleRepository roleRepository,
                                  ObjectMapper objectMapper) {
         this.catalogItemRepository = catalogItemRepository;
         this.formFieldRepository = formFieldRepository;
+        this.roleRepository = roleRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -54,7 +59,8 @@ public class ServiceCatalogService {
     public CatalogItemDetailResponse create(CreateCatalogItemRequest request) {
         ServiceCatalogItem item = catalogItemRepository.save(new ServiceCatalogItem(
                 request.name(), request.description(), null,
-                request.queueId(), request.slaResponseMinutes(), request.slaResolveMinutes()));
+                request.queueId(), request.slaResponseMinutes(), request.slaResolveMinutes(),
+                request.assigneeRoleId()));
         saveFields(item.getId(), request.formSchema());
         return toDetail(item);
     }
@@ -63,7 +69,8 @@ public class ServiceCatalogService {
     public CatalogItemDetailResponse update(Long id, UpdateCatalogItemRequest request) {
         ServiceCatalogItem item = findItem(id);
         item.update(request.name(), request.description(), null,
-                request.queueId(), request.slaResponseMinutes(), request.slaResolveMinutes());
+                request.queueId(), request.slaResponseMinutes(), request.slaResolveMinutes(),
+                request.assigneeRoleId());
         catalogItemRepository.save(item);
         if (request.formSchema() != null) {
             formFieldRepository.deleteByCatalogItemId(id);
@@ -97,8 +104,11 @@ public class ServiceCatalogService {
                 .map(f -> new FormFieldDto(f.getFieldKey(), f.getLabel(), f.getFieldType(), f.isRequired(),
                         readOptions(f.getOptions())))
                 .toList();
+        String assigneeRoleName = item.getAssigneeRoleId() == null ? null
+                : roleRepository.findById(item.getAssigneeRoleId()).map(Role::getRoleName).orElse(null);
         return new CatalogItemDetailResponse(item.getId(), item.getName(), item.getDescription(),
-                item.getQueueId(), item.getSlaResponseMinutes(), item.getSlaResolveMinutes(), schema);
+                item.getQueueId(), item.getSlaResponseMinutes(), item.getSlaResolveMinutes(),
+                item.getAssigneeRoleId(), assigneeRoleName, schema);
     }
 
     private String writeOptions(List<String> options) {

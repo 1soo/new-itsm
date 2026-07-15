@@ -219,7 +219,7 @@ public class EsmRequestService {
     public RequestDetailResponse detail(Long id) {
         AuthPrincipal principal = SecurityUtils.currentPrincipal();
         EsmRequest request = findRequest(id);
-        assertCanView(principal, request);
+        assertCanViewDetail(principal, request);
 
         EsmCatalogItem item = catalogItemRepository.findById(request.getCatalogItemId()).orElse(null);
         Map<String, Object> formValues = new LinkedHashMap<>();
@@ -292,17 +292,35 @@ public class EsmRequestService {
 
     // ---------- helpers ----------
 
-    private void assertCanView(AuthPrincipal principal, EsmRequest request) {
+    /** 요청자 본인 또는 소속 부서 DEPT_COORDINATOR인지 여부(댓글 작성(API-ESM-009) 등 조회 외 권한의 공통 기준). */
+    private boolean canView(AuthPrincipal principal, EsmRequest request) {
         if (SecurityUtils.isSystemAdmin() || request.getRequesterId().equals(principal.userId())) {
-            return;
+            return true;
         }
         if (SecurityUtils.hasRole(DEPT_COORDINATOR)) {
             Department myDept = myDepartment(principal);
             if (myDept != null && myDept == request.getDepartment()) {
-                return;
+                return true;
             }
         }
-        throw new BusinessException(ErrorCode.ACCESS_DENIED);
+        return false;
+    }
+
+    private void assertCanView(AuthPrincipal principal, EsmRequest request) {
+        if (!canView(principal, request)) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
+        }
+    }
+
+    /**
+     * 상세 조회(API-ESM-007) 전용 가드. {@link #canView} 조건에 더해 승인 대상자 역할 기반 동적 상세조회
+     * 권한(2026-07-15)을 OR로 추가한다 — 이 동적 판정은 상세조회에만 적용되며 댓글 작성 등 다른 권한에는
+     * 영향을 주지 않는다(코드리뷰 지적, common.md 0-1절/approver.md 3절 범위 준수).
+     */
+    private void assertCanViewDetail(AuthPrincipal principal, EsmRequest request) {
+        if (!canView(principal, request) && !approvalGateService.canApproverView(DOMAIN, null, request.getRequesterId())) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
+        }
     }
 
     private void assertCanProcess(AuthPrincipal principal, EsmRequest request) {

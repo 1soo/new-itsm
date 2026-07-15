@@ -5,6 +5,7 @@ import type {
   LoginResponse,
   MeResponse,
   MyMenuResponse,
+  Role,
 } from "@/features/auth/types";
 
 /* auth API 호출 — 모두 공통 apiClient 경유(직접 fetch/axios 금지). */
@@ -36,6 +37,12 @@ export const authApi = {
   // API-AUTH-022 내 메뉴 조회(사이드바 동적 구성)
   async getMyMenu(): Promise<MyMenuResponse> {
     const res = await apiClient.get<MyMenuResponse>("/menus/mine");
+    return res.data;
+  },
+
+  // API-AUTH-030 역할 목록 조회(공개, 역할 선택용)
+  async getRoles(): Promise<Role[]> {
+    const res = await apiClient.get<Role[]>("/roles");
     return res.data;
   },
 };

@@ -1,6 +1,8 @@
 # API 명세서 — 공통 (Common)
 
-> 도메인: common · 버전: 0.3 · 작성일: 2026-07-11 · 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 전 도메인 공용 승인 대기함·결정 API(API-COM-003~005) 신규, 기존 도메인별 전용 승인 API(API-SRM-011/012, API-CHG-006/007, API-KM-007/008) 대체
+> 도메인: common · 버전: 0.4 · 작성일: 2026-07-15 · 승인 대상자 역할 기반 동적 상세조회 권한(유지보수 요청) 신규 — 0-1절 추가, SRM/CHANGE/INCIDENT/PROBLEM/ASSET/VULNERABILITY/COMPLIANCE/ESM 8개 도메인 상세조회 RBAC에 적용(각 도메인 문서·`security/authorization/approver.md` 참조). INCIDENT는 기존 백엔드 역할체크 누락 결함도 이번에 함께 정리(Main 확인). ASSET은 개발 중 발견(dev-lead) — 역할 제한 없음이 `AssetService` 클래스 주석상 의도된 설계로 확인되어 INCIDENT와 달리 축소 변경 없이 현행 유지(동적 판정 no-op)
+>
+> 이전 버전: 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 전 도메인 공용 승인 대기함·결정 API(API-COM-003~005) 신규, 기존 도메인별 전용 승인 API(API-SRM-011/012, API-CHG-006/007, API-KM-007/008) 대체
 
 ## 공통 규약
 
@@ -27,6 +29,28 @@
    - 이미 있고 `REJECTED`면 **409**로 거부한다(반려 사유는 상세 조회로 확인. 재승인이 필요하면 도메인별 기존 반려 처리 흐름을 따른다 — 예: KNOWLEDGE는 초안 복귀 후 재검토 요청 시 신규 인스턴스가 다시 생성됨).
 
 **결정 처리(각 도메인 공용, API-COM-005)**: 차수의 `decision_mode`가 **OR**이면 그 차수에 필요한 역할 중 아무 역할이나 최초 1건의 결정이 기록되는 즉시 차수 전체가 그 결정(APPROVE/REJECT)으로 확정된다(공유 대기함 + 선처리자 결정, 기존 SRM/CHANGE 패턴과 동일). **AND**이면 차수에 필요한 각 역할마다 APPROVE가 모두 채워져야 차수가 APPROVED되며, 어느 역할이든 REJECT가 기록되면 그 즉시 차수·인스턴스 전체가 REJECTED로 확정된다. 처리자가 해당 차수에서 필요한 역할을 2개 이상 보유하면 1회 결정으로 보유한 역할 슬롯이 모두 채워진다. 차수가 APPROVED되면 다음 차수로 진행(`current_step_no` 증가)하고 마지막 차수까지 APPROVED되면 인스턴스 전체가 APPROVED로 확정되어 원래 전이가 재시도 시 허용된다. 인스턴스가 APPROVED/REJECTED로 확정되면, 해당 도메인은 후속 처리를 수행한다(예: KNOWLEDGE는 APPROVED 시 PUBLISHED로, REJECTED 시 DRAFT+반려사유로 전환 — 각 도메인 문서 참조).
+
+## 0-1. 승인 대상자 역할 기반 동적 상세조회 권한(신규, 2026-07-15 유지보수 요청)
+
+도메인 티켓 상세조회 API(예: SRM `GET /api/v1/service-requests/{id}`, CHANGE `GET /api/v1/changes/{id}` 등)가 자체 역할 규칙(요청자 본인·도메인 매니저 등) 외에, **승인자 역할(승인 대상자)** 보유자에게도 조회 권한을 부여할 때 공통으로 적용하는 판정 로직이다. 공용 승인 엔진(`common.approval.application.ApprovalGateService`)에 캡슐화된 `canApproverView(domain, requestSubtypeKey, requesterId)` 메서드로 제공되며, 각 도메인은 자신의 상세조회 접근 체크(예: SRM `assertCanView`, CHANGE `requireRole`)에서 기존 역할 조건과 **OR**로 호출한다.
+
+**판정 대상**: SERVICE_REQUEST(SRM)/CHANGE/INCIDENT/PROBLEM/ASSET/VULNERABILITY/COMPLIANCE/ESM 8개 도메인(승인 프로세스가 정의될 수 있는 도메인과 동일 범위, KNOWLEDGE 제외 — KNOWLEDGE는 게이트키퍼 승인 전용 흐름이라 상세조회 RBAC 대상 아님).
+
+**판정 절차**:
+1. 대상 티켓의 (도메인, 요청유형 스코프 값, 요청자 보유 역할)로 `matchProcess`(0절 게이트 체크와 완전히 동일한 3축 매칭 로직 재사용)를 호출해 매칭되는 `approval_process` 규칙 1개를 찾는다. 매칭되는 규칙이 없으면 조회 권한 없음(false).
+2. 매칭된 규칙의 승인자 차수(`approval_process_step`) 전체에 걸쳐 지정된 승인 역할(`approval_process_step_role`, 특정 차수가 아니라 **전체 차수**를 대상으로 한다 — 실제 승인 인스턴스가 아직 생성되지 않아 "현재 차수"가 없는 시점에도 조회 가능해야 하므로)을 모은다.
+3. 로그인 사용자의 role claim이 2의 역할 집합과 하나라도 겹치면 조회 권한 있음(true), 아니면 없음(false).
+4. 판정 기준은 **실제 승인 인스턴스(`approval_request`)가 아니라 규칙 설정(`approval_process`/`approval_process_step_role`) 자체와의 매칭**이다 — 인스턴스가 아직 생성되지 않았거나(게이트 평가 전), 이미 종료(APPROVED/REJECTED)된 뒤에도 동일하게 동작한다.
+
+**적용 방식(도메인별 차이)**:
+- **SRM/CHANGE**: 기존에 존재하던 정적 "APPROVER 역할이면 도메인 내 모든 티켓 상세조회 가능" 권한을 폐지하고, 이 동적 판정으로 완전히 대체한다(요청자 본인 조회 등 기존 다른 조건은 유지).
+- **INCIDENT**: 상세조회(API-INC-003)는 원래 백엔드에 역할 제한이 전혀 없어(FE 라우트 가드로만 SERVICE_DESK_AGENT/INCIDENT_MANAGER를 걸러내고 있었을 뿐, 인증된 사용자면 API 직접 호출로 전체조회가 가능한 결함성 상태) 이번에 **범위에 포함해 함께 정리**한다: 다른 도메인과 동일하게 백엔드에 `SecurityUtils.hasAnyRole(SERVICE_DESK_AGENT, INCIDENT_MANAGER)` 명시적 체크를 신설하고, 이 조건에 이 동적 판정을 OR로 추가한다(Main 확인 완료, 2026-07-15).
+- **ASSET**: 상세조회(API-ITAM-003)도 현재 백엔드 역할 제한이 없다(등록·수정·폐기·생애주기 전이만 `ASSET_MANAGER` 전용). 다만 이는 INCIDENT와 달리 **의도된 설계**다 — `AssetService` 클래스 주석에 "등록·수정·폐기·생애주기 전이만 ASSET_MANAGER 전용, 조회·CI·연계·지표는 인증된 사용자 전반 허용"이라고 명시되어 있다(개발 중 발견, 2026-07-15). 따라서 이번 유지보수에서 ASSET 상세조회를 좁히는 변경(ASSET_MANAGER 전용화)은 **포함하지 않는다** — 기존처럼 인증된 사용자 전반 허용을 유지하며, 승인자 역할 보유자는 이미 조회 가능하므로 이 동적 판정 자체가 사실상 no-op이다(백엔드 코드 변경 불필요, FE 라우트 가드만 추가).
+- **PROBLEM/VULNERABILITY/COMPLIANCE/ESM**: 기존에는 각 도메인 매니저 역할(PROBLEM_MANAGER/VULNERABILITY_MANAGER/COMPLIANCE_OFFICER, ESM은 요청자 본인+DEPT_COORDINATOR) 전용으로 제한되어 있었고 APPROVER는 접근 불가였다. 이번에 이 동적 판정을 **신규로 추가**해 매칭되는 승인자 역할 보유자에게도 조회를 허용한다(기존 매니저 전용 조건은 유지, OR로 추가).
+
+**FE 라우트 가드**: 위 7개 도메인(SRM/CHANGE는 기존부터, INCIDENT/ASSET/PROBLEM/VULNERABILITY/COMPLIANCE/ESM은 신규) 상세 화면의 `RequireRoles`(`source/frontend/src/routes/index.tsx`)에 `ROLE_APPROVER`를 추가해야 매칭된 승인자가 실제로 내비게이션할 수 있다. 라우트 가드는 역할 보유 여부만 굵게 거르는 관문이며, 실제 조회 가능 여부(매칭 여부)는 백엔드 403으로 최종 판정된다(매칭 안 되면 화면 진입 후 403 처리. 단 ASSET은 백엔드가 역할 무관 전면 허용이라 이 403 자체가 발생하지 않는다).
+
+각 도메인의 상세조회 RBAC 최종 규칙은 [security/authorization/approver.md](../security/authorization/approver.md)(승인자 관점)와 각 역할 정의서(매니저 관점)를 함께 참조한다.
 
 ## 1. API 목록
 

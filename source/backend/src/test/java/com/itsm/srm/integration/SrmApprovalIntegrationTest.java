@@ -12,6 +12,7 @@ import com.itsm.common.security.AuthPrincipal;
 import com.itsm.common.ticket.TicketType;
 import com.itsm.srm.application.ServiceCatalogService;
 import com.itsm.srm.application.ServiceRequestService;
+import com.itsm.srm.application.dto.AssignRequest;
 import com.itsm.srm.application.dto.CatalogItemDetailResponse;
 import com.itsm.srm.application.dto.CreateCatalogItemRequest;
 import com.itsm.srm.application.dto.CreateRequestRequest;
@@ -94,7 +95,9 @@ class SrmApprovalIntegrationTest {
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/31_sidebar_menu_label_cleanup.sql").toAbsolutePath()),
                     "/docker-entrypoint-initdb.d/31_sidebar_menu_label_cleanup.sql")
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/32_approval_process_priority_redesign.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/32_approval_process_priority_redesign.sql");
+                    "/docker-entrypoint-initdb.d/32_approval_process_priority_redesign.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/33_srm_catalog_assignee_role.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/33_srm_catalog_assignee_role.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {
@@ -171,10 +174,11 @@ class SrmApprovalIntegrationTest {
 
         Long requesterId = insertUser("req" + ts + "@itsm.local");
         Long approverId = insertUser("apr" + ts + "@itsm.local");
+        Long agentId = insertUser("agt" + ts + "@itsm.local");
 
         as(1L, "PROCESS_OWNER");
         CatalogItemDetailResponse item = catalogService.create(new CreateCatalogItemRequest(
-                "Item" + ts, "d", null, null, null,
+                "Item" + ts, "d", null, null, null, null,
                 List.of(new FormFieldDto("note", "Note", "text", false, null))));
         seedSubtypeProcess(domain, String.valueOf(item.id()), "APPROVER");
 
@@ -182,8 +186,9 @@ class SrmApprovalIntegrationTest {
         RequestCreatedResponse created = requestService.create(new CreateRequestRequest(item.id(), Map.of()));
         Long rid = created.id();
 
-        as(2L, "SERVICE_DESK_AGENT");
+        as(agentId, "SERVICE_DESK_AGENT");
         requestService.transition(rid, new StatusTransitionRequest(RequestStatus.VALIDATED, null));
+        requestService.assign(rid, new AssignRequest(agentId));
         requestService.transition(rid, new StatusTransitionRequest(RequestStatus.ROUTED, null));
 
         // 게이트 차단: 인스턴스 없음 → 스냅샷 생성 + 409(approvalRequestId 포함)
@@ -206,7 +211,7 @@ class SrmApprovalIntegrationTest {
         assertThat(decision.requestStatus()).isEqualTo("APPROVED");
 
         // 재시도 시 게이트 통과
-        as(2L, "SERVICE_DESK_AGENT");
+        as(agentId, "SERVICE_DESK_AGENT");
         var status = requestService.transition(rid, new StatusTransitionRequest(RequestStatus.IN_FULFILLMENT, null));
         assertThat(status.status()).isEqualTo("IN_FULFILLMENT");
 
@@ -222,10 +227,11 @@ class SrmApprovalIntegrationTest {
 
         Long requesterId = insertUser("req" + ts + "@itsm.local");
         Long approverId = insertUser("apr" + ts + "@itsm.local");
+        Long agentId = insertUser("agt" + ts + "@itsm.local");
 
         as(1L, "PROCESS_OWNER");
         CatalogItemDetailResponse item = catalogService.create(new CreateCatalogItemRequest(
-                "Item" + ts, "d", null, null, null,
+                "Item" + ts, "d", null, null, null, null,
                 List.of(new FormFieldDto("note", "Note", "text", false, null))));
         seedSubtypeProcess(domain, String.valueOf(item.id()), "APPROVER");
 
@@ -233,8 +239,9 @@ class SrmApprovalIntegrationTest {
         RequestCreatedResponse created = requestService.create(new CreateRequestRequest(item.id(), Map.of()));
         Long rid = created.id();
 
-        as(2L, "SERVICE_DESK_AGENT");
+        as(agentId, "SERVICE_DESK_AGENT");
         requestService.transition(rid, new StatusTransitionRequest(RequestStatus.VALIDATED, null));
+        requestService.assign(rid, new AssignRequest(agentId));
         requestService.transition(rid, new StatusTransitionRequest(RequestStatus.ROUTED, null));
         assertThatThrownBy(() ->
                 requestService.transition(rid, new StatusTransitionRequest(RequestStatus.IN_FULFILLMENT, null)));
@@ -264,10 +271,11 @@ class SrmApprovalIntegrationTest {
 
         Long requesterId = insertUser("catchall-req" + ts + "@itsm.local");
         Long approverId = insertUser("catchall-apr" + ts + "@itsm.local");
+        Long agentId = insertUser("catchall-agt" + ts + "@itsm.local");
 
         as(1L, "PROCESS_OWNER");
         CatalogItemDetailResponse item = catalogService.create(new CreateCatalogItemRequest(
-                "CatchAllItem" + ts, "d", null, null, null,
+                "CatchAllItem" + ts, "d", null, null, null, null,
                 List.of(new FormFieldDto("note", "Note", "text", false, null))));
         seedCatchAllProcess("APPROVER", "전체 도메인 캐치올 " + ts);
 
@@ -275,8 +283,9 @@ class SrmApprovalIntegrationTest {
         RequestCreatedResponse created = requestService.create(new CreateRequestRequest(item.id(), Map.of()));
         Long rid = created.id();
 
-        as(2L, "SERVICE_DESK_AGENT");
+        as(agentId, "SERVICE_DESK_AGENT");
         requestService.transition(rid, new StatusTransitionRequest(RequestStatus.VALIDATED, null));
+        requestService.assign(rid, new AssignRequest(agentId));
         requestService.transition(rid, new StatusTransitionRequest(RequestStatus.ROUTED, null));
 
         BusinessException blocked = (BusinessException) org.junit.jupiter.api.Assertions.assertThrows(
@@ -296,7 +305,7 @@ class SrmApprovalIntegrationTest {
         var decision = approvalInstanceService.decide(approvalRequestId, DecisionType.APPROVE, "ok");
         assertThat(decision.requestStatus()).isEqualTo("APPROVED");
 
-        as(2L, "SERVICE_DESK_AGENT");
+        as(agentId, "SERVICE_DESK_AGENT");
         var status = requestService.transition(rid, new StatusTransitionRequest(RequestStatus.IN_FULFILLMENT, null));
         assertThat(status.status()).isEqualTo("IN_FULFILLMENT");
     }
@@ -310,7 +319,7 @@ class SrmApprovalIntegrationTest {
 
         as(1L, "PROCESS_OWNER");
         CatalogItemDetailResponse item = catalogService.create(new CreateCatalogItemRequest(
-                "AssetLinkItem" + ts, "d", null, null, null, List.of()));
+                "AssetLinkItem" + ts, "d", null, null, null, null, List.of()));
 
         as(requesterId, "END_USER");
         RequestCreatedResponse created = requestService.create(new CreateRequestRequest(item.id(), Map.of()));

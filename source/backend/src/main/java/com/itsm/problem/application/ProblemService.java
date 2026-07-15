@@ -149,8 +149,11 @@ public class ProblemService {
 
     @Transactional(readOnly = true)
     public ProblemDetailResponse detail(Long id) {
-        requireRole(PM);
         Problem problem = findProblem(id);
+        if (!SecurityUtils.hasAnyRole(PM)
+                && !approvalGateService.canApproverView(DOMAIN, null, requesterIdOf(problem))) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
+        }
         return toDetail(problem);
     }
 

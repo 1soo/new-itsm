@@ -1,7 +1,11 @@
 package com.itsm.srm.application;
 
 import com.itsm.asset.application.AssetService;
+import com.itsm.auth.domain.AppUser;
+import com.itsm.auth.domain.Role;
+import com.itsm.auth.domain.UserStatus;
 import com.itsm.auth.domain.repository.AppUserRepository;
+import com.itsm.auth.domain.repository.RoleRepository;
 import com.itsm.common.approval.application.ApprovalGateService;
 import com.itsm.common.approval.domain.ApprovalRequest;
 import com.itsm.common.approval.domain.ApprovalRequestStatus;
@@ -35,9 +39,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -66,6 +73,7 @@ class ServiceRequestServiceTest {
     @Mock CommentRepository commentRepository;
     @Mock TimelineEventRepository timelineRepository;
     @Mock AppUserRepository appUserRepository;
+    @Mock RoleRepository roleRepository;
     @Mock TicketLinkRepository ticketLinkRepository;
     @Mock AssetService assetService;
     @Mock ApprovalGateService approvalGateService;
@@ -77,7 +85,7 @@ class ServiceRequestServiceTest {
     void setUp() {
         service = new ServiceRequestService(requestRepository, formValueRepository, catalogItemRepository,
                 formFieldRepository, queueRepository, csatRepository, commentRepository,
-                timelineRepository, appUserRepository, ticketLinkRepository, assetService,
+                timelineRepository, appUserRepository, roleRepository, ticketLinkRepository, assetService,
                 approvalGateService, approvalRequestRepository);
         when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(csatRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -103,7 +111,11 @@ class ServiceRequestServiceTest {
     }
 
     private ServiceCatalogItem catalog() {
-        return new ServiceCatalogItem("Laptop", null, null, 1L, null, null);
+        return new ServiceCatalogItem("Laptop", null, null, 1L, null, null, null);
+    }
+
+    private ServiceCatalogItem catalogWithAssigneeRole(Long roleId) {
+        return new ServiceCatalogItem("Laptop", null, null, 1L, null, null, roleId);
     }
 
     private ErrorCode codeOf(Throwable e) {
@@ -259,6 +271,57 @@ class ServiceRequestServiceTest {
         var response = service.transition(1L, new StatusTransitionRequest(RequestStatus.IN_FULFILLMENT, null));
 
         assertThat(response.status()).isEqualTo("IN_FULFILLMENT");
+    }
+
+    @Test
+    void transitionRoutedWithoutAssigneeThrows() {
+        login(1L, "SERVICE_DESK_AGENT");
+        when(requestRepository.findById(1L)).thenReturn(Optional.of(request(2L, RequestStatus.VALIDATED)));
+
+        assertThatThrownBy(() -> service.transition(1L, new StatusTransitionRequest(RequestStatus.ROUTED, null)))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.ASSIGNEE_REQUIRED_FOR_ROUTING));
+    }
+
+    @Test
+    void transitionRoutedWithAssigneeSucceeds() {
+        login(1L, "SERVICE_DESK_AGENT");
+        ServiceRequest sr = request(2L, RequestStatus.VALIDATED);
+        sr.assignTo(5L);
+        when(requestRepository.findById(1L)).thenReturn(Optional.of(sr));
+
+        var response = service.transition(1L, new StatusTransitionRequest(RequestStatus.ROUTED, null));
+
+        assertThat(response.status()).isEqualTo("ROUTED");
+    }
+
+    // ---------- assignee candidates (API-SRM-017) ----------
+
+    @Test
+    void assigneeCandidatesEmptyWhenRoleNotAssigned() {
+        login(1L, "SERVICE_DESK_AGENT");
+        when(requestRepository.findById(1L)).thenReturn(Optional.of(request(2L, RequestStatus.SUBMITTED)));
+        when(catalogItemRepository.findById(10L)).thenReturn(Optional.of(catalog()));
+
+        assertThat(service.assigneeCandidates(1L)).isEmpty();
+    }
+
+    @Test
+    void assigneeCandidatesReturnsRoleHolders() {
+        login(1L, "SERVICE_DESK_AGENT");
+        when(requestRepository.findById(1L)).thenReturn(Optional.of(request(2L, RequestStatus.SUBMITTED)));
+        when(catalogItemRepository.findById(10L)).thenReturn(Optional.of(catalogWithAssigneeRole(3L)));
+        when(roleRepository.findById(3L)).thenReturn(Optional.of(new Role("SERVICE_DESK_AGENT", "상담원", null)));
+        AppUser candidate = new AppUser("agent@itsm.local", "hash", "상담원A", UserStatus.ACTIVE);
+        ReflectionTestUtils.setField(candidate, "id", 8L);
+        when(appUserRepository.search(null, null, UserStatus.ACTIVE, "SERVICE_DESK_AGENT", Pageable.unpaged()))
+                .thenReturn(new PageImpl<>(List.of(candidate)));
+
+        var candidates = service.assigneeCandidates(1L);
+
+        assertThat(candidates).hasSize(1);
+        assertThat(candidates.get(0).id()).isEqualTo(8L);
+        assertThat(candidates.get(0).name()).isEqualTo("상담원A");
     }
 
     // ---------- assign ----------

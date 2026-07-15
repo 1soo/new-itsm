@@ -1,6 +1,8 @@
 # 테이블 정의서 — 서비스 요청 관리 (Service Request)
 
-> 도메인: service-request · 버전: 0.2 · 작성일: 2026-07-11 · 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 카탈로그 항목별 승인 필드(`approval_required`/`approver_role`) 제거
+> 도메인: service-request · 버전: 0.3 · 작성일: 2026-07-15 · 요청 유형별 담당자 역할 지정 기능(유지보수 요청) 반영 — `service_catalog_item.assignee_role_id` 신규(자동배정 아님, 라우팅/배정 시점 후보 목록 선정용)
+>
+> 이전 버전: 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 카탈로그 항목별 승인 필드(`approval_required`/`approver_role`) 제거
 
 서비스 카탈로그(요청 유형·동적 양식), 큐, 서비스 요청, 동적 양식 값, CSAT를 정의한다. 승인은 [common.md](common.md)의 `approval_process`/`approval_request` 커스텀 승인 엔진(전 도메인 공용), 코멘트는 `comment`를 사용한다. 카탈로그 항목(`service_catalog_item.id`)은 승인 프로세스의 요청유형 스코프(`approval_process.request_subtype_key`)로도 사용된다.
 
@@ -47,7 +49,8 @@
 | name | VARCHAR(150) | NOT NULL | 요청 유형명 |
 | description | VARCHAR(500) | NULL | 설명 |
 | category | VARCHAR(100) | NULL | 카탈로그 그룹 |
-| queue_id | BIGINT | FK → queue.id, NULL | 담당 큐 |
+| queue_id | BIGINT | FK → queue.id, NULL | 담당 큐(미지정 시 요청 생성 시점에 기본 큐로 배정, 미분류) |
+| assignee_role_id | BIGINT | FK → role.id, NULL | 담당자 역할(2026-07-15 유지보수 요청, 선택). 지정 시 상담원이 라우팅/배정 시점에 이 역할 보유자 후보 목록 중 수동으로 담당자를 선택하는 데 사용(자동배정 아님). 미지정이면 기존과 동일하게 본인 배정만 가능 |
 | sla_response_minutes | INT | NULL | 응답 SLA(분) |
 | sla_resolve_minutes | INT | NULL | 해결 SLA(분) |
 | ...공통 컬럼... | | | |
@@ -111,6 +114,7 @@
 ## 6. 관계 · 제약조건 요약
 
 - service_catalog_item.queue_id → queue.id (FK)
+- service_catalog_item.assignee_role_id → role.id (FK, [auth.md](auth.md) `role` 테이블 참조)
 - catalog_form_field.catalog_item_id → service_catalog_item.id (FK), UNIQUE(catalog_item_id, field_key)
 - service_request.catalog_item_id → service_catalog_item.id, requester_id/assignee_id → app_user.id, queue_id → queue.id (FK)
 - service_request_form_value.service_request_id → service_request.id (FK), UNIQUE(service_request_id, field_key)

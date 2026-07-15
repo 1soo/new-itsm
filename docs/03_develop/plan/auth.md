@@ -138,3 +138,25 @@
 - BE: API-AUTH-016~022 정상 + 오류코드(400/403/404/409) 케이스, `/menus/mine` 무매핑 화면 전체 공개 규칙, 감사 로그(ROLE_CHANGE) 기록.
 - FE: SYSTEM_ADMIN이 메뉴 생성·수정·삭제·역할 매핑 부여/회수 가능(즉시 반영), 일반 사용자 로그인 시 보유 역할 매핑 메뉴만 사이드바 노출(무매핑 메뉴는 항상 노출), 메뉴 삭제 시 사이드바에서 즉시 사라짐, 403 접근 통제(System Admin 외 SCR-ADMIN-006 접근 불가).
 - tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → 완료 시 커밋.
+
+## 역할 목록 조회(공개) API (유지보수 요청, 2026-07-15)
+
+> Main 요청(유지보수). SRM 카탈로그 관리 화면(담당자 역할 select)이 소비하는 비관리자 전용 역할 목록 API. UI/FE 신규 소집 없음(FE 작업은 `docs/03_develop/plan/service-request.md` 절에서 함께 처리 — 이 API가 먼저 완료되어야 그쪽 select가 동작).
+
+### 설계 근거
+
+- API: `docs/02_plan/api_spec/auth.md` v0.7 API-AUTH-030
+- 참고 기존 코드: `source/backend/src/main/java/com/itsm/auth/application/RoleService.java`, `application/dto/RoleResponse.java`(관리자용, userCount 포함 — 이번엔 별도 경량 DTO 필요), `presentation/AdminRoleController.java`(패턴 참고, 단 신규 엔드포인트는 `/api/v1/admin/**`가 아니므로 별도 컨트롤러), `presentation/MenuController.java`(API-AUTH-022, "관리자 전용 아닌 별도 컨트롤러 분리" 동일 패턴)
+
+### 담당 범위
+
+#### BE (dev-backend) — `source/backend/src/main/java/com/itsm/auth/`
+
+- 신규 DTO `application/dto/RoleOptionResponse.java`(id, roleCode, name — userCount 등 관리자 전용 필드 제외).
+- `RoleService`에 조회 전용 메서드 추가(기존 목록 조회 재사용 후 DTO만 축소 매핑도 가능 — 재량).
+- 신규 컨트롤러 `presentation/RoleController.java`: `GET /api/v1/roles`(인증만 필요, 역할 제한 없음).
+
+### 완료(테스트 통과) 기준
+
+- BE: 인증된 어떤 역할이든 200 응답(userCount 등 관리자 전용 필드 미노출), 미인증 401.
+- tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → 완료 시 커밋.
