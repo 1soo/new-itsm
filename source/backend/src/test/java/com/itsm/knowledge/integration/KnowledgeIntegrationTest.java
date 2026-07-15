@@ -138,16 +138,16 @@ class KnowledgeIntegrationTest {
     }
 
     /**
-     * 승인요청자 역할 전용(tier=3) 규칙 1건 + 1차 OR 승인(주어진 역할)을 KNOWLEDGE에 시딩한다.
-     * KNOWLEDGE는 요청유형 스코프가 없어(request_subtype_key 항상 null) tier=1/2로는 테스트 간 격리가
-     * 안 되므로, 이 테스트만의 전용 요청자 스코프 역할(requesterRoleCode)로 tier=3 매칭시켜 격리한다
+     * 도메인+승인요청자 역할(tier=25) 규칙 1건 + 1차 OR 승인(주어진 역할)을 KNOWLEDGE에 시딩한다.
+     * KNOWLEDGE는 요청유형 스코프가 없어(request_subtype_key 항상 null) 도메인만으로는(tier=11) 테스트 간
+     * 격리가 안 되므로, 이 테스트만의 전용 요청자 스코프 역할(requesterRoleCode)로 tier=25 매칭시켜 격리한다
      * (같은 컨테이너를 공유하는 다른 테스트의 기사 작성자는 이 역할을 보유하지 않아 매칭되지 않음).
      */
     private Long seedRequesterScopedProcess(String requesterRoleCode, Long requesterId, String decisionRoleCode) {
         Long requesterRoleId = roleIdOf(requesterRoleCode);
         jdbc.update("insert into user_role(user_id, role_id, created_by) values (?,?,?)",
                 requesterId, requesterRoleId, "test");
-        jdbc.update("insert into approval_process(domain, priority_tier, name, created_by) values ('KNOWLEDGE',3,?,?)",
+        jdbc.update("insert into approval_process(domain, priority_tier, name, created_by) values ('KNOWLEDGE',25,?,?)",
                 "게이트키퍼 규칙-" + requesterRoleCode, "test");
         Long processId = jdbc.queryForObject(
                 "select id from approval_process where domain = 'KNOWLEDGE' and name = ?",

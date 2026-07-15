@@ -155,9 +155,9 @@ class ChangeIntegrationTest {
         return jdbc.queryForObject("select id from role where role_code = ?", Long.class, roleCode);
     }
 
-    /** 요청유형 전용(tier=2) 규칙 1건 + 1차 OR 승인(주어진 역할)을 CHANGE 유형별로 시딩한다(테스트 간 격리). */
+    /** 도메인+요청유형(tier=23) 규칙 1건 + 1차 OR 승인(주어진 역할)을 CHANGE 유형별로 시딩한다(테스트 간 격리). */
     private void seedSubtypeProcess(String requestSubtypeKey, String roleCode) {
-        jdbc.update("insert into approval_process(domain, request_subtype_key, priority_tier, name, created_by) values ('CHANGE',?,2,?,?)",
+        jdbc.update("insert into approval_process(domain, request_subtype_key, priority_tier, name, created_by) values ('CHANGE',?,23,?,?)",
                 requestSubtypeKey, "요청유형 규칙", "test");
         Long processId = jdbc.queryForObject(
                 "select id from approval_process where domain = 'CHANGE' and request_subtype_key = ?", Long.class, requestSubtypeKey);
