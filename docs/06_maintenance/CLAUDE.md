@@ -48,3 +48,11 @@
 | 20260715-061016 | service-request | 카탈로그 요청유형별 담당자(역할기반 배정 후보 필터)·담당 큐 Select 전환 신규, 요청 큐 배정버튼 노출조건(본인배정/ROUTED이후 숨김)·라우팅 버튼 담당자 미배정 시 비활성화(BE 409) 추가 | docs/06_maintenance/20260715-061016/service-request/report.md |
 | 20260715-061016 | auth | 공용 역할 목록 조회 API(API-AUTH-030) 신규(카탈로그 담당자 역할 선택 등 타 도메인 재사용) | docs/06_maintenance/20260715-061016/auth/report.md |
 | 20260715-061016 | common | 승인 프로세스 승인자(StepRole) 역할 기반 동적 상세조회 권한(`ApprovalGateService.canApproverView`) 신설, SRM/CHANGE 기존 정적 APPROVER 전체조회 폐지·대체, 승인 프로세스 있는 8개 도메인 전체 적용(INCIDENT 상세조회 역할체크 부재 결함 동시 정리, ESM 댓글권한 범위초과 결함 수정) | docs/06_maintenance/20260715-061016/common/report.md |
+| 20260716-125723 | srm | 상태전이 버튼 문구 동작동사형 전환(transitionLabel), 타임라인 code→name+actor 표시, 서비스 카탈로그 카테고리 자유텍스트→고정목록 CRUD 신규(SCR-SRM-009), 양식 필드 여러 줄 텍스트(textarea) 추가 | docs/06_maintenance/20260716-125723/srm/report.md |
+| 20260716-125723 | incident | 상태전이 버튼 문구 동작동사형 전환, 타임라인 code→name+actor 표시 | docs/06_maintenance/20260716-125723/incident/report.md |
+| 20260716-125723 | problem | 상태전이 버튼 문구 동작동사형 전환 | docs/06_maintenance/20260716-125723/problem/report.md |
+| 20260716-125723 | change | 상태전이 버튼 문구 동작동사형 전환 | docs/06_maintenance/20260716-125723/change/report.md |
+| 20260716-125723 | vulnerability | 상태전이 버튼 문구 동작동사형 전환 | docs/06_maintenance/20260716-125723/vulnerability/report.md |
+| 20260716-125723 | asset | 상태전이 버튼 문구 동작동사형 전환 | docs/06_maintenance/20260716-125723/asset/report.md |
+| 20260716-125723 | esm | 상태전이 버튼 문구 동작동사형 전환, 타임라인 code→name+actor 표시(EsmRequest), 양식 필드 여러 줄 텍스트(공용 반영) | docs/06_maintenance/20260716-125723/esm/report.md |
+| 20260716-125723 | common | 승인 대기함(SCR-COM-014) 티켓 상세보기 버튼 추가, 양식 필드 유형 textarea 추가(공용 컴포넌트), 타임라인 code→name/actor 공용 유틸(TimelineMessages·AppUserRepository.resolveDisplayName) 신설 | docs/06_maintenance/20260716-125723/common/report.md |
