@@ -1,8 +1,11 @@
 # 화면 설계서 — 문제 관리 (Problem)
 
-> 도메인: problem · 버전: 0.3 · 작성일: 2026-07-14 · UI 축소 유지보수 요청(2026-07-14) 반영 — SCR-PRB-001 목록 표 컬럼 폭 고정, SCR-PRB-004는 카드 리스트라 컬럼 폭 대상 아님(확인)
+> 도메인: problem · 버전: 0.4
 >
-> 이전 버전: 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 상세 화면에 공통 승인 패널 추가(WORKAROUND → RESOLVED_CLOSED 전이 게이트, 매칭 규칙 없으면 기존처럼 즉시 전이)
+> **변경 이력**
+> - 2026-07-16: SCR-PRB-003 상태 전이 버튼 라벨을 동작 동사형으로 전환
+> - 2026-07-14: SCR-PRB-001 목록 표 컬럼 폭 고정, SCR-PRB-004는 카드 리스트라 컬럼 폭 대상 아님(확인)
+> - 2026-07-12: 상세 화면에 공통 승인 패널 추가(WORKAROUND → RESOLVED_CLOSED 전이 게이트, 매칭 규칙 없으면 즉시 전이)
 
 ## 1. 개요
 
@@ -75,7 +78,7 @@
 - **구성 요소**:
   | 요소 | 유형 | 설명 | 색상 |
   |------|------|------|------|
-  | 프로세스 상태 전이 | 버튼 | 6단계 허용 전이만 | Base |
+  | 프로세스 상태 전이 | 버튼 | 6단계 허용 전이만. 라벨은 동작 동사형([common.md](common.md) SCR-COM-008 아키텍처 적용) — 아래 표 | Base |
   | RCA 섹션 | 폼 | 근본원인·5 Whys·카테고리 | Border/Base |
   | 워크어라운드 입력 | 입력 | 임시 대응책·지식 연결 | Info |
   | 알려진 오류 생성 | 버튼 | 근본원인+워크어라운드→KEDB | Info |
@@ -85,6 +88,14 @@
   | 종료 버튼 | 버튼 | 종료 전이 | Success |
   | 승인 패널(공용) | 패널 | RESOLVED_CLOSED 전이에 매칭되는 승인 프로세스가 있으면 차수 진행 상태(API-COM-004) 표시, 없으면 패널 자체를 노출하지 않고 기존처럼 즉시 전이 | Info/Warning/Success |
 - **상태 · 인터랙션**: 순서 어긋난 전이 거부. RCA는 개인 강제 지정 안 함. 미존재 인시던트/변경 연결 시 400. 미해결 후속조치 남은 채 종료 시 경고 다이얼로그. 워크어라운드 빈 내용 저장 거부. 종료(RESOLVED_CLOSED) 전이 시도 시 매칭되는 승인 프로세스가 있으면 409와 함께 승인 패널이 나타나며, 처리는 [common.md](common.md) SCR-COM-014에서 수행한다.
+  - **전이 버튼 라벨**: `status.ts`의 `transitionLabel(t, target)`(i18n 키 `problem:transition.*`)이 버튼 텍스트를 결정한다(`statusLabel(t, target)`은 배지·토스트 문구에 별도로 사용).
+    | 도착 상태 | 버튼 라벨 |
+    |-----------|-----------|
+    | CLASSIFICATION | 분류 시작 |
+    | INVESTIGATION | 조사 시작 |
+    | KNOWN_ERROR | 알려진 오류로 등록 |
+    | WORKAROUND | 워크어라운드 등록 |
+    | RESOLVED_CLOSED | 종료 처리 |
 - **연관 API**: `GET /api/v1/problems/{id}`, `PATCH .../status`, `PUT .../rca`, `POST .../workaround`, `POST .../known-errors`, `POST .../links`, `POST/PATCH .../actions`, `POST .../close`, `GET /api/v1/approvals/{approvalRequestId}`(API-COM-004)
 
 ### SCR-PRB-004 · KEDB 검색

@@ -108,6 +108,7 @@
     "columnRequester": "Requester",
     "columnRequestedAt": "Requested At",
     "detailButton": "Details",
+    "viewDetailButton": "View Ticket",
     "emptyTitle": "There are no pending approvals.",
     "modalTitle": "Process Approval",
     "loading": "Loading...",
@@ -185,6 +186,7 @@
     "addField": "Add Field",
     "fieldType": {
       "text": "Single-line Text",
+      "textarea": "Multi-line Text",
       "number": "Number",
       "select": "Single Select",
       "date": "Date",

@@ -27,6 +27,7 @@ import {
  */
 const FIELD_TYPE_LABEL_KEY: Record<FormFieldType, string> = {
   text: "fieldBuilder.fieldType.text",
+  textarea: "fieldBuilder.fieldType.textarea",
   number: "fieldBuilder.fieldType.number",
   select: "fieldBuilder.fieldType.select",
   date: "fieldBuilder.fieldType.date",

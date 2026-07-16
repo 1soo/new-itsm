@@ -1,6 +1,10 @@
 # 테이블 정의서 — 엔터프라이즈 서비스 관리 (ESM)
 
-> 도메인: esm · 버전: 0.1 · 작성일: 2026-07-10
+> 도메인: esm · 버전: 0.2
+>
+> **변경 이력**
+> - 2026-07-16: `esm_catalog_form_field.field_type`에 `textarea` 추가(SRM `catalog_form_field`와 공유하는 `FormFieldType` 계약)
+> - 2026-07-10: 최초 작성
 
 부서별 서비스 카탈로그(체크리스트 템플릿 포함), 부서 요청, HR 케이스, 온보딩/오프보딩 체크리스트·하위 작업을 정의한다. 코멘트·타임라인(상태 이력)은 [common.md](common.md)의 `comment`/`timeline_event`(ticket_type='ESM_REQUEST' 또는 'HR_CASE')를 재사용한다.
 
@@ -53,7 +57,7 @@
 | catalog_item_id | BIGINT | FK → esm_catalog_item.id, NOT NULL | 소속 요청 유형 |
 | field_key | VARCHAR(50) | NOT NULL | 필드 키 |
 | label | VARCHAR(150) | NOT NULL | 표시 라벨 |
-| field_type | VARCHAR(20) | NOT NULL | text/select/number/date/file |
+| field_type | VARCHAR(20) | NOT NULL | text/textarea/select/number/date/file |
 | required | BOOLEAN | NOT NULL, DEFAULT false | 필수 여부 |
 | options | JSONB | NULL | select 옵션 목록 |
 | sort_order | INT | NOT NULL, DEFAULT 0 | 표시 순서 |

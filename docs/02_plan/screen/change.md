@@ -1,8 +1,11 @@
 # 화면 설계서 — 변경 관리 (Change)
 
-> 도메인: change · 버전: 0.3 · 작성일: 2026-07-14 · UI 축소 유지보수 요청(2026-07-14) 반영 — SCR-CHG-001 목록 표 컬럼 폭 고정
+> 도메인: change · 버전: 0.4
 >
-> 이전 버전: 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 승인 경로(AUTO/PEER_REVIEW/CAB) 배지 제거, 공통 승인 패널로 교체. SCR-CHG-004(CAB 승인 대기함)는 [common.md](common.md) SCR-COM-014로 대체되어 제거
+> **변경 이력**
+> - 2026-07-16: SCR-CHG-003 상태 전이 버튼 라벨을 동작 동사형으로 전환
+> - 2026-07-14: SCR-CHG-001 목록 표 컬럼 폭 고정
+> - 2026-07-12: 승인 경로(AUTO/PEER_REVIEW/CAB) 배지 제거, 공통 승인 패널로 교체. SCR-CHG-004(CAB 승인 대기함)는 [common.md](common.md) SCR-COM-014로 대체되어 제거
 
 ## 1. 개요
 
@@ -76,11 +79,19 @@
 - **구성 요소**:
   | 요소 | 유형 | 설명 | 색상 |
   |------|------|------|------|
-  | 프로세스 상태 전이 | 버튼 | 요청~종료, 승인 전 구현 차단 | Base |
+  | 프로세스 상태 전이 | 버튼 | 요청~종료, 승인 전 구현 차단. 라벨은 동작 동사형([common.md](common.md) SCR-COM-008 아키텍처 적용) — 아래 표 | Base |
   | 승인 패널(공용) | 패널 | 매칭되는 승인 프로세스가 있으면 차수 진행 상태 표시(API-COM-004), 없으면 "이 변경에는 승인 절차가 없습니다" 안내 | Info/Warning/Success |
   | 구현 결과 기록 | 폼 | 성공/실패·롤백 여부·비고 | Success/Danger |
   | 인시던트/문제 연계 | 버튼 | 링크 | Base |
 - **상태 · 인터랙션**: 승인 완료 전 구현 전이 거부(매칭되는 프로세스가 없으면 게이트 없이 진행). 승인 안 된 변경에 결과 기록 거부. 미존재 대상 연계 시 400. 승인 대기 중인 건의 처리는 [common.md](common.md) SCR-COM-014에서 수행(이 화면은 진행 상태 조회 전용).
+  - **전이 버튼 라벨**: `status.ts`의 `transitionLabel(t, target)`(i18n 키 `change:transition.*`)이 버튼 텍스트를 결정한다(`statusLabel(t, target)`은 배지·토스트 문구에 별도로 사용).
+    | 도착 상태 | 버튼 라벨 |
+    |-----------|-----------|
+    | REVIEW | 검토 시작 |
+    | PLANNING | 계획 수립 |
+    | APPROVAL | 승인 요청 |
+    | IMPLEMENTATION | 구현 시작 |
+    | CLOSED | 종료 처리 |
 - **연관 API**: `GET /api/v1/changes/{id}`, `PATCH .../status`, `POST .../result`, `POST .../links`, `GET /api/v1/approvals/{approvalRequestId}`(API-COM-004)
 
 ### SCR-CHG-005 · 변경 일정(캘린더)

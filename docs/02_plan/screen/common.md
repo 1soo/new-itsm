@@ -1,6 +1,10 @@
 # 화면 설계서 — 공통 (Common)
 
-> 도메인: common · 버전: 0.15 · 작성일: 2026-07-14 · UI 축소 유지보수 요청(2026-07-14) 반영 — 사이드바 폭/폰트 축소(펼침 240→190px/접힘 64→48px, 라벨 14→12px/그룹헤더 12→10px, SCR-COM-003), 공통 목록 표(SCR-COM-007) `Column<T>`에 `width` 도입해 컬럼 폭 고정 아키텍처 정의(구체 px 값은 도메인별 screen 문서), 페이지당 아이템 수 재산정 기준(7절 신규)
+> 도메인: common · 버전: 0.16
+>
+> **변경 이력**
+> - 2026-07-16: SCR-COM-008 상태 전이 버튼 라벨을 도착 상태명 대신 동작 동사형으로 전환하는 공통 아키텍처 정의(구체 라벨 매핑은 SRM/INCIDENT/PROBLEM/CHANGE/VULNERABILITY/ASSET/ESM 도메인별 screen 문서), 타임라인에 행위 수행 주체자(actor) 표시 추가(SRM/ESM/INCIDENT 3개 도메인), SCR-COM-014 승인 대기함에 "상세보기" 버튼 신규
+> - 2026-07-14: 사이드바 폭/폰트 축소(펼침 240→190px/접힘 64→48px, 라벨 14→12px/그룹헤더 12→10px, SCR-COM-003), 공통 목록 표(SCR-COM-007) `Column<T>`에 `width` 도입해 컬럼 폭 고정 아키텍처 정의(구체 px 값은 도메인별 screen 문서), 페이지당 아이템 수 재산정 기준(7절 신규)
 
 ## 0. 변경 이력(요약)
 
@@ -291,11 +295,13 @@ lucide-react를 유지하며 기본 크기를 16px로 통일한다(좁은 공간
 - **구성 요소**:
   | 요소 | 유형 | 설명 | 색상 |
   |------|------|------|------|
-  | 상태 전이 버튼 | 버튼 | 허용된 다음 상태만 노출 | `--primary` |
+  | 상태 전이 버튼 | 버튼 | 허용된 다음 상태만 노출. 라벨은 도착 상태명이 아닌 **동작 동사형**(예: "이행중"이 아니라 "이행 시작") | `--primary` |
   | 코멘트 입력·목록 | 입력/리스트 | 시간순 코멘트 | `--foreground`/`--card` |
-  | 타임라인 | 리스트 | 상태 변경·배정·업데이트 이력 | `--info` |
+  | 타임라인 | 리스트 | 상태 변경·배정·업데이트 이력. 각 항목에 행위 수행 주체자(actor) 표시(SRM/ESM/INCIDENT 3개 도메인만 — 이 3개 도메인만 본 공통 `Timeline` 컴포넌트를 사용) | `--info` |
   | 연결 항목 패널 | 리스트 | 인시던트↔문제↔변경, 자산/CI, 지식 링크 | `--ring` |
 - **상태 · 인터랙션**: 허용되지 않은 상태 전이 버튼은 비노출. 권한 부족 액션은 비활성/숨김(403 방지). 저장 시 토스트 피드백.
+- **상태 전이 버튼 라벨 아키텍처**: 버튼 라벨은 각 도메인 `status.ts`의 `transitionLabel(t, target)`(도착 상태별 동작 동사형 매핑, i18n 키 `{ns}:transition.{target}`, SRM/INCIDENT/PROBLEM/CHANGE/VULNERABILITY/ASSET/ESM 7개 도메인에 존재)이 결정한다. **`statusLabel(t, target)`은 배지 표시와 전이 완료 토스트 문구("상태가 '{{status}}'로 변경되었습니다")에 사용**한다(전이의 "결과 상태"를 알리는 문구라 도착 상태명이 맞다 — 버튼(동작 예고)과 토스트(결과 안내)의 문구 의도가 다르므로 별개 함수로 관리한다). 구체적인 도메인별 라벨 값은 각 도메인 `screen/{domain}.md`의 해당 화면 항목에 표로 명시한다.
+- **타임라인 actor 표시 아키텍처**: `TimelineEvent`는 `BaseEntity` 상속으로 `createdBy`(인증 사용자 email, JPA Auditing 자동기록)를 저장한다. SRM/ESM/INCIDENT 3개 도메인의 상세 응답 `TimelineEntry` DTO(SRM/ESM `RequestDetailResponse.TimelineEntry`, INCIDENT `IncidentDetailResponse.TimelineEntry`)는 `actor: string`(표시용 이름) 필드를 갖고, 각 Service의 상세 조회 메서드가 `appUserRepository.findByEmail(event.getCreatedBy())`로 이름을 조회해(다른 도메인의 `requesterName` 조회와 동일 패턴, 조회 실패 시 email 그대로 폴백) 채운다. FE는 `Timeline`(`components/common/timeline.tsx`)의 `actor` prop에 이 값을 주입한다(컴포넌트 자체는 이미 `actor` prop을 지원). 타임라인 메시지는 이 3개 도메인의 Service가 `target.name()`(enum 코드) 대신 각 상태 enum의 한글 라벨(FE `status.ts`의 `STATUS_LABEL`과 동일한 값, 백엔드 enum의 `label()` 메서드)을 사용해 구성한다(예: `"상태가 '이행 중'으로 변경되었습니다"`. 다른 타임라인 메시지 유형(SUBMIT/ASSIGN 등)은 기존처럼 한글 하드코딩을 유지, i18n 전환은 이번 범위 밖).
 - **연관 API**: 각 도메인 상세·코멘트·전이·링크 API
 
 ### SCR-COM-009 · 토스트·확인 다이얼로그
@@ -403,8 +409,9 @@ lucide-react를 유지하며 기본 크기를 16px로 통일한다(좁은 공간
   | 차수 진행 패널 | 단계 인디케이터 | 전체 차수를 순서대로 표시, 완료된 차수는 Success, 대기 차수는 Warning, 이후 차수는 Muted | Success/Warning/Muted |
   | 역할별 결정 현황 | 리스트 | 현재 차수에 필요한 각 역할과 결정 상태(대기/승인/반려), AND 차수는 각 역할 슬롯을 모두 나열, OR 차수는 "역할 중 하나"로 표시 | Info |
   | 승인/반려 버튼 | 버튼 | 결정 처리, 반려 시 사유 입력 필수 | Success/Danger |
-- **상태 · 인터랙션**: 목록은 로그인 사용자가 현재 대기 차수에 필요한 역할을 보유하고 아직 해당 역할 슬롯을 결정하지 않은 건만 노출(역할 기반 공유 대기함). 이미 다른 사람이 처리해 종료된 건에 결정 시도 시 409 오류 토스트. 반려 사유 누락 시 400 인라인 오류. 결과 0건 시 빈 상태 안내("현재 대기 중인 승인이 없습니다"). 결정 성공 시 토스트 후 목록에서 제거.
-- **연관 API**: `GET /api/v1/approvals?scope=mine&domain=`(API-COM-003), `GET /api/v1/approvals/{approvalRequestId}`(API-COM-004), `POST /api/v1/approvals/{approvalRequestId}/decisions`(API-COM-005)
+  | 상세보기 버튼 | 버튼 | 목록 표 각 행 우측(승인/반려 처리용 "상세" 버튼과 별개), 클릭 시 새 탭이 아니라 해당 티켓의 실제 상세 화면으로 이동(승인 처리 모달은 열지 않음) | Border/Base |
+- **상태 · 인터랙션**: 목록은 로그인 사용자가 현재 대기 차수에 필요한 역할을 보유하고 아직 해당 역할 슬롯을 결정하지 않은 건만 노출(역할 기반 공유 대기함). 이미 다른 사람이 처리해 종료된 건에 결정 시도 시 409 오류 토스트. 반려 사유 누락 시 400 인라인 오류. 결과 0건 시 빈 상태 안내("현재 대기 중인 승인이 없습니다"). 결정 성공 시 토스트 후 목록에서 제거. **상세보기 버튼**: 클릭 시 `ticketDetailPath(ticketType, ticketId)`(`features/common/status.ts`, 헤더 알림 드롭다운(SCR-COM-002)과 동일 헬퍼 재사용)로 계산한 경로로 라우팅 이동한다. 목록 행의 `ticketType`/`ticketId`(API-COM-003 응답에 이미 포함)를 그대로 사용하므로 신규 API가 필요 없다. 이동 대상 화면은 승인 대상자(APPROVER) 접근 권한이 이미 각 도메인 라우트 가드(`ROLE_APPROVER`, `api_spec/common.md` 0-1절)로 허용돼 있어 별도 권한 설계 변경이 필요 없다.
+- **연관 API**: `GET /api/v1/approvals?scope=mine&domain=`(API-COM-003), `GET /api/v1/approvals/{approvalRequestId}`(API-COM-004), `POST /api/v1/approvals/{approvalRequestId}/decisions`(API-COM-005). 상세보기는 신규 API 없이 기존 응답 필드(`ticketType`/`ticketId`)만 사용.
 
 ### SCR-COM-015 · 언어 선택(i18n)
 

@@ -1,8 +1,11 @@
 # 화면 설계서 — 엔터프라이즈 서비스 관리 (ESM)
 
-> 도메인: esm · 버전: 0.3 · 작성일: 2026-07-14 · UI 축소 유지보수 요청(2026-07-14) 반영 — SCR-ESM-003/004/007/010 목록 표 컬럼 폭 고정
+> 도메인: esm · 버전: 0.4
 >
-> 이전 버전: 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 부서 요청 상세에 공통 승인 패널 추가(IN_PROGRESS → COMPLETED 전이 게이트, 매칭 규칙 없으면 기존처럼 즉시 전이). HR 케이스·체크리스트 하위 작업은 대상 아님
+> **변경 이력**
+> - 2026-07-16: SCR-ESM-005/008 상태 전이 버튼 라벨을 동작 동사형으로 전환, SCR-ESM-005 타임라인에 행위 주체자(actor) 표시 추가(SCR-ESM-008 HR 케이스 상태 이력은 `changedBy`를 별도 필드로 표시하므로 대상 아님)
+> - 2026-07-14: SCR-ESM-003/004/007/010 목록 표 컬럼 폭 고정
+> - 2026-07-12: 부서 요청 상세에 공통 승인 패널 추가(IN_PROGRESS → COMPLETED 전이 게이트, 매칭 규칙 없으면 즉시 전이). HR 케이스·체크리스트 하위 작업은 대상 아님
 
 ## 1. 개요
 
@@ -113,11 +116,18 @@
 - **구성 요소**:
   | 요소 | 유형 | 설명 | 색상 |
   |------|------|------|------|
-  | 상태 전이 버튼 | 버튼 | 처리중/완료/반려 | Base/Success/Danger |
+  | 상태 전이 버튼 | 버튼 | 처리중/완료/반려. 라벨은 동작 동사형([common.md](common.md) SCR-COM-008 아키텍처 적용) — 아래 표 | Base/Success/Danger |
   | 연계 체크리스트 카드 | 카드 | 온보딩/오프보딩 시 진행률 요약, 클릭 시 SCR-ESM-009 이동 | Info |
   | 코멘트 입력 | 입력 | 요청자-처리자 소통 | Border/Base |
   | 승인 패널(공용) | 패널 | COMPLETED 전이에 매칭되는 승인 프로세스가 있으면 차수 진행 상태(API-COM-004) 표시, 없으면 패널 자체를 노출하지 않고 기존처럼 즉시 전이 | Info/Warning/Success |
 - **상태 · 인터랙션**: 담당 부서 처리자가 아니면 상태 전이 버튼 비노출. 체크리스트가 없는 일반 요청은 카드 미노출. COMPLETED 전이 시도 시 매칭되는 승인 프로세스가 있으면 409와 함께 승인 패널이 나타나며, 처리는 [common.md](common.md) SCR-COM-014에서 수행한다.
+  - **전이 버튼 라벨**: `status.ts`의 `transitionLabel(t, target)`(i18n 키 `esm:transition.*`)이 버튼 텍스트를 결정한다(`requestStatusLabel(t, target)`은 배지·토스트 문구에 별도로 사용).
+    | 도착 상태 | 버튼 라벨 |
+    |-----------|-----------|
+    | IN_PROGRESS | 처리 시작 |
+    | COMPLETED | 완료 처리 |
+    | REJECTED | 반려 처리 |
+  - **타임라인 actor 표시**: `RequestDetailResponse.TimelineEntry`(esm 패키지)의 `actor` 필드가 행위 수행 주체자를 표시한다([common.md](common.md) SCR-COM-008 아키텍처 참조). 상태 변경 타임라인 메시지는 `target.name()`(코드) 대신 상태 라벨을 사용한다.
 - **연관 API**: `GET /api/v1/esm/requests/{id}`, `PATCH .../status`, `POST .../comments`, `GET /api/v1/approvals/{approvalRequestId}`(API-COM-004)
 
 ### SCR-ESM-006 · 부서별 카탈로그 관리
@@ -160,9 +170,15 @@
 - **구성 요소**:
   | 요소 | 유형 | 설명 | 색상 |
   |------|------|------|------|
-  | 상태 전이 버튼 | 버튼 | 허용된 다음 단계만 노출(순차 진행) | Base |
-  | 상태 이력 타임라인 | 리스트 | 전이 이력 | Info |
+  | 상태 전이 버튼 | 버튼 | 허용된 다음 단계만 노출(순차 진행). 라벨은 동작 동사형([common.md](common.md) SCR-COM-008 아키텍처 적용) — 아래 표 | Base |
+  | 상태 이력 타임라인 | 리스트 | 전이 이력(행위 주체자 `changedBy` 별도 필드로 표시) | Info |
 - **상태 · 인터랙션**: 정의된 순서(접수→기록→조사→해결) 외 전이 시도 시 400. HR 케이스 매니저가 아닌 사용자 접근 시 403.
+  - **전이 버튼 라벨**: `status.ts`의 `hrCaseTransitionLabel(t, target)`(i18n 키 `esm:hrCaseTransition.*`)이 버튼 텍스트를 결정한다(`hrCaseStatusLabel(t, target)`은 배지·토스트 문구에 별도로 사용).
+    | 도착 상태 | 버튼 라벨 |
+    |-----------|-----------|
+    | DOCUMENTATION | 기록 시작 |
+    | INVESTIGATION | 조사 시작 |
+    | RESOLUTION | 해결 처리 |
 - **연관 API**: `GET /api/v1/esm/hr-cases/{id}`, `PATCH .../status`
 
 ### SCR-ESM-009 · 온보딩/오프보딩 체크리스트 상세

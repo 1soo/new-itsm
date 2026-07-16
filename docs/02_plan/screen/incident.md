@@ -1,8 +1,11 @@
 # 화면 설계서 — 인시던트 관리 (Incident)
 
-> 도메인: incident · 버전: 0.3 · 작성일: 2026-07-14 · UI 축소 유지보수 요청(2026-07-14) 반영 — SCR-INC-001 목록 표 컬럼 폭 고정
+> 도메인: incident · 버전: 0.4
 >
-> 이전 버전: 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 상세 화면에 공통 승인 패널 추가(IN_PROGRESS → RESOLVED 전이 게이트, 매칭 규칙 없으면 기존처럼 즉시 전이)
+> **변경 이력**
+> - 2026-07-16: SCR-INC-003 상태 전이 버튼 라벨을 동작 동사형으로 전환, 타임라인에 행위 주체자(actor) 표시 추가
+> - 2026-07-14: SCR-INC-001 목록 표 컬럼 폭 고정
+> - 2026-07-12: 상세 화면에 공통 승인 패널 추가(IN_PROGRESS → RESOLVED 전이 게이트, 매칭 규칙 없으면 즉시 전이)
 
 ## 1. 개요
 
@@ -78,7 +81,7 @@
   | 요소 | 유형 | 설명 | 색상 |
   |------|------|------|------|
   | 심각도/우선순위 편집 | 셀렉트 | 독립 관리·변경 이력 | Danger/Base |
-  | 상태 전이 버튼 | 버튼 | 허용 전이만 노출 | Base |
+  | 상태 전이 버튼 | 버튼 | 허용 전이만 노출. 라벨은 동작 동사형([common.md](common.md) SCR-COM-008 아키텍처 적용) — 아래 표 | Base |
   | 역할 배정 패널 | 폼 | IM이 Tech Lead·Comms·Scribe 배정 | Base |
   | 에스컬레이션 버튼 | 버튼 | 계층적/기능적 이관 | Warning |
   | 상태 업데이트 입력 | 입력+공개범위 토글 | 내부/외부 구분 | Info |
@@ -86,6 +89,13 @@
   | 문제 연계 버튼 | 버튼 | 신규/기존 문제 링크 | Base |
   | 승인 패널(공용) | 패널 | RESOLVED 전이에 매칭되는 승인 프로세스가 있으면 차수 진행 상태(API-COM-004) 표시, 없으면 패널 자체를 노출하지 않고 기존처럼 즉시 전이 | Info/Warning/Success |
 - **상태 · 인터랙션**: 허용되지 않은 상태 전이 비노출. IM 권한 없으면 역할 배정 버튼 숨김/403. 시간 정보 없으면 해당 지표 "미산정" 표시. SEV1·2 해결·PM 미작성 시 "포스트모템 필요" 배너. 잘못된 심각도/미존재 문제 연계 시 400. RESOLVED 전이 시도 시 매칭되는 승인 프로세스가 있으면 409와 함께 승인 패널이 나타나며, 처리는 [common.md](common.md) SCR-COM-014에서 수행한다.
+  - **전이 버튼 라벨**: `status.ts`의 `transitionLabel(t, target)`(i18n 키 `incident:transition.*`)이 버튼 텍스트를 결정한다(`statusLabel(t, target)`은 배지·토스트 문구에 별도로 사용).
+    | 도착 상태 | 버튼 라벨 |
+    |-----------|-----------|
+    | IN_PROGRESS | 대응 시작 |
+    | RESOLVED | 해결 처리 |
+    | CLOSED | 종료 처리 |
+  - **타임라인 actor 표시**: `IncidentDetailResponse.TimelineEntry`의 `actor` 필드가 행위 수행 주체자를 표시한다([common.md](common.md) SCR-COM-008 아키텍처 참조). 상태 변경 타임라인 메시지는 `target.name()`(코드) 대신 상태 라벨을 사용한다.
 - **연관 API**: `GET /api/v1/incidents/{id}`, `PATCH .../severity`, `PATCH .../status`, `POST .../roles`, `POST .../escalate`, `POST .../updates`, `POST .../resolve`, `POST .../links`, `GET /api/v1/approvals/{approvalRequestId}`(API-COM-004)
 
 ### SCR-INC-004 · 포스트모템 편집

@@ -1,6 +1,10 @@
 # API 명세서 — 인시던트 관리 (Incident)
 
-> 도메인: incident · 버전: 0.3 · 작성일: 2026-07-11 · 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — IN_PROGRESS → RESOLVED 전이(API-INC-005, API-INC-009 두 경로 모두)에 공통 승인 게이트([common.md](common.md) API-COM-003~005) 추가(관리자가 규칙을 설정하지 않으면 기존과 동일하게 게이트 없이 진행)
+> 도메인: incident · 버전: 0.4
+>
+> **변경 이력**
+> - 2026-07-16: API-INC-003 응답 `timeline` 항목에 `actor` 필드 추가, `STATUS_*` 타임라인 기본 메시지의 상태 코드를 라벨로 정리
+> - 2026-07-12: IN_PROGRESS → RESOLVED 전이(API-INC-005, API-INC-009 두 경로 모두)에 공통 승인 게이트([common.md](common.md) API-COM-003~005) 추가(관리자가 규칙을 설정하지 않으면 게이트 없이 진행)
 
 ## 공통 규약
 
@@ -65,9 +69,10 @@
     "responders": [ { "userId": "number", "name": "string", "role": "TECH_LEAD|COMMS|SCRIBE" } ],
     "metrics": { "mttdMinutes": "number|null", "mttaMinutes": "number|null", "mttrMinutes": "number|null" },
     "links": [ { "type": "PROBLEM|ASSET", "targetKey": "string" } ],
-    "timeline": [ { "type": "string", "visibility": "INTERNAL|EXTERNAL", "message": "string", "at": "ISO-8601" } ]
+    "timeline": [ { "type": "string", "visibility": "INTERNAL|EXTERNAL", "message": "string", "actor": "string · 행위 수행 주체자 표시명(createdBy 이메일을 이름으로 resolve, 실패 시 이메일 그대로)", "at": "ISO-8601" } ]
   }
   ```
+  > `STATUS_*` 타임라인 이벤트의 기본 메시지(사용자가 별도 note를 지정하지 않은 경우)는 상태 enum 코드(`target.name()`) 대신 상태 라벨을 사용한다(예: `"상태가 '대응중'으로 변경되었습니다"`).
 - **Response Code**: 200 / 401 / 404
 
 ### API-INC-004 · 심각도·우선순위 변경

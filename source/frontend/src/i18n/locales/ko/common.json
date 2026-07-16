@@ -108,6 +108,7 @@
     "columnRequester": "요청자",
     "columnRequestedAt": "요청일",
     "detailButton": "상세",
+    "viewDetailButton": "상세보기",
     "emptyTitle": "현재 대기 중인 승인이 없습니다",
     "modalTitle": "승인 처리",
     "loading": "불러오는 중...",
@@ -185,6 +186,7 @@
     "addField": "필드 추가",
     "fieldType": {
       "text": "한 줄 텍스트",
+      "textarea": "여러 줄 텍스트",
       "number": "숫자",
       "select": "단일 선택",
       "date": "날짜",

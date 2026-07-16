@@ -4,7 +4,7 @@ import type { TFunction } from "i18next";
  * 동적 폼 스키마 계약 — service-request api_spec의 formSchema와 동일 형태.
  * FieldBuilder가 스키마를 생성하고(SCR-SRM-007), DynamicForm이 소비해 렌더한다(SCR-SRM-002).
  */
-export type FormFieldType = "text" | "select" | "number" | "date" | "file";
+export type FormFieldType = "text" | "textarea" | "select" | "number" | "date" | "file";
 
 export interface FormFieldSchema {
   /** 값 저장 키(고유) */

@@ -1,8 +1,11 @@
 # 테이블 정의서 — 서비스 요청 관리 (Service Request)
 
-> 도메인: service-request · 버전: 0.3 · 작성일: 2026-07-15 · 요청 유형별 담당자 역할 지정 기능(유지보수 요청) 반영 — `service_catalog_item.assignee_role_id` 신규(자동배정 아님, 라우팅/배정 시점 후보 목록 선정용)
+> 도메인: service-request · 버전: 0.4
 >
-> 이전 버전: 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 카탈로그 항목별 승인 필드(`approval_required`/`approver_role`) 제거
+> **변경 이력**
+> - 2026-07-16: `service_catalog_category` 테이블 신규(카탈로그 카테고리 고정 목록), `service_catalog_item.category`(자유 텍스트) → `category_id`(FK) 전환, `catalog_form_field.field_type`에 `textarea` 추가
+> - 2026-07-15: `service_catalog_item.assignee_role_id` 신규(자동배정 아님, 라우팅/배정 시점 후보 목록 선정용)
+> - 2026-07-12: 카탈로그 항목별 승인 필드(`approval_required`/`approver_role`) 제거
 
 서비스 카탈로그(요청 유형·동적 양식), 큐, 서비스 요청, 동적 양식 값, CSAT를 정의한다. 승인은 [common.md](common.md)의 `approval_process`/`approval_request` 커스텀 승인 엔진(전 도메인 공용), 코멘트는 `comment`를 사용한다. 카탈로그 항목(`service_catalog_item.id`)은 승인 프로세스의 요청유형 스코프(`approval_process.request_subtype_key`)로도 사용된다.
 
@@ -13,6 +16,7 @@
 | catalog_form_field | 1NF | 요청 유형별 동적 양식 필드는 가변 개수라 카탈로그 항목에서 별도 행으로 분리(반복 그룹 제거). |
 | service_request_form_value | 1NF·EAV | 요청별 양식 값도 필드 수가 유형마다 달라 (요청, 필드키, 값) EAV로 저장. |
 | service_catalog_item ↔ queue | 3NF | 큐를 참조로 분리하여 큐 정보 중복 제거. |
+| service_catalog_item ↔ service_catalog_category | 3NF | 카테고리를 자유 텍스트로 두면 표기 불일치(오타·중복 표현)가 생기므로 고정 목록 테이블로 분리. |
 
 ## 2. 공통 컬럼 규칙
 
@@ -23,6 +27,7 @@
 | 테이블명 | 설명 | 관련 요구사항 |
 |----------|------|---------------|
 | queue | 처리 큐 | REQ-SRM-004/006 |
+| service_catalog_category | 카탈로그 카테고리 고정 목록 | REQ-SRM-001 |
 | service_catalog_item | 요청 유형(카탈로그 항목) | REQ-SRM-001 |
 | catalog_form_field | 요청 유형 동적 양식 필드 | REQ-SRM-001/002 |
 | service_request | 서비스 요청 티켓 | REQ-SRM-002~008 |
@@ -41,6 +46,17 @@
 | is_default | BOOLEAN | NOT NULL, DEFAULT false | 미분류 기본 큐 여부 |
 | ...공통 컬럼... | | | |
 
+### service_catalog_category
+
+카탈로그 항목의 카테고리를 관리자가 통제하는 고정 목록으로 관리한다.
+
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| id | BIGINT | PK | |
+| name | VARCHAR(100) | UNIQUE, NOT NULL | 카테고리명 |
+| sort_order | INT | NOT NULL, DEFAULT 0 | 표시 순서(SCR-SRM-001 카드 그룹·SCR-SRM-007/009 select 후보 정렬 기준) |
+| ...공통 컬럼... | | | |
+
 ### service_catalog_item
 
 | 컬럼 | 타입 | 제약 | 설명 |
@@ -48,9 +64,9 @@
 | id | BIGINT | PK | |
 | name | VARCHAR(150) | NOT NULL | 요청 유형명 |
 | description | VARCHAR(500) | NULL | 설명 |
-| category | VARCHAR(100) | NULL | 카탈로그 그룹 |
+| category_id | BIGINT | FK → service_catalog_category.id, NULL | 카탈로그 카테고리 |
 | queue_id | BIGINT | FK → queue.id, NULL | 담당 큐(미지정 시 요청 생성 시점에 기본 큐로 배정, 미분류) |
-| assignee_role_id | BIGINT | FK → role.id, NULL | 담당자 역할(2026-07-15 유지보수 요청, 선택). 지정 시 상담원이 라우팅/배정 시점에 이 역할 보유자 후보 목록 중 수동으로 담당자를 선택하는 데 사용(자동배정 아님). 미지정이면 기존과 동일하게 본인 배정만 가능 |
+| assignee_role_id | BIGINT | FK → role.id, NULL | 담당자 역할(선택). 지정 시 상담원이 라우팅/배정 시점에 이 역할 보유자 후보 목록 중 수동으로 담당자를 선택하는 데 사용(자동배정 아님). 미지정이면 본인 배정만 가능 |
 | sla_response_minutes | INT | NULL | 응답 SLA(분) |
 | sla_resolve_minutes | INT | NULL | 해결 SLA(분) |
 | ...공통 컬럼... | | | |
@@ -63,7 +79,7 @@
 | catalog_item_id | BIGINT | FK → service_catalog_item.id, NOT NULL | 소속 요청 유형 |
 | field_key | VARCHAR(50) | NOT NULL | 필드 키 |
 | label | VARCHAR(150) | NOT NULL | 표시 라벨 |
-| field_type | VARCHAR(20) | NOT NULL | text/select/number/date/file |
+| field_type | VARCHAR(20) | NOT NULL | text/textarea/select/number/date/file |
 | required | BOOLEAN | NOT NULL, DEFAULT false | 필수 여부 |
 | options | JSONB | NULL | select 옵션 목록 |
 | sort_order | INT | NOT NULL, DEFAULT 0 | 표시 순서 |
@@ -113,6 +129,7 @@
 
 ## 6. 관계 · 제약조건 요약
 
+- service_catalog_item.category_id → service_catalog_category.id (FK). 참조 중인 카탈로그 항목이 있으면 해당 카테고리 삭제는 애플리케이션이 409로 거부(자동 NULL 처리 없음)
 - service_catalog_item.queue_id → queue.id (FK)
 - service_catalog_item.assignee_role_id → role.id (FK, [auth.md](auth.md) `role` 테이블 참조)
 - catalog_form_field.catalog_item_id → service_catalog_item.id (FK), UNIQUE(catalog_item_id, field_key)

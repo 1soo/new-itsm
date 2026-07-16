@@ -1,5 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -17,7 +18,7 @@ import type {
 /**
  * 스키마 기반 동적 폼 렌더러 — SCR-SRM-002.
  * 제어 컴포넌트: values/onChange로 값 관리, errors로 인라인 오류 표시.
- * 지원 유형은 api_spec formSchema와 동일(text/select/number/date/file).
+ * 지원 유형은 api_spec formSchema와 동일(text/textarea/select/number/date/file).
  * 필수 검증·제출·API는 기능 레이어(FE)가 담당한다(validateForm 헬퍼 제공).
  */
 export interface DynamicFormProps {
@@ -143,6 +144,14 @@ function renderControl(
             ))}
           </SelectContent>
         </Select>
+      );
+    case "textarea":
+      return (
+        <Textarea
+          {...common}
+          value={(value as string) ?? ""}
+          onChange={(e) => setValue(field.key, e.target.value)}
+        />
       );
     case "text":
     default:

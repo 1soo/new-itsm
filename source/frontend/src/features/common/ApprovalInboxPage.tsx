@@ -1,5 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +23,7 @@ import {
 } from "@/components/common";
 import { commonApi } from "@/features/common/api";
 import { formatDateTime } from "@/features/common/format";
-import { ticketTypeLabel } from "@/features/common/status";
+import { ticketDetailPath, ticketTypeLabel } from "@/features/common/status";
 import type {
   ApprovalDetail,
   ApprovalListItem,
@@ -53,6 +54,7 @@ type Decision = "APPROVE" | "REJECT";
 
 export function ApprovalInboxPage() {
   const { t } = useTranslation("common");
+  const navigate = useNavigate();
   const [domain, setDomain] = useState(ALL);
   const [items, setItems] = useState<ApprovalListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -136,9 +138,18 @@ export function ApprovalInboxPage() {
       header: "",
       className: "text-right",
       cell: (a) => (
-        <Button size="sm" variant="outline" onClick={() => openItem(a)}>
-          {t("approvalInbox.detailButton", { defaultValue: "상세" })}
-        </Button>
+        <div className="flex justify-end gap-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => navigate(ticketDetailPath(a.ticketType, a.ticketId))}
+          >
+            {t("approvalInbox.viewDetailButton", { defaultValue: "상세보기" })}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => openItem(a)}>
+            {t("approvalInbox.detailButton", { defaultValue: "상세" })}
+          </Button>
+        </div>
       ),
     },
   ];

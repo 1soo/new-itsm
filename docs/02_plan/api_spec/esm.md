@@ -1,6 +1,10 @@
 # API 명세서 — 엔터프라이즈 서비스 관리 (ESM)
 
-> 도메인: esm · 버전: 0.2 · 작성일: 2026-07-11 · 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 부서 요청 IN_PROGRESS → COMPLETED 전이에 공통 승인 게이트([common.md](common.md) API-COM-003~005) 추가(관리자가 규칙을 설정하지 않으면 기존과 동일하게 게이트 없이 진행). HR 케이스·체크리스트 하위 작업은 게이트 대상에서 제외
+> 도메인: esm · 버전: 0.3
+>
+> **변경 이력**
+> - 2026-07-16: API-ESM-007 응답 `timeline` 항목에 `actor` 필드 추가, `STATUS_*` 타임라인 기본 메시지의 상태 코드를 라벨로 정리, `formSchema.type`에 `textarea` 추가(API-ESM-002/003, SRM과 공유하는 `FormFieldType` 계약)
+> - 2026-07-12: 부서 요청 IN_PROGRESS → COMPLETED 전이에 공통 승인 게이트([common.md](common.md) API-COM-003~005) 추가(관리자가 규칙을 설정하지 않으면 게이트 없이 진행). HR 케이스·체크리스트 하위 작업은 게이트 대상에서 제외
 
 ## 공통 규약
 
@@ -59,9 +63,10 @@
     "id": "number", "name": "string", "description": "string", "department": "string",
     "checklistTemplateType": "NONE|ONBOARDING|OFFBOARDING",
     "checklistTemplate": [ { "department": "string", "taskDescription": "string" } ],
-    "formSchema": [ { "key": "string", "label": "string", "type": "text|select|number|date|file", "required": "boolean", "options": ["string"] } ]
+    "formSchema": [ { "key": "string", "label": "string", "type": "text|textarea|select|number|date|file", "required": "boolean", "options": ["string"] } ]
   }
   ```
+  > `textarea`(여러 줄 텍스트)는 `text`와 저장·검증 방식은 동일하고 FE 렌더링만 다르다(`components/common/dynamic-form.tsx`가 `<textarea>`로 렌더).
 - **Response Code**: 200 / 401 / 404
 
 ### API-ESM-003 · 카탈로그 항목 생성
@@ -75,7 +80,7 @@
     "name": "string · 필수", "description": "string", "department": "HR|LEGAL|FACILITIES|FINANCE|IT · 필수",
     "checklistTemplateType": "NONE|ONBOARDING|OFFBOARDING",
     "checklistTemplate": [ { "department": "string", "taskDescription": "string" } ],
-    "formSchema": [ { "key": "string", "label": "string", "type": "string", "required": "boolean", "options": ["string"] } ]
+    "formSchema": [ { "key": "string", "label": "string", "type": "text|textarea|select|number|date|file", "required": "boolean", "options": ["string"] } ]
   }
   ```
 - **Response Body** (201): `{ "id": "number" }`
@@ -127,9 +132,10 @@
     "formValues": {}, "requester": "string", "assignee": "string",
     "checklistId": "number|null",
     "comments": [ { "id": "number", "author": "string", "body": "string", "createdAt": "ISO-8601" } ],
-    "timeline": [ { "type": "string", "message": "string", "at": "ISO-8601" } ]
+    "timeline": [ { "type": "string", "message": "string", "actor": "string · 행위 수행 주체자 표시명(createdBy 이메일을 이름으로 resolve, 실패 시 이메일 그대로)", "at": "ISO-8601" } ]
   }
   ```
+  > `STATUS_*` 타임라인 이벤트의 기본 메시지(사용자가 별도 note를 지정하지 않은 경우)는 상태 enum 코드(`target.name()`) 대신 상태 라벨을 사용한다(예: `"상태가 '처리중'으로 변경되었습니다"`).
 - **Response Code**: 200 / 401 / 403 / 404
 
 ### API-ESM-008 · 부서 요청 상태 전이
