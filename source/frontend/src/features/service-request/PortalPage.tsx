@@ -133,7 +133,7 @@ export function PortalPage() {
               </CardHeader>
               <CardContent className="space-y-2 text-sm text-muted-foreground">
                 <p className="line-clamp-2">{item.description}</p>
-                {item.category ? <Badge variant="outline">{item.category}</Badge> : null}
+                {item.categoryName ? <Badge variant="outline">{item.categoryName}</Badge> : null}
               </CardContent>
             </Card>
           ))}

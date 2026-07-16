@@ -14,5 +14,8 @@ public interface ServiceCatalogItemRepository {
 
     Optional<ServiceCatalogItem> findById(Long id);
 
-    List<ServiceCatalogItem> search(String category, String keyword);
+    List<ServiceCatalogItem> search(Long categoryId, String keyword);
+
+    /** 지정 카테고리를 참조하는 카탈로그 항목 수(카테고리 목록 itemCount, 삭제 시 CATEGORY_IN_USE 판정). */
+    long countByCategoryId(Long categoryId);
 }

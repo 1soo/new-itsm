@@ -15,11 +15,15 @@
 - `CommentResponse.java` — 댓글 응답
 - `CsatRequest.java` — 만족도(CSAT) 제출 요청(score 1~5, comment)
 - `CsatResponse.java` — CSAT 응답
-- `CreateCatalogItemRequest.java` — 카탈로그 항목 생성 요청(SLA·담당자 역할 assigneeRoleId(선택, 2026-07-15)·동적 양식. 승인 필드 제거됨)
-- `UpdateCatalogItemRequest.java` — 카탈로그 항목 수정 요청(양식 전체 교체 가능, assigneeRoleId 선택)
-- `CatalogItemSummaryResponse.java` — 카탈로그 항목 요약 응답
-- `CatalogItemDetailResponse.java` — 카탈로그 항목 상세 응답(양식 스키마·assigneeRoleId/assigneeRoleName 포함)
-- `FormFieldDto.java` — 동적 양식 필드 정의(key, label, type, required, options)
+- `CreateCatalogItemRequest.java` — 카탈로그 항목 생성 요청(SLA·담당자 역할 assigneeRoleId(선택, 2026-07-15)·categoryId(선택, 2026-07-16)·동적 양식. 승인 필드 제거됨)
+- `UpdateCatalogItemRequest.java` — 카탈로그 항목 수정 요청(양식 전체 교체 가능, assigneeRoleId·categoryId 선택)
+- `CatalogItemSummaryResponse.java` — 카탈로그 항목 요약 응답(categoryId/categoryName, 2026-07-16 유지보수 요청 — 기존 category 자유 텍스트 필드 대체)
+- `CatalogItemDetailResponse.java` — 카탈로그 항목 상세 응답(categoryId/categoryName·양식 스키마·assigneeRoleId/assigneeRoleName 포함)
+- `FormFieldDto.java` — 동적 양식 필드 정의(key, label, type — text/textarea/select/number/date/file, required, options)
+- `CategoryResponse.java` — 카탈로그 카테고리 생성/수정 응답(id, name, sortOrder, 2026-07-16 유지보수 요청)
+- `CategoryListResponse.java` — 카탈로그 카테고리 목록 항목 응답(id, name, sortOrder, itemCount — 참조 중인 카탈로그 항목 수)
+- `CategoryCreateRequest.java` — 카탈로그 카테고리 생성 요청(name 필수, sortOrder 선택)
+- `CategoryUpdateRequest.java` — 카탈로그 카테고리 수정 요청(부분 갱신)
 - `QueueResponse.java` — 큐 응답(기본 큐 여부·미종료 건수)
 - `MetricsResponse.java` — SRM 지표 응답(CSAT 평균·응답/해결 평균·SLA 준수율)
 - `KnowledgeSuggestionResponse.java` — 지식 추천 응답(articleId, title, score)

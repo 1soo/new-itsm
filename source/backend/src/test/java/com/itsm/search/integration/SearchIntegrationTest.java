@@ -86,7 +86,11 @@ class SearchIntegrationTest {
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/32_approval_process_priority_redesign.sql").toAbsolutePath()),
                     "/docker-entrypoint-initdb.d/32_approval_process_priority_redesign.sql")
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/33_srm_catalog_assignee_role.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/33_srm_catalog_assignee_role.sql");
+                    "/docker-entrypoint-initdb.d/33_srm_catalog_assignee_role.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/34_srm_catalog_category.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/34_srm_catalog_category.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/35_catalog_form_field_textarea_type.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/35_catalog_form_field_textarea_type.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {

@@ -43,9 +43,9 @@ public class ServiceCatalogController {
     @Operation(summary = "서비스 카탈로그 목록")
     @GetMapping
     public ResponseEntity<List<CatalogItemSummaryResponse>> list(
-            @RequestParam(required = false) String category,
+            @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) String keyword) {
-        return ResponseEntity.ok(catalogService.list(category, keyword));
+        return ResponseEntity.ok(catalogService.list(categoryId, keyword));
     }
 
     @Operation(summary = "카탈로그 항목 상세(양식 스키마)")

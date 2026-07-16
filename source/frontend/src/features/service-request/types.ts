@@ -29,13 +29,16 @@ export interface CatalogItemSummary {
   id: number;
   name: string;
   description?: string;
-  category?: string;
+  categoryId?: number | null;
+  categoryName?: string | null;
 }
 
 export interface CatalogItemDetail {
   id: number;
   name: string;
   description: string;
+  categoryId: number | null;
+  categoryName?: string | null;
   queueId: number | null;
   /** 담당자 역할(2026-07-15 유지보수 요청) — 지정 시 요청 큐 배정 팝업의 후보 조회(API-SRM-017)에 사용. */
   assigneeRoleId: number | null;
@@ -48,11 +51,20 @@ export interface CatalogItemDetail {
 export interface CatalogItemInput {
   name: string;
   description: string;
+  categoryId?: number;
   queueId?: number;
   assigneeRoleId?: number;
   slaResponseMinutes: number;
   slaResolveMinutes: number;
   formSchema: FormFieldSchema[];
+}
+
+/** 카탈로그 카테고리(API-SRM-018~021, 2026-07-16 유지보수 요청). `itemCount`는 목록 조회(카테고리 관리 탭)에만 제공. */
+export interface Category {
+  id: number;
+  name: string;
+  sortOrder: number;
+  itemCount?: number;
 }
 
 export interface KnowledgeSuggestion {

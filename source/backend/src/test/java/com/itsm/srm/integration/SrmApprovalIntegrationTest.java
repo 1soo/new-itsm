@@ -97,7 +97,11 @@ class SrmApprovalIntegrationTest {
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/32_approval_process_priority_redesign.sql").toAbsolutePath()),
                     "/docker-entrypoint-initdb.d/32_approval_process_priority_redesign.sql")
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/33_srm_catalog_assignee_role.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/33_srm_catalog_assignee_role.sql");
+                    "/docker-entrypoint-initdb.d/33_srm_catalog_assignee_role.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/34_srm_catalog_category.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/34_srm_catalog_category.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/35_catalog_form_field_textarea_type.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/35_catalog_form_field_textarea_type.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {
@@ -178,7 +182,7 @@ class SrmApprovalIntegrationTest {
 
         as(1L, "PROCESS_OWNER");
         CatalogItemDetailResponse item = catalogService.create(new CreateCatalogItemRequest(
-                "Item" + ts, "d", null, null, null, null,
+                "Item" + ts, "d", null, null, null, null, null,
                 List.of(new FormFieldDto("note", "Note", "text", false, null))));
         seedSubtypeProcess(domain, String.valueOf(item.id()), "APPROVER");
 
@@ -231,7 +235,7 @@ class SrmApprovalIntegrationTest {
 
         as(1L, "PROCESS_OWNER");
         CatalogItemDetailResponse item = catalogService.create(new CreateCatalogItemRequest(
-                "Item" + ts, "d", null, null, null, null,
+                "Item" + ts, "d", null, null, null, null, null,
                 List.of(new FormFieldDto("note", "Note", "text", false, null))));
         seedSubtypeProcess(domain, String.valueOf(item.id()), "APPROVER");
 
@@ -275,7 +279,7 @@ class SrmApprovalIntegrationTest {
 
         as(1L, "PROCESS_OWNER");
         CatalogItemDetailResponse item = catalogService.create(new CreateCatalogItemRequest(
-                "CatchAllItem" + ts, "d", null, null, null, null,
+                "CatchAllItem" + ts, "d", null, null, null, null, null,
                 List.of(new FormFieldDto("note", "Note", "text", false, null))));
         seedCatchAllProcess("APPROVER", "전체 도메인 캐치올 " + ts);
 
@@ -319,7 +323,7 @@ class SrmApprovalIntegrationTest {
 
         as(1L, "PROCESS_OWNER");
         CatalogItemDetailResponse item = catalogService.create(new CreateCatalogItemRequest(
-                "AssetLinkItem" + ts, "d", null, null, null, null, List.of()));
+                "AssetLinkItem" + ts, "d", null, null, null, null, null, List.of()));
 
         as(requesterId, "END_USER");
         RequestCreatedResponse created = requestService.create(new CreateRequestRequest(item.id(), Map.of()));

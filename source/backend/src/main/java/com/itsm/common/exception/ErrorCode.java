@@ -45,6 +45,9 @@ public enum ErrorCode {
     CSAT_ALREADY_SUBMITTED(HttpStatus.CONFLICT, "이미 CSAT가 제출되었습니다."),
     APPROVAL_PENDING(HttpStatus.CONFLICT, "승인 대기 중에는 이행할 수 없습니다."),
     APPROVAL_ALREADY_DECIDED(HttpStatus.CONFLICT, "이미 결정된 승인입니다."),
+    CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "카테고리를 찾을 수 없습니다."),
+    CATEGORY_NAME_DUPLICATE(HttpStatus.CONFLICT, "이미 존재하는 카테고리명입니다."),
+    CATEGORY_IN_USE(HttpStatus.CONFLICT, "이 카테고리를 참조하는 카탈로그 항목이 있어 삭제할 수 없습니다."),
 
     // --- Incident (INC) ---
     INCIDENT_NOT_FOUND(HttpStatus.NOT_FOUND, "인시던트를 찾을 수 없습니다."),

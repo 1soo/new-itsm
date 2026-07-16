@@ -14,9 +14,13 @@ public interface ServiceCatalogItemJpaRepository extends JpaRepository<ServiceCa
     @Query("""
             select i from ServiceCatalogItem i
             where i.isDeleted = false
-              and (:category is null or i.category = cast(:category as string))
+              and (:categoryId is null or i.categoryId = :categoryId)
               and (:keyword is null or lower(i.name) like lower(concat('%', cast(:keyword as string), '%')))
             order by i.name asc
             """)
-    List<ServiceCatalogItem> search(@Param("category") String category, @Param("keyword") String keyword);
+    List<ServiceCatalogItem> search(@Param("categoryId") Long categoryId, @Param("keyword") String keyword);
+
+    @Override
+    @Query("select count(i) from ServiceCatalogItem i where i.isDeleted = false and i.categoryId = :categoryId")
+    long countByCategoryId(@Param("categoryId") Long categoryId);
 }

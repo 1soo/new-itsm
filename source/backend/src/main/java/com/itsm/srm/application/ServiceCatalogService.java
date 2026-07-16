@@ -13,8 +13,10 @@ import com.itsm.srm.application.dto.FormFieldDto;
 import com.itsm.srm.application.dto.KnowledgeSuggestionResponse;
 import com.itsm.srm.application.dto.UpdateCatalogItemRequest;
 import com.itsm.srm.domain.CatalogFormField;
+import com.itsm.srm.domain.ServiceCatalogCategory;
 import com.itsm.srm.domain.ServiceCatalogItem;
 import com.itsm.srm.domain.repository.CatalogFormFieldRepository;
+import com.itsm.srm.domain.repository.ServiceCatalogCategoryRepository;
 import com.itsm.srm.domain.repository.ServiceCatalogItemRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,24 +31,28 @@ import java.util.List;
 public class ServiceCatalogService {
 
     private final ServiceCatalogItemRepository catalogItemRepository;
+    private final ServiceCatalogCategoryRepository categoryRepository;
     private final CatalogFormFieldRepository formFieldRepository;
     private final RoleRepository roleRepository;
     private final ObjectMapper objectMapper;
 
     public ServiceCatalogService(ServiceCatalogItemRepository catalogItemRepository,
+                                 ServiceCatalogCategoryRepository categoryRepository,
                                  CatalogFormFieldRepository formFieldRepository,
                                  RoleRepository roleRepository,
                                  ObjectMapper objectMapper) {
         this.catalogItemRepository = catalogItemRepository;
+        this.categoryRepository = categoryRepository;
         this.formFieldRepository = formFieldRepository;
         this.roleRepository = roleRepository;
         this.objectMapper = objectMapper;
     }
 
     @Transactional(readOnly = true)
-    public List<CatalogItemSummaryResponse> list(String category, String keyword) {
-        return catalogItemRepository.search(category, keyword).stream()
-                .map(i -> new CatalogItemSummaryResponse(i.getId(), i.getName(), i.getDescription(), i.getCategory()))
+    public List<CatalogItemSummaryResponse> list(Long categoryId, String keyword) {
+        return catalogItemRepository.search(categoryId, keyword).stream()
+                .map(i -> new CatalogItemSummaryResponse(i.getId(), i.getName(), i.getDescription(),
+                        i.getCategoryId(), categoryName(i.getCategoryId())))
                 .toList();
     }
 
@@ -57,8 +63,9 @@ public class ServiceCatalogService {
 
     @Transactional
     public CatalogItemDetailResponse create(CreateCatalogItemRequest request) {
+        assertCategoryExists(request.categoryId());
         ServiceCatalogItem item = catalogItemRepository.save(new ServiceCatalogItem(
-                request.name(), request.description(), null,
+                request.name(), request.description(), request.categoryId(),
                 request.queueId(), request.slaResponseMinutes(), request.slaResolveMinutes(),
                 request.assigneeRoleId()));
         saveFields(item.getId(), request.formSchema());
@@ -67,8 +74,9 @@ public class ServiceCatalogService {
 
     @Transactional
     public CatalogItemDetailResponse update(Long id, UpdateCatalogItemRequest request) {
+        assertCategoryExists(request.categoryId());
         ServiceCatalogItem item = findItem(id);
-        item.update(request.name(), request.description(), null,
+        item.update(request.name(), request.description(), request.categoryId(),
                 request.queueId(), request.slaResponseMinutes(), request.slaResolveMinutes(),
                 request.assigneeRoleId());
         catalogItemRepository.save(item);
@@ -77,6 +85,12 @@ public class ServiceCatalogService {
             saveFields(id, request.formSchema());
         }
         return toDetail(item);
+    }
+
+    private void assertCategoryExists(Long categoryId) {
+        if (categoryId != null && categoryRepository.findById(categoryId).filter(c -> !c.isDeleted()).isEmpty()) {
+            throw new BusinessException(ErrorCode.CATEGORY_NOT_FOUND);
+        }
     }
 
     /** 지식 기사 추천. KM 도메인 미구축이라 빈 배열 반환(TODO: KM 구축 후 연동). */
@@ -107,8 +121,14 @@ public class ServiceCatalogService {
         String assigneeRoleName = item.getAssigneeRoleId() == null ? null
                 : roleRepository.findById(item.getAssigneeRoleId()).map(Role::getRoleName).orElse(null);
         return new CatalogItemDetailResponse(item.getId(), item.getName(), item.getDescription(),
-                item.getQueueId(), item.getSlaResponseMinutes(), item.getSlaResolveMinutes(),
+                item.getCategoryId(), categoryName(item.getCategoryId()), item.getQueueId(),
+                item.getSlaResponseMinutes(), item.getSlaResolveMinutes(),
                 item.getAssigneeRoleId(), assigneeRoleName, schema);
+    }
+
+    private String categoryName(Long categoryId) {
+        return categoryId == null ? null
+                : categoryRepository.findById(categoryId).map(ServiceCatalogCategory::getName).orElse(null);
     }
 
     private String writeOptions(List<String> options) {

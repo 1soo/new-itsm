@@ -10,6 +10,7 @@ import com.itsm.srm.application.dto.FormFieldDto;
 import com.itsm.srm.domain.CatalogFormField;
 import com.itsm.srm.domain.ServiceCatalogItem;
 import com.itsm.srm.domain.repository.CatalogFormFieldRepository;
+import com.itsm.srm.domain.repository.ServiceCatalogCategoryRepository;
 import com.itsm.srm.domain.repository.ServiceCatalogItemRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,6 +33,7 @@ import static org.mockito.Mockito.when;
 class ServiceCatalogServiceTest {
 
     @Mock ServiceCatalogItemRepository catalogItemRepository;
+    @Mock ServiceCatalogCategoryRepository categoryRepository;
     @Mock CatalogFormFieldRepository formFieldRepository;
     @Mock RoleRepository roleRepository;
 
@@ -39,7 +41,7 @@ class ServiceCatalogServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ServiceCatalogService(catalogItemRepository, formFieldRepository, roleRepository, new ObjectMapper());
+        service = new ServiceCatalogService(catalogItemRepository, categoryRepository, formFieldRepository, roleRepository, new ObjectMapper());
     }
 
     @Test
@@ -58,7 +60,7 @@ class ServiceCatalogServiceTest {
                 .thenReturn(List.of(new CatalogFormField(1L, "reason", "사유", "text", true, null, 0)));
 
         CreateCatalogItemRequest request = new CreateCatalogItemRequest(
-                "Laptop", "desc", 1L, 60, 480, null,
+                "Laptop", "desc", null, 1L, 60, 480, null,
                 List.of(new FormFieldDto("reason", "Reason", "text", true, null)));
 
         CatalogItemDetailResponse response = service.create(request);

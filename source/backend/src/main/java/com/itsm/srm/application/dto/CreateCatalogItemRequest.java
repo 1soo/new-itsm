@@ -11,6 +11,7 @@ public record CreateCatalogItemRequest(
         @Schema(description = "요청 유형명(필수)")
         @NotBlank String name,
         String description,
+        @Schema(description = "카테고리(선택, 미지정 시 미분류)") Long categoryId,
         Long queueId,
         Integer slaResponseMinutes,
         Integer slaResolveMinutes,

@@ -1,6 +1,7 @@
 import { apiClient } from "@/lib/apiClient";
 import type {
   AssigneeCandidate,
+  Category,
   CatalogItemDetail,
   CatalogItemInput,
   CatalogItemSummary,
@@ -29,7 +30,7 @@ function cleanParams<T extends object>(query: T): Record<string, unknown> {
 
 export const srmApi = {
   // API-SRM-001 카탈로그 목록
-  async listCatalog(params: { category?: string; keyword?: string } = {}): Promise<CatalogItemSummary[]> {
+  async listCatalog(params: { categoryId?: number; keyword?: string } = {}): Promise<CatalogItemSummary[]> {
     const res = await apiClient.get<CatalogItemSummary[]>("/service-catalog/items", {
       params: cleanParams(params),
     });
@@ -129,5 +130,28 @@ export const srmApi = {
       params: cleanParams(params),
     });
     return res.data;
+  },
+
+  // API-SRM-018 카탈로그 카테고리 목록(인증만)
+  async listCategories(): Promise<Category[]> {
+    const res = await apiClient.get<Category[]>("/service-catalog/categories");
+    return res.data;
+  },
+
+  // API-SRM-019 카탈로그 카테고리 생성 (Process Owner)
+  async createCategory(body: { name: string; sortOrder?: number }): Promise<Category> {
+    const res = await apiClient.post<Category>("/service-catalog/categories", body);
+    return res.data;
+  },
+
+  // API-SRM-020 카탈로그 카테고리 수정 (Process Owner)
+  async updateCategory(id: number, body: { name?: string; sortOrder?: number }): Promise<Category> {
+    const res = await apiClient.patch<Category>(`/service-catalog/categories/${id}`, body);
+    return res.data;
+  },
+
+  // API-SRM-021 카탈로그 카테고리 삭제 (Process Owner)
+  async deleteCategory(id: number): Promise<void> {
+    await apiClient.delete(`/service-catalog/categories/${id}`);
   },
 };

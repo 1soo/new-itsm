@@ -7,6 +7,7 @@ public record CatalogItemSummaryResponse(
         Long id,
         String name,
         String description,
-        String category
+        Long categoryId,
+        String categoryName
 ) {
 }

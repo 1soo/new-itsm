@@ -8,7 +8,7 @@ import java.util.List;
 public record FormFieldDto(
         String key,
         String label,
-        @Schema(description = "text|select|number|date|file") String type,
+        @Schema(description = "text|textarea|select|number|date|file") String type,
         boolean required,
         List<String> options
 ) {

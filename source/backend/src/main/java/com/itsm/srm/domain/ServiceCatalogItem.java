@@ -32,8 +32,8 @@ public class ServiceCatalogItem extends BaseEntity {
     @Column(length = 500)
     private String description;
 
-    @Column(length = 100)
-    private String category;
+    @Column(name = "category_id")
+    private Long categoryId;
 
     @Column(name = "queue_id")
     private Long queueId;
@@ -47,24 +47,24 @@ public class ServiceCatalogItem extends BaseEntity {
     @Column(name = "assignee_role_id")
     private Long assigneeRoleId;
 
-    public ServiceCatalogItem(String name, String description, String category,
+    public ServiceCatalogItem(String name, String description, Long categoryId,
                               Long queueId, Integer slaResponseMinutes, Integer slaResolveMinutes,
                               Long assigneeRoleId) {
         this.name = name;
         this.description = description;
-        this.category = category;
+        this.categoryId = categoryId;
         this.queueId = queueId;
         this.slaResponseMinutes = slaResponseMinutes;
         this.slaResolveMinutes = slaResolveMinutes;
         this.assigneeRoleId = assigneeRoleId;
     }
 
-    public void update(String name, String description, String category,
+    public void update(String name, String description, Long categoryId,
                        Long queueId, Integer slaResponseMinutes, Integer slaResolveMinutes,
                        Long assigneeRoleId) {
         if (name != null) this.name = name;
         if (description != null) this.description = description;
-        if (category != null) this.category = category;
+        if (categoryId != null) this.categoryId = categoryId;
         if (queueId != null) this.queueId = queueId;
         if (slaResponseMinutes != null) this.slaResponseMinutes = slaResponseMinutes;
         if (slaResolveMinutes != null) this.slaResolveMinutes = slaResolveMinutes;
