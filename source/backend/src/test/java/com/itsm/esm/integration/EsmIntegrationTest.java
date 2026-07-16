@@ -9,11 +9,16 @@ import com.itsm.esm.application.EsmChecklistService;
 import com.itsm.esm.application.EsmHrCaseService;
 import com.itsm.esm.application.EsmMetricsService;
 import com.itsm.esm.application.EsmRequestService;
+import com.itsm.esm.application.dto.CatalogItemDetailResponse;
 import com.itsm.esm.application.dto.ChecklistTaskStatusRequest;
+import com.itsm.esm.application.dto.CreateCatalogItemRequest;
 import com.itsm.esm.application.dto.CreateHrCaseRequest;
 import com.itsm.esm.application.dto.CreateRequestRequest;
+import com.itsm.esm.application.dto.FormFieldDto;
 import com.itsm.esm.application.dto.HrCaseStatusTransitionRequest;
 import com.itsm.esm.application.dto.StatusTransitionRequest;
+import com.itsm.esm.application.dto.UpdateCatalogItemRequest;
+import com.itsm.esm.domain.ChecklistTemplateType;
 import com.itsm.esm.domain.ChecklistTaskStatus;
 import com.itsm.esm.domain.EsmRequestStatus;
 import com.itsm.esm.domain.HrCaseStatus;
@@ -243,5 +248,22 @@ class EsmIntegrationTest {
 
         var list = hrCaseService.list(null, PageRequest.of(0, 20));
         assertThat(list.content()).isNotEmpty();
+    }
+
+    @Test
+    void updateCatalogItemKeepingSameFormFieldKeyDoesNotViolateUniqueConstraint() {
+        // srm 도메인과 동일한 회귀 시나리오(uq_catalog_form_field 대응 esm_catalog_form_field 제약)를 검증.
+        long ts = System.nanoTime();
+
+        as(1L, "PROCESS_OWNER");
+        CatalogItemDetailResponse created = catalogService.create(new CreateCatalogItemRequest(
+                "계약서 검토" + ts, "d", Department.LEGAL, ChecklistTemplateType.NONE, null,
+                List.of(new FormFieldDto("contractType", "계약 유형", "text", true, null))));
+
+        CatalogItemDetailResponse updated = catalogService.update(created.id(), new UpdateCatalogItemRequest(
+                "계약서 검토" + ts, "updated", Department.LEGAL, ChecklistTemplateType.NONE, null,
+                List.of(new FormFieldDto("contractType", "계약 유형", "text", true, null))));
+
+        assertThat(updated.formSchema()).extracting("key").containsExactly("contractType");
     }
 }

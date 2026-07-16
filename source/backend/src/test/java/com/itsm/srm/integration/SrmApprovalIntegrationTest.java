@@ -19,6 +19,7 @@ import com.itsm.srm.application.dto.CreateRequestRequest;
 import com.itsm.srm.application.dto.FormFieldDto;
 import com.itsm.srm.application.dto.RequestCreatedResponse;
 import com.itsm.srm.application.dto.StatusTransitionRequest;
+import com.itsm.srm.application.dto.UpdateCatalogItemRequest;
 import com.itsm.srm.domain.RequestStatus;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -336,5 +337,24 @@ class SrmApprovalIntegrationTest {
 
         as(requesterId, "END_USER");
         assertThat(requestService.detail(rid).linkedAssets()).extracting("assetKey").containsExactly(asset.assetKey());
+    }
+
+    @Test
+    void updateCatalogItemKeepingSameFormFieldKeyDoesNotViolateUniqueConstraint() {
+        // 회귀 테스트: catalog_item_id=1, field_key='model' 재현 시나리오.
+        // deleteByCatalogItemId가 즉시 flush되지 않으면 IDENTITY save()의 즉시 INSERT와
+        // 순서가 뒤바뀌어 uq_catalog_form_field 위반이 발생한다.
+        long ts = System.nanoTime();
+
+        as(1L, "PROCESS_OWNER");
+        CatalogItemDetailResponse created = catalogService.create(new CreateCatalogItemRequest(
+                "Laptop" + ts, "d", null, null, null, null, null,
+                List.of(new FormFieldDto("model", "Model", "text", true, null))));
+
+        CatalogItemDetailResponse updated = catalogService.update(created.id(), new UpdateCatalogItemRequest(
+                "Laptop" + ts, "updated", null, null, null, null, null,
+                List.of(new FormFieldDto("model", "Model", "text", true, null))));
+
+        assertThat(updated.formSchema()).extracting("key").containsExactly("model");
     }
 }
