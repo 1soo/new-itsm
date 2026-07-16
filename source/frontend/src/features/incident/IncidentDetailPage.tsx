@@ -34,6 +34,7 @@ import {
   severityTone,
   statusLabel,
   statusTone,
+  transitionLabel,
 } from "@/features/incident/status";
 import type {
   IncidentDetail,
@@ -180,6 +181,7 @@ export function IncidentDetailPage() {
         ? t("incidentDetail.visibilityExternal", { defaultValue: "외부 공개" })
         : t("incidentDetail.visibilityInternal", { defaultValue: "내부" }),
     timestamp: formatDateTime(entry.at),
+    actor: entry.actor,
   }));
 
   const toIso = (v: string) => (v ? new Date(v).toISOString() : undefined);
@@ -230,7 +232,7 @@ export function IncidentDetailPage() {
               )
             }
           >
-            {statusLabel(t, target)}
+            {transitionLabel(t, target)}
           </Button>
         );
       })}

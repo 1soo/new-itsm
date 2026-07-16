@@ -15,4 +15,16 @@ public enum RequestStatus {
     public boolean isTerminal() {
         return this == CLOSED;
     }
+
+    /** 상태 한글 라벨(FE `features/service-request/status.ts`의 STATUS_LABEL과 동일 값). */
+    public String label() {
+        return switch (this) {
+            case SUBMITTED -> "제출됨";
+            case VALIDATED -> "검증됨";
+            case ROUTED -> "라우팅됨";
+            case IN_FULFILLMENT -> "이행 중";
+            case FULFILLED -> "이행 완료";
+            case CLOSED -> "종료";
+        };
+    }
 }

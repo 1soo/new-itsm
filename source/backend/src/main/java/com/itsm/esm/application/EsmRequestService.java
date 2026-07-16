@@ -17,6 +17,7 @@ import com.itsm.common.security.SecurityUtils;
 import com.itsm.common.ticket.Comment;
 import com.itsm.common.ticket.TicketType;
 import com.itsm.common.ticket.TimelineEvent;
+import com.itsm.common.ticket.TimelineMessages;
 import com.itsm.common.ticket.repository.CommentRepository;
 import com.itsm.common.ticket.repository.TimelineEventRepository;
 import com.itsm.esm.application.dto.CommentCreateRequest;
@@ -49,6 +50,7 @@ import org.springframework.util.StringUtils;
 
 import java.time.OffsetDateTime;
 import java.time.Year;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -228,9 +230,12 @@ public class EsmRequestService {
         List<CommentResponse> comments = commentRepository.findByTicketTypeAndTicketIdOrderByCreatedAtAsc(TT, id).stream()
                 .map(c -> new CommentResponse(c.getId(), userName(c.getAuthorId()), c.getBody(), c.getCreatedAt()))
                 .toList();
+        Map<String, String> actorCache = new HashMap<>();
         List<RequestDetailResponse.TimelineEntry> timeline =
                 timelineRepository.findByTicketTypeAndTicketIdOrderByOccurredAtAsc(TT, id).stream()
-                        .map(t -> new RequestDetailResponse.TimelineEntry(t.getEventType(), t.getMessage(), t.getOccurredAt()))
+                        .map(t -> new RequestDetailResponse.TimelineEntry(
+                                t.getEventType(), t.getMessage(), t.getOccurredAt(),
+                                actorCache.computeIfAbsent(t.getCreatedBy(), appUserRepository::resolveDisplayName)))
                         .toList();
 
         ApprovalRequest latestApproval = approvalRequestRepository
@@ -267,7 +272,8 @@ public class EsmRequestService {
         esmRequest.changeStatus(target);
         requestRepository.save(esmRequest);
         timelineRepository.save(TimelineEvent.of(TT, id, "STATUS_" + target.name(),
-                StringUtils.hasText(request.note()) ? request.note() : "상태가 " + target.name() + "로 변경되었습니다."));
+                StringUtils.hasText(request.note()) ? request.note()
+                        : "상태가 " + TimelineMessages.quotedWithParticle(target.label()) + " 변경되었습니다."));
         return new StatusResponse(id, target.name());
     }
 

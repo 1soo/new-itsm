@@ -73,3 +73,29 @@
 ## 승인 대상자 역할 기반 동적 상세조회 권한 — INCIDENT 부분 (유지보수 요청, 2026-07-15)
 
 > 8개 도메인 공용 작업. 전체 설계·담당범위·완료기준은 `docs/03_develop/plan/common.md` 동일 제목 절 참조. 이 도메인 BE 작업: `incident/application/IncidentService.java` `detail()`은 현재 역할 체크가 전혀 없는 결함 상태 — **신규로** `SecurityUtils.hasAnyRole("SERVICE_DESK_AGENT", "INCIDENT_MANAGER") || approvalGateService.canApproverView("INCIDENT", null, requesterIdOf(inc))` 가드를 추가하고 불만족 시 403(결함 정리 겸 신규 기능). FE 라우트 가드는 이 도메인 **제외**(백엔드 신규 역할체크로 커버, `routes/index.tsx`에 ROLE_APPROVER 추가 안 함).
+
+## 전이 버튼 라벨·타임라인 actor (유지보수 요청, 2026-07-16)
+
+### 설계 근거
+- 화면: `docs/02_plan/screen/incident.md` v0.4 SCR-INC-003(전이 라벨표 90~97행, 타임라인 actor).
+- API: `docs/02_plan/api_spec/incident.md`(상세 응답 `timeline[].actor`).
+- 공통 아키텍처: `docs/03_develop/plan/common.md` "상태 전이 버튼 라벨·타임라인 actor 공통 아키텍처" 절.
+- 참고 기존 코드: `source/backend/.../incident/domain/IncidentStatus.java`, `application/IncidentService.java`(212~236행 타임라인 저장부); `source/frontend/.../incident/status.ts`·`types.ts`·`IncidentDetailPage.tsx`(175행 부근 타임라인 매핑).
+
+### 담당 범위
+
+#### BE (dev-backend) — `source/backend/src/main/java/com/itsm/incident/`
+- `domain/IncidentStatus.java`에 `label()` 메서드 추가(FE `features/incident/status.ts`의 `STATUS_LABEL`과 동일 값 4종: 신규/대응중/해결/종료).
+- `application/dto/IncidentDetailResponse.TimelineEntry`(현재 `(String type, String visibility, String message, OffsetDateTime at)`)에 `actor` 필드 추가.
+- `application/IncidentService.java`의 상세 조회 메서드: 타임라인 조회 시 각 `TimelineEvent.getCreatedBy()`(email)로 `appUserRepository.findByEmail()` 조회해 이름 resolve(실패 시 email 폴백, 다른 도메인과 동일 패턴)해 `actor`에 채움.
+- `IncidentService.java`의 상태 전이 메서드(234~235행)에서 `TimelineEvent.of(TT, id, "STATUS_" + target.name(), ... "상태가 " + target.name() + "로 변경되었습니다.")` 메시지 부분의 `target.name()` → `target.label()`로 교체(이벤트 타입 문자열은 유지). SEVERITY_CHANGE/ROLE_ASSIGN/ESCALATE/UPDATE/RESOLVE/LINK 등 다른 메시지 유형은 변경 없음(기존 한글 하드코딩 유지).
+
+#### FE (dev-fe) — `source/frontend/src/features/incident/`
+- `status.ts`에 `transitionLabel(t, target: IncidentStatus): string` 신규(i18n 키 `incident:transition.*`, 매핑값 SCR-INC-003 90~97행 표). 기존 `statusLabel`은 변경하지 않음.
+- `IncidentDetailPage.tsx`의 전이 버튼 텍스트만 `statusLabel(t, target)` → `transitionLabel(t, target)`으로 교체(토스트 문구는 `statusLabel` 유지).
+- `types.ts`의 `IncidentDetail.timeline` 항목 타입에 `actor: string` 추가.
+- `IncidentDetailPage.tsx`의 `timelineItems` 매핑(175행 부근)에 `actor: entry.actor` 추가.
+
+### 완료 기준
+- 인시던트 상세(SCR-INC-003)의 전이 버튼에 동작 동사형 라벨이 표시되고, 전이 완료 토스트는 기존처럼 도착 상태명을 사용한다.
+- 타임라인의 상태 변경 항목에 행위 수행자 이름과 상태 한글 라벨(코드 아님)이 표시된다.

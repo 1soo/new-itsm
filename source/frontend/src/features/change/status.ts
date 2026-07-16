@@ -39,6 +39,22 @@ export function statusTone(s: ChangeStatus): StatusTone {
   return STATUS_TONE[s] ?? "muted";
 }
 
+const TRANSITION_LABEL: Partial<Record<ChangeStatus, string>> = {
+  REVIEW: "검토 시작",
+  PLANNING: "계획 수립",
+  APPROVAL: "승인 요청",
+  IMPLEMENTATION: "구현 시작",
+  CLOSED: "종료 처리",
+};
+
+/** 상태 전이 버튼 라벨(동작 동사형, `change:transition.*`, SCR-COM-008 아키텍처). */
+export function transitionLabel(t: TFunction, target: ChangeStatus): string {
+  return t(`transition.${target}`, {
+    ns: "change",
+    defaultValue: TRANSITION_LABEL[target] ?? STATUS_LABEL[target] ?? target,
+  });
+}
+
 const TYPE_LABEL: Record<ChangeType, string> = {
   STANDARD: "표준",
   NORMAL: "일반",

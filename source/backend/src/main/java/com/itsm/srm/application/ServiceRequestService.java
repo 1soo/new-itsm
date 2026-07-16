@@ -16,6 +16,7 @@ import com.itsm.common.security.SecurityUtils;
 import com.itsm.common.ticket.Comment;
 import com.itsm.common.ticket.TicketType;
 import com.itsm.common.ticket.TimelineEvent;
+import com.itsm.common.ticket.TimelineMessages;
 import com.itsm.common.ticket.repository.CommentRepository;
 import com.itsm.common.ticket.repository.TicketLinkRepository;
 import com.itsm.common.ticket.repository.TimelineEventRepository;
@@ -195,9 +196,12 @@ public class ServiceRequestService {
         List<CommentResponse> comments = commentRepository.findByTicketTypeAndTicketIdOrderByCreatedAtAsc(TT, id).stream()
                 .map(c -> new CommentResponse(c.getId(), userName(c.getAuthorId()), c.getBody(), c.getCreatedAt()))
                 .toList();
+        Map<String, String> actorCache = new java.util.HashMap<>();
         List<RequestDetailResponse.TimelineEntry> timeline =
                 timelineRepository.findByTicketTypeAndTicketIdOrderByOccurredAtAsc(TT, id).stream()
-                        .map(t -> new RequestDetailResponse.TimelineEntry(t.getEventType(), t.getMessage(), t.getOccurredAt()))
+                        .map(t -> new RequestDetailResponse.TimelineEntry(
+                                t.getEventType(), t.getMessage(), t.getOccurredAt(),
+                                actorCache.computeIfAbsent(t.getCreatedBy(), appUserRepository::resolveDisplayName)))
                         .toList();
         List<RequestDetailResponse.LinkedAsset> linkedAssets = ticketLinkRepository
                 .findBySourceTypeAndSourceId(TT, id).stream()
@@ -294,7 +298,8 @@ public class ServiceRequestService {
         sr.changeStatus(target);
         requestRepository.save(sr);
         timelineRepository.save(TimelineEvent.of(TT, id, "STATUS_" + target.name(),
-                StringUtils.hasText(request.note()) ? request.note() : "상태가 " + target.name() + "로 변경되었습니다."));
+                StringUtils.hasText(request.note()) ? request.note()
+                        : "상태가 " + TimelineMessages.quotedWithParticle(target.label()) + " 변경되었습니다."));
         return new StatusResponse(id, target.name());
     }
 

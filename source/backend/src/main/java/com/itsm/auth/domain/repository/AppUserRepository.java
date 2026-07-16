@@ -21,4 +21,9 @@ public interface AppUserRepository {
     boolean existsByEmail(String email);
 
     Page<AppUser> search(String email, String name, UserStatus status, String roleCode, Pageable pageable);
+
+    /** email(BaseEntity.createdBy 등)로 사용자명 resolve, 못 찾으면 email 그대로 폴백. */
+    default String resolveDisplayName(String email) {
+        return email == null ? null : findByEmail(email).map(AppUser::getName).orElse(email);
+    }
 }

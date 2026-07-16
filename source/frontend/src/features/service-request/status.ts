@@ -35,6 +35,22 @@ export function statusLabel(t: TFunction, status: SrStatus): string {
   });
 }
 
+const TRANSITION_LABEL: Partial<Record<SrStatus, string>> = {
+  VALIDATED: "검증 완료",
+  ROUTED: "라우팅 처리",
+  IN_FULFILLMENT: "이행 시작",
+  FULFILLED: "이행 완료 처리",
+  CLOSED: "종료 처리",
+};
+
+/** 상태 전이 버튼 라벨(동작 동사형, `service-request:transition.*`, SCR-COM-008 아키텍처). */
+export function transitionLabel(t: TFunction, target: SrStatus): string {
+  return t(`transition.${target}`, {
+    ns: "service-request",
+    defaultValue: TRANSITION_LABEL[target] ?? STATUS_LABEL[target] ?? target,
+  });
+}
+
 export function statusTone(status: SrStatus): StatusTone {
   return STATUS_TONE[status] ?? "muted";
 }

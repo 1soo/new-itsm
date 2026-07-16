@@ -14,7 +14,12 @@ import {
 import { FullscreenLoader } from "@/routes/FullscreenLoader";
 import { esmApi } from "@/features/esm/api";
 import { formatDateTime } from "@/features/esm/format";
-import { hrCaseNextStatus, hrCaseStatusLabel, hrCaseStatusTone } from "@/features/esm/status";
+import {
+  hrCaseNextStatus,
+  hrCaseStatusLabel,
+  hrCaseStatusTone,
+  hrCaseTransitionLabel,
+} from "@/features/esm/status";
 import type { HrCaseDetail } from "@/features/esm/types";
 import { extractErrorMessage } from "@/lib/apiClient";
 
@@ -96,7 +101,7 @@ export function HrCaseDetailPage() {
       actions={
         next ? (
           <Button loading={transitioning} onClick={handleTransition}>
-            {hrCaseStatusLabel(t, next)}
+            {hrCaseTransitionLabel(t, next)}
           </Button>
         ) : undefined
       }

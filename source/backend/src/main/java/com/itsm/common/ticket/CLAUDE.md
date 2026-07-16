@@ -9,6 +9,7 @@
 - `TicketLink.java` — 티켓 간 연계 엔티티(예: 인시던트↔문제)
 - `TicketType.java` — 티켓 유형 enum(SERVICE_REQUEST, INCIDENT, PROBLEM, CHANGE, ASSET, CI, KNOWLEDGE, ESM_REQUEST, HR_CASE, VULNERABILITY, COMPLIANCE_REQUIREMENT, CORRECTIVE_ACTION). `CORRECTIVE_ACTION`은 Stage 6(2026-07-12) 승인 게이트 연동 시 추가됨 — 시정조치 개별 항목(compliance.CorrectiveAction)이 요구사항(COMPLIANCE_REQUIREMENT)과 별개로 승인 인스턴스를 가져 전용 타입 필요(approval_request.ticket_type 컬럼은 CHECK 제약 없는 VARCHAR라 DB 마이그레이션 불필요)
 - `Visibility.java` — 공개 범위 enum(INTERNAL, EXTERNAL)
+- `TimelineMessages.java` — STATUS_* 타임라인 기본 메시지 문구 조립 유틸(`quotedWithParticle(label)` — 라벨을 홑따옴표로 감싸고 받침 유무(+ㄹ받침 예외)에 맞는 조사(로/으로) 부착, SRM/ESM/INCIDENT 공용, 2026-07-16 유지보수 코드리뷰)
 
 ## 하위 디렉토리
 - `repository/` — 리포지토리 인터페이스

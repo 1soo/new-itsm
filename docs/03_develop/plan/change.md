@@ -85,3 +85,16 @@
 ## 승인 대상자 역할 기반 동적 상세조회 권한 — CHANGE 부분 (유지보수 요청, 2026-07-15)
 
 > 8개 도메인 공용 작업. 전체 설계·담당범위·완료기준은 `docs/03_develop/plan/common.md` 동일 제목 절 참조. 이 도메인 BE 작업: `change/application/ChangeService.java` 상세조회 가드의 기존 정적 APPROVER 전체조회 조건을 제거하고 `approvalGateService.canApproverView("CHANGE", 변경유형 코드, requesterIdOf(change))` OR로 대체(변경유형 코드·requesterIdOf는 기존 `checkGate` 호출부와 동일 값 재사용). FE 라우트 가드(`routes/index.tsx`)는 공용 작업에 포함되어 별도 진행 불필요.
+
+## 전이 버튼 라벨 (유지보수 요청, 2026-07-16)
+
+### 설계 근거
+- 화면: `docs/02_plan/screen/change.md` v0.4 SCR-CHG-003(전이 라벨표 85~90행).
+- 공통 아키텍처: `docs/03_develop/plan/common.md` "상태 전이 버튼 라벨·타임라인 actor 공통 아키텍처" 절. **CHANGE는 타임라인 actor 대상 아님**(BE/DB 변경 없음, FE 단독).
+
+### 담당 범위 — dev-fe 단독(BE/DB 없음)
+- `features/change/status.ts`에 `transitionLabel(t, target: ChangeStatus): string` 신규(i18n 키 `change:transition.*`, 매핑값 SCR-CHG-003 85~90행 표). 기존 `statusLabel`은 변경하지 않음.
+- `ChangeDetailPage.tsx`의 전이 버튼 텍스트만 `statusLabel(t, target)` → `transitionLabel(t, target)`으로 교체(토스트 문구는 `statusLabel` 유지).
+
+### 완료 기준
+- 변경 상세(SCR-CHG-003)의 전이 버튼에 동작 동사형 라벨이 표시되고, 전이 완료 토스트는 기존처럼 도착 상태명을 사용한다.

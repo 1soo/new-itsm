@@ -27,6 +27,7 @@ import {
   riskTone,
   statusLabel,
   statusTone,
+  transitionLabel,
   typeLabel,
   typeTone,
 } from "@/features/change/status";
@@ -164,7 +165,7 @@ export function ChangeDetailPage() {
               )
             }
           >
-            {statusLabel(t, target)}
+            {transitionLabel(t, target)}
           </Button>
         );
       })}

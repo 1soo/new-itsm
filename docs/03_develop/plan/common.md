@@ -92,6 +92,24 @@
 ### 완료 기준(공통 phase)
 - 헤더에 지구본 아이콘이 "?"와 테마 토글 사이에 노출되고, 클릭 시 한국어/English 팝업에서 전환 시 새로고침 없이 화면 텍스트가 즉시 바뀐다.
 - 새로고침/재방문 시 `itsm-language` 저장값이 유지된다(기본값 한국어).
+
+## 상태 전이 버튼 라벨·타임라인 actor 공통 아키텍처 + 승인 대기함 상세보기 버튼 (유지보수 요청, 2026-07-16)
+
+### 설계 근거
+- `docs/02_plan/screen/common.md` v0.16 SCR-COM-008(상태 전이 버튼 라벨 아키텍처·타임라인 actor 아키텍처), SCR-COM-014(상세보기 버튼).
+- `docs/00_context/glossary.md` "전이 버튼 라벨(Transition Button Label)".
+
+### 공통 아키텍처(참고용 — 실제 구현은 각 도메인 phase에서 수행)
+1. **전이 버튼 라벨(동작 동사형)**: SRM/INCIDENT/PROBLEM/CHANGE/VULNERABILITY/ASSET/ESM 7개 도메인의 `features/{domain}/status.ts`에 `transitionLabel(t, target)` 신규 함수 추가(기존 `statusLabel`은 배지·전이 완료 토스트용으로 시그니처·용도 변경 없이 그대로 유지 — 별도 함수로 분리). i18n 키 `{ns}:transition.{target}`. 각 도메인 상세 화면의 전이 버튼 텍스트만 `statusLabel`→`transitionLabel`로 교체. 구체 라벨 값은 각 도메인 `docs/02_plan/screen/{domain}.md`의 매핑표 참고. 구현 상세는 각 도메인 `docs/03_develop/plan/{domain}.md` 참고.
+2. **타임라인 actor + 코드→라벨**: SRM/ESM(부서요청만)/INCIDENT 3개 도메인만 대상(이 3개 도메인만 공통 `Timeline` 컴포넌트 사용). BE는 각 도메인 상태 enum에 `label()` 메서드 추가하고 `TimelineEntry` DTO에 `actor` 필드 추가(`appUserRepository.findByEmail(event.getCreatedBy())`로 이름 resolve, 실패 시 email 폴백), `STATUS_*` 타임라인 메시지의 `target.name()`을 `target.label()`로 교체. FE는 각 도메인 상세 페이지의 `timelineItems` 매핑에 `actor: entry.actor` 추가(공통 `Timeline`/`TimelineItem`은 이미 `actor` prop 지원 — `components/common/timeline.tsx` 변경 없음). 구현 상세는 `docs/03_develop/plan/service-request.md`/`esm.md`/`incident.md` 참고.
+
+### 담당 범위(이 phase, common 소유 파일)
+
+#### FE (dev-fe) — `source/frontend/src/features/common/ApprovalInboxPage.tsx`
+- 목록 표 각 행에 "상세보기" 버튼 추가(기존 승인/반려 처리용 "상세" 버튼과 별개 위치·동작). 클릭 시 `ticketDetailPath(item.ticketType, item.ticketId)`(같은 디렉토리 `status.ts`의 기존 헬퍼, 헤더 알림 드롭다운과 동일 재사용)로 `navigate`. 목록 행 데이터(API-COM-003 응답)에 `ticketType`/`ticketId`가 이미 있으므로 신규 API·타입 변경 없음.
+
+### 완료 기준
+- 승인 대기함 목록의 각 행에서 "상세보기" 클릭 시 승인 처리 모달이 아니라 해당 티켓의 실제 상세 화면으로 이동한다.
 - 토스트·확인 다이얼로그가 SweetAlert2로 렌더링되며 기존 호출부(83개+) 수정 없이 동작, 라이트/다크 테마에 맞춰 스타일이 반영된다.
 - `Modal`(`components/common/modal.tsx`)은 변경되지 않고 기존 Radix Dialog 그대로 유지된다.
 - `/guide` 진입 시 언어 전환에 따라 본문(11개 도메인+16개 역할 포함)이 영어로도 정상 렌더링된다.

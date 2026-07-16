@@ -57,6 +57,21 @@ export function statusTone(s: AssetStatus): StatusTone {
   return STATUS_TONE[s] ?? "muted";
 }
 
+const TRANSITION_LABEL: Partial<Record<AssetStatus, string>> = {
+  PLANNING: "계획 수립",
+  PROCUREMENT: "구매 진행",
+  OPERATION: "운영 전환",
+  MAINTENANCE: "유지보수 전환",
+};
+
+/** 생애주기 단계 전이 버튼 라벨(동작 동사형, `asset:transition.*`, SCR-COM-008 아키텍처). */
+export function transitionLabel(t: TFunction, target: AssetStatus): string {
+  return t(`transition.${target}`, {
+    ns: "asset",
+    defaultValue: TRANSITION_LABEL[target] ?? STATUS_LABEL[target] ?? target,
+  });
+}
+
 const EXPIRY_LABEL: Record<ExpiryStatus, string> = {
   OK: "정상",
   EXPIRING: "임박",

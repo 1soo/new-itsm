@@ -83,3 +83,32 @@
 ## 승인 대상자 역할 기반 동적 상세조회 권한 — ESM 부분 (유지보수 요청, 2026-07-15)
 
 > 8개 도메인 공용 작업. 전체 설계·담당범위·완료기준은 `docs/03_develop/plan/common.md` 동일 제목 절 참조. 이 도메인 BE 작업: `esm/application/EsmRequestService.java` `assertCanView`(요청자 본인+DEPT_COORDINATOR)에 `approvalGateService.canApproverView("ESM", null, esmRequest.getRequesterId())` OR 추가(신규 권한, 기존 조건은 유지). FE 라우트 가드(`routes/index.tsx`)는 공용 작업에 포함되어 별도 진행 불필요.
+
+## 전이 버튼 라벨·타임라인 actor·textarea 필드 (유지보수 요청, 2026-07-16)
+
+### 설계 근거
+- 화면: `docs/02_plan/screen/esm.md` v0.4 SCR-ESM-005(부서 요청 전이 라벨표 122~128행, 타임라인 actor)·SCR-ESM-008(HR 케이스 전이 라벨표 174~180행 — HR 케이스 상태 이력은 기존부터 `changedBy`를 표시 중이라 actor 작업 대상 아님).
+- API: `docs/02_plan/api_spec/esm.md`(부서 요청 상세 응답 `timeline[].actor`, `formSchema.type`에 `textarea`).
+- 공통 아키텍처: `docs/03_develop/plan/common.md` "상태 전이 버튼 라벨·타임라인 actor 공통 아키텍처" 절.
+- **textarea DB 마이그레이션은 SRM phase에서 이미 함께 처리됨**(`docs/03_develop/plan/service-request.md` "카탈로그 카테고리 CRUD·textarea" 절의 `35_catalog_form_field_textarea_type.sql`이 `esm_catalog_form_field`도 포함). **FE 공통 컴포넌트(`form-schema.ts`/`dynamic-form.tsx`/`field-builder.tsx`)도 같은 phase에서 이미 처리됨**(SRM `CatalogManagePage.tsx`와 ESM `EsmCatalogManagePage.tsx`가 동일한 `FieldBuilder`를 재사용하므로 중복 작업 불필요) — 이 도메인에서는 별도 textarea 작업 없음(BE `FormFieldDto.java` 설명 문구만 아래 반영).
+- 참고 기존 코드: `source/backend/.../esm/domain/EsmRequestStatus.java`, `application/EsmRequestService.java`, `application/dto/RequestDetailResponse.java`·`FormFieldDto.java`; `source/frontend/.../esm/status.ts`·`types.ts`·`EsmRequestDetailPage.tsx`·`HrCaseDetailPage.tsx`.
+
+### 담당 범위
+
+#### BE (dev-backend) — `source/backend/src/main/java/com/itsm/esm/`
+- `domain/EsmRequestStatus.java`에 `label()` 메서드 추가(FE `features/esm/status.ts`의 `REQUEST_STATUS_LABEL`과 동일 값 4종). **`HrCaseStatus.java`는 대상 아님**(actor 작업 범위 밖 — 라벨 매핑은 FE에서만 처리, 아래 참고).
+- `application/dto/RequestDetailResponse.TimelineEntry`(현재 `(String type, String message, OffsetDateTime at)`)에 `actor` 필드 추가.
+- `application/EsmRequestService.java`의 상세 조회 메서드: 타임라인 조회 시 각 `TimelineEvent.getCreatedBy()`(email)로 `appUserRepository.findByEmail()` 조회해 이름 resolve(실패 시 email 폴백)해 `actor`에 채움(요청자명 조회에 쓰는 `requesterId` 기반 조회와는 별개 — 타임라인 actor는 항상 `TimelineEvent.createdBy` 기준).
+- `EsmRequestService.java`의 상태 전이 메서드에서 `TimelineEvent.of(TT, id, "STATUS_" + target.name(), ... "상태가 " + target.name() + "로 변경되었습니다.")` 메시지 부분의 `target.name()` → `target.label()`로 교체(이벤트 타입 문자열은 유지).
+- `application/dto/FormFieldDto.java`의 `@Schema` 설명 문구만 `text|select|number|date|file` → `text|textarea|select|number|date|file`로 갱신.
+
+#### FE (dev-fe) — `source/frontend/src/features/esm/`
+- `status.ts`에 `transitionLabel(t, target: EsmRequestStatus): string`(i18n 키 `esm:transition.*`, 매핑값 SCR-ESM-005 122~128행 표) + `hrCaseTransitionLabel(t, target: HrCaseTargetStatus): string`(i18n 키 `esm:hrCaseTransition.*`, 매핑값 SCR-ESM-008 174~180행 표) 신규 추가. 기존 `requestStatusLabel`/`hrCaseStatusLabel`은 변경하지 않음.
+- `EsmRequestDetailPage.tsx`의 전이 버튼 텍스트만 `requestStatusLabel` → `transitionLabel`로 교체(토스트는 기존 유지).
+- `HrCaseDetailPage.tsx`의 전이 버튼(다음 단계 버튼 1개) 텍스트만 `hrCaseStatusLabel` → `hrCaseTransitionLabel`로 교체(토스트는 기존 유지).
+- `types.ts`의 부서 요청 `timeline` 항목 타입에 `actor: string` 추가.
+- `EsmRequestDetailPage.tsx`의 타임라인 매핑에 `actor: entry.actor` 추가. **`HrCaseDetailPage.tsx`는 변경 없음**(이미 `changedBy`를 별도 필드로 표시 중).
+
+### 완료 기준
+- 부서 요청 상세(SCR-ESM-005)의 전이 버튼에 동작 동사형 라벨, 타임라인에 행위 수행자 이름과 한글 상태 라벨이 표시된다.
+- HR 케이스 상세(SCR-ESM-008)의 전이 버튼에 동작 동사형 라벨이 표시된다(타임라인은 기존과 동일, actor 추가 없음).

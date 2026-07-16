@@ -41,6 +41,6 @@ public record RequestDetailResponse(
     }
 
     @Schema(description = "타임라인 항목")
-    public record TimelineEntry(String type, String message, OffsetDateTime at) {
+    public record TimelineEntry(String type, String message, OffsetDateTime at, String actor) {
     }
 }

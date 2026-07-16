@@ -30,6 +30,7 @@ import {
   slaTone,
   statusLabel,
   statusTone,
+  transitionLabel,
 } from "@/features/service-request/status";
 import type {
   RequestComment,
@@ -227,6 +228,7 @@ export function RequestDetailPage() {
     id: String(i),
     title: entry.message,
     timestamp: formatDateTime(entry.at),
+    actor: entry.actor,
   }));
 
   const formEntries = Object.entries(detail.formValues ?? {});
@@ -247,7 +249,7 @@ export function RequestDetailPage() {
             title={routingBlocked ? routingBlockedMessage : undefined}
             onClick={() => handleTransition(target)}
           >
-            {statusLabel(t, target)}
+            {transitionLabel(t, target)}
           </Button>
         );
       })}

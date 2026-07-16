@@ -58,6 +58,20 @@ export function requestStatusTone(status: EsmRequestStatus): StatusTone {
   return REQUEST_STATUS_TONE[status] ?? "muted";
 }
 
+const REQUEST_TRANSITION_LABEL: Partial<Record<EsmRequestStatus, string>> = {
+  IN_PROGRESS: "처리 시작",
+  COMPLETED: "완료 처리",
+  REJECTED: "반려 처리",
+};
+
+/** 부서 요청 상태 전이 버튼 라벨(동작 동사형, `esm:transition.*`, SCR-COM-008 아키텍처). */
+export function transitionLabel(t: TFunction, target: EsmRequestStatus): string {
+  return t(`transition.${target}`, {
+    ns: "esm",
+    defaultValue: REQUEST_TRANSITION_LABEL[target] ?? REQUEST_STATUS_LABEL[target] ?? target,
+  });
+}
+
 const HR_CASE_STATUS_LABEL: Record<HrCaseStatus, string> = {
   INTAKE: "접수",
   DOCUMENTATION: "기록",
@@ -92,6 +106,20 @@ const HR_CASE_NEXT: Record<HrCaseStatus, HrCaseTargetStatus | null> = {
 
 export function hrCaseNextStatus(status: HrCaseStatus): HrCaseTargetStatus | null {
   return HR_CASE_NEXT[status] ?? null;
+}
+
+const HR_CASE_TRANSITION_LABEL: Partial<Record<HrCaseStatus, string>> = {
+  DOCUMENTATION: "기록 시작",
+  INVESTIGATION: "조사 시작",
+  RESOLUTION: "해결 처리",
+};
+
+/** HR 케이스 상태 전이 버튼 라벨(동작 동사형, `esm:hrCaseTransition.*`, SCR-COM-008 아키텍처). */
+export function hrCaseTransitionLabel(t: TFunction, target: HrCaseTargetStatus): string {
+  return t(`hrCaseTransition.${target}`, {
+    ns: "esm",
+    defaultValue: HR_CASE_TRANSITION_LABEL[target] ?? HR_CASE_STATUS_LABEL[target] ?? target,
+  });
 }
 
 const CHECKLIST_STATUS_LABEL: Record<ChecklistStatus, string> = {

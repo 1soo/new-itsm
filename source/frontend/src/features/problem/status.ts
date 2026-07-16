@@ -38,6 +38,22 @@ export function statusTone(s: ProblemStatus): StatusTone {
   return STATUS_TONE[s] ?? "muted";
 }
 
+const TRANSITION_LABEL: Partial<Record<ProblemStatus, string>> = {
+  CLASSIFICATION: "분류 시작",
+  INVESTIGATION: "조사 시작",
+  KNOWN_ERROR: "알려진 오류로 등록",
+  WORKAROUND: "워크어라운드 등록",
+  RESOLVED_CLOSED: "종료 처리",
+};
+
+/** 상태 전이 버튼 라벨(동작 동사형, `problem:transition.*`, SCR-COM-008 아키텍처). */
+export function transitionLabel(t: TFunction, target: ProblemStatus): string {
+  return t(`transition.${target}`, {
+    ns: "problem",
+    defaultValue: TRANSITION_LABEL[target] ?? STATUS_LABEL[target] ?? target,
+  });
+}
+
 const PRIORITY_TONE: Record<ProblemPriority, StatusTone> = {
   P1: "danger",
   P2: "warning",

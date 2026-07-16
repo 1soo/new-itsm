@@ -25,6 +25,7 @@ import {
   departmentLabel,
   requestStatusLabel,
   requestStatusTone,
+  transitionLabel,
 } from "@/features/esm/status";
 import type { ChecklistDetail, EsmComment, EsmRequestDetail, EsmRequestTargetStatus } from "@/features/esm/types";
 import { commonApi } from "@/features/common/api";
@@ -154,6 +155,7 @@ export function EsmRequestDetailPage() {
     id: String(i),
     title: ev.message,
     timestamp: formatDateTime(ev.at),
+    actor: ev.actor,
   }));
 
   return (
@@ -177,7 +179,7 @@ export function EsmRequestDetailPage() {
             title={blocked ? t("esmRequestDetail.transitionBlockedTooltip", { defaultValue: "승인 완료 전에는 완료 상태로 전이할 수 없습니다" }) : undefined}
             onClick={() => handleTransition(target)}
           >
-            {requestStatusLabel(t, target)}
+            {transitionLabel(t, target)}
           </Button>
         );
       })}

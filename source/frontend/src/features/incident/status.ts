@@ -24,6 +24,20 @@ export function statusLabel(t: TFunction, s: IncidentStatus): string {
   return t(`status.${s}`, { ns: "incident", defaultValue: STATUS_LABEL[s] ?? s });
 }
 
+const TRANSITION_LABEL: Partial<Record<IncidentStatus, string>> = {
+  IN_PROGRESS: "대응 시작",
+  RESOLVED: "해결 처리",
+  CLOSED: "종료 처리",
+};
+
+/** 상태 전이 버튼 라벨(동작 동사형, `incident:transition.*`, SCR-COM-008 아키텍처). */
+export function transitionLabel(t: TFunction, target: IncidentStatus): string {
+  return t(`transition.${target}`, {
+    ns: "incident",
+    defaultValue: TRANSITION_LABEL[target] ?? STATUS_LABEL[target] ?? target,
+  });
+}
+
 export function statusTone(s: IncidentStatus): StatusTone {
   return STATUS_TONE[s] ?? "muted";
 }

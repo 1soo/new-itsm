@@ -27,6 +27,7 @@ import {
   originLabel,
   statusLabel,
   statusTone,
+  transitionLabel,
 } from "@/features/problem/status";
 import type { ProblemDetail } from "@/features/problem/types";
 import { commonApi } from "@/features/common/api";
@@ -187,7 +188,7 @@ export function ProblemDetailPage() {
                     )
                   }
                 >
-                  {statusLabel(t, target)}
+                  {transitionLabel(t, target)}
                 </Button>
               );
             })}

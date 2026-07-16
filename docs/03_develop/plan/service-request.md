@@ -75,6 +75,83 @@
 - English 전환 시 서비스 포털·요청 제출·내 요청 목록·요청 큐·요청 상세·카탈로그 관리·지표 대시보드 전체 텍스트(상태 라벨 포함) 영어 전환.
 - 기존 요청 제출/승인/이행/CSAT 등 기능 회귀 없음(텍스트만 치환).
 
+## 전이 버튼 라벨·타임라인 actor·카탈로그 카테고리 CRUD·textarea 필드 (유지보수 요청, 2026-07-16)
+
+### 설계 근거
+- 화면: `docs/02_plan/screen/service-request.md` v0.5 SCR-SRM-005(전이 버튼 라벨표 131~140행), SCR-SRM-007/009(카테고리 관리, 탭 구성).
+- API: `docs/02_plan/api_spec/service-request.md` v0.4 — API-SRM-001/002/003/004(`categoryId`/`categoryName`), API-SRM-008(`timeline[].actor`), API-SRM-010(전이), API-SRM-018~021(카테고리 CRUD 신규).
+- DB: `docs/02_plan/database/service-request.md` v0.4 — `service_catalog_category` 신규, `service_catalog_item.category`(자유 텍스트) → `category_id`(FK) 전환, `catalog_form_field.field_type`에 `textarea` 추가.
+- 권한: `docs/02_plan/security/authorization/process_owner.md` v0.4(카테고리 CRUD는 PROCESS_OWNER 전용, 목록 조회는 공개).
+- 공통 아키텍처: `docs/03_develop/plan/common.md` "상태 전이 버튼 라벨·타임라인 actor 공통 아키텍처" 절.
+- 참고 기존 코드: `source/backend/.../srm/domain/ServiceCatalogItem.java`·`RequestStatus.java`, `application/ServiceCatalogService.java`·`ServiceRequestService.java`, `application/dto/CatalogItemDetailResponse.java`·`CreateCatalogItemRequest.java`·`UpdateCatalogItemRequest.java`·`RequestDetailResponse.java`, `presentation/ServiceCatalogController.java`, `infrastructure/persistence/ServiceCatalogItemJpaRepository.java`; `source/frontend/.../service-request/status.ts`·`types.ts`·`RequestDetailPage.tsx`·`CatalogManagePage.tsx`·`PortalPage.tsx`.
+
+### 담당 범위
+
+#### DB (dev-database) — `source/db/sql/`
+- 신규 파일 `34_srm_catalog_category.sql`(다음 순번):
+  - `service_catalog_category` 테이블 신규(공통 컬럼 규칙, `id`/`name` UNIQUE/`sort_order`/`created_by/at`/`updated_by/at`/`is_deleted` — `queue` 테이블 DDL 패턴 참고).
+  - `service_catalog_item.category_id BIGINT NULL REFERENCES service_catalog_category(id)` 추가.
+  - 기존 `category`(자유 텍스트) 값이 있으면 DISTINCT 값으로 `service_catalog_category` 백필 후 `category_id` 매핑(값이 없으면 스킵, 에러 아님).
+  - 백필 완료 후 `service_catalog_item.category` 컬럼 DROP(26번 마이그레이션이 옛 승인 컬럼을 제거한 패턴과 동일).
+  - 시드: 예시 카테고리 2~3건(예: "하드웨어"/"소프트웨어"/"계정") 생성 후 기존 카탈로그 항목 중 최소 1건에 매핑(tester가 카테고리 필터·표시를 검증할 수 있게).
+- 신규 파일 `35_catalog_form_field_textarea_type.sql`(SRM+ESM 공유 기능이라 한 파일에 두 테이블 반영):
+  - `catalog_form_field`와 `esm_catalog_form_field` 각각의 `ck_catalog_form_field_type`/`ck_esm_catalog_form_field_type` CHECK 제약을 DROP 후 `'textarea'` 값을 포함해 재생성.
+- 완료 후 `source/db/sql/CLAUDE.md`에 두 파일 반영.
+
+#### BE (dev-backend) — `source/backend/src/main/java/com/itsm/srm/`
+
+**1. 전이 버튼 라벨(FE 전용, BE 변경 없음)** — 아래 3번 항목만 BE 대상.
+
+**2. 카탈로그 카테고리 CRUD(신규)**
+- `domain/ServiceCatalogCategory.java` 신규 엔티티(`id`/`name`/`sortOrder`).
+- `domain/repository/ServiceCatalogCategoryRepository.java` + `infrastructure/persistence/ServiceCatalogCategoryJpaRepository.java`(`ServiceCatalogItemRepository` 패턴 그대로).
+- `application/dto/`에 `CategoryResponse`(id, name, sortOrder), `CategoryCreateRequest`/`CategoryUpdateRequest`(name, sortOrder) 신규.
+- `application/ServiceCatalogCategoryService.java` 신규(list — `sortOrder` 오름차순, create — 이름 중복 시 409, update, delete — 참조 중인 `service_catalog_item.category_id`가 있으면 409 `CATEGORY_IN_USE`, 자동 미분류 처리 안 함).
+- `presentation/ServiceCatalogCategoryController.java` 신규(`/api/v1/service-catalog/categories`): GET(인증만), POST/PATCH/DELETE(`@PreAuthorize("hasRole('PROCESS_OWNER')")`, `ServiceCatalogController`의 `@PreAuthorize` 패턴 그대로).
+- `common/exception/ErrorCode.java`에 `CATEGORY_NOT_FOUND`(404), `CATEGORY_NAME_DUPLICATE`(409), `CATEGORY_IN_USE`(409) 추가.
+- **기존 카탈로그 항목 연동**: `domain/ServiceCatalogItem.java`의 `category`(String) 필드를 `categoryId`(Long)로 교체(생성자·`update()` 시그니처도 함께 변경). `domain/repository/ServiceCatalogItemRepository.search(String category, String keyword)` → `search(Long categoryId, String keyword)`로 변경, `ServiceCatalogItemJpaRepository`의 JPQL도 `i.categoryId = :categoryId` 조건으로 교체. `application/dto/CatalogItemSummaryResponse`/`CatalogItemDetailResponse`의 `category` 필드를 `categoryId`/`categoryName`으로 교체(`categoryName`은 `assigneeRoleName`과 동일하게 `ServiceCatalogCategoryRepository`로 resolve). `CreateCatalogItemRequest`/`UpdateCatalogItemRequest`에 `categoryId`(선택) 필드 추가, 존재하지 않는 categoryId면 404. `ServiceCatalogService.list/create/update/toDetail`을 위 변경에 맞게 수정. `ServiceCatalogController.list`의 `@RequestParam String category` → `Long categoryId`.
+
+**3. 타임라인 actor + 코드→라벨**
+- `domain/RequestStatus.java`에 `label()` 메서드 추가(FE `features/service-request/status.ts`의 `STATUS_LABEL`과 동일 한글값 6종).
+- `application/dto/RequestDetailResponse.TimelineEntry`에 `actor` 필드 추가(현재 `(String type, String message, OffsetDateTime at)` → `actor` 추가).
+- `application/ServiceRequestService.java`의 상세 조회 메서드: 타임라인 조회 시 각 `TimelineEvent.getCreatedBy()`(email)로 `appUserRepository.findByEmail()` 조회해 이름 resolve(실패 시 email 폴백, 기존 요청자명 조회와 동일 패턴)해 `actor`에 채움.
+- `transition()` 메서드의 `TimelineEvent.of(TT, id, "STATUS_" + target.name(), ... "상태가 " + target.name() + "로 변경되었습니다.")`에서 `target.name()`(메시지 부분만) → `target.label()`로 교체(이벤트 타입 문자열 `"STATUS_" + target.name()`은 코드 그대로 유지, 사람이 읽는 메시지 부분만 라벨로).
+
+**4. textarea(BE 변경 없음)** — `application/dto/FormFieldDto.java`의 `@Schema` 설명 문구만 `text|select|number|date|file` → `text|textarea|select|number|date|file`로 갱신(저장·검증 로직은 `text`와 동일해 로직 변경 불필요).
+
+#### FE (dev-fe) — `source/frontend/src/features/service-request/`, `source/frontend/src/components/common/`
+
+**1. 전이 버튼 라벨**
+- `status.ts`에 `transitionLabel(t, target: SrStatus): string` 신규(i18n 키 `service-request:transition.*`, 매핑값은 `docs/02_plan/screen/service-request.md` 132~140행 표). `statusLabel`은 변경하지 않음.
+- `RequestDetailPage.tsx`의 전이 버튼 텍스트만 `statusLabel(t, target)` → `transitionLabel(t, target)`으로 교체(토스트 문구는 `statusLabel` 유지).
+
+**2. 타임라인 actor**
+- `types.ts`의 `RequestDetail.timeline` 항목 타입에 `actor: string` 추가.
+- `RequestDetailPage.tsx`의 `timelineItems` 매핑(226행 부근)에 `actor: entry.actor` 추가.
+
+**3. 카탈로그 카테고리 CRUD**
+- `api.ts`에 `srmApi.listCategories()`(GET, 인증만)·`createCategory()`·`updateCategory()`·`deleteCategory()`(API-SRM-018~021) 추가.
+- `types.ts`에 `Category`(id, name, sortOrder) 타입 추가, `CatalogItemDetail`/`CatalogItemInput`의 `category?: string` → `categoryId?: number`/`categoryName?: string`로 교체.
+- **SCR-SRM-009 신규**: `CatalogManagePage.tsx`에 탭 UI 추가(설계 SCR-SRM-009 "SCR-SRM-007과 탭 구성" 참고) — 기존 카탈로그 항목 탭 + "카테고리 관리" 탭(목록 표+생성/수정/삭제, PROCESS_OWNER 전용). 삭제 409(`CATEGORY_IN_USE`) 시 오류 토스트로 안내(자동 미분류 처리 없음).
+- 카탈로그 항목 생성/수정 폼에 카테고리 Select 추가(담당자 역할 Select와 동일 패턴, sentinel 값으로 "미지정" 표현).
+- `PortalPage.tsx`의 `item.category` 배지를 `item.categoryName`으로 교체.
+
+**4. textarea 필드 유형(공통 컴포넌트, SRM+ESM 공유 — 이 phase에서 한 번만 작업)**
+- `components/common/form-schema.ts`의 `FormFieldSchema.type` 유니온에 `"textarea"` 추가.
+- `components/common/dynamic-form.tsx`에 `case "textarea"` 추가(`<textarea>` 렌더, `text` case와 동일한 값 처리·오류 표시).
+- `components/common/field-builder.tsx`의 필드 유형 Select에 "textarea" 옵션 추가(`fieldBuilder.fieldType.textarea` i18n 키).
+
+### 진행 순서
+1. DB(카테고리 마이그레이션) → BE(카테고리 CRUD+기존 카탈로그 연동) → FE(카테고리 CRUD 화면+Select) — 순차.
+2. DB(textarea CHECK) → FE(공통 컴포넌트 3파일) — 순차, 카테고리와 병렬 가능.
+3. 전이 버튼 라벨·타임라인 actor는 FE/BE 각자 독립 파일이라 위 1·2와 병렬 진행 가능.
+
+### 완료 기준
+- 요청 상세(SCR-SRM-005)의 전이 버튼에 동작 동사형 라벨이 표시되고, 전이 완료 토스트는 기존처럼 도착 상태명을 사용한다.
+- 요청 상세 타임라인의 상태 변경 항목에 행위 수행자 이름과 "코드가 아닌" 상태 한글 라벨이 표시된다.
+- 카탈로그 관리 화면에서 카테고리를 생성/수정/삭제할 수 있고, 참조 중인 카테고리 삭제 시 409로 거부된다. 카탈로그 항목 생성/수정 시 카테고리를 선택할 수 있고 포털 카드에 카테고리명이 표시된다.
+- 카탈로그 관리에서 여러 줄 텍스트(textarea) 필드 유형을 추가할 수 있고, 요청 제출 폼에 `<textarea>`로 렌더링된다.
+
 ## 요청 유형별 담당자 역할 지정 (유지보수 요청, 2026-07-15)
 
 > Main 요청(유지보수). 요청 유형(카탈로그 항목)에 담당자 역할을 지정해 요청 큐 배정 팝업에서 그 역할 보유자 중 담당자를 선택할 수 있게 한다(자동배정 아님). 큐 배정 버튼 노출조건·라우팅 버튼 비활성화·카탈로그 관리 화면 Select 전환/프리필 결함도 함께 정리한다. UI 신규 소집 없음(기존 Modal/Select 컴포넌트 재사용).

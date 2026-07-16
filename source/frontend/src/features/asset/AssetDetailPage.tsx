@@ -25,6 +25,7 @@ import {
   statusLabel,
   statusTone,
   ticketTypeLabel,
+  transitionLabel,
   typeLabel,
   typeTone,
 } from "@/features/asset/status";
@@ -181,7 +182,7 @@ export function AssetDetailPage() {
                     )
                   }
                 >
-                  {statusLabel(t, target)}
+                  {transitionLabel(t, target)}
                 </Button>
               ))}
               <Button

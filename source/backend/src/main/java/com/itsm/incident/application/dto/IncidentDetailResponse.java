@@ -32,6 +32,6 @@ public record IncidentDetailResponse(
     }
 
     @Schema(description = "타임라인 항목")
-    public record TimelineEntry(String type, String visibility, String message, OffsetDateTime at) {
+    public record TimelineEntry(String type, String visibility, String message, OffsetDateTime at, String actor) {
     }
 }

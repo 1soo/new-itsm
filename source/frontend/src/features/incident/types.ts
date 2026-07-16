@@ -48,6 +48,7 @@ export interface IncidentTimelineEvent {
   visibility: Visibility;
   message: string;
   at: string;
+  actor: string;
 }
 
 /** 승인 프로세스 커스텀 기능(유지보수 요청) — approvalRequestId=null이면 매칭되는 승인 프로세스가 없어 게이트 없이 진행. */

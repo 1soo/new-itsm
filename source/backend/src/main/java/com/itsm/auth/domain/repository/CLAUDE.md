@@ -3,7 +3,7 @@
 auth 도메인 리포지토리 인터페이스(영속성 기술 비의존, 구현은 infrastructure에 위임).
 
 ## 파일
-- `AppUserRepository.java` — 계정(AppUser) 저장·조회
+- `AppUserRepository.java` — 계정(AppUser) 저장·조회. `resolveDisplayName(email)` default 메서드로 email(BaseEntity.createdBy 등) 기준 사용자명 resolve(못 찾으면 email 폴백, 2026-07-16 유지보수 코드리뷰 — 타임라인 actor resolve 등 도메인 공용 중복 제거)
 - `RoleRepository.java` — 역할(Role) 저장·조회
 - `UserRoleRepository.java` — 사용자-역할 매핑(UserRole) 저장·조회
 - `ScreenRepository.java` — 화면(Screen) 저장·조회(screenCode/path 중복 검사, groupCode/domain 필터 페이지네이션, nav_visible 목록)
