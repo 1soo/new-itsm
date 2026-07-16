@@ -1,3 +1,10 @@
+---
+date: 20260712-175603
+domain: infra-monitoring
+result: pass
+keywords: [다국어(i18n) 전환, 지표 등록/대시보드, 임계치 알림, 용량 계획/리포팅, 한국어 재전환]
+---
+
 # 통합 테스트 결과 — infra-monitoring (다국어(i18n) 텍스트 전환, 유지보수 요청 2026-07-12, 마지막 도메인)
 
 - 시나리오: `docs/04_test/20260712-175603/infra-monitoring/scenario.md`

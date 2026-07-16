@@ -1,3 +1,10 @@
+---
+date: 20260716-080731
+domain: incident
+result: pass
+keywords: [상태전이버튼라벨, 타임라인actor표시, 상태라벨]
+---
+
 # 통합 테스트 결과 — incident (20260716-080731)
 
 ## 요약

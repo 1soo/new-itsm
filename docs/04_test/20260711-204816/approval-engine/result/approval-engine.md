@@ -1,3 +1,10 @@
+---
+date: 20260711-204816
+domain: approval-engine
+result: pass
+keywords: [CHANGE 승인 게이트, 전이 버튼 숨김(FE), 승인 대기함 통합 조회]
+---
+
 # 통합 테스트 결과 — approval-engine (Stage 2: CHANGE 게이트 실연동) (20260711-204816)
 
 ## 요약

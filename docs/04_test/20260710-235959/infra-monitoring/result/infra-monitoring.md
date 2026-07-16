@@ -1,3 +1,10 @@
+---
+date: 20260710-235959
+domain: infra-monitoring
+result: pass
+keywords: [용량 활용률 배지, SLA 라벨 구분, 재검증]
+---
+
 # 통합 테스트 결과 — Infra Monitoring (IT 인프라 모니터링 & 용량관리, IOM) 재테스트 (20260710-235959)
 
 ## 요약

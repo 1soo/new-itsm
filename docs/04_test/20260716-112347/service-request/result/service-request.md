@@ -1,3 +1,10 @@
+---
+date: 20260716-112347
+domain: service-request
+result: pass
+keywords: [양식 필드 textarea 유형, 개행 보존]
+---
+
 # 통합 테스트 결과 — service-request (20260716-112347, 배치3: textarea 필드 유형)
 
 ## 요약

@@ -5,6 +5,12 @@
 >
 > 근거: 도메인 개요·원칙은 `docs/01_analyze/prd/*.md`, 역할별 페르소나·접근 범위는 `docs/02_plan/security/authorization/*.md`, 실제 메뉴명은 `source/frontend/src/routes/navConfig.tsx`, 실제 화면·버튼명은 `docs/02_plan/screen/*.md`를 근거로 한다. 메뉴명·버튼명은 실제 구현 명칭을 그대로 인용했으며 임의로 가공하지 않았다.
 
+## 변경 이력
+
+| 날짜 | 요약 |
+|------|------|
+| 2026-07-11 | 최초 작성 |
+
 ---
 
 ## 1. 개요

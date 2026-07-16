@@ -1,3 +1,10 @@
+---
+date: 20260709-233129
+domain: change
+result: pass
+keywords: [표준변경 AUTO 승인경로, 승인경로 분류, 회귀테스트]
+---
+
 # 통합 테스트 결과 — change (CHG) 재테스트 (20260709-233129)
 
 > 환경: React CSR(localhost:5173) / Spring Boot(:8080) / PostgreSQL(itsm-postgres, healthy)

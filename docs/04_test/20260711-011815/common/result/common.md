@@ -1,3 +1,10 @@
+---
+date: 20260711-011815
+domain: common
+result: pass
+keywords: [SYSTEM_ADMIN, RBAC, 권한회귀]
+---
+
 # 통합 테스트 결과 — Common (SYSTEM_ADMIN 전체 접근 회귀) (20260711-011815)
 
 ## 요약

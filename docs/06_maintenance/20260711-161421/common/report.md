@@ -1,3 +1,10 @@
+---
+date: 20260711-161421
+domain: common
+change_type: [modified, removed]
+keywords: [polling전환, 8건상한폐지, 백그라운드정지]
+---
+
 # 유지보수 이력 — common
 
 > 유지보수 일시: 20260711-161421 · 도메인: common

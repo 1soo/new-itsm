@@ -1,3 +1,10 @@
+---
+date: 20260716-125723
+domain: esm
+change_type: [new, modified]
+keywords: [상태전이 버튼 라벨, 타임라인 actor 표시, textarea 필드 유형, 부서요청]
+---
+
 # 유지보수 이력 — esm
 
 > 유지보수 일시: 20260716-125723 · 도메인: esm

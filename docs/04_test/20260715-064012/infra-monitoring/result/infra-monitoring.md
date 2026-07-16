@@ -1,3 +1,10 @@
+---
+date: 20260715-064012
+domain: infra-monitoring
+result: pass
+keywords: [지표 조회 폼, 지표 등록, 토큰 재발급]
+---
+
 # 통합 테스트 결과 — infra-monitoring (20260715-064012)
 
 ## 요약

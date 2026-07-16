@@ -1,3 +1,10 @@
+---
+date: 20260712-014911
+domain: knowledge
+change_type: [new, modified, removed]
+keywords: [공용승인엔진이관, 게이트키퍼검토승인, 자동상태전이, 전용검토화면제거]
+---
+
 # 유지보수 이력 — knowledge
 
 > 유지보수 일시: 20260712-014911 · 도메인: knowledge

@@ -1,3 +1,10 @@
+---
+date: 20260710-071918
+domain: asset
+result: pass
+keywords: [자산-티켓 양방향 연계, 회귀테스트]
+---
+
 # 통합 테스트 결과 — asset (ITAM) 재테스트 (20260710-071918)
 
 > 환경: React CSR(localhost:5173, 재빌드) / Spring Boot(:8080, 재기동) / PostgreSQL(itsm-postgres, healthy)

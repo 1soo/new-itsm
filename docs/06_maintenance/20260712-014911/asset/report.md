@@ -1,3 +1,10 @@
+---
+date: 20260712-014911
+domain: asset
+change_type: [new, modified]
+keywords: [승인 게이트, 생애주기 전이, 자산 폐기]
+---
+
 # 유지보수 이력 — asset
 
 > 유지보수 일시: 20260712-014911 · 도메인: asset

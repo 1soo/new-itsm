@@ -1,3 +1,10 @@
+---
+date: 20260714-151157
+domain: runtime-upgrade
+change_type: [modified]
+keywords: [java25, spring-boot4, postgresql18, gradle-upgrade, jackson3]
+---
+
 # 유지보수 이력 — runtime-upgrade
 
 > 유지보수 일시: 20260714-151157 · 도메인: runtime-upgrade

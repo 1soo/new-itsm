@@ -1,3 +1,10 @@
+---
+date: 20260711-154500
+domain: common
+result: pass
+keywords: [알림polling, 백그라운드정지, merge정책]
+---
+
 # 통합 테스트 결과 — common (헤더 알림 5초 polling 전환, 20260711-154500)
 
 > 환경: React CSR(:5173) / Spring Boot(:8080) / PostgreSQL(itsm-postgres, docker `itsm-postgres`)

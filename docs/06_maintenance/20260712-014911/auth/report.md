@@ -1,3 +1,10 @@
+---
+date: 20260712-014911
+domain: auth
+change_type: [new]
+keywords: [승인 프로세스, 우선순위 tier, drag&drop 순서 재정렬, CRUD API]
+---
+
 # 유지보수 이력 — auth
 
 > 유지보수 일시: 20260712-014911 · 도메인: auth

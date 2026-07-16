@@ -1,3 +1,10 @@
+---
+date: 20260715-061016
+domain: common
+change_type: [new, modified, removed]
+keywords: [canApproverView, 동적상세조회권한, 정적권한폐지]
+---
+
 # 유지보수 이력 — common
 
 > 유지보수 일시: 20260715-061016 · 도메인: common

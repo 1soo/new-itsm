@@ -1,3 +1,10 @@
+---
+date: 20260712-014911
+domain: srm
+change_type: [new, modified, removed]
+keywords: [공용 승인 엔진 이관, approverRole 하드코딩 제거, 승인 게이트, 서비스 카탈로그]
+---
+
 # 유지보수 이력 — srm
 
 > 유지보수 일시: 20260712-014911 · 도메인: srm

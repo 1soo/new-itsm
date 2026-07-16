@@ -1,3 +1,10 @@
+---
+date: 20260710-095827
+domain: ui-revamp
+result: pass
+keywords: [다크모드 토글, Lozenge 배지, 접근성(포커스링·대비), 공통 컴포넌트 API, 도메인 화면 회귀]
+---
+
 # 통합 테스트 결과 — ui-revamp (UI/UX 개편) (20260710-095827)
 
 > 환경: React CSR(localhost:5173) / Spring Boot(:8080) / PostgreSQL(itsm-postgres, healthy)

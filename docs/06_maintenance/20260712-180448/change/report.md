@@ -1,3 +1,10 @@
+---
+date: 20260712-180448
+domain: change
+change_type: [new, modified]
+keywords: [다국어(i18n) 지원, 번역 키 전환, 연계 항목 라벨 결함 수정]
+---
+
 # 유지보수 이력 — change
 
 > 유지보수 일시: 20260712-180448 · 도메인: change

@@ -1,3 +1,10 @@
+---
+date: 20260709-214912
+domain: problem
+result: pass
+keywords: [재테스트, 인시던트 연계, 오류코드 정합, 빌드]
+---
+
 # 통합 테스트 결과 — problem (PRB) 재테스트 (20260709-214912)
 
 > 환경: React CSR(localhost:5173) / Spring Boot(:8080) / PostgreSQL(itsm-postgres, healthy)

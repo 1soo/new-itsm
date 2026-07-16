@@ -1,3 +1,10 @@
+---
+date: 20260711-214200
+domain: approval-engine
+result: pass
+keywords: [KNOWLEDGE 게시 승인 게이트, 승인 이력 보존, 구 메뉴 제거 회귀]
+---
+
 # 통합 테스트 결과 — approval-engine (Stage 3: KNOWLEDGE 도메인 게시 승인 게이트) (20260711-214200)
 
 ## 요약

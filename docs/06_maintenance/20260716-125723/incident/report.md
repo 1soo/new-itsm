@@ -1,3 +1,10 @@
+---
+date: 20260716-125723
+domain: incident
+change_type: [new, modified]
+keywords: [상태전이버튼라벨, 타임라인actor표시, 상태라벨유틸]
+---
+
 # 유지보수 이력 — incident
 
 > 유지보수 일시: 20260716-125723 · 도메인: incident

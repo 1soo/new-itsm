@@ -1,3 +1,10 @@
+---
+date: 20260712-014911
+domain: compliance
+change_type: [new, modified]
+keywords: [승인 게이트, 시정조치 상태전이, TicketType.CORRECTIVE_ACTION, 항목별 개별 승인]
+---
+
 # 유지보수 이력 — compliance
 
 > 유지보수 일시: 20260712-014911 · 도메인: compliance

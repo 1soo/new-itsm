@@ -1,3 +1,10 @@
+---
+date: 20260710-234456
+domain: infra-monitoring
+result: pass
+keywords: [지표 등록, 임계치 알림, 용량 계획, SLA 가동률, 리포팅 집계]
+---
+
 # 통합 테스트 결과 — Infra Monitoring (IT 인프라 모니터링 & 용량관리, IOM) (20260710-234456)
 
 ## 요약

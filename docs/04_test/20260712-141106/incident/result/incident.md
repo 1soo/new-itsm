@@ -1,3 +1,10 @@
+---
+date: 20260712-141106
+domain: incident
+result: pass
+keywords: [다국어전환i18n, formatMinutes단위표기, 통합검색상태배지, 날짜포맷유지]
+---
+
 # 통합 테스트 결과 — incident (20260712-141106)
 
 ## 요약

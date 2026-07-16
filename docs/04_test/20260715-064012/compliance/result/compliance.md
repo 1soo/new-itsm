@@ -1,3 +1,10 @@
+---
+date: 20260715-064012
+domain: compliance
+result: pass
+keywords: [PG18/Boot4.1 런타임 검증, 준수상태 조회, 책임자 지정]
+---
+
 # 통합 테스트 결과 — compliance (20260715-064012)
 
 ## 요약

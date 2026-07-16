@@ -1,3 +1,10 @@
+---
+date: 20260712-180448
+domain: compliance
+change_type: [new, modified]
+keywords: [i18n, 다국어 전환, 감사 로그 라벨, auditEventTypeLabel]
+---
+
 # 유지보수 이력 — compliance
 
 > 유지보수 일시: 20260712-180448 · 도메인: compliance

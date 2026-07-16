@@ -1,3 +1,10 @@
+---
+date: 20260710-064414
+domain: asset
+result: partial
+keywords: [자산 생애주기, 만료 추적, CI/CMDB 관계, 티켓 연계]
+---
+
 # 통합 테스트 결과 — asset (ITAM, 7/7 마지막 도메인) (20260710-064414)
 
 > 환경: React CSR(localhost:5173) / Spring Boot(:8080) / PostgreSQL(itsm-postgres, healthy)

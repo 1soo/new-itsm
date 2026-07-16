@@ -1,3 +1,10 @@
+---
+date: 20260712-143702
+domain: problem
+result: pass
+keywords: [다국어, 상태전이, KEDB 검색, 통합검색]
+---
+
 # 통합 테스트 결과 — problem (20260712-143702)
 
 ## 요약

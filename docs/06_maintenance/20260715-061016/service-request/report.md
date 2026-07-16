@@ -1,3 +1,10 @@
+---
+date: 20260715-061016
+domain: service-request
+change_type: [new, modified, removed]
+keywords: [카탈로그 담당자 역할 배정, 담당 큐 Select, 배정버튼 노출조건, 라우팅 담당자 필수화, 동적 승인 열람권한]
+---
+
 # 유지보수 이력 — service-request
 
 > 유지보수 일시: 20260715-061016 · 도메인: service-request

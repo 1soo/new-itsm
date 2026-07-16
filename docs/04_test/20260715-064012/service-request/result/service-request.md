@@ -1,3 +1,10 @@
+---
+date: 20260715-064012
+domain: service-request
+result: pass
+keywords: [서비스 포털 동적 양식, 요청 큐, 승인 대기함]
+---
+
 # 통합 테스트 결과 — service-request (20260715-064012)
 
 ## 요약

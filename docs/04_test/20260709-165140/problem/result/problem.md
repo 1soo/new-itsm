@@ -1,3 +1,10 @@
+---
+date: 20260709-165140
+domain: problem
+result: partial
+keywords: [상태전이, RCA, 워크어라운드, KEDB, 인시던트 연계]
+---
+
 # 통합 테스트 결과 — problem (PRB) (20260709-165140)
 
 > 환경: React CSR(localhost:5173) / Spring Boot(:8080) / PostgreSQL(itsm-postgres, healthy)

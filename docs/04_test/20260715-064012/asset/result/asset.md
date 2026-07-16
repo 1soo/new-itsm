@@ -1,3 +1,10 @@
+---
+date: 20260715-064012
+domain: asset
+result: pass
+keywords: [자산 등록, 회귀테스트]
+---
+
 # 통합 테스트 결과 — asset (20260715-064012)
 
 ## 요약

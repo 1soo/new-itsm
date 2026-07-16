@@ -1,3 +1,10 @@
+---
+date: 20260715-142838
+domain: service-request
+result: pass
+keywords: [담당자 후보 배정, 담당 큐 Select, 라우팅 담당자 미배정 가드, assigneeId 결함 수정]
+---
+
 # 통합 테스트 결과 — service-request (20260715-142838)
 
 ## 요약

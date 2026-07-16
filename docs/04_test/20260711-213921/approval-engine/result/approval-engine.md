@@ -1,3 +1,10 @@
+---
+date: 20260711-213921
+domain: approval-engine
+result: pass
+keywords: [KNOWLEDGE 게시 승인 게이트, 게이트키퍼 승인/반려, 자동 상태전환(PUBLISHED/DRAFT)]
+---
+
 # 통합 테스트 결과 — approval-engine (Stage 3: KNOWLEDGE 게시 승인 게이트) (20260711-213921)
 
 ## 요약

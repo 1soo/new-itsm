@@ -1,3 +1,10 @@
+---
+date: 20260709-124548
+domain: service-request
+result: pass
+keywords: [승인 재처리 결함 수정 검증, 상태전이 회귀, 워크플로우 무결성]
+---
+
 # 통합 테스트 결과(재테스트) — service-request (SRM) (20260709-124548)
 
 > 대상: SRM 승인 재처리 결함(TC-APR-008) 수정본 재테스트 · BE PID 21816(재기동)

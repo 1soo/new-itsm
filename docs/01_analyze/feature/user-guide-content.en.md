@@ -5,6 +5,12 @@
 >
 > Basis: Domain overviews/principles are based on `docs/01_analyze/prd/*.md`, role personas/access scope are based on `docs/02_plan/security/authorization/*.md`, actual menu names are from `source/frontend/src/routes/navConfig.tsx`, and actual screen/button names are from `docs/02_plan/screen/*.md`. Menu and button names quote the actual implementation names verbatim and are not paraphrased.
 
+## 변경 이력
+
+| 날짜 | 요약 |
+|------|------|
+| 2026-07-12 | 최초 작성 |
+
 ---
 
 ## 1. Overview

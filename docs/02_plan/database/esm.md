@@ -6,6 +6,12 @@
 > - 2026-07-16: `esm_catalog_form_field.field_type`에 `textarea` 추가(SRM `catalog_form_field`와 공유하는 `FormFieldType` 계약)
 > - 2026-07-10: 최초 작성
 
+## 변경 이력
+
+| 날짜 | 요약 |
+|------|------|
+| 2026-07-10 | 최초 작성 |
+
 부서별 서비스 카탈로그(체크리스트 템플릿 포함), 부서 요청, HR 케이스, 온보딩/오프보딩 체크리스트·하위 작업을 정의한다. 코멘트·타임라인(상태 이력)은 [common.md](common.md)의 `comment`/`timeline_event`(ticket_type='ESM_REQUEST' 또는 'HR_CASE')를 재사용한다.
 
 **DB 접근 방식**: JPA(Spring Data JPA) — 기존 7개 코어 도메인과 동일(`source/backend` 기존 구현 확인).

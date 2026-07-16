@@ -1,3 +1,10 @@
+---
+date: 20260715-061016
+domain: auth
+change_type: [new]
+keywords: [역할 목록 조회 API, 공개 API, 타 도메인 재사용]
+---
+
 # 유지보수 이력 — auth
 
 > 유지보수 일시: 20260715-061016 · 도메인: auth

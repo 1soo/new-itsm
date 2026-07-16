@@ -1,3 +1,10 @@
+---
+date: 20260715-112437
+domain: srm
+result: pass
+keywords: [승인 패널 문구, 상태 전이 게이트, 서비스 요청]
+---
+
 # 통합 테스트 결과 — service-request (srm) (20260715-112437)
 
 ## 요약

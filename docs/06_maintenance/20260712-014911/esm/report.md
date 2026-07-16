@@ -1,3 +1,10 @@
+---
+date: 20260712-014911
+domain: esm
+change_type: [new, modified]
+keywords: [승인 게이트, 부서요청 상태전이, HR 케이스 제외, 티켓 유형 라벨]
+---
+
 # 유지보수 이력 — esm
 
 > 유지보수 일시: 20260712-014911 · 도메인: esm

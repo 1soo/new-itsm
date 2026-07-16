@@ -1,3 +1,10 @@
+---
+date: 20260712-180448
+domain: common
+change_type: [new, modified, removed]
+keywords: [i18n다국어, 언어선택팝업, SweetAlert2전환]
+---
+
 # 유지보수 이력 — common
 
 > 유지보수 일시: 20260712-180448 · 도메인: common

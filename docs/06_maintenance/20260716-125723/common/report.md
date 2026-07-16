@@ -1,3 +1,10 @@
+---
+date: 20260716-125723
+domain: common
+change_type: [new]
+keywords: [상세보기버튼, textarea필드유형, TimelineMessages공용유틸]
+---
+
 # 유지보수 이력 — common
 
 > 유지보수 일시: 20260716-125723 · 도메인: common

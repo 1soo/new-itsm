@@ -1,3 +1,10 @@
+---
+date: 20260712-180448
+domain: asset
+change_type: [new, modified]
+keywords: [다국어(i18n), 번역 키 전환, 라벨 헬퍼 결함 수정]
+---
+
 # 유지보수 이력 — asset
 
 > 유지보수 일시: 20260712-180448 · 도메인: asset

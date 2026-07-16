@@ -1,3 +1,10 @@
+---
+date: 20260711-195405
+domain: approval-engine
+result: pass
+keywords: [SRM 승인 게이트, 관리자 승인 프로세스 CRUD, soft-delete 유니크 제약, 승인 대기함/알림]
+---
+
 # 통합 테스트 결과 — approval-engine (Stage 1) (20260711-195405)
 
 ## 요약

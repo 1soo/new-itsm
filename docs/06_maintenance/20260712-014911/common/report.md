@@ -1,3 +1,10 @@
+---
+date: 20260712-014911
+domain: common
+change_type: [new, removed]
+keywords: [공용승인엔진, ApprovalGateService, 하드코딩제거]
+---
+
 # 유지보수 이력 — common
 
 > 유지보수 일시: 20260712-014911 · 도메인: common

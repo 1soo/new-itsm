@@ -1,3 +1,10 @@
+---
+date: 20260712-021500
+domain: auth
+result: pass
+keywords: [토큰 저장 방식, CSRF, 더블서밋 쿠키, XSS 방지]
+---
+
 # 통합 테스트 결과 — auth (토큰 저장 방식 Client Memory 전환 + CSRF, 20260712-021500)
 
 ## 요약

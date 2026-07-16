@@ -1,3 +1,10 @@
+---
+date: 20260712-180448
+domain: knowledge
+change_type: [modified]
+keywords: [다국어i18n전환, 번역키, 통합검색연동]
+---
+
 # 유지보수 이력 — knowledge
 
 > 유지보수 일시: 20260712-180448 · 도메인: knowledge

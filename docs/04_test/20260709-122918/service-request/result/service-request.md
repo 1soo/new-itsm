@@ -1,3 +1,10 @@
+---
+date: 20260709-122918
+domain: service-request
+result: partial
+keywords: [승인 재처리 결함, 상태전이, 카탈로그, CSAT]
+---
+
 # 통합 테스트 결과 — service-request (SRM) (20260709-122918)
 
 > 대상: SRM 도메인 · BE(:8080)/FE dev(:5173)/PostgreSQL(itsm-postgres) · React CSR + Spring Boot

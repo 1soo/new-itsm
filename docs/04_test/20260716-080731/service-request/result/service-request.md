@@ -1,3 +1,10 @@
+---
+date: 20260716-080731
+domain: service-request
+result: pass
+keywords: [상태전이 버튼 라벨 동사형, 타임라인 actor 표시]
+---
+
 # 통합 테스트 결과 — service-request (20260716-080731)
 
 ## 요약

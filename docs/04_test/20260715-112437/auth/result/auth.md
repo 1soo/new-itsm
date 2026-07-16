@@ -1,3 +1,10 @@
+---
+date: 20260715-112437
+domain: auth
+result: pass
+keywords: [감사 로그 actor/target, 승인 프로세스, priority tier, 요청자 역할]
+---
+
 # 통합 테스트 결과 — auth (20260715-112437)
 
 ## 요약

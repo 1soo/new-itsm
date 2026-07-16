@@ -1,3 +1,10 @@
+---
+date: 20260715-064012
+domain: change
+result: pass
+keywords: [RFC 생성, 승인 프로세스 미구성 상태]
+---
+
 # 통합 테스트 결과 — change (20260715-064012)
 
 ## 요약

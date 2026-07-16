@@ -1,3 +1,10 @@
+---
+date: 20260711-115017
+domain: auth
+result: pass
+keywords: [메뉴 관리, 역할-메뉴 매핑, 동적 RBAC, 내 메뉴 조회]
+---
+
 # 통합 테스트 결과 — auth (Role-Menu 동적 매핑, 20260711-115017)
 
 > 범위: API-AUTH-016~022, SCR-ADMIN-006(메뉴 관리), 사이드바 동적 RBAC 노출

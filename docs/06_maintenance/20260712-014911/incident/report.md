@@ -1,3 +1,10 @@
+---
+date: 20260712-014911
+domain: incident
+change_type: [new]
+keywords: [승인게이트, 상태전이, 해결처리resolve, 우회방지]
+---
+
 # 유지보수 이력 — incident
 
 > 유지보수 일시: 20260712-014911 · 도메인: incident

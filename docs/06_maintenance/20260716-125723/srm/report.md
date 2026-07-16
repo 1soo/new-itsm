@@ -1,3 +1,10 @@
+---
+date: 20260716-125723
+domain: srm
+change_type: [new, modified]
+keywords: [상태전이 버튼 라벨, 타임라인 actor 표시, 서비스 카탈로그 카테고리 CRUD, textarea 양식 필드]
+---
+
 # 유지보수 이력 — srm
 
 > 유지보수 일시: 20260716-125723 · 도메인: srm

@@ -1,3 +1,10 @@
+---
+date: 20260712-123337
+domain: common
+result: pass
+keywords: [다국어i18n, SweetAlert2, 언어전환]
+---
+
 # 통합 테스트 결과 — common (20260712-123337)
 
 ## 요약

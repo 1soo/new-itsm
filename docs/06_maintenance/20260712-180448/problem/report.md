@@ -1,3 +1,10 @@
+---
+date: 20260712-180448
+domain: problem
+change_type: [new, modified]
+keywords: [다국어, i18n, 번역 키, origin 회귀 수정]
+---
+
 # 유지보수 이력 — problem
 
 > 유지보수 일시: 20260712-180448 · 도메인: problem

@@ -1,3 +1,10 @@
+---
+date: 20260711-234110
+domain: approval-engine
+result: pass
+keywords: [INCIDENT 승인 게이트, PROBLEM 승인 게이트, resolve() 게이트 우회 발견]
+---
+
 # 통합 테스트 결과 — approval-engine (Stage 4: INCIDENT + PROBLEM 승인 게이트 연동) (20260711-234110)
 
 ## 요약

@@ -1,3 +1,10 @@
+---
+date: 20260715-064012
+domain: problem
+result: pass
+keywords: [우선순위 미리보기, 문제 등록]
+---
+
 # 통합 테스트 결과 — problem (20260715-064012)
 
 ## 요약

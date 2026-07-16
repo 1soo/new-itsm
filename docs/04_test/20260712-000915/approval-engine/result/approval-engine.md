@@ -1,3 +1,10 @@
+---
+date: 20260712-000915
+domain: approval-engine
+result: pass
+keywords: [INCIDENT resolve 게이트 보완, 우회 경로 차단 재검증]
+---
+
 # 통합 테스트 결과 — approval-engine (Stage 4 추가 재테스트: API-INC-009 resolve 게이트 보완) (20260712-000915)
 
 ## 요약

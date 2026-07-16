@@ -1,3 +1,10 @@
+---
+date: 20260715-064012
+domain: incident
+result: pass
+keywords: [런타임업그레이드회귀테스트, 인시던트등록, MTTx미산정]
+---
+
 # 통합 테스트 결과 — incident (20260715-064012)
 
 ## 요약

@@ -1,3 +1,10 @@
+---
+date: 20260712-174109
+domain: compliance
+result: pass
+keywords: [i18n, 다국어 전환, 감사 로그 라벨, 시정조치 승인 게이트]
+---
+
 # 통합 테스트 결과 — compliance (다국어(i18n) 텍스트 전환, 유지보수 요청 2026-07-12)
 
 - 시나리오: `docs/04_test/20260712-174109/compliance/scenario.md`

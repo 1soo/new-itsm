@@ -7,6 +7,12 @@
 > - 2026-07-15: 카탈로그 CRUD(API-SRM-002/003/004)에 `assigneeRoleId` 필드 추가, 담당자 후보 목록 조회 API(API-SRM-017) 신규
 > - 2026-07-12: 카탈로그 항목별 approvalRequired/approverRole 필드 제거, 전용 승인 API(API-SRM-011/012) 삭제 후 공통 승인 API([common.md](common.md) API-COM-003~005)로 대체
 
+## 변경 이력
+
+| 날짜 | 요약 |
+|------|------|
+| 2026-07-09 | 최초 작성 |
+
 ## 공통 규약
 
 - **Base Path**: `/api/v1` · 표준 오류 응답 본문은 [auth.md](auth.md) 공통 규약과 동일.

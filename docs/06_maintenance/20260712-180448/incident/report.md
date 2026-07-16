@@ -1,3 +1,10 @@
+---
+date: 20260712-180448
+domain: incident
+change_type: [new]
+keywords: [다국어전환i18n, 번역키, formatMinutes단위, 통합검색상태배지]
+---
+
 # 유지보수 이력 — incident
 
 > 유지보수 일시: 20260712-180448 · 도메인: incident

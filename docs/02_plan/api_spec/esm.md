@@ -6,6 +6,12 @@
 > - 2026-07-16: API-ESM-007 응답 `timeline` 항목에 `actor` 필드 추가, `STATUS_*` 타임라인 기본 메시지의 상태 코드를 라벨로 정리, `formSchema.type`에 `textarea` 추가(API-ESM-002/003, SRM과 공유하는 `FormFieldType` 계약)
 > - 2026-07-12: 부서 요청 IN_PROGRESS → COMPLETED 전이에 공통 승인 게이트([common.md](common.md) API-COM-003~005) 추가(관리자가 규칙을 설정하지 않으면 게이트 없이 진행). HR 케이스·체크리스트 하위 작업은 게이트 대상에서 제외
 
+## 변경 이력
+
+| 날짜 | 요약 |
+|------|------|
+| 2026-07-10 | 최초 작성 |
+
 ## 공통 규약
 
 - **Base Path**: `/api/v1` · 표준 오류 응답 본문은 [auth.md](auth.md) 공통 규약과 동일.

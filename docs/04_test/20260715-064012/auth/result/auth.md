@@ -1,3 +1,10 @@
+---
+date: 20260715-064012
+domain: auth
+result: pass
+keywords: [로그인, 토큰 재발급, 감사 로그, 알림]
+---
+
 # 통합 테스트 결과 — auth/common (20260715-064012)
 
 ## 요약

@@ -1,3 +1,10 @@
+---
+date: 20260715-064012
+domain: knowledge
+result: pass
+keywords: [카테고리콤보박스, 기사작성]
+---
+
 # 통합 테스트 결과 — knowledge (20260715-064012)
 
 ## 요약

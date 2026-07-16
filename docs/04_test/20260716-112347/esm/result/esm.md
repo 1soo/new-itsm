@@ -1,3 +1,10 @@
+---
+date: 20260716-112347
+domain: esm
+result: pass
+keywords: [동적 양식 필드, textarea 유형, 카탈로그 관리]
+---
+
 # 통합 테스트 결과 — esm (20260716-112347, 배치3: textarea 필드 유형)
 
 ## 요약

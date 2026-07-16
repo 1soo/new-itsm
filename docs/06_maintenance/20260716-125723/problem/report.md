@@ -1,3 +1,10 @@
+---
+date: 20260716-125723
+domain: problem
+change_type: [modified]
+keywords: [상태전이 버튼 라벨, 동사형 문구]
+---
+
 # 유지보수 이력 — problem
 
 > 유지보수 일시: 20260716-125723 · 도메인: problem

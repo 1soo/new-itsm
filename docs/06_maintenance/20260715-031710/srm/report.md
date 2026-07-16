@@ -1,3 +1,10 @@
+---
+date: 20260715-031710
+domain: srm
+change_type: [modified]
+keywords: [승인 패널 문구 분기, 게이트 평가 시점, 상태별 UX 개선]
+---
+
 # 유지보수 이력 — srm
 
 > 유지보수 일시: 20260715-031710 · 도메인: srm

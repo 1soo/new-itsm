@@ -2,6 +2,12 @@
 
 > 버전: 0.2 · 작성일: 2026-07-12 · JTI 저장소: DB (PostgreSQL) · 유지보수: 토큰 저장 방식 Client Memory 전환, CSRF 검증, XSS 정책 추가
 
+## 변경 이력
+
+| 날짜 | 요약 |
+|------|------|
+| 2026-07-09 | 최초 작성 |
+
 ## 1. 개요
 
 ITSM 플랫폼의 인증은 JWT 기반(Access Token + Refresh Token)으로 구성한다. 모든 보호 API는 Access Token을 검증하고, 서버측 JTI 세션 매핑으로 강제 로그아웃·토큰 무효화를 지원한다.

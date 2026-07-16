@@ -1,3 +1,10 @@
+---
+date: 20260712-160842
+domain: change
+result: pass
+keywords: [다국어(i18n) 전환, 연계 항목 라벨, 날짜 포맷 로케일 유지]
+---
+
 # 통합 테스트 결과 — change (다국어(i18n) 텍스트 전환, 유지보수 요청 2026-07-12)
 
 - 시나리오: `docs/04_test/20260712-160842/change/scenario.md`

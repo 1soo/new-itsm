@@ -1,3 +1,10 @@
+---
+date: 20260714-150102
+domain: runtime-upgrade
+result: pass
+keywords: [java25, spring-boot4, postgresql18, gradle-upgrade, testcontainers]
+---
+
 # 통합 테스트 결과 — runtime-upgrade (BE/DB 런타임 버전 업그레이드) (20260714-150102)
 
 ## 요약

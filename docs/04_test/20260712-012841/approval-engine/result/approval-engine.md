@@ -1,3 +1,10 @@
+---
+date: 20260712-012841
+domain: approval-engine
+result: pass
+keywords: [COMPLIANCE 시정조치 승인, ESM 부서서비스 승인, 항목단위 독립 승인 인스턴스]
+---
+
 # 통합 테스트 결과 — approval-engine (Stage 6: COMPLIANCE + ESM 승인 게이트 연동, 마지막 도메인) (20260712-012841)
 
 ## 요약

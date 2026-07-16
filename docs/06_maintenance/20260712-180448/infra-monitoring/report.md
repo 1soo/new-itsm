@@ -1,3 +1,10 @@
+---
+date: 20260712-180448
+domain: infra-monitoring
+change_type: [modified]
+keywords: [다국어(i18n) 전환, 번역 키 적용, 지표/임계치/용량계획/리포팅 화면]
+---
+
 # 유지보수 이력 — infra-monitoring
 
 > 유지보수 일시: 20260712-180448 · 도메인: infra-monitoring

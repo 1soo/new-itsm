@@ -1,3 +1,10 @@
+---
+date: 20260711-083648
+domain: common
+result: pass
+keywords: [사용자가이드, 전용화면, TOC]
+---
+
 # 통합 테스트 결과 — Common (사용자 가이드 전용 화면 /guide, SCR-COM-012 v0.8) (20260711-083648)
 
 ## 요약

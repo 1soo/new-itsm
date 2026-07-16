@@ -1,3 +1,10 @@
+---
+date: 20260715-031710
+domain: common
+change_type: [modified]
+keywords: [domain nullable화, 우선순위매칭, tier재계산]
+---
+
 # 유지보수 이력 — common
 
 > 유지보수 일시: 20260715-031710 · 도메인: common

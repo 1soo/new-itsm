@@ -1,3 +1,10 @@
+---
+date: 20260712-164256
+domain: asset
+result: pass
+keywords: [다국어(i18n), 생애주기 이력 라벨, CI/CMDB 관계]
+---
+
 # 통합 테스트 결과 — asset (다국어(i18n) 텍스트 전환, 유지보수 요청 2026-07-12)
 
 - 시나리오: `docs/04_test/20260712-164256/asset/scenario.md`

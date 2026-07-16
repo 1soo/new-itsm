@@ -1,3 +1,10 @@
+---
+date: 20260714-184455
+domain: runtime-upgrade
+result: pass
+keywords: [testcontainers, postgresql18, docker-compose, swagger-ui, spring-boot4]
+---
+
 # 통합 테스트 결과 — runtime-upgrade (20260714-184455, 2차 라운드)
 
 ## 요약

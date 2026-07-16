@@ -1,3 +1,10 @@
+---
+date: 20260715-031710
+domain: auth
+change_type: [new, modified]
+keywords: [감사 로그 actor 수정, 승인 프로세스 우선순위 재설계, 승인 프로세스 삭제, 3축 스코프]
+---
+
 # 유지보수 이력 — auth
 
 > 유지보수 일시: 20260715-031710 · 도메인: auth

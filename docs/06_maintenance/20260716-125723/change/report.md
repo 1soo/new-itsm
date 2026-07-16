@@ -1,3 +1,10 @@
+---
+date: 20260716-125723
+domain: change
+change_type: [modified]
+keywords: [상태전이 버튼 라벨, 동사형 전환]
+---
+
 # 유지보수 이력 — change
 
 > 유지보수 일시: 20260716-125723 · 도메인: change

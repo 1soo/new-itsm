@@ -2,6 +2,12 @@
 
 > 도메인: ui-revamp · 버전: 0.1 · 작성일: 2026-07-10
 
+## 변경 이력
+
+| 날짜 | 요약 |
+|------|------|
+| 2026-07-10 | 최초 작성 |
+
 ## 1. 개요
 
 기존 7개 업무 도메인(auth·service-request·incident·problem·change·knowledge·asset) 개발이 완료된 상태에서, 전체 UI/UX를 Atlassian Design System(ADS, Jira 스타일)에 가깝게 개편하는 **cross-cutting 디자인 개편 이니셔티브**다. 새 비즈니스 로직·API는 추가하지 않으며, 디자인 토큰과 공통 컴포넌트·레이아웃 셸의 시각적 언어를 ADS 기준으로 재정의한다.

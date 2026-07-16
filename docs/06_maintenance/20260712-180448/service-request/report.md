@@ -1,3 +1,10 @@
+---
+date: 20260712-180448
+domain: service-request
+change_type: [new, modified]
+keywords: [다국어 지원(i18n), 번역키 전환, field-builder 결함 수정]
+---
+
 # 유지보수 이력 — service-request
 
 > 유지보수 일시: 20260712-180448 · 도메인: service-request

@@ -1,3 +1,10 @@
+---
+date: 20260713-164700
+domain: admin-common
+result: pass
+keywords: [메뉴관리, i18n, 승인프로세스, 권한가드]
+---
+
 # 통합 테스트 결과 — 관리자/공통 UI (admin-common) (20260713-164700)
 
 ## 요약

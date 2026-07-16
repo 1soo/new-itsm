@@ -2,6 +2,12 @@
 
 > 도메인: change · 버전: 0.2 · 작성일: 2026-07-11 · 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 위험도 기반 CAB 자동 라우팅 제거, `change_request.approval_route` 컬럼 삭제
 
+## 변경 이력
+
+| 날짜 | 요약 |
+|------|------|
+| 2026-07-09 | 최초 작성 |
+
 변경 요청(RFC), 표준 변경 템플릿, 영향 시스템을 정의한다. 승인은 [common.md](common.md)의 `approval_process`/`approval_request` 커스텀 승인 엔진(전 도메인 공용), 인시던트/문제 연계는 `ticket_link`, 타임라인/코멘트는 `timeline_event`/`comment`를 사용한다. 변경 유형(`change_request.type`)은 승인 프로세스의 요청유형 스코프(`approval_process.request_subtype_key`)로도 사용된다.
 
 ## 1. 정규화 방침

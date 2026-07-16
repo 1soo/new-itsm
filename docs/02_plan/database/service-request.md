@@ -7,6 +7,12 @@
 > - 2026-07-15: `service_catalog_item.assignee_role_id` 신규(자동배정 아님, 라우팅/배정 시점 후보 목록 선정용)
 > - 2026-07-12: 카탈로그 항목별 승인 필드(`approval_required`/`approver_role`) 제거
 
+## 변경 이력
+
+| 날짜 | 요약 |
+|------|------|
+| 2026-07-09 | 최초 작성 |
+
 서비스 카탈로그(요청 유형·동적 양식), 큐, 서비스 요청, 동적 양식 값, CSAT를 정의한다. 승인은 [common.md](common.md)의 `approval_process`/`approval_request` 커스텀 승인 엔진(전 도메인 공용), 코멘트는 `comment`를 사용한다. 카탈로그 항목(`service_catalog_item.id`)은 승인 프로세스의 요청유형 스코프(`approval_process.request_subtype_key`)로도 사용된다.
 
 ## 1. 정규화 방침

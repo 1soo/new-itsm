@@ -1,3 +1,10 @@
+---
+date: 20260716-105846
+domain: service-request
+result: pass
+keywords: [서비스 카탈로그 카테고리 CRUD, 카테고리 중복/참조무결성 검증]
+---
+
 # 통합 테스트 결과 — service-request (20260716-105846, 배치2: 카탈로그 카테고리 CRUD)
 
 ## 요약

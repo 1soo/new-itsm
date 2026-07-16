@@ -1,3 +1,10 @@
+---
+date: 20260712-162939
+domain: knowledge
+result: pass
+keywords: [다국어i18n전환, 검토승인패널, 통합검색배지, 날짜포맷유지]
+---
+
 # 통합 테스트 결과 — knowledge (다국어(i18n) 텍스트 전환, 유지보수 요청 2026-07-12)
 
 - 시나리오: `docs/04_test/20260712-162939/knowledge/scenario.md`

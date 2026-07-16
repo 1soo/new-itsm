@@ -1,3 +1,10 @@
+---
+date: 20260714-102553
+domain: common
+change_type: [modified]
+keywords: [사이드바축소, 컬럼폭고정, PAGE_SIZE재산정]
+---
+
 # 유지보수 이력 — common
 
 > 유지보수 일시: 20260714-102553 · 도메인: common

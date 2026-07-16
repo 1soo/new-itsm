@@ -1,3 +1,10 @@
+---
+date: 20260712-170529
+domain: esm
+result: pass
+keywords: [다국어(i18n) 전환, 부서 서비스 포털, HR 케이스, 체크리스트, ESM 지표]
+---
+
 # 통합 테스트 결과 — esm (다국어(i18n) 텍스트 전환, 유지보수 요청 2026-07-12)
 
 - 시나리오: `docs/04_test/20260712-170529/esm/scenario.md`

@@ -1,3 +1,10 @@
+---
+date: 20260709-230947
+domain: change
+result: partial
+keywords: [상태전이, 표준변경 사전승인, CAB 승인/반려, 크로스도메인 연계]
+---
+
 # 통합 테스트 결과 — change (CHG) (20260709-230947)
 
 > 환경: React CSR(localhost:5173) / Spring Boot(:8080) / PostgreSQL(itsm-postgres, healthy)

@@ -1,3 +1,10 @@
+---
+date: 20260712-014911
+domain: problem
+change_type: [new]
+keywords: [승인 게이트, 상태전이, 강제종료 제외]
+---
+
 # 유지보수 이력 — problem
 
 > 유지보수 일시: 20260712-014911 · 도메인: problem

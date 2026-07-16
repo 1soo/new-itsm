@@ -1,3 +1,10 @@
+---
+date: 20260710-055238
+domain: knowledge
+result: pass
+keywords: [기사작성편집, 검토승인워크플로우, RBAC, KCS티켓연계, 지식지표]
+---
+
 # 통합 테스트 결과 — knowledge (KM) (20260710-055238)
 
 > 환경: React CSR(localhost:5173) / Spring Boot(:8080) / PostgreSQL(itsm-postgres, healthy)

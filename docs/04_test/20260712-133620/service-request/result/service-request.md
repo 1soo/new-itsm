@@ -1,3 +1,10 @@
+---
+date: 20260712-133620
+domain: service-request
+result: pass
+keywords: [다국어(i18n) 전환, field-builder 미번역 결함, 카탈로그 관리, 회귀 테스트]
+---
+
 # 통합 테스트 결과 — service-request (20260712-133620)
 
 ## 요약

@@ -1,3 +1,10 @@
+---
+date: 20260712-003649
+domain: approval-engine
+result: pass
+keywords: [ASSET 승인 게이트, VULNERABILITY 승인 게이트, lifecycle/retire 엔드포인트 우회 재발방지]
+---
+
 # 통합 테스트 결과 — approval-engine (Stage 5: ASSET + VULNERABILITY 승인 게이트 연동) (20260712-003649)
 
 ## 요약

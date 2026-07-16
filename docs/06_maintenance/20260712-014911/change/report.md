@@ -1,3 +1,10 @@
+---
+date: 20260712-014911
+domain: change
+change_type: [modified]
+keywords: [공용 승인 엔진 이관, CAB 승인, 구현 버튼 가드]
+---
+
 # 유지보수 이력 — change
 
 > 유지보수 일시: 20260712-014911 · 도메인: change

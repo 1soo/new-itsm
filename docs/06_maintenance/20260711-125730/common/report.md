@@ -1,3 +1,10 @@
+---
+date: 20260711-125730
+domain: common
+change_type: [new]
+keywords: [알림확인처리, notification_dismissal, 모두지우기]
+---
+
 # 유지보수 이력 — common
 
 > 유지보수 일시: 20260711-125730 · 도메인: common

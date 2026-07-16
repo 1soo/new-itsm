@@ -1,3 +1,10 @@
+---
+date: 20260712-111803
+domain: auth
+change_type: [new, modified]
+keywords: [토큰 저장 방식, CSRF 방지, 더블서밋 쿠키, XSS 방지]
+---
+
 # 유지보수 이력 — auth
 
 > 유지보수 일시: 20260712-111803 · 도메인: auth

@@ -1,3 +1,10 @@
+---
+date: 20260709-161520
+domain: incident
+result: pass
+keywords: [상태전이, 역할배정RBAC, 에스컬레이션, 포스트모템, MTTx지표]
+---
+
 # 통합 테스트 결과 — incident (INC) (20260709-161520)
 
 > 환경: React CSR(localhost:5173) / Spring Boot(:8080) / PostgreSQL(itsm-postgres, healthy)

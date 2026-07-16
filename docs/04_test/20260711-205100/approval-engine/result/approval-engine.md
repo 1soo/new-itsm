@@ -1,3 +1,10 @@
+---
+date: 20260711-205100
+domain: approval-engine
+result: pass
+keywords: [CHANGE 승인 게이트, tier 우선순위 매칭, AND 승인 스냅샷]
+---
+
 # 통합 테스트 결과 — approval-engine (Stage 2: CHANGE 도메인 게이트 연동) (20260711-205100)
 
 ## 요약
