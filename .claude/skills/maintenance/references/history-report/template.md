@@ -1,3 +1,10 @@
+---
+date: {yyyyMMdd-HHmmss}
+domain: {domain}
+change_type: [new]   # new / modified / removed, 복합 변경이면 배열로 여러 개
+keywords: [{핵심개념1}, {핵심개념2}]
+---
+
 # 유지보수 이력 — {도메인명}
 
 > 유지보수 일시: {yyyyMMdd-HHmmss} · 도메인: {domain}

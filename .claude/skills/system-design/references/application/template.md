@@ -2,6 +2,12 @@
 
 > 도메인: {domain} · 버전: 0.1 · 작성일: {YYYY-MM-DD}
 
+## 변경 이력
+
+| 날짜 | 요약 |
+|------|------|
+| {YYYY-MM-DD} | 최초 작성 |
+
 ## 1. API 목록
 
 | API ID | 기능 | Method | Endpoint | 인증 |

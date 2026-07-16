@@ -31,6 +31,13 @@
 ## 결과 양식 — `docs/04_test/{yyyyMMdd-HHmmss}/{domain}/result/{domain}.md`
 
 ```markdown
+---
+date: {yyyyMMdd-HHmmss}
+domain: {domain}
+result: pass | fail | partial
+keywords: [{핵심개념1}, {핵심개념2}]
+---
+
 # 통합 테스트 결과 — {도메인명} ({yyyyMMdd-HHmmss})
 
 ## 요약
@@ -45,3 +52,7 @@
 ## 실패 항목 분석
 - TC-... : {원인 / 재현 조건 / 관련 요구사항}
 ```
+
+- result: 상세 표의 실패 건수가 0이면 pass, 전부 실패면 fail, 일부 실패면 partial.
+- keywords: 이 테스트가 다루는 핵심 도메인 개념 2~5개.
+- 프런트매터는 `result/{domain}.md`에만 채운다(`scenario.md`는 대상 아님).

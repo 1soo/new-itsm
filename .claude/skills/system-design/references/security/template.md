@@ -2,6 +2,12 @@
 
 > 버전: 0.1 · 작성일: {YYYY-MM-DD} · JTI 저장소: {Redis / DB}
 
+## 변경 이력
+
+| 날짜 | 요약 |
+|------|------|
+| {YYYY-MM-DD} | 최초 작성 |
+
 ## 1. 개요
 
 JWT 기반 인증(Access Token + Refresh Token) 구조.
