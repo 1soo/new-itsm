@@ -18,8 +18,19 @@ export { KpiCard } from "./kpi-card";
 export { TrendChart, type TrendPoint } from "./trend-chart";
 export { DistributionChart, type DistributionDatum } from "./distribution-chart";
 export { Rating } from "./rating";
+export { DynamicFormBuilder } from "./dynamic-form-builder";
+export { DynamicFormRenderer } from "./dynamic-form-renderer";
+export {
+  FORM_BUILDER_OPTIONS,
+  type FormIoDisplay,
+  type FormIoSchema,
+  type FormIoSubmissionData,
+} from "./form-schema";
+/** @deprecated field-builder.tsx/dynamic-form.tsx 전환 완료 후 제거 예정(SRM+ESM 화면 전환 완료 시) */
 export { DynamicForm } from "./dynamic-form";
+/** @deprecated field-builder.tsx/dynamic-form.tsx 전환 완료 후 제거 예정(SRM+ESM 화면 전환 완료 시) */
 export { FieldBuilder } from "./field-builder";
+/** @deprecated form-schema.ts 레거시 구획, 전환 완료 후 제거 예정 */
 export {
   validateForm,
   hasOptions,

@@ -1,17 +1,9 @@
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  DynamicForm,
-  type FormErrors,
-  type FormFieldSchema,
-  type FormValues,
-  toast,
-  validateForm,
-} from "@/components/common";
+import { DynamicFormRenderer, type FormIoSchema, type FormIoSubmissionData, toast } from "@/components/common";
 import { FullscreenLoader } from "@/routes/FullscreenLoader";
 import { srmApi } from "@/features/service-request/api";
 import type {
@@ -20,10 +12,12 @@ import type {
 } from "@/features/service-request/types";
 import { extractErrorMessage } from "@/lib/apiClient";
 
+const EMPTY_SCHEMA: FormIoSchema = { display: "form", components: [] };
+
 /*
- * 요청 제출(SCR-SRM-002) — 카탈로그 항목의 동적 양식을 작성해 제출.
- * 우측 "관련 지식 기사" 추천 패널(있을 때만). 필수 필드 미입력 시 제출 차단·인라인 오류.
- * 제출 성공 시 접수번호 토스트 + 상세 이동.
+ * 요청 제출(SCR-SRM-002) — 카탈로그 항목의 동적 양식(form.io)을 작성해 제출.
+ * 우측 "관련 지식 기사" 추천 패널(있을 때만). 필수·형식 위반 필드는 DynamicFormRenderer(Form.io) 내장 검증이 제출을 차단.
+ * 제출 성공 시 접수번호 토스트 + 상세 이동. 서버 재검증 실패(400)는 오류 토스트로 안내.
  */
 export function RequestSubmitPage() {
   const { t } = useTranslation("service-request");
@@ -33,15 +27,10 @@ export function RequestSubmitPage() {
 
   const [catalog, setCatalog] = useState<CatalogItemDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [values, setValues] = useState<FormValues>({});
-  const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [suggestions, setSuggestions] = useState<KnowledgeSuggestion[]>([]);
 
-  const schema = useMemo<FormFieldSchema[]>(
-    () => (catalog?.formSchema ?? []) as FormFieldSchema[],
-    [catalog],
-  );
+  const schema = useMemo<FormIoSchema>(() => catalog?.formSchema ?? EMPTY_SCHEMA, [catalog]);
 
   useEffect(() => {
     if (!itemId) {
@@ -73,17 +62,8 @@ export function RequestSubmitPage() {
       .catch(() => setSuggestions([]));
   }, [itemId]);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const handleFormSubmit = async (formValues: FormIoSubmissionData) => {
     if (!catalog) return;
-    const validation = validateForm(schema, values, t);
-    setErrors(validation);
-    if (Object.keys(validation).length > 0) return;
-
-    // 파일 값은 JSON 전송을 위해 파일명으로 대체(첨부 업로드는 이번 범위 밖).
-    const formValues = Object.fromEntries(
-      Object.entries(values).map(([k, v]) => [k, v instanceof File ? v.name : v]),
-    );
 
     setSubmitting(true);
     try {
@@ -122,17 +102,14 @@ export function RequestSubmitPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-              <DynamicForm schema={schema} values={values} onChange={setValues} errors={errors} />
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => navigate("/portal")}>
-                  {t("requestSubmit.cancel", { defaultValue: "취소" })}
-                </Button>
-                <Button type="submit" loading={submitting}>
-                  {t("requestSubmit.submit", { defaultValue: "제출" })}
-                </Button>
-              </div>
-            </form>
+            <DynamicFormRenderer
+              schema={schema}
+              onSubmit={handleFormSubmit}
+              onCancel={() => navigate("/portal")}
+              submitLabel={t("requestSubmit.submit", { defaultValue: "제출" })}
+              cancelLabel={t("requestSubmit.cancel", { defaultValue: "취소" })}
+              disabled={submitting}
+            />
           </CardContent>
         </Card>
 

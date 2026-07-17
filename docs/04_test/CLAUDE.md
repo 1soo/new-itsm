@@ -101,3 +101,6 @@
 | 20260716-112347 | common | pass | 승인대기함, 상세보기버튼, 토스트조사오류 | `docs/04_test/20260716-112347/common/result/common.md` |
 | 20260716-112347 | esm | pass | 동적 양식 필드, textarea 유형, 카탈로그 관리 | `docs/04_test/20260716-112347/esm/result/esm.md` |
 | 20260716-112347 | service-request | pass | 양식 필드 textarea 유형, 개행 보존 | `docs/04_test/20260716-112347/service-request/result/service-request.md` |
+| 20260717-145302 | srm | partial | form.io 폼 빌더, 동적 폼 렌더러, FormSubmissionValidator pattern 버그(제출 차단) | `docs/04_test/20260717-145302/srm/result/srm.md` |
+| 20260717-152015 | srm | partial | pattern 버그 수정확인, 팔레트 구성 수정확인, 제출/취소 버튼 배치(중복 Submit 버튼 결함) | `docs/04_test/20260717-152015/srm/result/srm.md` |
+| 20260717-153547 | srm | pass | 중복 Submit 버튼 결함 수정확인, 제출/취소 버튼 배치 | `docs/04_test/20260717-153547/srm/result/srm.md` |

@@ -394,3 +394,49 @@
 - BE: SRM/CHANGE는 매칭 안 되는 APPROVER 403(기존 전체조회 회귀 없음), 매칭되면 200. INCIDENT는 SERVICE_DESK_AGENT/INCIDENT_MANAGER 미보유 + 매칭 안 되는 APPROVER 403(결함 정리 확인), 매칭되면 200. PROBLEM/ASSET/VULNERABILITY/COMPLIANCE/ESM은 매칭되는 APPROVER 200, 매칭 안 되면 403(기존 매니저 전용 조건은 그대로 유지).
 - FE: 7개 도메인 상세 라우트에 APPROVER 역할 계정으로 내비게이션 가능.
 - tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → 완료 시 커밋.
+
+## 개발 계획 — 2026-07-17 유지보수: 동적 폼 빌더·렌더러 공용 아키텍처(form.io)
+
+> SRM 도메인 개발 phase에서 함께 만들어지는 SRM/ESM 공용 산출물이다(SRM `docs/03_develop/plan/service-request.md`가 이 절을 실행 지시로 참조). ESM 도메인 phase에서는 여기서 만든 컴포넌트를 그대로 재사용하며 신규 작업 없음.
+
+- 설계 근거: `docs/02_plan/screen/common.md` 8절(8.1~8.4), `docs/02_plan/api_spec/common.md` 0-2절, `docs/02_plan/database/service-request.md` 1절.
+- 참고: `docs/source/form_io/overview.md`·`form-builder.md`·`integration-guide-for-itsm.md`·`component-schema-and-validation.md`.
+
+### 담당 범위
+
+#### UI (dev-ui) — `source/frontend/src/components/common/`
+
+- `package.json`에 `@formio/js`, `@formio/react` 의존성 추가 후 설치(신규 설치임을 dev-lead에 알리고 진행).
+- `dynamic-form-builder.tsx`(신규, `field-builder.tsx` 대체): `@formio/react` `FormBuilder` 래핑. `initialForm`(기존 저장된 Form.io Form JSON)으로 편집 모드 진입, `onChange(form)`으로 최신 Form JSON을 상위 상태에 축적만 하고 자동저장하지 않음. 팔레트는 8.2절대로 `options.builder`에서 Basic(textfield/textarea/number/checkbox/selectboxes/select/radio)+Advanced(email/phoneNumber/datetime `enableTime:false`/file `storage:'base64'` 기본 강제)+Layout(columns/panel/tabs/fieldset)만 노출, Data/Premium/Resource는 `false`로 숨김.
+- `dynamic-form-renderer.tsx`(신규, `dynamic-form.tsx` 대체): `@formio/react` `Form` 래핑. `src`에 `formSchema` 그대로 주입, `onSubmit(submission)`으로 `submission.data`를 상위 콜백에 전달(클라이언트 검증은 Form.io 내장 사용, 서버 재검증은 BE `FormSubmissionValidator`가 담당하므로 여기선 추가 검증 로직 불필요).
+- `form-schema.ts`: 기존 `FormFieldSchema`/`FormFieldType`/`validateForm`/`hasOptions`는 폐기. Form.io Form JSON 타입 별칭(예: `FormIoSchema { display: string; components: unknown[] }`)과 8.2절 팔레트 옵션 상수만 남긴다.
+- CSS 스코핑(8.3절): `@formio/js`의 폼 전용 CSS(`formio.form.min.css` 계열, Bootstrap 전체 리셋 아님)만 임포트. 두 컴포넌트의 렌더 최상위를 `.formio-scope` 래퍼로 감싸고, `index.css`에 그 하위 스코프로 버튼 강조색·입력 테두리/라운드·폰트를 ADS 토큰으로 오버라이드하는 규칙을 추가(컴포넌트 구조 자체는 건드리지 않음).
+  - **최종 결정(dev-lead, 2026-07-17 확정 — 이후 절대 변경 없음)**: formio 폼 전용 CSS만으로는 `.btn`/`.form-control`/`.card`/`.row`/`.col-*`/tabs(`.nav-tabs`) 등 Bootstrap 클래스 자체가 정의되지 않아 팔레트·Layout 컴포넌트(columns/panel/tabs)가 스타일 없이 깨짐(dev-ui 확인). postcss 기반 전체 스코핑안도 구현·검증했으나, 신규 빌드 의존성·생성 스크립트 없이 8.3절 문자 그대로("전체 Bootstrap CSS 미도입")를 지킬 수 있는 **부트스트랩 핵심 클래스(grid/btn/form-control/card/nav-tabs 등)만 `.formio-scope`/`.formio-dialog`(컴포넌트 편집 모달, body 포털) 스코프 하위에 ADS 토큰으로 최소 재구현**하는 방식(devDependency 추가 없음, 빌드 CSS 108.10KB)을 **최종 확정**한다. 8.2절 팔레트가 Basic+Advanced+Layout으로 이미 범위 고정(Data/Premium/Resource 숨김)이라 실제 렌더링될 Bootstrap 클래스 집합도 유한해 수동 재구현의 누락 위험이 낮다고 판단했다. 전역 CSS에는 영향 없음. playwright로 팔레트 구성(Basic 7종/Advanced 3종/Layout 4종/Premium 1종=file, Data 전체 숨김)·columns 레이아웃·편집 모달 정상 렌더링 재검증 완료.
+  - 구현 중 추가로 발견·수정된 결함: (1) `FORM_BUILDER_OPTIONS`에서 노출하려는 컴포넌트만 `true`로 지정하는 것으로는 부족 — Form.io가 그룹별 기본 포함 컴포넌트를 내부 고정값으로 갖고 있어(예: `file`은 Advanced가 아니라 Premium 그룹 소속) 각 그룹의 나머지 기본 항목도 전부 명시적으로 `false` 처리해야 8.2절 팔레트가 정확히 지켜짐. (2) Basic 팔레트에서 `button`을 뺀 설계(8.2절)로 인해 `Form`(Renderer)이 제출 버튼 없는 폼을 렌더링할 수 있는 사각지대 발견 — `dynamic-form-renderer.tsx`에 제출 버튼이 없으면 자동 보강하는 `ensureSubmitButton` 로직 추가(Builder는 Form.io가 내부적으로 자동 추가하므로 대상 아님).
+- 기존 `field-builder.tsx`/`dynamic-form.tsx`는 SRM+ESM 화면이 모두 새 컴포넌트로 전환 완료할 때까지 삭제하지 않는다(ESM 도메인 phase 완료 후 정리 — dev-fe에게 전환 완료 시점 확인 후 삭제).
+- 신규 파일 추가에 맞춰 `source/frontend/src/components/common/CLAUDE.md` 갱신.
+
+#### BE (dev-be) — `source/backend/src/main/java/com/itsm/common/form/`(신규 패키지)
+
+- `FormSubmissionValidator.java`: 입력은 카탈로그 항목의 `form_schema`(Form.io Form JSON)와 제출된 `formValues` 맵. `components`를 재귀 순회해 `input:true`인 리프만 검증 대상으로 수집(컬럼/패널/탭 등 `input:false` 레이아웃은 하위 `components`만 펼치고 자체는 제외)하고, 각 리프의 `validate` 규칙(`required`/`minLength`/`maxLength`/`min`/`max`/`pattern`)을 적용한다(`docs/source/form_io/component-schema-and-validation.md` 3절 그대로). 위반 시 400(도메인별 API 문서 참조). `conditional`/`calculateValue`/`custom`은 해석하지 않는다(범위 밖).
+- SRM `ServiceRequestService.validateRequiredFields()`를 이 클래스 호출로 대체하는 작업은 아래 SRM 절에서 수행(이 패키지 자체는 SRM/ESM 어느 도메인 서비스에도 아직 의존성이 없는 순수 유틸리티로 구현).
+- `source/backend/src/main/java/com/itsm/common/form/CLAUDE.md` 신규 생성.
+
+### 완료 기준
+- 두 신규 공용 컴포넌트·`FormSubmissionValidator`가 SRM 화면·API(아래 SRM 절)에 통합되어 정상 동작하는 것으로 검증한다(별도 단독 테스트 없음, SRM 도메인 통합 테스트에 포함).
+
+## 추가 요구사항(2026-07-17, SRM 통합테스트 진행 중 접수) — 폼 렌더러 제출/취소 버튼 우측 하단 배치
+
+> 사용자 요청: "제출과 취소 버튼은 양식 우측 하단에 고정해." Main 확인 결과(2026-07-17): 버튼 순서는 "취소 → 제출"(제출이 가장 오른쪽), "고정"은 **sticky 아님** — 폼 맨 아래 우측 정렬만 하면 되고 스크롤 시 폼 내용과 함께 자연스럽게 흘러가면 된다.
+
+- SRM은 이미 개발 완료된 상태라 **레트로핏**(아래 `docs/03_develop/plan/service-request.md` 절 참조), ESM은 아직 미착수라 처음부터 반영(`docs/03_develop/plan/esm.md` FE절에 반영됨).
+
+#### UI (dev-ui) — `source/frontend/src/components/common/dynamic-form-renderer.tsx`
+
+- 현재 구조(Form.io 내장 제출 버튼(폼 내부, `ensureSubmitButton`으로 스키마에 보강) + 화면단이 별도로 렌더링하는 커스텀 "취소" 버튼)를 다음으로 교체한다.
+- `DynamicFormRenderer`가 **자체 하단 푸터**(취소 버튼 + 제출 버튼, `flex justify-end gap-2` 우측 정렬, 취소가 왼쪽·제출이 가장 오른쪽)를 렌더링하도록 변경. 제출 버튼은 컴포넌트 내부 Form.io 인스턴스(ref)의 제출을 트리거(schema 자체에 보이는 submit 컴포넌트는 렌더링하지 않도록 숨김 처리 — 화면에 중복 버튼 노출 방지).
+- 신규 prop: `onCancel?: () => void`(미지정 시 취소 버튼 숨김), `submitLabel?: string`/`cancelLabel?: string`(미지정 시 기본값 "제출"/"취소" — 도메인별 i18n 텍스트는 호출 측(FE)이 전달).
+- sticky 처리 없음 — 폼 콘텐츠 흐름에 자연스럽게 포함되는 일반 레이아웃.
+- 완료되면 SRM(dev-fe)·ESM(dev-fe) 양쪽에 새 API(`onCancel` 등) 알려준다.
+
+#### FE — 소비 화면 반영은 아래 SRM/ESM 각 도메인 절 참조.

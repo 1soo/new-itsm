@@ -1,6 +1,8 @@
 # API 명세서 — 공통 (Common)
 
-> 도메인: common · 버전: 0.4 · 작성일: 2026-07-15 · 승인 대상자 역할 기반 동적 상세조회 권한(유지보수 요청) 신규 — 0-1절 추가, SRM/CHANGE/INCIDENT/PROBLEM/ASSET/VULNERABILITY/COMPLIANCE/ESM 8개 도메인 상세조회 RBAC에 적용(각 도메인 문서·`security/authorization/approver.md` 참조). INCIDENT는 기존 백엔드 역할체크 누락 결함도 이번에 함께 정리(Main 확인). ASSET은 개발 중 발견(dev-lead) — 역할 제한 없음이 `AssetService` 클래스 주석상 의도된 설계로 확인되어 INCIDENT와 달리 축소 변경 없이 현행 유지(동적 판정 no-op)
+> 도메인: common · 버전: 0.5 · 작성일: 2026-07-17 · 서비스 카탈로그 커스텀 폼 빌더(form.io 스타일) 유지보수 요청 — 동적 폼 스키마·제출 데이터 공통 서버 재검증 규칙 신규(0-2절), SRM/ESM 공용 적용
+>
+> 이전 버전: 승인 대상자 역할 기반 동적 상세조회 권한(유지보수 요청) 신규 — 0-1절 추가, SRM/CHANGE/INCIDENT/PROBLEM/ASSET/VULNERABILITY/COMPLIANCE/ESM 8개 도메인 상세조회 RBAC에 적용(각 도메인 문서·`security/authorization/approver.md` 참조). INCIDENT는 기존 백엔드 역할체크 누락 결함도 이번에 함께 정리(Main 확인). ASSET은 개발 중 발견(dev-lead) — 역할 제한 없음이 `AssetService` 클래스 주석상 의도된 설계로 확인되어 INCIDENT와 달리 축소 변경 없이 현행 유지(동적 판정 no-op)
 >
 > 이전 버전: 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 전 도메인 공용 승인 대기함·결정 API(API-COM-003~005) 신규, 기존 도메인별 전용 승인 API(API-SRM-011/012, API-CHG-006/007, API-KM-007/008) 대체
 
@@ -57,6 +59,19 @@
 **FE 라우트 가드**: 위 7개 도메인(SRM/CHANGE는 기존부터, INCIDENT/ASSET/PROBLEM/VULNERABILITY/COMPLIANCE/ESM은 신규) 상세 화면의 `RequireRoles`(`source/frontend/src/routes/index.tsx`)에 `ROLE_APPROVER`를 추가해야 매칭된 승인자가 실제로 내비게이션할 수 있다. 라우트 가드는 역할 보유 여부만 굵게 거르는 관문이며, 실제 조회 가능 여부(매칭 여부)는 백엔드 403으로 최종 판정된다(매칭 안 되면 화면 진입 후 403 처리. 단 ASSET은 백엔드가 역할 무관 전면 허용이라 이 403 자체가 발생하지 않는다).
 
 각 도메인의 상세조회 RBAC 최종 규칙은 [security/authorization/approver.md](../security/authorization/approver.md)(승인자 관점)와 각 역할 정의서(매니저 관점)를 함께 참조한다.
+
+## 0-2. 동적 폼 스키마·제출 데이터 공통 서버 재검증(신규, 2026-07-17 유지보수 요청)
+
+서비스 카탈로그(SRM)·부서 카탈로그(ESM)가 공유하는 동적 폼 빌더(form.io 스타일, [database/service-request.md](../database/service-request.md) `service_catalog_item.form_schema` 참조)의 제출 데이터는 클라이언트(`@formio/react` `Form`) 검증만으로 신뢰하지 않고, **도메인 공통 서버 재검증기**를 거친다.
+
+- **캡슐화 위치**: `common.form.FormSubmissionValidator`(SRM `ServiceRequestService`, ESM `EsmRequestService`가 각자의 요청 제출 유스케이스에서 호출). 기존 SRM `validateRequiredFields`(required 전용)를 대체·확장한다.
+- **입력**: 카탈로그 항목의 `form_schema`(Form.io Form JSON)와 제출된 `formValues`(submission.data) 맵.
+- **검증 절차**:
+  1. `form_schema.components`를 재귀 순회해 `input:true`인 리프 컴포넌트만 수집한다(컬럼/패널/탭 등 `input:false` 레이아웃 컴포넌트는 하위 `components`만 펼치고 그 자체는 검증 대상에서 제외).
+  2. 각 리프 컴포넌트의 `validate` 규칙을 적용한다 — `required`(값 존재 여부, 기존과 동일), `minLength`/`maxLength`(문자열류), `min`/`max`(숫자류), `pattern`(정규식). [`docs/source/form_io/component-schema-and-validation.md`](../../source/form_io/component-schema-and-validation.md) 3절 규칙을 그대로 따른다.
+  3. 위반 항목이 하나라도 있으면 400으로 거부한다(응답 코드는 각 도메인 API 문서의 제출 API 참조 — API-SRM-006/API-ESM-005).
+- **범위 밖(이번 유지보수 미포함)**: `conditional`(조건부 표시)·`calculateValue`(계산 필드)·`custom`(커스텀 JS 검증)은 Form.io 빌더 UI에 기본 노출될 수 있으나 서버가 별도로 해석·집행하지 않는다(사용자가 설정해도 서버는 무시). 향후 요구사항으로 확정되면 별도 유지보수로 다룬다.
+- **file 컴포넌트**: Form.io Enterprise 유료 스토리지 프로바이더 없이 `storage:'base64'`로 구성한다 — 제출 데이터에 파일이 base64 문자열로 인라인 포함되므로 별도 업로드 API·크기 제한 검증은 이번 범위에 포함하지 않는다(대용량 첨부 필요 시 별도 유지보수로 업로드 API 설계 필요).
 
 ## 1. API 목록
 

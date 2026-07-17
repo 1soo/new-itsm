@@ -93,7 +93,7 @@ class SearchServiceTest {
     }
 
     private ServiceRequest serviceRequest(Long requesterId, OffsetDateTime updatedAt) {
-        ServiceRequest r = new ServiceRequest("SRM-2026-0001", 10L, requesterId, 1L, null, null);
+        ServiceRequest r = new ServiceRequest("SRM-2026-0001", 10L, requesterId, 1L, null, null, "{}");
         ReflectionTestUtils.setField(r, "id", 2L);
         ReflectionTestUtils.setField(r, "updatedAt", updatedAt);
         return r;
@@ -130,7 +130,8 @@ class SearchServiceTest {
         when(serviceRequestRepository.searchByKeyword(eq(1L), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(serviceRequest(1L, OffsetDateTime.now()))));
         when(catalogItemRepository.findById(10L))
-                .thenReturn(Optional.of(new ServiceCatalogItem("노트북 지급", null, null, 1L, null, null, null)));
+                .thenReturn(Optional.of(new ServiceCatalogItem("노트북 지급", null, null, 1L, null, null, null,
+                        "{\"display\":\"form\",\"components\":[]}")));
 
         var response = service.search("키워드", PageRequest.of(0, 20));
 

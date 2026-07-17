@@ -6,10 +6,6 @@ import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.srm.application.dto.CatalogItemDetailResponse;
 import com.itsm.srm.application.dto.CreateCatalogItemRequest;
-import com.itsm.srm.application.dto.FormFieldDto;
-import com.itsm.srm.domain.CatalogFormField;
-import com.itsm.srm.domain.ServiceCatalogItem;
-import com.itsm.srm.domain.repository.CatalogFormFieldRepository;
 import com.itsm.srm.domain.repository.ServiceCatalogCategoryRepository;
 import com.itsm.srm.domain.repository.ServiceCatalogItemRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,14 +31,13 @@ class ServiceCatalogServiceTest {
 
     @Mock ServiceCatalogItemRepository catalogItemRepository;
     @Mock ServiceCatalogCategoryRepository categoryRepository;
-    @Mock CatalogFormFieldRepository formFieldRepository;
     @Mock RoleRepository roleRepository;
 
     ServiceCatalogService service;
 
     @BeforeEach
     void setUp() {
-        service = new ServiceCatalogService(catalogItemRepository, categoryRepository, formFieldRepository, roleRepository, new ObjectMapper());
+        service = new ServiceCatalogService(catalogItemRepository, categoryRepository, roleRepository, new ObjectMapper());
     }
 
     @Test
@@ -56,17 +52,17 @@ class ServiceCatalogServiceTest {
     @Test
     void createPersistsItemWithFormSchema() {
         when(catalogItemRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(formFieldRepository.findByCatalogItemIdOrderBySortOrderAsc(any()))
-                .thenReturn(List.of(new CatalogFormField(1L, "reason", "사유", "text", true, null, 0)));
 
+        Map<String, Object> formSchema = Map.of(
+                "display", "form",
+                "components", List.of(Map.of("key", "reason", "label", "Reason", "type", "textfield", "input", true)));
         CreateCatalogItemRequest request = new CreateCatalogItemRequest(
-                "Laptop", "desc", null, 1L, 60, 480, null,
-                List.of(new FormFieldDto("reason", "Reason", "text", true, null)));
+                "Laptop", "desc", null, 1L, 60, 480, null, formSchema);
 
         CatalogItemDetailResponse response = service.create(request);
 
         assertThat(response.name()).isEqualTo("Laptop");
-        assertThat(response.formSchema()).hasSize(1);
+        assertThat(response.formSchema()).containsKey("components");
     }
 
     @Test

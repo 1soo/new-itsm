@@ -12,11 +12,14 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
 
 /**
- * 서비스 요청 티켓.
+ * 서비스 요청 티켓. 양식 제출 데이터는 formValues(Form.io submission.data, JSONB)에 통째로 저장한다
+ * (2026-07-17 유지보수 요청, 기존 ServiceRequestFormValue EAV 대체).
  */
 @Getter
 @Entity
@@ -57,8 +60,12 @@ public class ServiceRequest extends BaseEntity {
     @Column(name = "sla_status", nullable = false, length = 10)
     private SlaStatus slaStatus;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "form_values", nullable = false, columnDefinition = "jsonb")
+    private String formValues;
+
     public ServiceRequest(String ticketKey, Long catalogItemId, Long requesterId, Long queueId,
-                          OffsetDateTime slaResponseDue, OffsetDateTime slaResolveDue) {
+                          OffsetDateTime slaResponseDue, OffsetDateTime slaResolveDue, String formValues) {
         this.ticketKey = ticketKey;
         this.catalogItemId = catalogItemId;
         this.requesterId = requesterId;
@@ -67,6 +74,7 @@ public class ServiceRequest extends BaseEntity {
         this.slaResponseDue = slaResponseDue;
         this.slaResolveDue = slaResolveDue;
         this.slaStatus = SlaStatus.OK;
+        this.formValues = formValues;
     }
 
     public void changeStatus(RequestStatus status) {

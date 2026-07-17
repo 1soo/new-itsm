@@ -111,4 +111,41 @@
 
 ### 완료 기준
 - 부서 요청 상세(SCR-ESM-005)의 전이 버튼에 동작 동사형 라벨, 타임라인에 행위 수행자 이름과 한글 상태 라벨이 표시된다.
+
+## 개발 계획 — 2026-07-17 유지보수: 서비스 카탈로그 커스텀 폼 빌더(form.io)
+
+- 설계 근거: `docs/02_plan/database/esm.md` v0.3(SRM `service-request.md`와 동일 패턴), `docs/02_plan/api_spec/esm.md` v0.4 API-ESM-002/003/004/005, `docs/02_plan/api_spec/common.md` 0-2절, `docs/02_plan/screen/esm.md` SCR-ESM-002/006, `docs/02_plan/screen/common.md` 8절.
+- **SRM phase에서 이미 만들어진 산출물을 재사용**(신규 작업 아님): 공용 컴포넌트 `dynamic-form-builder.tsx`/`dynamic-form-renderer.tsx`/`form-schema.ts`(`docs/03_develop/plan/common.md` 참조), 공용 `common.form.FormSubmissionValidator`. SRM phase의 dev-ui/dev-be 작업이 완료된 뒤 이 ESM phase를 시작한다.
+- 참고 기존 코드: `source/backend/.../esm/domain/EsmCatalogFormField.java`·`EsmCatalogItem.java`·`EsmRequestFormValue.java`·`EsmRequest.java`, `application/EsmCatalogService.java`·`EsmRequestService.java`·`dto/FormFieldDto.java`(SRM과 별도 파일); `source/db/sql/16_esm_schema.sql`; `source/frontend/.../esm/EsmCatalogManagePage.tsx`·`DeptRequestSubmitPage.tsx`·`api.ts`. SRM phase에서 처리된 `source/backend/.../srm/` 대응 파일들을 그대로 참조해 동일 패턴 적용(SRM `docs/03_develop/plan/service-request.md` "개발 계획 — 2026-07-17 유지보수" 절 참조).
+
+### 담당 범위
+
+#### DB (dev-database) — `source/db/sql/`
+
+- 신규 파일 `37_esm_form_schema_jsonb.sql`(SRM phase의 `36_srm_form_schema_jsonb.sql` 다음 순번, 실제 생성 시점 최신 파일 다음 번호로 확인):
+  1. `esm_catalog_item`에 `form_schema JSONB NOT NULL DEFAULT '{"display":"form","components":[]}'` 추가, 기존 `esm_catalog_form_field` 백필(SRM `catalog_form_field`와 동일 변환 규칙, `docs/02_plan/database/esm.md` 60~62행).
+  2. `esm_request`에 `form_values JSONB NOT NULL DEFAULT '{}'` 추가, 기존 `esm_request_form_value` 백필(SRM과 동일 방식).
+  3. `DROP TABLE esm_catalog_form_field;`, `DROP TABLE esm_request_form_value;`.
+- `source/db/sql/CLAUDE.md` 갱신.
+
+#### BE (dev-backend) — `source/backend/src/main/java/com/itsm/esm/`
+
+- SRM phase와 동일 패턴: 카탈로그 항목 엔티티에 `formSchema`(JSONB, `String`+`@JdbcTypeCode(SqlTypes.JSON)`) 추가, `EsmCatalogFormField` 엔티티·리포지토리(도메인/리포지토리/인프라 3개 파일) 삭제. `esm_request` 엔티티에 `formValues`(JSONB) 추가, `EsmRequestFormValue` 엔티티·리포지토리 3개 파일 삭제.
+- `FormFieldDto` 사용 DTO(카탈로그 상세/생성/수정 응답·요청)를 `Map<String,Object>` 기반으로 변경.
+- `EsmCatalogService`(또는 대응 서비스): 필드 배열 저장 루프 제거, `formSchema` 원본 JSON 그대로 저장·조회.
+- `EsmRequestService.java`: 요청 제출 시 `EsmRequestFormValue` 저장 루프 제거, `formValues` 그대로 저장. 제출 검증을 `common.form.FormSubmissionValidator` 호출로 교체(SRM과 동일 클래스 재사용, 신규 구현 없음).
+
+#### FE (dev-fe) — `source/frontend/src/features/esm/`
+
+- **SCR-ESM-006 `EsmCatalogManagePage.tsx`**: `FieldBuilder` 사용부를 `dynamic-form-builder.tsx`의 `DynamicFormBuilder`로 교체(SRM `CatalogManagePage.tsx`와 동일 통합 방식).
+- **SCR-ESM-002 `DeptRequestSubmitPage.tsx`**: `DynamicForm` 사용부를 `dynamic-form-renderer.tsx`의 `DynamicFormRenderer`로 교체(SRM `RequestSubmitPage.tsx`와 동일 방식). 처음부터 신규 `onCancel`/`cancelLabel`/`submitLabel` prop을 사용해 제출/취소 버튼을 폼 우측 하단(취소→제출 순)에 배치한다(2026-07-17 추가 요구사항, `docs/03_develop/plan/common.md` "폼 렌더러 제출/취소 버튼 우측 하단 배치" 절 참조 — 화면 자체에 별도 취소 버튼을 만들지 않음).
+- **`api.ts`**: `formSchema`/`formValues` 타입을 SRM과 동일하게 갱신.
+- 이 phase가 SRM 화면 전환까지 모두 마친 마지막 소비자이므로, 전환 완료 확인 후 dev-ui에게 기존 `field-builder.tsx`/`dynamic-form.tsx` 삭제를 요청한다(`docs/03_develop/plan/common.md` UI 절 참조).
+
+### 완료(테스트 통과) 기준
+
+- DB: 마이그레이션 후 `esm_catalog_form_field`/`esm_request_form_value` 삭제, 데이터가 정상 백필됨.
+- BE: 카탈로그 생성/수정 시 Form.io Form JSON 그대로 저장·조회, 부서 요청 제출 시 공용 `FormSubmissionValidator`로 서버 재검증, 온보딩/오프보딩 체크리스트 자동 생성 로직(기존 REQ-ESM-005/006)이 회귀 없이 동작.
+- FE: SCR-ESM-006에서 자유배치 폼 설계·저장, SCR-ESM-002에서 렌더링·제출 정상 동작.
+- tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → 완료 시 커밋(이 커밋에 SRM+ESM phase가 공유한 `field-builder.tsx`/`dynamic-form.tsx` 삭제도 포함).
 - HR 케이스 상세(SCR-ESM-008)의 전이 버튼에 동작 동사형 라벨이 표시된다(타임라인은 기존과 동일, actor 추가 없음).

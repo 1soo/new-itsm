@@ -17,8 +17,8 @@ import {
   type Column,
   ConfirmDialog,
   DataTable,
-  FieldBuilder,
-  type FormFieldSchema,
+  DynamicFormBuilder,
+  type FormIoSchema,
   Modal,
   toast,
 } from "@/components/common";
@@ -38,7 +38,7 @@ import { cn } from "@/lib/utils";
  * 서비스 카탈로그 관리(SCR-SRM-007) — 프로세스 오너가 요청 유형(양식·SLA·큐·카테고리)을 정의.
  * 승인 여부·경로는 SCR-ADMIN-008(승인 프로세스 생성/편집)에서 별도 설정(승인 프로세스 커스텀 기능으로 대체).
  * 상단 탭("카탈로그 항목"/"카테고리 관리", Tabs 공통 컴포넌트 없어 버튼형 토글로 구현 — ESM DeptPortalPage와 동일 패턴).
- * "카탈로그 항목" 탭: 좌 카탈로그 목록 / 우 편집·생성 폼(FieldBuilder로 동적 필드 정의). 이름·양식 누락 시 400 인라인.
+ * "카탈로그 항목" 탭: 좌 카탈로그 목록 / 우 편집·생성 폼(DynamicFormBuilder로 form.io 자유배치 폼 설계). 이름·양식 누락 시 400 인라인.
  * "카테고리 관리" 탭(SCR-SRM-009): 목록 표 + 생성/수정 모달 + 삭제 확인 다이얼로그.
  */
 /** Select value sentinel — "미분류"/"선택 안 함"(Radix Select는 빈 문자열 value를 허용하지 않음). */
@@ -54,8 +54,10 @@ interface FormState {
   assigneeRoleId: string;
   slaResponseMinutes: string;
   slaResolveMinutes: string;
-  formSchema: FormFieldSchema[];
+  formSchema: FormIoSchema;
 }
+
+const EMPTY_FORM_SCHEMA: FormIoSchema = { display: "form", components: [] };
 
 const EMPTY_FORM: FormState = {
   name: "",
@@ -65,7 +67,7 @@ const EMPTY_FORM: FormState = {
   assigneeRoleId: NONE_VALUE,
   slaResponseMinutes: "",
   slaResolveMinutes: "",
-  formSchema: [],
+  formSchema: EMPTY_FORM_SCHEMA,
 };
 
 interface CategoryFormState {
@@ -130,7 +132,7 @@ export function CatalogManagePage() {
         assigneeRoleId: detail.assigneeRoleId != null ? String(detail.assigneeRoleId) : NONE_VALUE,
         slaResponseMinutes: String(detail.slaResponseMinutes ?? ""),
         slaResolveMinutes: String(detail.slaResolveMinutes ?? ""),
-        formSchema: detail.formSchema as FormFieldSchema[],
+        formSchema: detail.formSchema,
       });
     } catch (err) {
       toast.error(extractErrorMessage(err));
@@ -151,7 +153,7 @@ export function CatalogManagePage() {
       setError(t("catalogManage.nameRequiredError", { defaultValue: "이름은 필수입니다." }));
       return;
     }
-    if (form.formSchema.length === 0) {
+    if (form.formSchema.components.length === 0) {
       setError(t("catalogManage.schemaRequiredError", { defaultValue: "양식 필드를 하나 이상 정의하세요." }));
       return;
     }
@@ -479,9 +481,10 @@ export function CatalogManagePage() {
               </div>
               <div className="space-y-1.5">
                 <Label>{t("catalogManage.formSchema", { defaultValue: "양식 필드" })}</Label>
-                <FieldBuilder
-                  value={form.formSchema}
-                  onChange={(fields) => setForm((f) => ({ ...f, formSchema: fields }))}
+                <DynamicFormBuilder
+                  key={selectedId ?? "new"}
+                  initialForm={form.formSchema}
+                  onChange={(schema) => setForm((f) => ({ ...f, formSchema: schema }))}
                 />
               </div>
 

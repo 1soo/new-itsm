@@ -197,3 +197,59 @@
 - BE: 카탈로그 생성/수정 시 assigneeRoleId 저장·조회, API-SRM-017 역할 미지정 시 빈 배열/지정 시 해당 역할 ACTIVE 사용자만 반환, ROUTED 전이 시 담당자 미배정 409, 배정 후 정상 라우팅.
 - FE: 큐 화면 배정 팝업 후보 선택/본인배정 동작, 노출조건 2가지 정상 동작, 상세 화면 라우팅 버튼 비활성화+tooltip, 카탈로그 관리 화면 담당자 역할 select 및 프리필 결함 수정 확인(구 버그 재현 후 해결 확인).
 - tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → 완료 시 커밋.
+
+## 레트로핏 — 2026-07-17: 폼 렌더러 제출/취소 버튼 우측 하단 배치
+
+> SRM 통합테스트 진행 중 접수된 추가 요구사항. 공용 컴포넌트 변경은 `docs/03_develop/plan/common.md` "폼 렌더러 제출/취소 버튼 우측 하단 배치" 절(dev-ui) 참조.
+
+#### FE (dev-fe) — `source/frontend/src/features/service-request/RequestSubmitPage.tsx`
+
+- 기존 `<div className="flex justify-end"><Button variant="outline">취소</Button></div>`(DynamicFormRenderer 아래 별도 렌더) 제거.
+- `DynamicFormRenderer`에 `onCancel={() => navigate("/portal")}` 전달(기존 취소 동작 그대로), `cancelLabel`/`submitLabel`은 기존 i18n 키(`requestSubmit.cancel`/필요 시 `requestSubmit.submit` 신규) 값으로 전달.
+- dev-ui의 `DynamicFormRenderer` 변경(신규 `onCancel` prop 등) 완료 후 착수.
+
+### 완료 기준
+- SCR-SRM-002에서 제출/취소 버튼이 폼 우측 하단(취소 왼쪽, 제출 오른쪽)에 정렬되어 표시되고 기존 동작(취소 시 포털 이동, 제출 시 요청 생성) 회귀 없음.
+- tester 재테스트 통과 후 커밋.
+
+## 개발 계획 — 2026-07-17 유지보수: 서비스 카탈로그 커스텀 폼 빌더(form.io)
+
+- 설계 근거: `docs/02_plan/database/service-request.md` v0.5 1~6절(EAV 폐기·JSONB 전환·마이그레이션 방향), `docs/02_plan/api_spec/service-request.md` v0.5 API-SRM-002/003/004/006, `docs/02_plan/api_spec/common.md` 0-2절(서버 재검증), `docs/02_plan/screen/service-request.md` SCR-SRM-002/007, `docs/02_plan/screen/common.md` 8절.
+- SRM/ESM 공용 컴포넌트(`dynamic-form-builder.tsx`/`dynamic-form-renderer.tsx`/`form-schema.ts`/`FormSubmissionValidator`)는 이 SRM phase에서 함께 만든다 — 실행 지시는 `docs/03_develop/plan/common.md` "동적 폼 빌더·렌더러 공용 아키텍처" 절 참조(dev-ui/dev-be 담당).
+- 참고 기존 코드: `source/backend/.../srm/domain/CatalogFormField.java`·`ServiceCatalogItem.java`·`ServiceRequestFormValue.java`, `application/ServiceCatalogService.java`·`ServiceRequestService.java`·`dto/FormFieldDto.java`·`CatalogItemDetailResponse.java`·`CreateCatalogItemRequest.java`·`UpdateCatalogItemRequest.java`; `source/db/sql/04_srm_schema.sql`; `source/frontend/.../service-request/CatalogManagePage.tsx`·`RequestSubmitPage.tsx`·`api.ts`.
+
+### 담당 범위
+
+#### DB (dev-database) — `source/db/sql/`
+
+- 신규 파일 `36_srm_form_schema_jsonb.sql`(다음 순번, 실제 생성 시점의 최신 파일 다음 번호로 확인):
+  1. `service_catalog_item`에 `form_schema JSONB NOT NULL DEFAULT '{"display":"form","components":[]}'` 추가.
+  2. 기존 `catalog_form_field` 행을 `catalog_item_id`로 그룹핑, `sort_order` 오름차순으로 Form.io 컴포넌트 객체 배열로 변환해 `{ "display": "form", "components": [...] }` 형태로 `form_schema`에 백필(변환 규칙은 `docs/02_plan/database/service-request.md` 82~86행 그대로 — `field_type`→`type` 매핑: text→textfield, textarea→textarea, select→select(`options`→`data.values[].{label,value}`), number→number, date→datetime(`enableTime:false`), file→file(`storage:'base64'`); `field_key`→`key`, `label`→`label`, `required`→`validate.required`, 공통 `input:true`).
+  3. `service_request`에 `form_values JSONB NOT NULL DEFAULT '{}'` 추가. 기존 `service_request_form_value` 행을 `service_request_id`로 그룹핑해 `{ field_key: field_value }` 객체로 조립해 백필.
+  4. `DROP TABLE catalog_form_field;`, `DROP TABLE service_request_form_value;`.
+- `source/db/sql/CLAUDE.md` 갱신(두 테이블 제거, 두 컬럼 추가 반영).
+
+#### BE (dev-backend) — `source/backend/src/main/java/com/itsm/srm/`
+
+- **domain/ServiceCatalogItem.java**: `formSchema`(JSONB) 필드 추가 — 기존 `CatalogFormField.options`와 동일한 `@JdbcTypeCode(SqlTypes.JSON)` + `@Column(columnDefinition = "jsonb")` 패턴 재사용(타입은 `String`으로 두고 애플리케이션 계층에서 Jackson `ObjectMapper`로 `Map<String,Object>`/`JsonNode` 변환 — 기존 컨벤션과 동일).
+- **domain/CatalogFormField.java**, **domain/repository/CatalogFormFieldRepository.java**, **infrastructure/persistence/CatalogFormFieldJpaRepository.java** 삭제.
+- **domain/ServiceRequest.java**: `formValues`(JSONB) 필드 추가(동일 패턴).
+- **domain/ServiceRequestFormValue.java**, **domain/repository/ServiceRequestFormValueRepository.java**, **infrastructure/persistence/ServiceRequestFormValueJpaRepository.java** 삭제.
+- **application/dto/FormFieldDto.java** 삭제(필드 배열 계약 폐기). `CatalogItemDetailResponse.formSchema`/`CreateCatalogItemRequest.formSchema`/`UpdateCatalogItemRequest.formSchema`를 `List<FormFieldDto>` → `Map<String,Object>`(또는 동등한 JSON 트리 타입)로 변경 — Form.io Form JSON(`{display, components}`) 그대로 왕복.
+- **application/ServiceCatalogService.java**: `saveFields`(CatalogFormField 저장 루프) 제거, create/update 시 `formSchema` 원본 JSON을 `ServiceCatalogItem.formSchema`에 그대로 저장. 상세 조회 시 `formFieldRepository` 조립 로직 제거하고 `formSchema` 그대로 반환.
+- **application/ServiceRequestService.java**: 요청 생성 시 `ServiceRequestFormValue` 저장 루프 제거, `formValues` 맵을 `ServiceRequest.formValues`에 그대로 저장. 기존 `validateRequiredFields(...)` 호출을 `common.form.FormSubmissionValidator`(공용, `docs/03_develop/plan/common.md` 참조) 호출로 교체 — 카탈로그 항목의 `formSchema` + 제출 `formValues`를 넘겨 400 처리.
+- 상세 조회 응답의 `formValues`도 저장된 JSONB 맵을 그대로 반환(기존 EAV 조립 로직 제거).
+
+#### FE (dev-fe) — `source/frontend/src/features/service-request/`
+
+- **SCR-SRM-007 `CatalogManagePage.tsx`**: 기존 `FieldBuilder`(→`field-builder.tsx`) 사용부를 `dynamic-form-builder.tsx`의 `DynamicFormBuilder`로 교체. 상세 조회 응답 `formSchema`를 `initialForm`으로 주입, `onChange`로 로컬 상태 축적, 기존 "저장" 버튼 클릭 시 축적된 Form JSON을 카탈로그 생성/수정 API 페이로드(`formSchema`)로 전달.
+- **SCR-SRM-002 `RequestSubmitPage.tsx`**: 기존 `DynamicForm`(→`dynamic-form.tsx`) 사용부를 `dynamic-form-renderer.tsx`의 `DynamicFormRenderer`로 교체. 카탈로그 상세 조회 `formSchema`를 `src`로 주입, `onSubmit`으로 받은 `submission.data`를 그대로 요청 생성 API(`formValues`)로 전달.
+- **`api.ts`**: `formSchema`/`formValues` 관련 TS 타입을 필드 배열 타입에서 `Record<string, unknown>`(또는 `FormIoSchema`, `form-schema.ts` 참조)으로 갱신. 기존 필드 배열 전용 유효성 검사 로직이 있으면 제거(서버 재검증으로 이관됨).
+- UI(dev-ui)가 공용 컴포넌트를 먼저 만들어야 이 작업을 시작할 수 있으므로, 공용 컴포넌트 완료 전에는 API 타입 정리 등 독립 작업부터 진행 가능.
+
+### 완료(테스트 통과) 기준
+
+- DB: 마이그레이션 후 `catalog_form_field`/`service_request_form_value` 삭제, 기존 데이터가 `form_schema`/`form_values`로 정상 백필됨.
+- BE: 카탈로그 생성/수정 시 Form.io Form JSON 그대로 저장·조회, 요청 제출 시 `FormSubmissionValidator`가 required/minLength/maxLength/min/max/pattern 위반을 400으로 거부, 정상 제출은 `form_values`에 `submission.data` 그대로 저장.
+- FE: SCR-SRM-007에서 컬럼/패널/탭 포함 자유배치 폼 설계·저장, SCR-SRM-002에서 그 폼이 그대로 렌더링되고 제출 가능. ADS 톤에 어긋나지 않는 스타일(`.formio-scope` 오버라이드 적용 확인).
+- tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → 완료 시 커밋.

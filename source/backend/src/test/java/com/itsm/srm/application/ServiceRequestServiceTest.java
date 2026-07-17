@@ -1,5 +1,6 @@
 package com.itsm.srm.application;
 
+import tools.jackson.databind.ObjectMapper;
 import com.itsm.asset.application.AssetService;
 import com.itsm.auth.domain.AppUser;
 import com.itsm.auth.domain.Role;
@@ -21,15 +22,12 @@ import com.itsm.srm.application.dto.AssignRequest;
 import com.itsm.srm.application.dto.CreateRequestRequest;
 import com.itsm.srm.application.dto.CsatRequest;
 import com.itsm.srm.application.dto.StatusTransitionRequest;
-import com.itsm.srm.domain.CatalogFormField;
 import com.itsm.srm.domain.RequestStatus;
 import com.itsm.srm.domain.ServiceCatalogItem;
 import com.itsm.srm.domain.ServiceRequest;
-import com.itsm.srm.domain.repository.CatalogFormFieldRepository;
 import com.itsm.srm.domain.repository.CsatRepository;
 import com.itsm.srm.domain.repository.QueueRepository;
 import com.itsm.srm.domain.repository.ServiceCatalogItemRepository;
-import com.itsm.srm.domain.repository.ServiceRequestFormValueRepository;
 import com.itsm.srm.domain.repository.ServiceRequestRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -65,9 +63,7 @@ import static org.mockito.Mockito.when;
 class ServiceRequestServiceTest {
 
     @Mock ServiceRequestRepository requestRepository;
-    @Mock ServiceRequestFormValueRepository formValueRepository;
     @Mock ServiceCatalogItemRepository catalogItemRepository;
-    @Mock CatalogFormFieldRepository formFieldRepository;
     @Mock QueueRepository queueRepository;
     @Mock CsatRepository csatRepository;
     @Mock CommentRepository commentRepository;
@@ -83,10 +79,10 @@ class ServiceRequestServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ServiceRequestService(requestRepository, formValueRepository, catalogItemRepository,
-                formFieldRepository, queueRepository, csatRepository, commentRepository,
+        service = new ServiceRequestService(requestRepository, catalogItemRepository,
+                queueRepository, csatRepository, commentRepository,
                 timelineRepository, appUserRepository, roleRepository, ticketLinkRepository, assetService,
-                approvalGateService, approvalRequestRepository);
+                approvalGateService, approvalRequestRepository, new ObjectMapper());
         when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(csatRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     }
@@ -103,7 +99,7 @@ class ServiceRequestServiceTest {
     }
 
     private ServiceRequest request(Long requesterId, RequestStatus status) {
-        ServiceRequest r = new ServiceRequest("SRM-2026-0001", 10L, requesterId, 1L, null, null);
+        ServiceRequest r = new ServiceRequest("SRM-2026-0001", 10L, requesterId, 1L, null, null, "{}");
         if (status != RequestStatus.SUBMITTED) {
             r.changeStatus(status);
         }
@@ -111,11 +107,19 @@ class ServiceRequestServiceTest {
     }
 
     private ServiceCatalogItem catalog() {
-        return new ServiceCatalogItem("Laptop", null, null, 1L, null, null, null);
+        return new ServiceCatalogItem("Laptop", null, null, 1L, null, null, null,
+                "{\"display\":\"form\",\"components\":[]}");
+    }
+
+    private ServiceCatalogItem catalogWithRequiredField() {
+        return new ServiceCatalogItem("Laptop", null, null, 1L, null, null, null,
+                "{\"display\":\"form\",\"components\":[{\"key\":\"reason\",\"label\":\"사유\",\"type\":\"textfield\","
+                        + "\"input\":true,\"validate\":{\"required\":true}}]}");
     }
 
     private ServiceCatalogItem catalogWithAssigneeRole(Long roleId) {
-        return new ServiceCatalogItem("Laptop", null, null, 1L, null, null, roleId);
+        return new ServiceCatalogItem("Laptop", null, null, 1L, null, null, roleId,
+                "{\"display\":\"form\",\"components\":[]}");
     }
 
     private ErrorCode codeOf(Throwable e) {
@@ -137,9 +141,7 @@ class ServiceRequestServiceTest {
     @Test
     void createRequiredFieldMissingThrows() {
         login(1L, "END_USER");
-        when(catalogItemRepository.findById(10L)).thenReturn(Optional.of(catalog()));
-        when(formFieldRepository.findByCatalogItemIdOrderBySortOrderAsc(any()))
-                .thenReturn(List.of(new CatalogFormField(10L, "reason", "사유", "text", true, null, 0)));
+        when(catalogItemRepository.findById(10L)).thenReturn(Optional.of(catalogWithRequiredField()));
 
         assertThatThrownBy(() -> service.create(new CreateRequestRequest(10L, Map.of())))
                 .isInstanceOf(BusinessException.class)
@@ -150,7 +152,6 @@ class ServiceRequestServiceTest {
     void createSuccess() {
         login(1L, "END_USER");
         when(catalogItemRepository.findById(10L)).thenReturn(Optional.of(catalog()));
-        when(formFieldRepository.findByCatalogItemIdOrderBySortOrderAsc(any())).thenReturn(List.of());
         when(requestRepository.countByTicketKeyStartingWith(any())).thenReturn(0L);
 
         var response = service.create(new CreateRequestRequest(10L, Map.of("reason", "고장")));

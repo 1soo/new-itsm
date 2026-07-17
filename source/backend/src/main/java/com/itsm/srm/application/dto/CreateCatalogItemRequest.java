@@ -2,9 +2,9 @@ package com.itsm.srm.application.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 
-import java.util.List;
+import java.util.Map;
 
 @Schema(description = "카탈로그 항목 생성 요청")
 public record CreateCatalogItemRequest(
@@ -16,7 +16,7 @@ public record CreateCatalogItemRequest(
         Integer slaResponseMinutes,
         Integer slaResolveMinutes,
         @Schema(description = "담당자 역할(선택, 요청 큐 배정 후보 역할)") Long assigneeRoleId,
-        @Schema(description = "동적 양식(1개 이상)")
-        @NotEmpty List<FormFieldDto> formSchema
+        @Schema(description = "동적 양식(Form.io Form JSON, {display, components})")
+        @NotNull Map<String, Object> formSchema
 ) {
 }

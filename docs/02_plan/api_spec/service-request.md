@@ -1,8 +1,9 @@
 # API 명세서 — 서비스 요청 관리 (Service Request)
 
-> 도메인: service-request · 버전: 0.4
+> 도메인: service-request · 버전: 0.5
 >
 > **변경 이력**
+> - 2026-07-17: 서비스 카탈로그 커스텀 폼 빌더(form.io 스타일) 유지보수 요청 — API-SRM-002/003/004의 `formSchema`가 필드 배열(`{key,label,type,required,options}[]`)에서 **Form.io Form JSON 전체**(`{display,components}`, 컬럼/패널/탭 등 레이아웃 포함)로 전환. API-SRM-006 `formValues`는 Form.io `submission.data`를 그대로 전달(키-값 형태는 기존과 동일, 값 형태만 컴포넌트별로 확장). 서버 재검증 규칙은 [common.md](common.md) 0-2절 참조
 > - 2026-07-16: 카탈로그 카테고리 CRUD API(API-SRM-018~021) 신규, 카탈로그 CRUD(API-SRM-001~004)의 `category`(자유 텍스트) 필드를 `categoryId`/`categoryName`으로 전환, `formSchema.type`에 `textarea` 추가, API-SRM-008 응답 `timeline` 항목에 `actor` 필드 추가
 > - 2026-07-15: 카탈로그 CRUD(API-SRM-002/003/004)에 `assigneeRoleId` 필드 추가, 담당자 후보 목록 조회 API(API-SRM-017) 신규
 > - 2026-07-12: 카탈로그 항목별 approvalRequired/approverRole 필드 제거, 전용 승인 API(API-SRM-011/012) 삭제 후 공통 승인 API([common.md](common.md) API-COM-003~005)로 대체
@@ -67,10 +68,10 @@
     "categoryId": "number|null", "categoryName": "string|null · categoryId 표시용",
     "queueId": "number|null", "assigneeRoleId": "number|null", "assigneeRoleName": "string|null · assigneeRoleId 표시용",
     "slaResponseMinutes": "number", "slaResolveMinutes": "number",
-    "formSchema": [ { "key": "string", "label": "string", "type": "text|textarea|select|number|date|file", "required": "boolean", "options": ["string"] } ]
+    "formSchema": { "display": "form", "components": [ "object · Form.io Component 객체(type/key/label/validate/conditional/columns 등), 중첩 레이아웃(columns/panel/tabs) 포함" ] }
   }
   ```
-  > `type`의 `textarea`(여러 줄 텍스트)는 저장·검증 방식이 `text`와 동일, FE 렌더링만 다르다(`components/common/dynamic-form.tsx`가 `<textarea>`로 렌더).
+  > `formSchema`는 2026-07-17 유지보수 요청부터 필드 배열이 아니라 **Form.io Form JSON 전체**다. FE는 이 객체를 그대로 `@formio/react`의 `Form`(SCR-SRM-002)·`FormBuilder`(SCR-SRM-007, 편집 모드 `initialForm`)에 전달한다.
 - **Response Code**: 200 / 401 / 404
 
 ### API-SRM-003 · 카탈로그 항목 생성
@@ -86,10 +87,10 @@
     "queueId": "number · 선택(미지정 시 요청 생성 시점 기본 큐로 배정, 미분류)",
     "assigneeRoleId": "number · 선택(2026-07-15 유지보수 요청, 담당자 역할. 지정 시 라우팅/배정 시점 후보 목록 조회(API-SRM-017)에 사용, 자동배정 아님)",
     "slaResponseMinutes": "number", "slaResolveMinutes": "number",
-    "formSchema": [ { "key": "string", "label": "string", "type": "text|textarea|select|number|date|file", "required": "boolean", "options": ["string"] } ]
+    "formSchema": { "display": "form", "components": [ "object · Form.io Component 객체" ] }
   }
   ```
-  > 승인 필요 여부·승인 담당 역할은 더 이상 카탈로그 항목 생성 시 지정하지 않는다(승인 프로세스 커스텀 기능으로 완전 대체 — [auth.md](auth.md) API-AUTH-027에서 SYSTEM_ADMIN이 도메인=SERVICE_REQUEST, 요청유형=이 카탈로그 항목으로 별도 설정). `assigneeRoleId`는 [auth.md](auth.md) API-AUTH-030(역할 목록 조회)로 후보를 조회해 선택하고, `categoryId`는 API-SRM-018(카테고리 목록 조회)로 후보를 조회해 선택한다.
+  > 승인 필요 여부·승인 담당 역할은 더 이상 카탈로그 항목 생성 시 지정하지 않는다(승인 프로세스 커스텀 기능으로 완전 대체 — [auth.md](auth.md) API-AUTH-027에서 SYSTEM_ADMIN이 도메인=SERVICE_REQUEST, 요청유형=이 카탈로그 항목으로 별도 설정). `assigneeRoleId`는 [auth.md](auth.md) API-AUTH-030(역할 목록 조회)로 후보를 조회해 선택하고, `categoryId`는 API-SRM-018(카테고리 목록 조회)로 후보를 조회해 선택한다. `formSchema`는 SCR-SRM-007 폼 빌더(`FormBuilder`)의 `onChange`로 축적된 최신 Form JSON을 그대로 전달한다.
 - **Response Body** (201): 생성된 항목
 - **Response Code**: 201 / 400 이름·양식 누락 / 403 권한 부족 / 404 존재하지 않는 categoryId
 
@@ -117,13 +118,13 @@
 - **Header**: `Content-Type: application/json`
 - **Request Body**:
   ```json
-  { "catalogItemId": "number · 필수", "formValues": { "key": "value · 양식 필드 값" } }
+  { "catalogItemId": "number · 필수", "formValues": { "key": "value · Form.io submission.data 그대로" } }
   ```
 - **Response Body** (201):
   ```json
   { "id": "number", "ticketKey": "string · SRM-YYYY-####", "status": "SUBMITTED", "createdAt": "ISO-8601" }
   ```
-- **Response Code**: 201 / 400 필수 필드 미입력 / 401
+- **Response Code**: 201 / 400 필수·형식 검증 실패([common.md](common.md) 0-2절 공통 서버 재검증) / 401
 
 ### API-SRM-007 · 요청 목록 조회
 

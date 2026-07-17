@@ -1,8 +1,9 @@
 # 화면 설계서 — 서비스 요청 관리 (Service Request)
 
-> 도메인: service-request · 버전: 0.6
+> 도메인: service-request · 버전: 0.7
 >
 > **변경 이력**
+> - 2026-07-17: SCR-SRM-007 "양식 필드 빌더"(반복 입력)를 form.io 스타일 완전 자유배치 폼 빌더(`@formio/react` `FormBuilder`)로 전환, SCR-SRM-002 "동적 필드"를 `Form` 렌더러로 전환(공통 아키텍처는 [common.md](common.md) 8절)
 > - 2026-07-16: SCR-SRM-005 상태 전이 버튼 라벨을 동작 동사형으로 전환, 타임라인에 행위 주체자(actor) 표시 추가, SCR-SRM-007에 서비스 카탈로그 카테고리 관리(고정 목록 CRUD, SCR-SRM-009 신규) 추가 및 카탈로그 항목의 카테고리 입력을 목록 Select로 전환, 양식 필드 유형에 "여러 줄 텍스트(textarea)" 추가
 > - 2026-07-15(담당자 역할): SCR-SRM-004 배정 버튼을 역할 기반 후보 선택 팝업으로 개편 및 노출 조건 추가, SCR-SRM-005 담당자 미배정 시 라우팅 버튼 비활성화, SCR-SRM-007 담당 큐 Select화·담당자 역할 select 추가
 > - 2026-07-15(문구 결함 수정): SCR-SRM-005 승인 패널 미매칭 문구를 요청 상태(게이트 평가 전/후) 기준으로 분리
@@ -62,14 +63,14 @@
 ### SCR-SRM-002 · 요청 제출(동적 양식)
 
 - **목적**: 선택한 요청 유형의 동적 양식을 작성해 제출.
-- **레이아웃**: 좌측 동적 폼(요청 유형 스키마 기반) / 우측 "관련 지식 기사" 추천 패널 / 하단 제출 버튼.
+- **레이아웃**: 좌측 동적 폼(카탈로그 항목의 `form_schema` 렌더 — 컬럼/패널/탭 등 관리자가 설계한 레이아웃 그대로) / 우측 "관련 지식 기사" 추천 패널 / 하단 제출 버튼.
 - **구성 요소**:
   | 요소 | 유형 | 설명 | 색상 |
   |------|------|------|------|
-  | 동적 필드 | 입력/셀렉트/첨부 | 유형별 양식 스키마 렌더 | Border/Base |
+  | 동적 폼 렌더러 | `@formio/react` `Form`([common.md](common.md) 8절 공용 `dynamic-form-renderer.tsx`) | `formSchema`(API-SRM-002) 그대로 렌더, 클라이언트 검증 내장 | Border/Base |
   | 지식 추천 패널 | 리스트 | 제목/유형 기반 기사 추천(deflection) | Variation 2 |
-  | 제출 버튼 | 버튼 | 요청 생성 | Base |
-- **상태 · 인터랙션**: 필수 필드 미입력 시 제출 차단·인라인 오류. 추천 기사 없으면 패널 숨김. 제출 성공 시 접수번호 토스트·상세 이동.
+  | 제출 버튼 | 버튼 | `Form`의 `onSubmit`으로 제출 데이터 수신 후 요청 생성 호출 | Base |
+- **상태 · 인터랙션**: 필수·형식 위반 필드 미입력 시 제출 차단·인라인 오류(Form.io 내장 검증). 추천 기사 없으면 패널 숨김. 제출 성공 시 접수번호 토스트·상세 이동. 서버 재검증 실패(400) 시 공통 오류 토스트로 안내.
 - **연관 API**: `GET /api/v1/service-catalog/items/{id}`, `GET /api/v1/knowledge/suggestions`, `POST /api/v1/service-requests`
 
 ### SCR-SRM-003 · 내 요청 목록
@@ -158,9 +159,9 @@
   | 카테고리 선택 | Select | 카테고리 목록(API-SRM-018, SCR-SRM-009에서 관리) 중 선택, 미선택="미분류" | Border/Base |
   | 담당 큐 선택 | Select | 큐 목록(API-SRM-016) 중 선택, 미선택="미분류" | Border/Base |
   | 담당자 역할 선택 | Select | 역할 목록(API-AUTH-030) 중 선택(선택 항목). 지정 시 요청 큐(SCR-SRM-004)의 담당자 배정 팝업이 이 역할 보유자를 후보로 노출(자동배정 아님) | Border/Base |
-  | 양식 필드 빌더 | 반복 입력 | 동적 필드 정의(라벨·유형·필수). 필드 유형에 "여러 줄 텍스트"(textarea) 포함(`components/common/field-builder.tsx`·`dynamic-form.tsx`·`form-schema.ts`의 `FormFieldType` 공용 계약 — SRM+ESM 동적 폼 모두 적용) | Border/Base |
+  | 양식 폼 빌더 | `@formio/react` `FormBuilder`([common.md](common.md) 8절 공용 `dynamic-form-builder.tsx`) | 드래그앤드롭 자유배치(컬럼/패널/탭 레이아웃 포함) 폼 설계. 팔레트는 8.2절 구성(Basic/Advanced/Layout만 노출). 기존 조회 스키마(`formSchema`)로 편집 모드 진입, `onChange`로 축적 후 "폼 저장" 버튼 클릭 시 반영(2026-07-17 유지보수 요청, 기존 "양식 필드 빌더" 반복 입력 대체) | Border/Base |
   | SLA 목표 입력 | 입력 | 응답·해결 시간 | Border/Base |
-- **상태 · 인터랙션**: 이름·양식 누락 시 400. 프로세스 오너 권한 없으면 403. 항목 편집 진입 시 카테고리·담당 큐·담당자 역할 select는 상세 조회 응답(`categoryId`/`queueId`/`assigneeRoleId`)의 기존 값으로 프리필한다.
+- **상태 · 인터랙션**: 이름·양식 누락 시 400. 프로세스 오너 권한 없으면 403. 항목 편집 진입 시 카테고리·담당 큐·담당자 역할 select는 상세 조회 응답(`categoryId`/`queueId`/`assigneeRoleId`)의 기존 값으로 프리필하고, 양식 폼 빌더는 `formSchema`로 프리필한다. 폼 저장 버튼은 빌더 영역의 명시적 액션이며 항목 전체 "저장"과는 별개 상태로 관리해도 되고, 최종 "저장" 클릭 시 함께 반영해도 무방하다(FE 재량).
 - **연관 API**: `GET/POST/PATCH /api/v1/service-catalog/items`, `GET /api/v1/queues`(API-SRM-016, 큐 select 후보), `GET /api/v1/roles`(API-AUTH-030, 담당자 역할 select 후보), `GET /api/v1/service-catalog/categories`(API-SRM-018, 카테고리 select 후보)
 
 ### SCR-SRM-009 · 서비스 카탈로그 카테고리 관리

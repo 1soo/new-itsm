@@ -1,5 +1,6 @@
 package com.itsm.srm.application;
 
+import tools.jackson.databind.ObjectMapper;
 import com.itsm.asset.application.AssetService;
 import com.itsm.auth.domain.AppUser;
 import com.itsm.auth.domain.Role;
@@ -11,6 +12,8 @@ import com.itsm.common.approval.domain.ApprovalRequest;
 import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
+import com.itsm.common.form.FormJsonMapper;
+import com.itsm.common.form.FormSubmissionValidator;
 import com.itsm.common.security.AuthPrincipal;
 import com.itsm.common.security.SecurityUtils;
 import com.itsm.common.ticket.Comment;
@@ -38,13 +41,10 @@ import com.itsm.srm.domain.Queue;
 import com.itsm.srm.domain.RequestStatus;
 import com.itsm.srm.domain.ServiceCatalogItem;
 import com.itsm.srm.domain.ServiceRequest;
-import com.itsm.srm.domain.ServiceRequestFormValue;
 import com.itsm.srm.domain.SlaStatus;
-import com.itsm.srm.domain.repository.CatalogFormFieldRepository;
 import com.itsm.srm.domain.repository.CsatRepository;
 import com.itsm.srm.domain.repository.QueueRepository;
 import com.itsm.srm.domain.repository.ServiceCatalogItemRepository;
-import com.itsm.srm.domain.repository.ServiceRequestFormValueRepository;
 import com.itsm.srm.domain.repository.ServiceRequestRepository;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -53,7 +53,6 @@ import org.springframework.util.StringUtils;
 
 import java.time.OffsetDateTime;
 import java.time.Year;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -62,6 +61,8 @@ import java.util.Map;
  * RBAC: scope mine/all, Agent 배정·이행, 요청자 CSAT.
  * 승인은 전 도메인 공용 승인 엔진(common.approval)이 담당하며, IN_FULFILLMENT 전이 시 게이트를 통과해야 한다
  * (docs/02_plan/api_spec/service-request.md API-SRM-010, docs/02_plan/api_spec/common.md 0절).
+ * 양식 제출 데이터(formValues)는 Form.io submission.data를 통째로 JSONB에 저장하고,
+ * 제출 시 공용 FormSubmissionValidator(common.form)로 재검증한다(2026-07-17 유지보수 요청).
  */
 @Service
 public class ServiceRequestService {
@@ -70,11 +71,10 @@ public class ServiceRequestService {
     private static final String PROCESS_OWNER = "PROCESS_OWNER";
     private static final TicketType TT = TicketType.SERVICE_REQUEST;
     private static final String DOMAIN = "SERVICE_REQUEST";
+    private static final String EMPTY_FORM_VALUES = "{}";
 
     private final ServiceRequestRepository requestRepository;
-    private final ServiceRequestFormValueRepository formValueRepository;
     private final ServiceCatalogItemRepository catalogItemRepository;
-    private final CatalogFormFieldRepository formFieldRepository;
     private final QueueRepository queueRepository;
     private final CsatRepository csatRepository;
     private final CommentRepository commentRepository;
@@ -85,11 +85,10 @@ public class ServiceRequestService {
     private final AssetService assetService;
     private final ApprovalGateService approvalGateService;
     private final ApprovalRequestRepository approvalRequestRepository;
+    private final ObjectMapper objectMapper;
 
     public ServiceRequestService(ServiceRequestRepository requestRepository,
-                                 ServiceRequestFormValueRepository formValueRepository,
                                  ServiceCatalogItemRepository catalogItemRepository,
-                                 CatalogFormFieldRepository formFieldRepository,
                                  QueueRepository queueRepository,
                                  CsatRepository csatRepository,
                                  CommentRepository commentRepository,
@@ -99,11 +98,10 @@ public class ServiceRequestService {
                                  TicketLinkRepository ticketLinkRepository,
                                  AssetService assetService,
                                  ApprovalGateService approvalGateService,
-                                 ApprovalRequestRepository approvalRequestRepository) {
+                                 ApprovalRequestRepository approvalRequestRepository,
+                                 ObjectMapper objectMapper) {
         this.requestRepository = requestRepository;
-        this.formValueRepository = formValueRepository;
         this.catalogItemRepository = catalogItemRepository;
-        this.formFieldRepository = formFieldRepository;
         this.queueRepository = queueRepository;
         this.csatRepository = csatRepository;
         this.commentRepository = commentRepository;
@@ -114,6 +112,7 @@ public class ServiceRequestService {
         this.assetService = assetService;
         this.approvalGateService = approvalGateService;
         this.approvalRequestRepository = approvalRequestRepository;
+        this.objectMapper = objectMapper;
     }
 
     // ---------- create ----------
@@ -125,7 +124,7 @@ public class ServiceRequestService {
                 .filter(i -> !i.isDeleted())
                 .orElseThrow(() -> new BusinessException(ErrorCode.VALIDATION_ERROR, "유효하지 않은 카탈로그 항목입니다."));
 
-        validateRequiredFields(item.getId(), request.formValues());
+        FormSubmissionValidator.validate(readSchema(item.getFormSchema()), request.formValues());
 
         Long queueId = item.getQueueId() != null ? item.getQueueId()
                 : queueRepository.findFirstByIsDefaultTrue().map(Queue::getId).orElse(null);
@@ -136,12 +135,9 @@ public class ServiceRequestService {
                 ? now.plusMinutes(item.getSlaResolveMinutes()) : null;
 
         ServiceRequest saved = requestRepository.save(new ServiceRequest(
-                nextTicketKey(), item.getId(), principal.userId(), queueId, responseDue, resolveDue));
+                nextTicketKey(), item.getId(), principal.userId(), queueId, responseDue, resolveDue,
+                writeValues(request.formValues())));
 
-        if (request.formValues() != null) {
-            request.formValues().forEach((key, value) -> formValueRepository.save(
-                    new ServiceRequestFormValue(saved.getId(), key, value == null ? null : String.valueOf(value))));
-        }
         timelineRepository.save(TimelineEvent.of(TT, saved.getId(), "SUBMIT", "요청이 제출되었습니다."));
         return new RequestCreatedResponse(saved.getId(), saved.getTicketKey(), saved.getStatus().name(), saved.getCreatedAt());
     }
@@ -177,9 +173,7 @@ public class ServiceRequestService {
         assertCanView(principal, request);
 
         ServiceCatalogItem item = catalogItemRepository.findById(request.getCatalogItemId()).orElse(null);
-        Map<String, Object> formValues = new LinkedHashMap<>();
-        formValueRepository.findByServiceRequestId(id)
-                .forEach(v -> formValues.put(v.getFieldKey(), v.getFieldValue()));
+        Map<String, Object> formValues = readValues(request.getFormValues());
 
         ApprovalRequest latestApproval = approvalRequestRepository
                 .findTopByTicketTypeAndTicketIdOrderByIdDesc(TT, id).orElse(null);
@@ -335,18 +329,6 @@ public class ServiceRequestService {
 
     // ---------- helpers ----------
 
-    private void validateRequiredFields(Long catalogItemId, Map<String, Object> formValues) {
-        formFieldRepository.findByCatalogItemIdOrderBySortOrderAsc(catalogItemId).stream()
-                .filter(com.itsm.srm.domain.CatalogFormField::isRequired)
-                .forEach(f -> {
-                    Object v = formValues == null ? null : formValues.get(f.getFieldKey());
-                    if (v == null || !StringUtils.hasText(String.valueOf(v))) {
-                        throw new BusinessException(ErrorCode.REQUIRED_FIELD_MISSING,
-                                "필수 항목 누락: " + f.getLabel());
-                    }
-                });
-    }
-
     private String nextTicketKey() {
         String prefix = "SRM-" + Year.now().getValue() + "-";
         long seq = requestRepository.countByTicketKeyStartingWith(prefix) + 1;
@@ -402,5 +384,17 @@ public class ServiceRequestService {
 
     private String catalogName(Long id) {
         return id == null ? null : catalogItemRepository.findById(id).map(ServiceCatalogItem::getName).orElse(null);
+    }
+
+    private Map<String, Object> readSchema(String json) {
+        return FormJsonMapper.readJsonMap(objectMapper, json);
+    }
+
+    private String writeValues(Map<String, Object> formValues) {
+        return FormJsonMapper.writeJson(objectMapper, formValues, EMPTY_FORM_VALUES, "formValues 직렬화 실패");
+    }
+
+    private Map<String, Object> readValues(String json) {
+        return FormJsonMapper.readJsonMap(objectMapper, json);
     }
 }

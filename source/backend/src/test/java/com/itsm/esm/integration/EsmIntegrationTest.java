@@ -104,7 +104,9 @@ class EsmIntegrationTest {
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/34_srm_catalog_category.sql").toAbsolutePath()),
                     "/docker-entrypoint-initdb.d/34_srm_catalog_category.sql")
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/35_catalog_form_field_textarea_type.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/35_catalog_form_field_textarea_type.sql");
+                    "/docker-entrypoint-initdb.d/35_catalog_form_field_textarea_type.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/36_srm_form_schema_jsonb.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/36_srm_form_schema_jsonb.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {

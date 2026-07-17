@@ -9,6 +9,7 @@ public enum ErrorCode {
 
     // 400
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "입력 형식이 올바르지 않습니다."),
+    FORM_FIELD_INVALID(HttpStatus.BAD_REQUEST, "입력한 양식 값이 유효하지 않습니다."),
     PASSWORD_POLICY_VIOLATION(HttpStatus.BAD_REQUEST, "새 비밀번호가 정책을 위반했습니다."),
     ROLE_NOT_FOUND(HttpStatus.BAD_REQUEST, "존재하지 않는 역할입니다."),
 

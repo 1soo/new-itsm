@@ -1,8 +1,9 @@
 # API 명세서 — 엔터프라이즈 서비스 관리 (ESM)
 
-> 도메인: esm · 버전: 0.3
+> 도메인: esm · 버전: 0.4
 >
 > **변경 이력**
+> - 2026-07-17: 서비스 카탈로그 커스텀 폼 빌더(form.io 스타일) 유지보수 요청 — API-ESM-002/003/004의 `formSchema`가 필드 배열에서 **Form.io Form JSON 전체**(`{display,components}`)로 전환. API-ESM-005 `formValues`는 Form.io `submission.data` 그대로 전달. 서버 재검증 규칙은 [common.md](common.md) 0-2절 참조(SRM과 동일 패턴)
 > - 2026-07-16: API-ESM-007 응답 `timeline` 항목에 `actor` 필드 추가, `STATUS_*` 타임라인 기본 메시지의 상태 코드를 라벨로 정리, `formSchema.type`에 `textarea` 추가(API-ESM-002/003, SRM과 공유하는 `FormFieldType` 계약)
 > - 2026-07-12: 부서 요청 IN_PROGRESS → COMPLETED 전이에 공통 승인 게이트([common.md](common.md) API-COM-003~005) 추가(관리자가 규칙을 설정하지 않으면 게이트 없이 진행). HR 케이스·체크리스트 하위 작업은 게이트 대상에서 제외
 
@@ -69,10 +70,10 @@
     "id": "number", "name": "string", "description": "string", "department": "string",
     "checklistTemplateType": "NONE|ONBOARDING|OFFBOARDING",
     "checklistTemplate": [ { "department": "string", "taskDescription": "string" } ],
-    "formSchema": [ { "key": "string", "label": "string", "type": "text|textarea|select|number|date|file", "required": "boolean", "options": ["string"] } ]
+    "formSchema": { "display": "form", "components": [ "object · Form.io Component 객체(SRM API-SRM-002와 동일 계약)" ] }
   }
   ```
-  > `textarea`(여러 줄 텍스트)는 `text`와 저장·검증 방식은 동일하고 FE 렌더링만 다르다(`components/common/dynamic-form.tsx`가 `<textarea>`로 렌더).
+  > `formSchema`는 2026-07-17 유지보수 요청부터 필드 배열이 아니라 **Form.io Form JSON 전체**다. FE는 이 객체를 그대로 `Form`(SCR-ESM-002)·`FormBuilder`(SCR-ESM-006)에 전달한다.
 - **Response Code**: 200 / 401 / 404
 
 ### API-ESM-003 · 카탈로그 항목 생성
@@ -86,9 +87,10 @@
     "name": "string · 필수", "description": "string", "department": "HR|LEGAL|FACILITIES|FINANCE|IT · 필수",
     "checklistTemplateType": "NONE|ONBOARDING|OFFBOARDING",
     "checklistTemplate": [ { "department": "string", "taskDescription": "string" } ],
-    "formSchema": [ { "key": "string", "label": "string", "type": "text|textarea|select|number|date|file", "required": "boolean", "options": ["string"] } ]
+    "formSchema": { "display": "form", "components": [ "object · Form.io Component 객체" ] }
   }
   ```
+  > `formSchema`는 SCR-ESM-006 폼 빌더(`FormBuilder`)의 `onChange`로 축적된 최신 Form JSON을 그대로 전달한다.
 - **Response Body** (201): `{ "id": "number" }`
 - **Response Code**: 201 / 400 이름·담당 부서 누락 / 403
 
@@ -106,13 +108,13 @@
 - **Header**: `Content-Type: application/json`
 - **Request Body**:
   ```json
-  { "catalogItemId": "number · 필수", "formValues": { "key": "value" }, "targetUserName": "string · 온보딩/오프보딩 대상자명(해당 유형일 때 필수)" }
+  { "catalogItemId": "number · 필수", "formValues": { "key": "value · Form.io submission.data 그대로" }, "targetUserName": "string · 온보딩/오프보딩 대상자명(해당 유형일 때 필수)" }
   ```
 - **Response Body** (201):
   ```json
   { "id": "number", "ticketKey": "string · ESM-YYYY-####", "status": "SUBMITTED", "checklistId": "number|null" }
   ```
-- **Response Code**: 201 / 400 필수 필드 미입력 / 400 체크리스트 템플릿 미정의(ONBOARDING/OFFBOARDING 유형인데 템플릿 없음) / 401
+- **Response Code**: 201 / 400 필수·형식 검증 실패([common.md](common.md) 0-2절 공통 서버 재검증) / 400 체크리스트 템플릿 미정의(ONBOARDING/OFFBOARDING 유형인데 템플릿 없음) / 401
 
 ### API-ESM-006 · 부서 요청 목록 조회
 

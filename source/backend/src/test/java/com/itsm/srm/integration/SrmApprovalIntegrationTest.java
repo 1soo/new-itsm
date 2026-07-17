@@ -16,7 +16,6 @@ import com.itsm.srm.application.dto.AssignRequest;
 import com.itsm.srm.application.dto.CatalogItemDetailResponse;
 import com.itsm.srm.application.dto.CreateCatalogItemRequest;
 import com.itsm.srm.application.dto.CreateRequestRequest;
-import com.itsm.srm.application.dto.FormFieldDto;
 import com.itsm.srm.application.dto.RequestCreatedResponse;
 import com.itsm.srm.application.dto.StatusTransitionRequest;
 import com.itsm.srm.application.dto.UpdateCatalogItemRequest;
@@ -102,7 +101,9 @@ class SrmApprovalIntegrationTest {
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/34_srm_catalog_category.sql").toAbsolutePath()),
                     "/docker-entrypoint-initdb.d/34_srm_catalog_category.sql")
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/35_catalog_form_field_textarea_type.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/35_catalog_form_field_textarea_type.sql");
+                    "/docker-entrypoint-initdb.d/35_catalog_form_field_textarea_type.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/36_srm_form_schema_jsonb.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/36_srm_form_schema_jsonb.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {
@@ -127,6 +128,16 @@ class SrmApprovalIntegrationTest {
     private void as(Long userId, String... roles) {
         AuthPrincipal p = new AuthPrincipal(userId, "u" + userId + "@itsm.local", List.of(roles), UUID.randomUUID());
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(p, null, List.of()));
+    }
+
+    private Map<String, Object> emptyFormSchema() {
+        return Map.of("display", "form", "components", List.of());
+    }
+
+    private Map<String, Object> formSchemaWith(String key, boolean required) {
+        return Map.of("display", "form", "components", List.of(
+                Map.of("key", key, "label", key, "type", "textfield", "input", true,
+                        "validate", Map.of("required", required))));
     }
 
     private Long insertUser(String email) {
@@ -184,7 +195,7 @@ class SrmApprovalIntegrationTest {
         as(1L, "PROCESS_OWNER");
         CatalogItemDetailResponse item = catalogService.create(new CreateCatalogItemRequest(
                 "Item" + ts, "d", null, null, null, null, null,
-                List.of(new FormFieldDto("note", "Note", "text", false, null))));
+                formSchemaWith("note", false)));
         seedSubtypeProcess(domain, String.valueOf(item.id()), "APPROVER");
 
         as(requesterId, "END_USER");
@@ -237,7 +248,7 @@ class SrmApprovalIntegrationTest {
         as(1L, "PROCESS_OWNER");
         CatalogItemDetailResponse item = catalogService.create(new CreateCatalogItemRequest(
                 "Item" + ts, "d", null, null, null, null, null,
-                List.of(new FormFieldDto("note", "Note", "text", false, null))));
+                formSchemaWith("note", false)));
         seedSubtypeProcess(domain, String.valueOf(item.id()), "APPROVER");
 
         as(requesterId, "END_USER");
@@ -281,7 +292,7 @@ class SrmApprovalIntegrationTest {
         as(1L, "PROCESS_OWNER");
         CatalogItemDetailResponse item = catalogService.create(new CreateCatalogItemRequest(
                 "CatchAllItem" + ts, "d", null, null, null, null, null,
-                List.of(new FormFieldDto("note", "Note", "text", false, null))));
+                formSchemaWith("note", false)));
         seedCatchAllProcess("APPROVER", "전체 도메인 캐치올 " + ts);
 
         as(requesterId, "END_USER");
@@ -324,7 +335,7 @@ class SrmApprovalIntegrationTest {
 
         as(1L, "PROCESS_OWNER");
         CatalogItemDetailResponse item = catalogService.create(new CreateCatalogItemRequest(
-                "AssetLinkItem" + ts, "d", null, null, null, null, null, List.of()));
+                "AssetLinkItem" + ts, "d", null, null, null, null, null, emptyFormSchema()));
 
         as(requesterId, "END_USER");
         RequestCreatedResponse created = requestService.create(new CreateRequestRequest(item.id(), Map.of()));
@@ -340,21 +351,22 @@ class SrmApprovalIntegrationTest {
     }
 
     @Test
-    void updateCatalogItemKeepingSameFormFieldKeyDoesNotViolateUniqueConstraint() {
-        // 회귀 테스트: catalog_item_id=1, field_key='model' 재현 시나리오.
-        // deleteByCatalogItemId가 즉시 flush되지 않으면 IDENTITY save()의 즉시 INSERT와
-        // 순서가 뒤바뀌어 uq_catalog_form_field 위반이 발생한다.
+    void updateCatalogItemReplacesFormSchema() {
+        // formSchema(JSONB)는 카탈로그 항목 한 행에 통째로 저장되므로(2026-07-17 유지보수 요청,
+        // 기존 catalog_form_field EAV 폐기), 동일 key로 재저장해도 유니크 제약 위반 여지가 없다.
         long ts = System.nanoTime();
 
         as(1L, "PROCESS_OWNER");
         CatalogItemDetailResponse created = catalogService.create(new CreateCatalogItemRequest(
                 "Laptop" + ts, "d", null, null, null, null, null,
-                List.of(new FormFieldDto("model", "Model", "text", true, null))));
+                formSchemaWith("model", true)));
 
         CatalogItemDetailResponse updated = catalogService.update(created.id(), new UpdateCatalogItemRequest(
                 "Laptop" + ts, "updated", null, null, null, null, null,
-                List.of(new FormFieldDto("model", "Model", "text", true, null))));
+                formSchemaWith("model", true)));
 
-        assertThat(updated.formSchema()).extracting("key").containsExactly("model");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> components = (List<Map<String, Object>>) updated.formSchema().get("components");
+        assertThat(components).extracting(c -> c.get("key")).containsExactly("model");
     }
 }
