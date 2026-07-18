@@ -57,3 +57,4 @@
 | 20260716-125723 | esm | 상태전이 버튼 문구 동작동사형 전환, 타임라인 code→name+actor 표시(EsmRequest), 양식 필드 여러 줄 텍스트(공용 반영) | docs/06_maintenance/20260716-125723/esm/report.md |
 | 20260716-125723 | common | 승인 대기함(SCR-COM-014) 티켓 상세보기 버튼 추가, 양식 필드 유형 textarea 추가(공용 컴포넌트), 타임라인 code→name/actor 공용 유틸(TimelineMessages·AppUserRepository.resolveDisplayName) 신설 | docs/06_maintenance/20260716-125723/common/report.md |
 | 20260718-070801 | srm | 서비스 카탈로그 동적 양식을 form.io 스타일 드래그앤드롭 폼 빌더로 전면 전환(EAV→JSONB form_schema/form_values, FormSubmissionValidator 신규, 한글 key 자동생성 제약 known limitation 문서화) | docs/06_maintenance/20260718-070801/srm/report.md |
+| 20260718-114544 | srm | 요청 큐(Queue 엔티티·테이블) 완전 폐지, 요청 분류/필터링을 카탈로그 카테고리 실시간 조인으로 일원화(category-counts API 신규, categoryId 파싱 400 회귀 수정) | docs/06_maintenance/20260718-114544/srm/report.md |
