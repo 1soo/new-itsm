@@ -775,3 +775,53 @@
 - 공용 `ui/dialog.tsx`는 변경되지 않아, SRM 외 다른 화면의 기존 Modal들 위치·동작에 회귀가 없다(다른 도메인 화면에서 Modal 여는 것으로 간단히 확인 가능한 범위 내에서 회귀 없음 확인).
 - 기존 SRM 회귀 없음(캔버스 카드=실제 렌더링, DnD 배치, 팔레트 9종, 높이 상한, regex text 전용, 9방향 정렬, 라벨 텍스트 legend 스타일·showBorder 결함 수정 등 이전 차수 항목 재확인).
 - tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → Standards/Spec 코드 리뷰 → 완료 시 커밋(main).
+
+## 개발 계획 — 2026-07-18 유지보수 8차: 라벨 경계 표시 확대·placeholder 폴백 제거·기본값 UI 동일화·타이틀 배치·i18n 전환
+
+- 요구사항 5건(FE 단독 — API/DB 문서는 opaque JSONB 설명 갱신뿐, 컬럼 타입·BE 검증 로직 영향 없음 확인 완료. `FormSubmissionValidator`는 `defaultValue`를 참조하지 않으므로 BE 코드 변경 불필요 — dev-be/dev-db 소집 불필요):
+  1. 라벨(태그) 경계 그룹(테두리+legend 텍스트) 표시를 빌더 캔버스 전용에서 `dynamic-form-renderer.tsx` 자체로 확대 — 게이팅 없이 SCR-SRM-002 요청 제출 폼과 SCR-SRM-007 A1 축소 미리보기 둘 다 노출(둘 다 `DynamicFormRenderer` 재사용). 캔버스(빌더)와 렌더러 오버레이는 동일 계산 로직·스타일(경계 산정, 4px 확장, `showBorder` 분리, legend 텍스트)을 공유해 중복 구현하지 않는다(공용 유틸/컴포넌트로 추출 권장).
+  2. date/file/select의 하드코딩 기본 placeholder 폴백("날짜를 선택하세요"/"파일을 선택하세요"/"선택") 완전 제거 — placeholder 미지정 시 완전히 빈 상태로 표시(어떤 유형도 하드코딩 기본 placeholder 없음).
+  3. Content 설정 팝업의 기본값 설정 UI를 컴포넌트 실제 입력 타입과 동일화: `text`/`textarea`는 변경 없음, `select`/`radio`는 단일 선택(옵션 파싱 목록에서), `checkbox`는 다중 선택(체크박스 그룹), `date`는 `type="date"` 네이티브 입력, `file`은 기본값 UI 자체 제거(기존에도 렌더러가 무시하던 값이라 회귀 없음). `GridComponentInput.defaultValue` 타입을 `string` → `string | string[] | null`로 확장(`checkbox`만 배열). 렌더러의 값 폴백(`value ?? input.defaultValue`)과 checkbox 렌더링의 `Array.isArray` 처리도 배열 가능성을 반영해 갱신.
+  4. 읽기전용·필수 여부 체크박스를 팝업 본문 중간에서 Content 설정 팝업 타이틀("컴포넌트 설정") 우측으로 이동 — 공용 `Modal`에 선택적 prop(예: `titleExtra?: ReactNode`, 미지정 시 기존 동작 그대로) 신규 추가 필요(다른 `Modal` 사용처는 영향 없음).
+  5. `dynamic-form-builder.tsx`/`dynamic-form-renderer.tsx`의 내부 UI 텍스트를 i18n 전환 대상에 포함(기존 "관리자 전용이라 범위 밖" 방침 해제) — 기존 `service-request` 네임스페이스 재사용, `useTranslation(["service-request", "common"])`.
+- 설계 근거: `docs/02_plan/screen/service-request.md` 5.1/5.4/5.8절(8차 갱신), SCR-SRM-002/007(4절), `docs/02_plan/screen/common.md` 6.7/6.8절(i18n 전환 방침·네임스페이스), `docs/02_plan/api_spec/service-request.md` API-SRM-002(`input.defaultValue` 타입 확장, 라벨 오버레이 게이팅 없음 명시), `docs/02_plan/database/service-request.md`(컬럼 타입 변경 없음, 설명 갱신뿐), `docs/00_context/glossary.md`(그리드 라벨(태그) 항목 — 표시 범위 확대 반영).
+- 참고 기존 코드: `source/frontend/src/components/common/form-schema.ts`·`dynamic-form-builder.tsx`(캔버스 라벨 오버레이 로직, ComponentSettingsPopover의 기본값/체크박스/placeholder 관련 부분)·`dynamic-form-renderer.tsx`·`modal.tsx`(공용 Modal), `source/frontend/src/i18n/locales/{ko,en}/service-request.json`(기존 `catalogManage.*`/`requestSubmit.*` 등 키 네이밍 패턴 참고).
+
+### 담당 범위
+
+#### FE (dev-ui) — `source/frontend/src/components/common/`
+
+**`form-schema.ts`**
+- `GridComponentInput.defaultValue` 타입을 `string | null` → `string | string[] | null`로 확장.
+
+**`modal.tsx`**
+- `ModalProps`에 `titleExtra?: ReactNode` 추가(선택), `DialogHeader` 안 타이틀 옆에 렌더링(미지정 시 기존과 동일한 마크업 — 다른 화면 Modal에 영향 없음을 보장).
+
+**`dynamic-form-renderer.tsx`**
+1. **라벨 경계 오버레이 렌더러 확대**: `DynamicFormRenderer`가 `schema.labels`(이미 `GridFormSchema`에 존재)를 사용해, 빌더 캔버스에 있던 라벨 경계 그룹(참조 1개 이상이면 항상 렌더링, 4px 확장, `showBorder`로 테두리만 조건부, legend 텍스트는 항상 표시)과 동일한 오버레이를 그린다. `dynamic-form-builder.tsx`와 로직·스타일을 공유하도록 추출(예: 순수 함수로 라벨별 경계 좌표 계산 + 오버레이 JSX를 렌더링하는 작은 컴포넌트를 이 파일 또는 `form-schema.ts`에 두고 양쪽에서 import — 정확한 형태는 FE 재량, 로직 복붙 금지). 렌더러의 그리드 컨테이너가 이미 캔버스와 동일한 CSS Grid(8칸, `GRID_ROW_HEIGHT_PX` 고정 행)를 쓰므로 그리드 라인 좌표(`gridColumn`/`gridRow`) 기반 오버레이를 그대로 재사용 가능(픽셀 환산 불필요).
+2. **placeholder 하드코딩 폴백 제거**: `DEFAULT_DATE_PLACEHOLDER`/`DEFAULT_FILE_PLACEHOLDER` 상수(또는 `select`의 `"선택"` 폴백) 사용을 제거 — `component.input?.placeholder`가 없으면 빈 문자열/`undefined`로 두고 아무 폴백 문구도 표시하지 않는다.
+3. **`defaultValue` 배열 처리**: `value ?? component.input?.defaultValue` 폴백 로직에서 `checkbox`는 `Array.isArray(defaultValue) ? defaultValue : []`로, 나머지 유형은 기존처럼 단일 문자열로 처리하도록 타입 가드 추가.
+4. 내부 하드코딩 한국어 문자열(오류 메시지·placeholder 폴백 등, 폴백 자체는 제거되지만 `REQUIRED_ERROR_MESSAGE`/`PATTERN_ERROR_MESSAGE` 등 남는 문자열)을 `useTranslation(["service-request", "common"])` 기반 i18n 키로 전환.
+
+**`dynamic-form-builder.tsx`**
+1. **기본값 설정 UI 타입별 동일화**: `ComponentSettingsPopover`의 "기본값" 항목을 컴포넌트 타입에 따라 분기 — `select`/`radio`는 `options` 파싱 목록에서 단일 선택(select 컴포넌트는 기존 `AlignToggle`류 pill 버튼 그룹 또는 Select 재사용, radio는 선택 해제 가능하게 — 재클릭 해제 또는 "선택 안 함" 옵션, FE 재량), `checkbox`는 다중 선택 체크박스 그룹(값은 `string[]`), `date`는 `<input type="date">` 그대로 사용, `file`은 "기본값" 항목 자체를 렌더링하지 않음. `text`/`textarea`는 기존 Input 그대로 유지.
+2. **라벨 경계 오버레이 공유 로직 추출**: 현재 `DynamicFormBuilder` 캔버스 안에 있는 라벨 오버레이 계산·렌더링 로직을 `dynamic-form-renderer.tsx`(또는 공용 위치)와 공유하도록 리팩터링(1번 항목과 동일한 추출 대상 — 캔버스는 `movePreview`/`resizePreview` 반영값을 쓰고 렌더러는 정적 위치를 쓰는 차이만 있으므로, 위치/크기를 가져오는 접근자를 매개변수화해 공유).
+3. **읽기전용·필수 여부 이동**: 현재 팝업 본문 중간의 `<div className="flex items-center gap-4">`(읽기전용/필수 체크박스 2개) 블록을 제거하고, `Modal`의 신규 `titleExtra` prop에 이 두 체크박스를 전달(팝업 타이틀 "컴포넌트 설정" 우측에 마진을 두고 배치). `guide-text`/`guide-file`처럼 이 체크박스가 없던 타입 분기에서는 `titleExtra`를 전달하지 않거나 빈 값으로 처리.
+4. 내부 하드코딩 한국어 UI 텍스트(팔레트 라벨, Content 설정 팝업 각 항목 라벨, 버튼 텍스트, 경고 문구 등)를 `useTranslation(["service-request", "common"])` 기반 i18n 키로 전환.
+
+**`source/frontend/src/i18n/locales/{ko,en}/service-request.json`**
+- 두 파일 신규 키 추가(네임스페이스 하나로 통합, 예: `dynamicForm.builder.*`/`dynamicForm.renderer.*` 형태 — 기존 `catalogManage.*`/`requestSubmit.*` 키 네이밍 패턴 참고, 정확한 키 구조는 FE 재량). 영어(en) 번역도 함께 채운다(기존 다국어 지원 컨벤션과 동일).
+
+### 진행 순서
+
+1. `form-schema.ts`(defaultValue 타입 확장) → `modal.tsx`(titleExtra prop) → `dynamic-form-renderer.tsx`(라벨 오버레이 확대+placeholder 폴백 제거+defaultValue 배열 처리, 공유 로직 추출) → `dynamic-form-builder.tsx`(기본값 UI 동일화, 오버레이 로직 공유 적용, titleExtra 사용, i18n) → locale JSON 갱신. i18n 전환은 마지막에 몰아서 해도 되고 각 파일 작업 중 함께 해도 무방(FE 재량).
+
+### 완료(테스트 통과) 기준
+
+- SCR-SRM-002 요청 제출 폼과 SCR-SRM-007 A1 축소 미리보기 양쪽 모두에서, 라벨을 참조하는 컴포넌트가 1개 이상이면 경계 테두리(showBorder=true)+legend 텍스트가 표시된다(요청자 화면에도 게이팅 없이 노출 확인). 빌더 캔버스의 표시와 동일한 로직(4px 확장, showBorder 분리 등)이 유지된다.
+- date/file/select에서 placeholder를 지정하지 않으면 완전히 빈 상태로 표시되고(하드코딩 기본 문구 없음), 지정하면 그 값이 그대로 표시된다.
+- Content 설정 팝업에서 select/radio 기본값이 옵션 목록 중 단일 선택 UI로, checkbox 기본값이 다중 선택 UI로, date 기본값이 date picker로 설정 가능하고, file은 "기본값" 항목 자체가 없다. 설정한 기본값이 요청 제출 폼에 정확히 반영된다(checkbox는 여러 개 미리 체크됨).
+- Content 설정 팝업에서 읽기전용·필수 여부 체크박스가 본문이 아니라 팝업 타이틀 "컴포넌트 설정" 우측에 나타나며, 다른 화면(라벨 생성/수정 팝업 등)의 기존 Modal 사용처는 이 변경으로 인한 시각적 영향이 없다(`titleExtra` 미지정 시 기존과 동일).
+- SCR-SRM-007 "Form 설정" 팝업·SCR-SRM-002 요청 제출 폼의 내부 텍스트가 언어 전환(ko/en) 시 정상적으로 바뀐다.
+- 기존 SRM 회귀 없음(캔버스=실제 렌더링, DnD 배치, 팔레트 9종, 높이 상한, regex text 전용, 9방향 정렬, 라벨 legend 스타일·showBorder, 팝업 위치 통일 등 이전 차수 항목 재확인).
+- tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → Standards/Spec 코드 리뷰 → 완료 시 커밋(main).

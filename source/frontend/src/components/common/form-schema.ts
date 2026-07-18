@@ -85,7 +85,8 @@ export interface GridComponentInput {
   align?: GridAlign; // 가로 정렬, 기본값 center
   verticalAlign?: GridAlignVertical | null; // 세로 정렬(2026-07-18 유지보수 요청 4차 신규), 기본값 top
   placeholder?: string | null; // 선택, Content 설정 UI는 hasPlaceholderUi(type)인 유형에만 노출
-  defaultValue?: string | null;
+  /** checkbox만 배열(다중 선택), 나머지 유형은 단일 문자열(2026-07-18 유지보수 요청 8차로 확장). */
+  defaultValue?: string | string[] | null;
   readOnly?: boolean;
 }
 

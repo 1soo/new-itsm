@@ -15,6 +15,7 @@
 | 2026-07-16 | SCR-COM-008 상태 전이 버튼 라벨을 도착 상태명 대신 동작 동사형으로 전환하는 공통 아키텍처 정의(구체 라벨 매핑은 SRM/INCIDENT/PROBLEM/CHANGE/VULNERABILITY/ASSET/ESM 도메인별 screen 문서), 타임라인에 행위 수행 주체자(actor) 표시 추가(SRM/ESM/INCIDENT 3개 도메인), SCR-COM-014 승인 대기함에 "상세보기" 버튼 신규 |
 | 2026-07-17 | 서비스 카탈로그 커스텀 폼 빌더(form.io 스타일) — `@formio/react` 기반 동적 폼 빌더/렌더러 공통 아키텍처 정의(8절 신규, SRM/ESM 공용). 팔레트 구성·Bootstrap↔ADS 스타일 통합 방안·서버 저장 흐름 포함(구체 화면 배치는 [service-request.md](service-request.md) SCR-SRM-007/002, [esm.md](esm.md) SCR-ESM-006/002) |
 | 2026-07-18 | 8절 아키텍처를 form.io 완전 제거 후 자체 8×n 그리드 엔진으로 재구현 — SRM 전용임을 정정하고 상세 내용을 [service-request.md](service-request.md) 5절로 이전(ESM은 이 아키텍처를 사용한 적 없음이 코드 확인됨) |
+| 2026-07-18 | 6.8절에 그리드 폼 빌더 i18n 편입(`dynamic-form-builder.tsx`/`dynamic-form-renderer.tsx`, 기존 "관리자 전용 팝업 i18n 제외" 방침 해제) 추가 |
 
 ## 1. 개요
 
@@ -540,6 +541,7 @@ SCR-COM-009(4절) "구현 참고" 참조. 요약: `ConfirmDialog`+`toast`만 Swe
 
 - **사이드바 메뉴 라벨(SCR-COM-003)**: `AppLayout.tsx`가 `GET /api/v1/menus/mine`(API-AUTH-022) 응답의 `groupLabel`/`screenName`을 그대로 렌더링하는데, 이 값은 6.3절의 정적 JSON 번역 키 방식이 아니라 관리자가 SCR-ADMIN-006(메뉴 관리)에서 직접 입력하는 **DB 원문**이라 애초에 번역 키 치환 대상이 아니었다(6.4절은 FE가 조립하는 알림 문구만 다룸). 해결 방법은 6.3절 키 방식이 아니라 **이중언어 DB 컬럼**(`screen.screen_name_en`/`group_label_en`, `database/auth.md` 5절)이며, `AppLayout.tsx`가 `i18n.language`에 따라 `screenName`/`screenNameEn`(`groupLabel`/`groupLabelEn`)을 선택해 렌더링하도록 전환한다.
 - **승인 프로세스 카드 스택(SCR-ADMIN-008)**: `approval-step-progress.tsx`/`approval-panel.tsx`는 1차 적용 시 `auth` 네임스페이스 키로 전환됐으나, 같은 화면이 사용하는 `approval-process-flow.tsx`(카드 스택·역할 선택 패널·드래그 앤 드롭 UI 문구)가 누락되어 여전히 하드코딩 한국어다. 신규 설계 변경 없이 **동일한 `auth` 네임스페이스**(6.7절 표, SCR-ADMIN-001~008)로 6.3절 키 컨벤션을 그대로 적용해 누락분을 보완한다.
+- **그리드 폼 빌더(`dynamic-form-builder.tsx`/`dynamic-form-renderer.tsx`)**: 이 두 공용 컴포넌트는 "관리자 전용 팝업이라 i18n 전환 범위 밖"으로 문서화되어 하드코딩 한국어를 유지해왔으나(SRM 전용, [service-request.md](service-request.md) 5절), 2026-07-18 후속 유지보수 요청으로 이 제외 방침을 해제하고 i18n 전환 대상에 포함한다. 이 파일들은 `components/common/`에 위치하지만 SRM 전용 업무 텍스트이므로 신규 네임스페이스를 만들지 않고 6.7절의 **`service-request` 네임스페이스**(SCR-SRM-007 "Form 설정" 팝업·SCR-SRM-002 렌더러·SCR-SRM-007 A1 미리보기가 모두 이 네임스페이스 범위 내)를 그대로 사용한다.
 
 ## 7. 페이지당 아이템 수 재산정
 

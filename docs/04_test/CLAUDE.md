@@ -115,3 +115,4 @@
 | 20260718-220645 | srm | pass | 라벨 경계 테두리 보정(1개 이상 기준, 4px 확장, 텍스트 표시, showBorder 체크박스), 즉시 재계산, 캔버스 외부 미노출, 4차 회귀 | `docs/04_test/20260718-220645/srm/result/srm.md` |
 | 20260718-233219 | srm | pass | 개별 미리보기 제거, 라벨 legend 스타일, 5차 결함 수정 확인(showBorder=false여도 텍스트 유지), 테두리색 조건부 렌더링+값보존, 이전 차수 회귀 | `docs/04_test/20260718-233219/srm/result/srm.md` |
 | 20260719-000230 | srm | pass | 미니팝업 위치 통일(Popover→Modal 전환, top-42%, 트리거 무관 고정좌표), 라벨(태그) Select 최상단 이동, 다른 화면 Modal(top-1/2) 회귀없음, 이전 차수 회귀 | `docs/04_test/20260719-000230/srm/result/srm.md` |
+| 20260719-081313 | srm | pass | 라벨 경계 표시를 요청 제출 폼·A1 미리보기까지 확대, placeholder 하드코딩 폴백 완전 제거, 기본값 UI 타입별 동일화(select단일/checkbox다중/date네이티브/file없음), 읽기전용·필수여부 타이틀 배치, i18n(ko/en) 전환, 이전 차수 회귀 | `docs/04_test/20260719-081313/srm/result/srm.md` |

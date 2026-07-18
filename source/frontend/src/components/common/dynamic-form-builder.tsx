@@ -1,4 +1,6 @@
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import {
   AlignLeft,
   Calendar,
@@ -29,7 +31,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { Modal } from "@/components/common/modal";
-import { GridComponentBody } from "@/components/common/dynamic-form-renderer";
+import { GridComponentBody, GridLabelOverlays, parseOptions } from "@/components/common/dynamic-form-renderer";
 import {
   GRID_COLUMNS,
   GRID_PALETTE_TYPES,
@@ -44,6 +46,7 @@ import {
   type GridComponent,
   type GridComponentType,
   type GridFormSchema,
+  type GridInputComponent,
   type GridLabel,
   type GridOptionsDirection,
   type GridOptionsGap,
@@ -77,7 +80,14 @@ import {
  * Radix Popover(트리거 상대 배치) → 공용 `Modal`(Radix Dialog)로 전환돼, 라벨 생성/수정
  * 팝업과 공유하는 `MINI_POPUP_POSITION_CLASS`(`top-[42%]`)로 항상 동일한 화면 고정 좌표(가로
  * 정중앙, 세로 정중앙보다 살짝 위)에 뜬다(트리거 위치 무관). 라벨(태그) 지정 Select도 7차로
- * 팝업 하단→최상단(타입별 설정 항목보다 앞)으로 이동했다.
+ * 팝업 하단→최상단(타입별 설정 항목보다 앞)으로 이동했다. 라벨 경계 오버레이 계산·렌더링은
+ * 8차로 `GridLabelOverlays`(dynamic-form-renderer.tsx)로 추출돼 캔버스와 요청 제출 폼이 동일
+ * 로직을 공유한다. Content 설정 팝업의 "기본값" 입력 UI는 8차로 실제 입력 타입과 동일화됐다
+ * (`DefaultValueEditor` — select/radio는 옵션 중 단일 선택(재클릭 해제 가능), checkbox는 다중
+ * 선택, date는 네이티브 date input, file은 UI 자체 없음). 읽기전용·필수 여부 체크박스는 8차로
+ * 팝업 본문에서 `Modal`의 `titleExtra`(타이틀 우측)로 이동했다. 내부 UI 텍스트는 8차로
+ * `useTranslation(["service-request", "common"])` 기반 i18n 키로 전환됐다(관리자 전용이라
+ * 범위 밖이라던 기존 방침 해제).
  */
 export interface DynamicFormBuilderProps {
   initialSchema?: GridFormSchema;
@@ -109,6 +119,7 @@ const DEFAULT_LABEL_FORM = { text: "", textColor: "#1d4ed8", borderColor: "#1d4e
  * 보다 살짝 위로 오버라이드)에 뜬다. */
 const MINI_POPUP_POSITION_CLASS = "top-[42%]";
 
+/** i18n 미적용 시 폴백(defaultValue)으로 쓰는 한국어 원본 — 실제 표시 문구는 paletteLabel(t, type). */
 const PALETTE_LABELS: Record<GridComponentType, string> = {
   text: "텍스트",
   textarea: "여러 줄 텍스트",
@@ -120,6 +131,10 @@ const PALETTE_LABELS: Record<GridComponentType, string> = {
   "guide-text": "안내 텍스트",
   "guide-file": "가이드 파일",
 };
+
+function paletteLabel(t: TFunction, type: GridComponentType): string {
+  return t(`dynamicForm.builder.palette.${type}`, { defaultValue: PALETTE_LABELS[type] });
+}
 
 const PALETTE_ICONS: Record<GridComponentType, typeof Type> = {
   text: Type,
@@ -133,7 +148,12 @@ const PALETTE_ICONS: Record<GridComponentType, typeof Type> = {
   "guide-file": Paperclip,
 };
 
+/** i18n 미적용 시 폴백(defaultValue)으로 쓰는 한국어 원본 — 실제 표시 문구는 optionsGapLabel(t, gap). */
 const OPTIONS_GAP_LABELS: Record<GridOptionsGap, string> = { 1: "좁게", 2: "보통", 3: "넓게" };
+
+function optionsGapLabel(t: TFunction, gap: GridOptionsGap): string {
+  return t(`dynamicForm.builder.optionsGapLabel.${gap}`, { defaultValue: OPTIONS_GAP_LABELS[gap] });
+}
 
 function defaultSize(type: GridComponentType): GridSize {
   return type === "textarea" ? { w: 2, h: 2 } : { w: 1, h: 1 };
@@ -218,6 +238,7 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 export function DynamicFormBuilder({ initialSchema, onApply, onCancel, className }: DynamicFormBuilderProps) {
+  const { t } = useTranslation(["service-request", "common"]);
   const [components, setComponents] = useState<GridComponent[]>(() => initialSchema?.components ?? []);
   const [labels, setLabels] = useState<GridLabel[]>(() => initialSchema?.labels ?? []);
   const [overlapWarning, setOverlapWarning] = useState(false);
@@ -451,7 +472,7 @@ export function DynamicFormBuilder({ initialSchema, onApply, onCancel, className
       <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3">
         <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={openCreateLabel}>
           <Tag className="size-3.5" />
-          라벨 추가
+          {t("dynamicForm.builder.addLabel", { defaultValue: "라벨 추가" })}
         </Button>
         {labels.map((label) => (
           <span
@@ -464,7 +485,7 @@ export function DynamicFormBuilder({ initialSchema, onApply, onCancel, className
             </button>
             <button
               type="button"
-              aria-label="라벨 삭제"
+              aria-label={t("dynamicForm.builder.deleteLabel", { defaultValue: "라벨 삭제" })}
               className="opacity-70 hover:opacity-100"
               onClick={() => deleteLabel(label.id)}
             >
@@ -489,7 +510,7 @@ export function DynamicFormBuilder({ initialSchema, onApply, onCancel, className
                 onClick={() => handlePaletteClick(type)}
               >
                 <Icon />
-                {PALETTE_LABELS[type]}
+                {paletteLabel(t, type)}
               </Button>
             );
           })}
@@ -536,63 +557,46 @@ export function DynamicFormBuilder({ initialSchema, onApply, onCancel, className
               />
             ) : null}
 
-            {labels.map((label) => {
-              const refs = components.filter((c) => c.labelId === label.id);
-              if (refs.length < 1) return null;
-              const minCol = Math.min(...refs.map((c) => effectivePosition(c).col));
-              const minRow = Math.min(...refs.map((c) => effectivePosition(c).row));
-              const maxCol = Math.max(...refs.map((c) => effectivePosition(c).col + effectiveSize(c).w));
-              const maxRowBound = Math.max(...refs.map((c) => effectivePosition(c).row + effectiveSize(c).h));
-              const showBorder = label.showBorder !== false;
-              return (
-                <div
-                  key={label.id}
-                  style={{
-                    gridColumn: `${minCol + 1} / ${maxCol + 1}`,
-                    gridRow: `${minRow + 1} / ${maxRowBound + 1}`,
-                    borderColor: showBorder ? label.borderColor : undefined,
-                  }}
-                  className={cn("pointer-events-none relative -m-[2px] rounded-md", showBorder && "border-2")}
-                >
-                  {/* legend 스타일(6차) — 테두리 선 위에 걸치도록 텍스트 높이 절반만큼 위로 올리고
-                      불투명 배경으로 아래 선을 가린다. showBorder=false여도 같은 위치에 표시. */}
-                  <span
-                    className="absolute left-2 -top-[7px] truncate rounded-sm bg-background/80 px-1 text-[10px] font-medium"
-                    style={{ color: label.textColor }}
-                  >
-                    {label.text}
-                  </span>
-                </div>
-              );
-            })}
+            <GridLabelOverlays
+              components={components}
+              labels={labels}
+              getPosition={effectivePosition}
+              getSize={effectiveSize}
+            />
           </div>
         </div>
       </div>
 
       {overlapWarning ? (
         <p role="alert" className="text-xs text-destructive">
-          이미 배치된 컴포넌트와 겹칩니다
+          {t("dynamicForm.builder.overlapWarning", { defaultValue: "이미 배치된 컴포넌트와 겹칩니다" })}
         </p>
       ) : null}
 
       <div className="flex justify-end gap-2 border-t border-border pt-3">
         <Button type="button" variant="outline" onClick={onCancel}>
-          취소
+          {t("dynamicForm.builder.cancel", { defaultValue: "취소" })}
         </Button>
         <Button type="button" onClick={() => onApply({ components, labels })}>
-          적용
+          {t("dynamicForm.builder.apply", { defaultValue: "적용" })}
         </Button>
       </div>
 
       <Modal
         open={labelPopupOpen}
         onOpenChange={setLabelPopupOpen}
-        title={editingLabelId == null ? "라벨 추가" : "라벨 수정"}
+        title={
+          editingLabelId == null
+            ? t("dynamicForm.builder.addLabelTitle", { defaultValue: "라벨 추가" })
+            : t("dynamicForm.builder.editLabelTitle", { defaultValue: "라벨 수정" })
+        }
         className={MINI_POPUP_POSITION_CLASS}
       >
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <Label className="text-xs">텍스트</Label>
+            <Label className="text-xs">
+              {t("dynamicForm.builder.labelTextField", { defaultValue: "텍스트" })}
+            </Label>
             <Input
               className="h-8"
               value={labelForm.text}
@@ -601,7 +605,7 @@ export function DynamicFormBuilder({ initialSchema, onApply, onCancel, className
           </div>
           <div className={cn("grid gap-3", labelForm.showBorder ? "grid-cols-2" : "grid-cols-1")}>
             <div className="space-y-1.5">
-              <Label className="text-xs">글자색</Label>
+              <Label className="text-xs">{t("dynamicForm.builder.textColor", { defaultValue: "글자색" })}</Label>
               <input
                 type="color"
                 className="h-8 w-full cursor-pointer rounded-md border border-input"
@@ -611,7 +615,9 @@ export function DynamicFormBuilder({ initialSchema, onApply, onCancel, className
             </div>
             {labelForm.showBorder ? (
               <div className="space-y-1.5">
-                <Label className="text-xs">테두리색</Label>
+                <Label className="text-xs">
+                  {t("dynamicForm.builder.borderColor", { defaultValue: "테두리색" })}
+                </Label>
                 <input
                   type="color"
                   className="h-8 w-full cursor-pointer rounded-md border border-input"
@@ -626,14 +632,14 @@ export function DynamicFormBuilder({ initialSchema, onApply, onCancel, className
               checked={!labelForm.showBorder}
               onCheckedChange={(v) => setLabelForm((f) => ({ ...f, showBorder: !v }))}
             />
-            테두리 없음
+            {t("dynamicForm.builder.noBorder", { defaultValue: "테두리 없음" })}
           </label>
           <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="outline" onClick={() => setLabelPopupOpen(false)}>
-              취소
+              {t("dynamicForm.builder.cancel", { defaultValue: "취소" })}
             </Button>
             <Button type="button" onClick={saveLabel}>
-              저장
+              {t("dynamicForm.builder.save", { defaultValue: "저장" })}
             </Button>
           </div>
         </div>
@@ -663,6 +669,7 @@ function BuilderComponentCard({
   onDelete,
   onUpdate,
 }: BuilderComponentCardProps) {
+  const { t } = useTranslation(["service-request", "common"]);
   return (
     <div
       style={{
@@ -682,7 +689,7 @@ function BuilderComponentCard({
         <ComponentSettingsPopover component={component} labels={labels} onUpdate={onUpdate} />
         <button
           type="button"
-          aria-label="필드 삭제"
+          aria-label={t("dynamicForm.builder.deleteField", { defaultValue: "필드 삭제" })}
           className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-destructive"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={onDelete}
@@ -711,13 +718,35 @@ function ComponentSettingsPopover({
   labels: GridLabel[];
   onUpdate: (patch: Partial<GridComponent>) => void;
 }) {
+  const { t } = useTranslation(["service-request", "common"]);
   const [open, setOpen] = useState(false);
+
+  // 읽기전용·필수 여부는 8차로 팝업 본문에서 타이틀 우측(titleExtra)으로 이동(guide-text/guide-file은 대상 없음).
+  const titleExtra =
+    component.type === "guide-text" || component.type === "guide-file" ? undefined : (
+      <div className="flex items-center gap-4">
+        <label className="flex items-center gap-1.5 text-xs font-normal">
+          <Checkbox
+            checked={!!component.input?.readOnly}
+            onCheckedChange={(v) => onUpdate({ input: { ...component.input, readOnly: !!v } })}
+          />
+          {t("dynamicForm.builder.readOnly", { defaultValue: "읽기 전용" })}
+        </label>
+        <label className="flex items-center gap-1.5 text-xs font-normal">
+          <Checkbox
+            checked={!!component.validation?.required}
+            onCheckedChange={(v) => onUpdate({ validation: { ...component.validation, required: !!v } })}
+          />
+          {t("dynamicForm.builder.required", { defaultValue: "필수 여부" })}
+        </label>
+      </div>
+    );
 
   return (
     <>
       <button
         type="button"
-        aria-label="컴포넌트 설정"
+        aria-label={t("dynamicForm.builder.settingsTitle", { defaultValue: "컴포넌트 설정" })}
         className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
         onPointerDown={(e) => e.stopPropagation()}
         onClick={() => setOpen(true)}
@@ -727,12 +756,15 @@ function ComponentSettingsPopover({
       <Modal
         open={open}
         onOpenChange={setOpen}
-        title="컴포넌트 설정"
+        title={t("dynamicForm.builder.settingsTitle", { defaultValue: "컴포넌트 설정" })}
+        titleExtra={titleExtra}
         className={cn(MINI_POPUP_POSITION_CLASS, "w-[420px] max-h-[80vh] overflow-y-auto")}
       >
         <div className="space-y-3" onPointerDown={(e) => e.stopPropagation()}>
           <div className="space-y-1.5">
-            <Label className="text-xs">라벨(태그)</Label>
+            <Label className="text-xs">
+              {t("dynamicForm.builder.labelSelect", { defaultValue: "라벨(태그)" })}
+            </Label>
             <Select
               value={component.labelId ?? NO_LABEL_VALUE}
               onValueChange={(v) => onUpdate({ labelId: v === NO_LABEL_VALUE ? null : v })}
@@ -741,7 +773,9 @@ function ComponentSettingsPopover({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={NO_LABEL_VALUE}>없음</SelectItem>
+                <SelectItem value={NO_LABEL_VALUE}>
+                  {t("dynamicForm.builder.noneOption", { defaultValue: "없음" })}
+                </SelectItem>
                 {labels.map((label) => (
                   <SelectItem key={label.id} value={label.id}>
                     {label.text}
@@ -754,7 +788,9 @@ function ComponentSettingsPopover({
           {component.type === "guide-text" ? (
             <>
               <div className="space-y-1.5">
-                <Label className="text-xs">안내 텍스트</Label>
+                <Label className="text-xs">
+                  {t("dynamicForm.builder.guideTextContent", { defaultValue: "안내 텍스트" })}
+                </Label>
                 <Input
                   className="h-8"
                   value={component.text}
@@ -762,7 +798,7 @@ function ComponentSettingsPopover({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">정렬</Label>
+                <Label className="text-xs">{t("dynamicForm.builder.align", { defaultValue: "정렬" })}</Label>
                 <AnchorGridToggle
                   align={component.textAlign ?? "left"}
                   verticalAlign={component.textVerticalAlign ?? "top"}
@@ -772,7 +808,9 @@ function ComponentSettingsPopover({
             </>
           ) : component.type === "guide-file" ? (
             <div className="space-y-1.5">
-              <Label className="text-xs">첨부 파일(선택)</Label>
+              <Label className="text-xs">
+                {t("dynamicForm.builder.attachFileOptional", { defaultValue: "첨부 파일(선택)" })}
+              </Label>
               <input
                 type="file"
                 className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-md file:border file:border-input file:bg-background file:px-2 file:py-1 file:text-xs"
@@ -793,7 +831,7 @@ function ComponentSettingsPopover({
                     className="shrink-0 text-destructive hover:underline"
                     onClick={() => onUpdate({ file: null })}
                   >
-                    제거
+                    {t("dynamicForm.builder.remove", { defaultValue: "제거" })}
                   </button>
                 </div>
               ) : null}
@@ -801,7 +839,9 @@ function ComponentSettingsPopover({
           ) : (
             <>
               <div className="space-y-1.5">
-                <Label className="text-xs">input 폭(%)</Label>
+                <Label className="text-xs">
+                  {t("dynamicForm.builder.inputWidth", { defaultValue: "input 폭(%)" })}
+                </Label>
                 <Input
                   className="h-8"
                   type="number"
@@ -814,7 +854,9 @@ function ComponentSettingsPopover({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">input 정렬</Label>
+                <Label className="text-xs">
+                  {t("dynamicForm.builder.inputAlign", { defaultValue: "input 정렬" })}
+                </Label>
                 <AnchorGridToggle
                   align={component.input?.align ?? "center"}
                   verticalAlign={component.input?.verticalAlign ?? "top"}
@@ -826,7 +868,9 @@ function ComponentSettingsPopover({
 
               {hasPlaceholderUi(component.type) ? (
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Placeholder</Label>
+                  <Label className="text-xs">
+                    {t("dynamicForm.builder.placeholder", { defaultValue: "Placeholder" })}
+                  </Label>
                   <Input
                     className="h-8"
                     value={component.input?.placeholder ?? ""}
@@ -835,39 +879,26 @@ function ComponentSettingsPopover({
                 </div>
               ) : null}
 
-              <div className="space-y-1.5">
-                <Label className="text-xs">기본값</Label>
-                <Input
-                  className="h-8"
-                  value={component.input?.defaultValue ?? ""}
-                  onChange={(e) => onUpdate({ input: { ...component.input, defaultValue: e.target.value } })}
-                />
-              </div>
-
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-1.5 text-xs">
-                  <Checkbox
-                    checked={!!component.input?.readOnly}
-                    onCheckedChange={(v) => onUpdate({ input: { ...component.input, readOnly: !!v } })}
-                  />
-                  읽기 전용
-                </label>
-                <label className="flex items-center gap-1.5 text-xs">
-                  <Checkbox
-                    checked={!!component.validation?.required}
-                    onCheckedChange={(v) => onUpdate({ validation: { ...component.validation, required: !!v } })}
-                  />
-                  필수 여부
-                </label>
-              </div>
+              {component.type !== "file" ? (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">
+                    {t("dynamicForm.builder.defaultValue", { defaultValue: "기본값" })}
+                  </Label>
+                  <DefaultValueEditor component={component} onUpdate={onUpdate} t={t} />
+                </div>
+              ) : null}
 
               {hasRegexUi(component.type) ? (
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Validation 정규식(선택)</Label>
+                  <Label className="text-xs">
+                    {t("dynamicForm.builder.regex", { defaultValue: "Validation 정규식(선택)" })}
+                  </Label>
                   <Input
                     className="h-8"
                     value={component.validation?.regex ?? ""}
-                    placeholder="예: ^[0-9]{3}-[0-9]{4}$"
+                    placeholder={t("dynamicForm.builder.regexPlaceholder", {
+                      defaultValue: "예: ^[0-9]{3}-[0-9]{4}$",
+                    })}
                     onChange={(e) => onUpdate({ validation: { ...component.validation, regex: e.target.value } })}
                   />
                 </div>
@@ -875,7 +906,9 @@ function ComponentSettingsPopover({
 
               {hasGridOptions(component.type) ? (
                 <div className="space-y-1.5">
-                  <Label className="text-xs">옵션(콤마로 구분)</Label>
+                  <Label className="text-xs">
+                    {t("dynamicForm.builder.options", { defaultValue: "옵션(콤마로 구분)" })}
+                  </Label>
                   <Input
                     className="h-8"
                     value={component.options ?? ""}
@@ -890,7 +923,7 @@ function ComponentSettingsPopover({
                         checked={!component.ciLinked}
                         onChange={() => onUpdate({ ciLinked: false })}
                       />
-                      일반
+                      {t("dynamicForm.builder.ciNormal", { defaultValue: "일반" })}
                     </label>
                     <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <input
@@ -900,21 +933,25 @@ function ComponentSettingsPopover({
                         checked={!!component.ciLinked}
                         onChange={() => onUpdate({ ciLinked: true })}
                       />
-                      CI 연계
+                      {t("dynamicForm.builder.ciLinked", { defaultValue: "CI 연계" })}
                     </label>
                   </div>
 
                   {hasOptionsLayoutUi(component.type) ? (
                     <div className="grid grid-cols-2 gap-2 pt-2">
                       <div className="space-y-1.5">
-                        <Label className="text-xs">옵션 배치 방향</Label>
+                        <Label className="text-xs">
+                          {t("dynamicForm.builder.optionsDirection", { defaultValue: "옵션 배치 방향" })}
+                        </Label>
                         <OptionsDirectionToggle
                           value={component.optionsDirection ?? "row"}
                           onChange={(dir) => onUpdate({ optionsDirection: dir })}
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs">옵션 간 여백</Label>
+                        <Label className="text-xs">
+                          {t("dynamicForm.builder.optionsGap", { defaultValue: "옵션 간 여백" })}
+                        </Label>
                         <OptionsGapToggle
                           value={component.optionsGap ?? 1}
                           onChange={(gap) => onUpdate({ optionsGap: gap })}
@@ -929,6 +966,107 @@ function ComponentSettingsPopover({
         </div>
       </Modal>
     </>
+  );
+}
+
+/**
+ * Content 설정 팝업의 "기본값" 입력 UI — 실제 입력 타입과 동일화한다(2026-07-18 유지보수 요청
+ * 8차): text/textarea는 Input, select/radio는 옵션 목록 중 단일 선택(재클릭으로 선택 해제
+ * 가능), checkbox는 다중 선택 체크박스 그룹, date는 `type="date"` 네이티브 입력, file은 UI
+ * 자체를 렌더링하지 않는다(렌더러가 애초에 무시하던 값이라 회귀 없음).
+ */
+function DefaultValueEditor({
+  component,
+  onUpdate,
+  t,
+}: {
+  component: GridInputComponent;
+  onUpdate: (patch: Partial<GridComponent>) => void;
+  t: TFunction;
+}) {
+  if (component.type === "file") return null;
+
+  if (component.type === "date") {
+    return (
+      <input
+        type="date"
+        className="flex h-8 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs"
+        value={typeof component.input?.defaultValue === "string" ? component.input.defaultValue : ""}
+        onChange={(e) => onUpdate({ input: { ...component.input, defaultValue: e.target.value } })}
+      />
+    );
+  }
+
+  if (component.type === "select" || component.type === "radio") {
+    const options = parseOptions(component.options);
+    const current = typeof component.input?.defaultValue === "string" ? component.input.defaultValue : null;
+    if (options.length === 0) {
+      return (
+        <p className="text-xs text-muted-foreground">
+          {t("dynamicForm.builder.noOptionsHint", { defaultValue: "옵션을 먼저 입력하세요" })}
+        </p>
+      );
+    }
+    return (
+      <div className="flex flex-wrap gap-1">
+        {options.map((o) => (
+          <button
+            key={o}
+            type="button"
+            onClick={() =>
+              onUpdate({ input: { ...component.input, defaultValue: current === o ? null : o } })
+            }
+            className={cn(TOGGLE_PILL_CLASS, current === o ? TOGGLE_PILL_ACTIVE_CLASS : TOGGLE_PILL_INACTIVE_CLASS)}
+          >
+            {o}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  if (component.type === "checkbox") {
+    const options = parseOptions(component.options);
+    const current = Array.isArray(component.input?.defaultValue) ? component.input.defaultValue : [];
+    if (options.length === 0) {
+      return (
+        <p className="text-xs text-muted-foreground">
+          {t("dynamicForm.builder.noOptionsHint", { defaultValue: "옵션을 먼저 입력하세요" })}
+        </p>
+      );
+    }
+    return (
+      <div className="flex flex-col gap-1.5">
+        {options.map((o) => {
+          const checked = current.includes(o);
+          return (
+            <label key={o} className="flex items-center gap-1.5 text-xs">
+              <Checkbox
+                checked={checked}
+                onCheckedChange={(v) =>
+                  onUpdate({
+                    input: {
+                      ...component.input,
+                      defaultValue: v ? [...current, o] : current.filter((x) => x !== o),
+                    },
+                  })
+                }
+              />
+              {o}
+            </label>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // text/textarea
+  return (
+    <Input
+      className="h-8"
+      value={typeof component.input?.defaultValue === "string" ? component.input.defaultValue : ""}
+      onChange={(e) => onUpdate({ input: { ...component.input, defaultValue: e.target.value } })}
+    />
   );
 }
 
@@ -983,9 +1121,10 @@ function OptionsDirectionToggle({
   value: GridOptionsDirection;
   onChange: (direction: GridOptionsDirection) => void;
 }) {
+  const { t } = useTranslation(["service-request", "common"]);
   const options: { value: GridOptionsDirection; label: string }[] = [
-    { value: "row", label: "가로" },
-    { value: "column", label: "세로" },
+    { value: "row", label: t("dynamicForm.builder.optionsDirectionRow", { defaultValue: "가로" }) },
+    { value: "column", label: t("dynamicForm.builder.optionsDirectionColumn", { defaultValue: "세로" }) },
   ];
   return (
     <div className="flex gap-1">
@@ -1010,6 +1149,7 @@ function OptionsGapToggle({
   value: GridOptionsGap;
   onChange: (gap: GridOptionsGap) => void;
 }) {
+  const { t } = useTranslation(["service-request", "common"]);
   const options: GridOptionsGap[] = [1, 2, 3];
   return (
     <div className="flex gap-1">
@@ -1020,7 +1160,7 @@ function OptionsGapToggle({
           onClick={() => onChange(g)}
           className={cn(TOGGLE_PILL_CLASS, value === g ? TOGGLE_PILL_ACTIVE_CLASS : TOGGLE_PILL_INACTIVE_CLASS)}
         >
-          {OPTIONS_GAP_LABELS[g]}
+          {optionsGapLabel(t, g)}
         </button>
       ))}
     </div>
