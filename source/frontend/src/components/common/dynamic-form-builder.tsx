@@ -64,12 +64,17 @@ import {
  * (`gridMaxHeight`, text/date/file/select/guide-file은 1칸 고정, radio/checkbox/guide-text는
  * 1~2칸, textarea는 무제한). 그리드 직접 배치형 `label` 컴포넌트는 폐기되고, 팔레트 상단
  * "라벨 추가" 버튼으로 만드는 라벨(태그) — 최상위 `labels` 배열, 컴포넌트별 선택적
- * `labelId` 참조 — 로 대체됐다(같은 라벨을 2개 이상 컴포넌트가 참조하면 캔버스 위에 경계
- * 테두리 오버레이를 그린다). `initialSchema`로 편집 모드 진입, 하단 적용/취소 버튼 — 적용
- * 시 `onApply({components, labels})`로 최신 그리드 스키마를 상위에 전달한다(자동저장 없음,
- * 실제 API 저장은 호출측의 "저장" 버튼). Content 설정 팝업 내 개별 실시간 미리보기(상호작용
- * 가능)는 렌더러(`GridComponentBody`, dynamic-form-renderer.tsx)를 그대로 재사용한다(로직
- * 중복 구현 금지, 캔버스 카드 렌더링과 별개 기능).
+ * `labelId` 참조 — 로 대체됐다. 참조 컴포넌트가 1개 이상이면 캔버스 위에 경계 테두리
+ * 오버레이를 항상 렌더링하며(2026-07-18 유지보수 요청 5차로 "2개 이상"에서 "1개 이상"으로
+ * 변경), 테두리 스타일(`border-2`·`borderColor`)만 라벨의 `showBorder !== false`일 때
+ * 적용하고 legend 스타일 텍스트(`textColor`, 테두리 선 위에 걸침)는 `showBorder`와 무관하게
+ * 항상 표시한다(6차로 렌더링 여부와 테두리 스타일 여부를 분리 — 5차의 "showBorder=false면
+ * 텍스트까지 사라지는" 결함 수정). `initialSchema`로 편집 모드 진입, 하단 적용/취소 버튼 —
+ * 적용 시 `onApply({components, labels})`로 최신 그리드 스키마를 상위에 전달한다(자동저장
+ * 없음, 실제 API 저장은 호출측의 "저장" 버튼). Content 설정 팝업의 개별 실시간 미리보기는
+ * 2026-07-18 유지보수 요청 6차로 완전히 제거됐다(캔버스 카드 자체 렌더링과 SCR-SRM-007 축소
+ * 미리보기(A1)로 충분하다고 판단, 중복 기능 정리) — `GridComponentBody`는 캔버스 카드
+ * 렌더링(`BuilderComponentCard`)에서만 재사용한다.
  */
 export interface DynamicFormBuilderProps {
   initialSchema?: GridFormSchema;
@@ -525,23 +530,26 @@ export function DynamicFormBuilder({ initialSchema, onApply, onCancel, className
 
             {labels.map((label) => {
               const refs = components.filter((c) => c.labelId === label.id);
-              if (refs.length < 1 || label.showBorder === false) return null;
+              if (refs.length < 1) return null;
               const minCol = Math.min(...refs.map((c) => effectivePosition(c).col));
               const minRow = Math.min(...refs.map((c) => effectivePosition(c).row));
               const maxCol = Math.max(...refs.map((c) => effectivePosition(c).col + effectiveSize(c).w));
               const maxRowBound = Math.max(...refs.map((c) => effectivePosition(c).row + effectiveSize(c).h));
+              const showBorder = label.showBorder !== false;
               return (
                 <div
                   key={label.id}
                   style={{
                     gridColumn: `${minCol + 1} / ${maxCol + 1}`,
                     gridRow: `${minRow + 1} / ${maxRowBound + 1}`,
-                    borderColor: label.borderColor,
+                    borderColor: showBorder ? label.borderColor : undefined,
                   }}
-                  className="pointer-events-none relative -m-[2px] rounded-md border-2"
+                  className={cn("pointer-events-none relative -m-[2px] rounded-md", showBorder && "border-2")}
                 >
+                  {/* legend 스타일(6차) — 테두리 선 위에 걸치도록 텍스트 높이 절반만큼 위로 올리고
+                      불투명 배경으로 아래 선을 가린다. showBorder=false여도 같은 위치에 표시. */}
                   <span
-                    className="absolute left-0 top-0 truncate rounded-sm bg-background/80 px-1 text-[10px] font-medium"
+                    className="absolute left-2 -top-[7px] truncate rounded-sm bg-background/80 px-1 text-[10px] font-medium"
                     style={{ color: label.textColor }}
                   >
                     {label.text}
@@ -582,7 +590,7 @@ export function DynamicFormBuilder({ initialSchema, onApply, onCancel, className
               onChange={(e) => setLabelForm((f) => ({ ...f, text: e.target.value }))}
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className={cn("grid gap-3", labelForm.showBorder ? "grid-cols-2" : "grid-cols-1")}>
             <div className="space-y-1.5">
               <Label className="text-xs">글자색</Label>
               <input
@@ -592,15 +600,17 @@ export function DynamicFormBuilder({ initialSchema, onApply, onCancel, className
                 onChange={(e) => setLabelForm((f) => ({ ...f, textColor: e.target.value }))}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">테두리색</Label>
-              <input
-                type="color"
-                className="h-8 w-full cursor-pointer rounded-md border border-input"
-                value={labelForm.borderColor}
-                onChange={(e) => setLabelForm((f) => ({ ...f, borderColor: e.target.value }))}
-              />
-            </div>
+            {labelForm.showBorder ? (
+              <div className="space-y-1.5">
+                <Label className="text-xs">테두리색</Label>
+                <input
+                  type="color"
+                  className="h-8 w-full cursor-pointer rounded-md border border-input"
+                  value={labelForm.borderColor}
+                  onChange={(e) => setLabelForm((f) => ({ ...f, borderColor: e.target.value }))}
+                />
+              </div>
+            ) : null}
           </div>
           <label className="flex items-center gap-1.5 text-xs">
             <Checkbox
@@ -693,7 +703,6 @@ function ComponentSettingsPopover({
   onUpdate: (patch: Partial<GridComponent>) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [previewValue, setPreviewValue] = useState<unknown>(undefined);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -905,16 +914,6 @@ function ComponentSettingsPopover({
               ))}
             </SelectContent>
           </Select>
-        </div>
-
-        <div className="space-y-1.5 border-t border-border pt-3">
-          <Label className="text-xs">미리보기</Label>
-          <div
-            className="flex overflow-hidden rounded-md border border-dashed border-border bg-muted/20 p-1"
-            style={{ height: GRID_ROW_HEIGHT_PX * component.size.h }}
-          >
-            <GridComponentBody component={component} value={previewValue} onChange={setPreviewValue} />
-          </div>
         </div>
       </PopoverContent>
     </Popover>
