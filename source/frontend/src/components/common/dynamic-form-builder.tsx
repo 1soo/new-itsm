@@ -1,8 +1,6 @@
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import {
-  AlignCenter,
   AlignLeft,
-  AlignRight,
   Calendar,
   CheckSquare,
   CircleDot,
@@ -12,9 +10,10 @@ import {
   List,
   Paperclip,
   Settings2,
-  Text as LabelIcon,
+  Tag,
   Trash2,
   Type,
+  X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -22,7 +21,15 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { Modal } from "@/components/common/modal";
 import { GridComponentBody } from "@/components/common/dynamic-form-renderer";
 import {
   GRID_COLUMNS,
@@ -32,11 +39,13 @@ import {
   hasGridOptions,
   hasOptionsLayoutUi,
   hasPlaceholderUi,
+  hasRegexUi,
   type GridAlign,
+  type GridAlignVertical,
   type GridComponent,
   type GridComponentType,
   type GridFormSchema,
-  type GridInputComponent,
+  type GridLabel,
   type GridOptionsDirection,
   type GridOptionsGap,
   type GridPosition,
@@ -45,17 +54,22 @@ import {
 
 /**
  * 관리자용 그리드 폼 빌더 — SCR-SRM-007 "Form 설정" 팝업(form.io 완전 제거 → 자체 8×n
- * 그리드). 팝업 내부는 **좌 팔레트(10종 — 입력 7종 + 값 입력 없는 정적 컴포넌트
- * `label`/`guide-text`/`guide-file`) / 우 8칸 그리드 캔버스** 2분할이다(2026-07-18 후속
- * 유지보수 정정 — 별도 미리보기 패널은 사용자 피드백으로 폐기, **캔버스=미리보기 통합**: 각
- * 캔버스 카드가 `GridComponentBody`를 그대로 렌더링해 실제 렌더링 모습을 직접 보여준다,
- * 순수 시각적 표현·상호작용 불가). 캔버스는 스크롤 가능, 배치·리사이즈는 1칸 단위 스냅,
- * 겹침 배치는 차단+인라인 안내. 입력 7종은 `label`/`labelAlign` 속성을 갖지 않는다(라벨이
- * 필요하면 `label` 컴포넌트를 별도 셀에 배치, 접근성 연결 없음). `initialSchema`로 편집
- * 모드 진입, 하단 적용/취소 버튼 — 적용 시 `onApply`로 최신 그리드 스키마를 상위에 전달한다
- * (자동저장 없음, 실제 API 저장은 호출측의 "저장" 버튼). Content 설정 팝업 내 개별 실시간
- * 미리보기(상호작용 가능)는 렌더러(`GridComponentBody`, dynamic-form-renderer.tsx)를 그대로
- * 재사용한다(로직 중복 구현 금지, 캔버스 카드 렌더링과 별개 기능).
+ * 그리드). 팝업 내부는 **좌 팔레트(9종 — 입력 7종 + 값 입력 없는 정적 컴포넌트
+ * `guide-text`/`guide-file`) / 우 8칸 그리드 캔버스** 2분할이다. **캔버스=미리보기 통합**:
+ * 각 캔버스 카드가 `GridComponentBody`를 그대로 렌더링해 실제 렌더링 모습을 직접 보여준다
+ * (순수 시각적 표현·상호작용 불가). 팔레트 항목은 클릭(첫 빈 칸 자동 배치)과 드래그앤드롭
+ * (1칸 스냅 미리보기, 겹치면 차단+경고, 캔버스 밖 드롭 시 취소) 배치를 모두 지원한다
+ * (2026-07-18 유지보수 요청 4차, 네이티브 Pointer Events 기반·신규 라이브러리 없음). 캔버스는
+ * 스크롤 가능, 배치·리사이즈는 1칸 단위 스냅. 컴포넌트 높이 상한은 유형별로 세분화됐다
+ * (`gridMaxHeight`, text/date/file/select/guide-file은 1칸 고정, radio/checkbox/guide-text는
+ * 1~2칸, textarea는 무제한). 그리드 직접 배치형 `label` 컴포넌트는 폐기되고, 팔레트 상단
+ * "라벨 추가" 버튼으로 만드는 라벨(태그) — 최상위 `labels` 배열, 컴포넌트별 선택적
+ * `labelId` 참조 — 로 대체됐다(같은 라벨을 2개 이상 컴포넌트가 참조하면 캔버스 위에 경계
+ * 테두리 오버레이를 그린다). `initialSchema`로 편집 모드 진입, 하단 적용/취소 버튼 — 적용
+ * 시 `onApply({components, labels})`로 최신 그리드 스키마를 상위에 전달한다(자동저장 없음,
+ * 실제 API 저장은 호출측의 "저장" 버튼). Content 설정 팝업 내 개별 실시간 미리보기(상호작용
+ * 가능)는 렌더러(`GridComponentBody`, dynamic-form-renderer.tsx)를 그대로 재사용한다(로직
+ * 중복 구현 금지, 캔버스 카드 렌더링과 별개 기능).
  */
 export interface DynamicFormBuilderProps {
   initialSchema?: GridFormSchema;
@@ -67,6 +81,20 @@ export interface DynamicFormBuilderProps {
 const CANVAS_BUFFER_ROWS = 3;
 const MIN_CANVAS_ROWS = 6;
 const OVERLAP_WARNING_MS = 1500;
+/** 팔레트 항목 pointer 이동이 이 값(px)을 넘으면 클릭이 아니라 드래그앤드롭 배치로 간주(B1). */
+const DRAG_THRESHOLD_PX = 4;
+/**
+ * 드래그 종료 후 justDraggedRef를 자동 리셋하기까지의 지연(ms). 0(다음 매크로태스크)이어야 한다 —
+ * 드래그가 원래 팔레트 버튼 위로 되돌아와 끝난 드문 경우에만 그 gesture 안에서 pointerup 직후
+ * "동기적으로" 합성 click이 뒤따라오므로, setTimeout(0)으로도 그 click보다 항상 늦게 실행돼
+ * 정상적으로 걸러진다. 반면 값을 300 등으로 늘리면 그 시간 동안 같은 타입의 모든 정상 클릭까지
+ * 무차별로 씹히는 회귀가 생긴다(2026-07-18 4차 tester 재현, TC-GF4-B01e). 드래그가 캔버스 등
+ * 다른 대상 위에서 끝난 통상적인 경우는 애초에 click 자체가 발생하지 않으므로(mousedown/up 대상
+ * 불일치) 이 타임아웃이 유일한 리셋 경로다.
+ */
+const JUST_DRAGGED_RESET_MS = 0;
+const NO_LABEL_VALUE = "__NONE__";
+const DEFAULT_LABEL_FORM = { text: "", textColor: "#1d4ed8", borderColor: "#1d4ed8" };
 
 const PALETTE_LABELS: Record<GridComponentType, string> = {
   text: "텍스트",
@@ -76,7 +104,6 @@ const PALETTE_LABELS: Record<GridComponentType, string> = {
   checkbox: "체크박스",
   date: "날짜",
   file: "파일",
-  label: "라벨",
   "guide-text": "안내 텍스트",
   "guide-file": "가이드 파일",
 };
@@ -89,7 +116,6 @@ const PALETTE_ICONS: Record<GridComponentType, typeof Type> = {
   checkbox: CheckSquare,
   date: Calendar,
   file: File,
-  label: LabelIcon,
   "guide-text": Info,
   "guide-file": Paperclip,
 };
@@ -98,6 +124,31 @@ const OPTIONS_GAP_LABELS: Record<GridOptionsGap, string> = { 1: "좁게", 2: "�
 
 function defaultSize(type: GridComponentType): GridSize {
   return type === "textarea" ? { w: 2, h: 2 } : { w: 1, h: 1 };
+}
+
+/** 신규 컴포넌트 생성(클릭 배치·드래그앤드롭 배치 공용, B1). */
+function buildNewComponent(
+  type: GridComponentType,
+  key: string,
+  position: GridPosition,
+  size: GridSize,
+): GridComponent {
+  if (type === "guide-text") {
+    return { key, type, position, size, text: "텍스트", textAlign: "left", textVerticalAlign: "top" };
+  }
+  if (type === "guide-file") {
+    return { key, type, position, size, file: null };
+  }
+  return {
+    key,
+    type,
+    position,
+    size,
+    input: { widthPercent: 90, align: "center", verticalAlign: "top", readOnly: false, defaultValue: "" },
+    validation: { required: false, regex: "" },
+    options: hasGridOptions(type) ? "옵션1,옵션2" : undefined,
+    ciLinked: false,
+  };
 }
 
 function footprint(pos: GridPosition, size: GridSize): string[] {
@@ -142,17 +193,36 @@ function nextKey(components: GridComponent[]): string {
   return `field_${n}`;
 }
 
+function nextLabelId(labels: GridLabel[]): string {
+  const existing = new Set(labels.map((l) => l.id));
+  let n = labels.length + 1;
+  while (existing.has(`label_${n}`)) n++;
+  return `label_${n}`;
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
 export function DynamicFormBuilder({ initialSchema, onApply, onCancel, className }: DynamicFormBuilderProps) {
   const [components, setComponents] = useState<GridComponent[]>(() => initialSchema?.components ?? []);
+  const [labels, setLabels] = useState<GridLabel[]>(() => initialSchema?.labels ?? []);
   const [overlapWarning, setOverlapWarning] = useState(false);
   const [movePreview, setMovePreview] = useState<{ key: string; position: GridPosition } | null>(null);
   const [resizePreview, setResizePreview] = useState<{ key: string; size: GridSize } | null>(null);
+  const [dragPreview, setDragPreview] = useState<{
+    type: GridComponentType;
+    position: GridPosition;
+    size: GridSize;
+    invalid: boolean;
+  } | null>(null);
+  const [labelPopupOpen, setLabelPopupOpen] = useState(false);
+  const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
+  const [labelForm, setLabelForm] = useState(DEFAULT_LABEL_FORM);
   const canvasRef = useRef<HTMLDivElement>(null);
   const warningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const justDraggedRef = useRef<Partial<Record<GridComponentType, boolean>>>({});
+  const justDraggedTimerRef = useRef<Partial<Record<GridComponentType, ReturnType<typeof setTimeout>>>>({});
 
   const showOverlapWarning = () => {
     setOverlapWarning(true);
@@ -170,44 +240,110 @@ export function DynamicFormBuilder({ initialSchema, onApply, onCancel, className
     setComponents((cs) => cs.filter((c) => c.key !== key));
   };
 
+  const addComponentAt = (type: GridComponentType, position: GridPosition, size: GridSize) => {
+    const key = nextKey(components);
+    setComponents((cs) => [...cs, buildNewComponent(type, key, position, size)]);
+  };
+
   const handleAddComponent = (type: GridComponentType) => {
     const size = defaultSize(type);
     const position = findFreePosition(components, size);
-    const key = nextKey(components);
-    if (type === "label") {
-      setComponents((cs) => [
-        ...cs,
-        { key, type: "label", position, size, text: "텍스트", textAlign: "left" },
-      ]);
-      return;
+    addComponentAt(type, position, size);
+  };
+
+  const openCreateLabel = () => {
+    setEditingLabelId(null);
+    setLabelForm(DEFAULT_LABEL_FORM);
+    setLabelPopupOpen(true);
+  };
+
+  const openEditLabel = (label: GridLabel) => {
+    setEditingLabelId(label.id);
+    setLabelForm({ text: label.text, textColor: label.textColor, borderColor: label.borderColor });
+    setLabelPopupOpen(true);
+  };
+
+  const saveLabel = () => {
+    if (!labelForm.text.trim()) return;
+    if (editingLabelId == null) {
+      const id = nextLabelId(labels);
+      setLabels((ls) => [...ls, { id, ...labelForm, text: labelForm.text.trim() }]);
+    } else {
+      const id = editingLabelId;
+      setLabels((ls) => ls.map((l) => (l.id === id ? { ...l, ...labelForm, text: labelForm.text.trim() } : l)));
     }
-    if (type === "guide-text") {
-      setComponents((cs) => [
-        ...cs,
-        { key, type: "guide-text", position, size, text: "텍스트", textAlign: "left" },
-      ]);
-      return;
-    }
-    if (type === "guide-file") {
-      setComponents((cs) => [...cs, { key, type: "guide-file", position, size, file: null }]);
-      return;
-    }
-    const newComponent: GridInputComponent = {
-      key,
-      type,
-      position,
-      size,
-      input: { widthPercent: 90, align: "center", readOnly: false, defaultValue: "" },
-      validation: { required: false, regex: "" },
-      options: hasGridOptions(type) ? "옵션1,옵션2" : undefined,
-      ciLinked: false,
-    };
-    setComponents((cs) => [...cs, newComponent]);
+    setLabelPopupOpen(false);
+  };
+
+  const deleteLabel = (id: string) => {
+    setLabels((ls) => ls.filter((l) => l.id !== id));
+    setComponents((cs) => cs.map((c) => (c.labelId === id ? { ...c, labelId: null } : c)));
   };
 
   const cellMetrics = () => {
     const rect = canvasRef.current!.getBoundingClientRect();
     return { cellW: rect.width / GRID_COLUMNS, cellH: GRID_ROW_HEIGHT_PX };
+  };
+
+  /** 팔레트 항목 드래그앤드롭 배치(B1) — 기존 클릭 배치는 별도 onClick으로 유지. */
+  const startPaletteDrag = (e: ReactPointerEvent<HTMLButtonElement>, type: GridComponentType) => {
+    if (e.button !== 0) return;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const size = defaultSize(type);
+    let dragging = false;
+    let last: { position: GridPosition; invalid: boolean } | null = null;
+
+    const onMove = (ev: PointerEvent) => {
+      if (!dragging && Math.hypot(ev.clientX - startX, ev.clientY - startY) > DRAG_THRESHOLD_PX) {
+        dragging = true;
+      }
+      if (!dragging) return;
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      if (ev.clientX < rect.left || ev.clientX > rect.right || ev.clientY < rect.top || ev.clientY > rect.bottom) {
+        last = null;
+        setDragPreview(null);
+        return;
+      }
+      const { cellW, cellH } = cellMetrics();
+      const position: GridPosition = {
+        col: clamp(Math.floor((ev.clientX - rect.left) / cellW), 0, GRID_COLUMNS - size.w),
+        row: Math.max(0, Math.floor((ev.clientY - rect.top) / cellH)),
+      };
+      const invalid = hasOverlap(components, null, position, size);
+      last = { position, invalid };
+      setDragPreview({ type, position, size, invalid });
+    };
+
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      setDragPreview(null);
+      if (dragging) {
+        justDraggedRef.current[type] = true;
+        const prevTimer = justDraggedTimerRef.current[type];
+        if (prevTimer) clearTimeout(prevTimer);
+        justDraggedTimerRef.current[type] = setTimeout(() => {
+          justDraggedRef.current[type] = false;
+        }, JUST_DRAGGED_RESET_MS);
+        if (last) {
+          if (last.invalid) showOverlapWarning();
+          else addComponentAt(type, last.position, size);
+        }
+      }
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+
+  const handlePaletteClick = (type: GridComponentType) => {
+    if (justDraggedRef.current[type]) {
+      justDraggedRef.current[type] = false;
+      return;
+    }
+    handleAddComponent(type);
   };
 
   const startMove = (e: ReactPointerEvent<HTMLDivElement>, comp: GridComponent) => {
@@ -280,15 +416,46 @@ export function DynamicFormBuilder({ initialSchema, onApply, onCancel, className
     window.addEventListener("pointerup", onUp);
   };
 
+  const effectivePosition = (c: GridComponent): GridPosition =>
+    movePreview?.key === c.key ? movePreview.position : c.position;
+  const effectiveSize = (c: GridComponent): GridSize =>
+    resizePreview?.key === c.key ? resizePreview.size : c.size;
+
   const maxRow = components.reduce((max, c) => {
-    const pos = movePreview?.key === c.key ? movePreview.position : c.position;
-    const size = resizePreview?.key === c.key ? resizePreview.size : c.size;
+    const pos = effectivePosition(c);
+    const size = effectiveSize(c);
     return Math.max(max, pos.row + size.h);
-  }, 0);
+  }, dragPreview ? dragPreview.position.row + dragPreview.size.h : 0);
   const totalRows = Math.max(MIN_CANVAS_ROWS, maxRow + CANVAS_BUFFER_ROWS);
 
   return (
     <div className={cn("flex h-full min-h-0 flex-col gap-3", className)}>
+      <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3">
+        <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={openCreateLabel}>
+          <Tag className="size-3.5" />
+          라벨 추가
+        </Button>
+        {labels.map((label) => (
+          <span
+            key={label.id}
+            className="inline-flex items-center gap-1.5 rounded-sm border px-2 py-1 text-xs"
+            style={{ color: label.textColor, borderColor: label.borderColor, backgroundColor: `${label.borderColor}1A` }}
+          >
+            <button type="button" className="max-w-32 truncate" onClick={() => openEditLabel(label)}>
+              {label.text}
+            </button>
+            <button
+              type="button"
+              aria-label="라벨 삭제"
+              className="opacity-70 hover:opacity-100"
+              onClick={() => deleteLabel(label.id)}
+            >
+              <X className="size-3" />
+            </button>
+          </span>
+        ))}
+      </div>
+
       <div className="flex flex-1 gap-4 overflow-hidden">
         <div className="flex w-40 shrink-0 flex-col gap-1.5 overflow-y-auto">
           {GRID_PALETTE_TYPES.map((type) => {
@@ -300,7 +467,8 @@ export function DynamicFormBuilder({ initialSchema, onApply, onCancel, className
                 variant="outline"
                 size="sm"
                 className="justify-start gap-2"
-                onClick={() => handleAddComponent(type)}
+                onPointerDown={(e) => startPaletteDrag(e, type)}
+                onClick={() => handlePaletteClick(type)}
               >
                 <Icon />
                 {PALETTE_LABELS[type]}
@@ -320,18 +488,52 @@ export function DynamicFormBuilder({ initialSchema, onApply, onCancel, className
             }}
           >
             {components.map((comp) => {
-              const position = movePreview?.key === comp.key ? movePreview.position : comp.position;
-              const size = resizePreview?.key === comp.key ? resizePreview.size : comp.size;
+              const position = effectivePosition(comp);
+              const size = effectiveSize(comp);
               return (
                 <BuilderComponentCard
                   key={comp.key}
                   component={comp}
                   position={position}
                   size={size}
+                  labels={labels}
                   onMoveStart={(e) => startMove(e, comp)}
                   onResizeStart={(e) => startResize(e, comp)}
                   onDelete={() => removeComponent(comp.key)}
                   onUpdate={(patch) => updateComponent(comp.key, patch)}
+                />
+              );
+            })}
+
+            {dragPreview ? (
+              <div
+                style={{
+                  gridColumn: `${dragPreview.position.col + 1} / span ${dragPreview.size.w}`,
+                  gridRow: `${dragPreview.position.row + 1} / span ${dragPreview.size.h}`,
+                }}
+                className={cn(
+                  "pointer-events-none rounded-md border-2 border-dashed",
+                  dragPreview.invalid ? "border-destructive bg-destructive/10" : "border-primary bg-primary/10",
+                )}
+              />
+            ) : null}
+
+            {labels.map((label) => {
+              const refs = components.filter((c) => c.labelId === label.id);
+              if (refs.length < 2) return null;
+              const minCol = Math.min(...refs.map((c) => effectivePosition(c).col));
+              const minRow = Math.min(...refs.map((c) => effectivePosition(c).row));
+              const maxCol = Math.max(...refs.map((c) => effectivePosition(c).col + effectiveSize(c).w));
+              const maxRowBound = Math.max(...refs.map((c) => effectivePosition(c).row + effectiveSize(c).h));
+              return (
+                <div
+                  key={label.id}
+                  style={{
+                    gridColumn: `${minCol + 1} / ${maxCol + 1}`,
+                    gridRow: `${minRow + 1} / ${maxRowBound + 1}`,
+                    borderColor: label.borderColor,
+                  }}
+                  className="pointer-events-none rounded-md border-2"
                 />
               );
             })}
@@ -349,10 +551,55 @@ export function DynamicFormBuilder({ initialSchema, onApply, onCancel, className
         <Button type="button" variant="outline" onClick={onCancel}>
           취소
         </Button>
-        <Button type="button" onClick={() => onApply({ components })}>
+        <Button type="button" onClick={() => onApply({ components, labels })}>
           적용
         </Button>
       </div>
+
+      <Modal
+        open={labelPopupOpen}
+        onOpenChange={setLabelPopupOpen}
+        title={editingLabelId == null ? "라벨 추가" : "라벨 수정"}
+      >
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">텍스트</Label>
+            <Input
+              className="h-8"
+              value={labelForm.text}
+              onChange={(e) => setLabelForm((f) => ({ ...f, text: e.target.value }))}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">글자색</Label>
+              <input
+                type="color"
+                className="h-8 w-full cursor-pointer rounded-md border border-input"
+                value={labelForm.textColor}
+                onChange={(e) => setLabelForm((f) => ({ ...f, textColor: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">테두리색</Label>
+              <input
+                type="color"
+                className="h-8 w-full cursor-pointer rounded-md border border-input"
+                value={labelForm.borderColor}
+                onChange={(e) => setLabelForm((f) => ({ ...f, borderColor: e.target.value }))}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="outline" onClick={() => setLabelPopupOpen(false)}>
+              취소
+            </Button>
+            <Button type="button" onClick={saveLabel}>
+              저장
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -361,6 +608,7 @@ interface BuilderComponentCardProps {
   component: GridComponent;
   position: GridPosition;
   size: GridSize;
+  labels: GridLabel[];
   onMoveStart: (e: ReactPointerEvent<HTMLDivElement>) => void;
   onResizeStart: (e: ReactPointerEvent<HTMLDivElement>) => void;
   onDelete: () => void;
@@ -371,6 +619,7 @@ function BuilderComponentCard({
   component,
   position,
   size,
+  labels,
   onMoveStart,
   onResizeStart,
   onDelete,
@@ -392,7 +641,7 @@ function BuilderComponentCard({
       </div>
 
       <div className="absolute right-1 top-1 flex items-center gap-0.5 rounded-md bg-background/80 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100">
-        <ComponentSettingsPopover component={component} onUpdate={onUpdate} />
+        <ComponentSettingsPopover component={component} labels={labels} onUpdate={onUpdate} />
         <button
           type="button"
           aria-label="필드 삭제"
@@ -417,9 +666,11 @@ function BuilderComponentCard({
 
 function ComponentSettingsPopover({
   component,
+  labels,
   onUpdate,
 }: {
   component: GridComponent;
+  labels: GridLabel[];
   onUpdate: (patch: Partial<GridComponent>) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -443,10 +694,10 @@ function ComponentSettingsPopover({
         align="start"
         onPointerDown={(e) => e.stopPropagation()}
       >
-        {component.type === "label" || component.type === "guide-text" ? (
+        {component.type === "guide-text" ? (
           <>
             <div className="space-y-1.5">
-              <Label className="text-xs">표시 텍스트</Label>
+              <Label className="text-xs">안내 텍스트</Label>
               <Input
                 className="h-8"
                 value={component.text}
@@ -455,9 +706,10 @@ function ComponentSettingsPopover({
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">정렬</Label>
-              <AlignToggle
-                value={component.textAlign ?? "left"}
-                onChange={(align) => onUpdate({ textAlign: align })}
+              <AnchorGridToggle
+                align={component.textAlign ?? "left"}
+                verticalAlign={component.textVerticalAlign ?? "top"}
+                onChange={(textAlign, textVerticalAlign) => onUpdate({ textAlign, textVerticalAlign })}
               />
             </div>
           </>
@@ -491,27 +743,26 @@ function ComponentSettingsPopover({
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1.5">
-                <Label className="text-xs">input 폭(%)</Label>
-                <Input
-                  className="h-8"
-                  type="number"
-                  min={10}
-                  max={100}
-                  value={component.input?.widthPercent ?? 90}
-                  onChange={(e) =>
-                    onUpdate({ input: { ...component.input, widthPercent: Number(e.target.value) || 90 } })
-                  }
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">input 정렬</Label>
-                <AlignToggle
-                  value={component.input?.align ?? "center"}
-                  onChange={(align) => onUpdate({ input: { ...component.input, align } })}
-                />
-              </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">input 폭(%)</Label>
+              <Input
+                className="h-8"
+                type="number"
+                min={10}
+                max={100}
+                value={component.input?.widthPercent ?? 90}
+                onChange={(e) =>
+                  onUpdate({ input: { ...component.input, widthPercent: Number(e.target.value) || 90 } })
+                }
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">input 정렬</Label>
+              <AnchorGridToggle
+                align={component.input?.align ?? "center"}
+                verticalAlign={component.input?.verticalAlign ?? "top"}
+                onChange={(align, verticalAlign) => onUpdate({ input: { ...component.input, align, verticalAlign } })}
+              />
             </div>
 
             {hasPlaceholderUi(component.type) ? (
@@ -551,15 +802,17 @@ function ComponentSettingsPopover({
               </label>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs">Validation 정규식(선택)</Label>
-              <Input
-                className="h-8"
-                value={component.validation?.regex ?? ""}
-                placeholder="예: ^[0-9]{3}-[0-9]{4}$"
-                onChange={(e) => onUpdate({ validation: { ...component.validation, regex: e.target.value } })}
-              />
-            </div>
+            {hasRegexUi(component.type) ? (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Validation 정규식(선택)</Label>
+                <Input
+                  className="h-8"
+                  value={component.validation?.regex ?? ""}
+                  placeholder="예: ^[0-9]{3}-[0-9]{4}$"
+                  onChange={(e) => onUpdate({ validation: { ...component.validation, regex: e.target.value } })}
+                />
+              </div>
+            ) : null}
 
             {hasGridOptions(component.type) ? (
               <div className="space-y-1.5">
@@ -616,6 +869,26 @@ function ComponentSettingsPopover({
         )}
 
         <div className="space-y-1.5 border-t border-border pt-3">
+          <Label className="text-xs">라벨(태그)</Label>
+          <Select
+            value={component.labelId ?? NO_LABEL_VALUE}
+            onValueChange={(v) => onUpdate({ labelId: v === NO_LABEL_VALUE ? null : v })}
+          >
+            <SelectTrigger className="h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NO_LABEL_VALUE}>없음</SelectItem>
+              {labels.map((label) => (
+                <SelectItem key={label.id} value={label.id}>
+                  {label.text}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5 border-t border-border pt-3">
           <Label className="text-xs">미리보기</Label>
           <div
             className="flex overflow-hidden rounded-md border border-dashed border-border bg-muted/20 p-1"
@@ -629,30 +902,42 @@ function ComponentSettingsPopover({
   );
 }
 
-function AlignToggle({ value, onChange }: { value: GridAlign; onChange: (align: GridAlign) => void }) {
-  const options: { value: GridAlign; Icon: typeof AlignLeft }[] = [
-    { value: "left", Icon: AlignLeft },
-    { value: "center", Icon: AlignCenter },
-    { value: "right", Icon: AlignRight },
-  ];
+const ANCHOR_H_OPTIONS: GridAlign[] = ["left", "center", "right"];
+const ANCHOR_V_OPTIONS: GridAlignVertical[] = ["top", "middle", "bottom"];
+
+/** 정렬 9방향 앵커 선택 위젯(2026-07-18 유지보수 요청 4차, B4) — 기존 가로 3버튼 AlignToggle 대체. */
+function AnchorGridToggle({
+  align,
+  verticalAlign,
+  onChange,
+}: {
+  align: GridAlign;
+  verticalAlign: GridAlignVertical;
+  onChange: (align: GridAlign, verticalAlign: GridAlignVertical) => void;
+}) {
   return (
-    <div className="flex gap-1">
-      {options.map(({ value: v, Icon }) => (
-        <button
-          key={v}
-          type="button"
-          aria-label={v}
-          onClick={() => onChange(v)}
-          className={cn(
-            "flex size-8 items-center justify-center rounded-md border",
-            value === v
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-input bg-background text-muted-foreground hover:bg-accent",
-          )}
-        >
-          <Icon className="size-4" />
-        </button>
-      ))}
+    <div className="grid w-fit grid-cols-3 gap-1">
+      {ANCHOR_V_OPTIONS.flatMap((v) =>
+        ANCHOR_H_OPTIONS.map((h) => {
+          const active = align === h && verticalAlign === v;
+          return (
+            <button
+              key={`${h}-${v}`}
+              type="button"
+              aria-label={`${h}-${v}`}
+              onClick={() => onChange(h, v)}
+              className={cn(
+                "flex size-7 items-center justify-center rounded-md border",
+                active
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-input bg-background text-muted-foreground hover:bg-accent",
+              )}
+            >
+              <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
+            </button>
+          );
+        }),
+      )}
     </div>
   );
 }

@@ -582,3 +582,91 @@
 - Content 설정 팝업 내 개별 실시간 미리보기(상호작용 가능, 5.4절)는 이번 변경과 무관하게 그대로 정상 동작.
 - radio/checkbox 배치 방향·여백, guide-text/guide-file 분리 등 직전 커밋(c5232d5) 반영 사항은 회귀 없이 유지.
 - tester 재테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → Standards/Spec 코드 리뷰 → 완료 시 커밋(main).
+
+## 개발 계획 — 2026-07-18 유지보수 4차: 축소 미리보기 재도입·DnD 배치·높이 고정·정규식 text 전용·라벨 태그 개편
+
+- 요구사항 개요(A1/A2/B1~B9, designer 4차 설계):
+  - **A1**: CatalogManagePage(SCR-SRM-007) 편집 폼 화면 자체(팝업 바깥)에 축소 미리보기(`disabled`+`hideFooter` 렌더러, 축소 비율)를 재도입한다(빌더 팝업 내부의 "캔버스=미리보기 통합"과는 별개 기능 — 화면에는 "설정된 필드 N개" 텍스트 대신 실제 축소 렌더링을 다시 둔다).
+  - **A2**: "양식 필드" 라벨과 "Form 설정" 버튼 사이 여백을 주변 폼 필드보다 넓게(좌측 정렬 유지).
+  - **B1**: 팔레트 배치 방식에 클릭(기존)+드래그앤드롭을 병행 지원(드래그 중 1칸 스냅 미리보기, 겹치면 배치 차단+경고, 캔버스 밖 드롭 시 취소).
+  - **B2**: 컴포넌트 높이 상한 세분화 — `text`/`date`/`file`/`select`/`guide-file`는 **1칸 고정**(2칸 불가), `radio`/`checkbox`/`guide-text`는 1~2칸 유지, `textarea`는 무제한 유지. 기존에 이미 2칸으로 저장된 대상 타입은 강제 축소하지 않음(재편집 시에만 새 상한 적용).
+  - **B3**: 정규식(regex) 검증을 `type=text` 전용으로 축소 — Content 설정 UI에서 다른 6종(textarea/select/radio/checkbox/date/file)은 정규식 입력 숨김, 서버(`FormSubmissionValidator`)도 `type=text`가 아니면 `regex`를 평가하지 않음. 기존 저장된 다른 타입의 `regex` 값은 지우지 않되 사실상 무시됨.
+  - **B4**: 정렬 9방향 확장 — 입력 컴포넌트 `input.align`(가로)+`input.verticalAlign`(세로, 신규, 기본 top), `guide-text`의 `textAlign`+`textVerticalAlign`(신규, 기본 top). Content 설정 UI는 기존 가로 3버튼 토글을 폐기하고 **3×3 그리드 앵커 선택 위젯 하나**로 통일(한 클릭으로 가로+세로 동시 지정).
+  - **B5~B9**: 그리드 배치형 `label` 컴포넌트를 팔레트에서 완전히 제거하고, "컴포넌트에 부여하는 태그"(그리드 라벨)로 전면 개편.
+    - 데이터 모델: `GridFormSchema`에 최상위 `labels`(`id`/`text`/`textColor`/`borderColor`) 배열 신설. 7종 입력+`guide-text`/`guide-file`은 선택적 `labelId`(최대 1개 참조)를 가짐.
+    - 생성 UI: 팔레트 컬럼 최상단 "라벨 추가" 버튼 → 미니 팝업(텍스트/글자색/테두리색).
+    - 표시·관리 UI: 팝업 타이틀과 팔레트+캔버스 사이 가로 스트립에 라벨 칩(rounded-square, tint 배경, `textColor`/`borderColor`) 나열. 칩 클릭 시 값 프리필로 재오픈(수정), 칩에 삭제(×) 버튼(삭제 시 참조 컴포넌트의 `labelId`를 null로 해제, 컴포넌트 자체는 유지).
+    - 컴포넌트에 라벨 지정: Content 설정 팝업에서 Select로 기존 라벨 중 선택 또는 "없음".
+    - 캔버스 경계 테두리: 라벨이 2개 이상 컴포넌트에 지정되면 그 컴포넌트들 위치의 최소/최대 좌표로 계산한 사각형 전체(다른 컴포넌트 포함 허용, 축소 로직 없음)에 `borderColor` 테두리를 캔버스 위 별도 오버레이 레이어로 그림(카드 자체가 아님). 1개 이하면 테두리 없음. 이동·리사이즈·라벨 지정/해제 시 즉시 재계산. Content 설정 팝업 개별 미리보기·A1 축소 미리보기·요청 제출 폼에는 이 오버레이를 표시하지 않음(캔버스 전용 편집 보조 UI).
+    - 기존 데이터: `type: "label"` 컴포넌트를 하나라도 포함한 `form_schema` 로우는 배포 시 `{"components":[],"labels":[]}`로 리셋(사용자 확답 완료, 통합테스트 데이터 외 운영 데이터 없음). 미사용 로우는 영향 없음.
+- 설계 근거: `docs/02_plan/screen/service-request.md` 5.1~5.8절(4차 갱신 전체), SCR-SRM-007(4절, A1/A2), `docs/02_plan/api_spec/service-request.md` API-SRM-002(`optionsDirection`/`optionsGap`/`labelId`/`verticalAlign`/`textVerticalAlign`/`labels` 배열, `size.h` 유형별 상한, `validation.regex` type=text 전용), `docs/02_plan/api_spec/common.md` 0-2절(정규식 text 전용, guide-text/guide-file 스킵, label 완전 폐기), `docs/02_plan/database/service-request.md`(컬럼 기본값 `{"components":[],"labels":[]}` 갱신, `type:"label"` 포함 로우 조건부 리셋), `docs/00_context/glossary.md`(그리드 라벨(태그) 신규 항목).
+- 참고 기존 코드: `source/frontend/src/components/common/form-schema.ts`·`dynamic-form-builder.tsx`·`dynamic-form-renderer.tsx`, `source/frontend/src/features/service-request/CatalogManagePage.tsx`, `source/backend/src/main/java/com/itsm/common/form/FormSubmissionValidator.java`·`FormSubmissionValidatorTest.java`, `source/db/sql/38_srm_form_schema_reset.sql`(직전 블랭킷 리셋 선례).
+
+### 담당 범위
+
+#### DB (dev-database) — `source/db/sql/`
+
+- 신규 파일 `39_srm_form_schema_label_tag_reset.sql`(다음 순번):
+  1. `ALTER TABLE service_catalog_item ALTER COLUMN form_schema SET DEFAULT '{"components":[],"labels":[]}';`(기존 기본값 `{"components":[]}` 갱신).
+  2. `type:"label"` 컴포넌트를 하나라도 포함한 로우만 조건부 리셋(전체 블랭킷 아님) — JSONB 배열 내 `type` 값 검사(`jsonb_path_exists` 또는 `jsonb_array_elements`+`EXISTS` 서브쿼리 중 dev-database 재량으로 택1), 해당 로우만 `form_schema = '{"components":[],"labels":[]}'::jsonb`로 UPDATE. `label`을 사용하지 않은 로우는 그대로 둔다.
+- 완료 후 `source/db/sql/CLAUDE.md`에 파일 반영.
+
+#### BE (dev-be) — `source/backend/src/main/java/com/itsm/common/form/`
+
+- `FormSubmissionValidator.validateComponent()`: regex 평가 조건에 `"text".equals(type)`을 추가(다른 6종은 `validation.regex`가 값으로 있어도 평가하지 않음, required 검사는 타입 무관하게 기존대로 유지). 스킵 목록(`"guide-text"`/`"guide-file"`)에서 `"label"` 언급이 남아있었다면 제거(그리드 배치형 `label` 타입 자체가 폐기돼 스킵 대상 나열에 넣을 필요 없음 — 다만 실제 코드에 `"label".equals(type)` 조건이 남아있다면, 안전을 위해 남겨둬도 무방하나 설계 문서와 주석은 "label 완전 폐기"로 정리).
+- `FormSubmissionValidatorTest.java`: `labelTypeComponentIsSkippedEvenWithoutValue` 테스트는 그리드 배치형 `label` 타입이 폐기된 개념이라 삭제하거나(더 이상 유효한 시나리오 아님) 필요시 유지해도 무방(dev-be 판단). 신규로 "select/checkbox 등 text가 아닌 타입에 regex가 있어도 무시됨을 확인하는 테스트" 추가.
+
+#### FE (dev-ui) — `source/frontend/src/components/common/`
+
+**`form-schema.ts`**
+- `GridComponentType`에서 `"label"` 제거(9종: text/textarea/select/radio/checkbox/date/file/guide-text/guide-file). `GRID_PALETTE_TYPES`도 9개로.
+- `GridLabelComponent` 인터페이스 완전 삭제(그리드 배치형 컴포넌트가 아니게 됨).
+- `gridMaxHeight(type)` 갱신: `text`/`date`/`file`/`select`/`guide-file` → 1, `radio`/`checkbox`/`guide-text` → 2, `textarea` → Infinity.
+- 신규 `GridAlignVertical = "top" | "middle" | "bottom"` 타입.
+- `GridComponentInput`에 `verticalAlign?: GridAlignVertical | null`(기본 top) 추가.
+- `GridInputComponent`/`GridGuideTextComponent`/`GridGuideFileComponent`에 `labelId?: string | null` 추가(그리드 라벨 참조). `GridGuideTextComponent`에 `textVerticalAlign?: GridAlignVertical`(기본 top) 추가.
+- 신규 `GridLabel` 인터페이스(`id`/`text`/`textColor`/`borderColor`). `GridFormSchema`에 `labels: GridLabel[]` 추가(`EMPTY_GRID_SCHEMA`도 `{components:[], labels:[]}`로 갱신).
+- `GridComponent = GridInputComponent | GridGuideTextComponent | GridGuideFileComponent`(label 제거).
+- 신규 헬퍼 `hasRegexUi(type)`: `type === "text"`만 true.
+- `index.ts` 배럴에 `GridAlignVertical`/`GridLabel`/`hasRegexUi` 추가.
+
+**`dynamic-form-renderer.tsx`**
+- `GridComponentBody`의 `"label"` 분기(`StaticLabelBody`) 완전 삭제.
+- 입력 컴포넌트·`guide-text` 렌더링에 `verticalAlign`/`textVerticalAlign`(top/middle/bottom) 반영 — 셀 안 콘텐츠의 세로 위치(예: `items-start`/`items-center`/`items-end` 매핑) 적용. 기존 가로 정렬(`justifyFor`)과 조합해 9방향 완성.
+- `handleSubmit`(클라이언트 검증)에서 regex 평가를 `comp.type === "text"`일 때만 수행(다른 타입은 `validation.regex`가 있어도 평가하지 않음 — 서버와 계약 통일).
+
+**`dynamic-form-builder.tsx`**
+- 팔레트에서 `label` 제거(9종), `PALETTE_LABELS`/`PALETTE_ICONS`에서도 `label` 키 삭제(TS `Record<GridComponentType,...>` 타입상 제거 필수).
+- **B1 드래그앤드롭 배치**: 팔레트 항목에 pointer 기반 드래그 시작 핸들러 추가(기존 캔버스 카드 이동/리사이즈와 동일한 네이티브 Pointer Events 패턴 재사용, 신규 라이브러리 없음). 드래그 중 캔버스 위 커서 위치를 1칸 스냅으로 미리보기(기존 `movePreview`와 유사한 임시 상태), 드롭 시 `hasOverlap` 검사 후 겹치면 배치 차단+경고, 통과하면 그 위치에 신규 컴포넌트 생성. 캔버스 밖 드롭은 취소. 기존 클릭 배치(`handleAddComponent`, 첫 빈 칸 자동 배치)는 그대로 유지.
+- **B2 높이 고정**: `gridMaxHeight` 갱신은 `form-schema.ts`에서 이미 처리 — 리사이즈 로직(`startResize`)이 이 함수를 그대로 참조하므로 추가 코드 변경 없이 자동 반영됨(확인만 하면 됨). `defaultSize`도 영향 없음(1×1 기본 그대로).
+- **B3 정규식 UI 축소**: Content 설정 팝업의 정규식 Input을 `hasRegexUi(component.type)`(즉 `text`일 때만) 조건부 렌더링으로 변경.
+- **B4 9방향 정렬 위젯**: 기존 `AlignToggle`(가로 3버튼)을 대체하는 신규 `AnchorGridToggle`(3×3 버튼 그리드, 가로×세로 동시 선택) 컴포넌트 작성. `guide-text` 분기(`textAlign`+`textVerticalAlign`)와 7종 입력 분기(`input.align`+`input.verticalAlign`) 양쪽에서 이 위젯 사용.
+- **B5~B9 라벨(태그) 개편**:
+  - `DynamicFormBuilder` 최상위 state에 `labels: GridLabel[]`(초기값 `initialSchema?.labels ?? []`) 추가, `onApply`에 `{components, labels}` 전달.
+  - 팔레트 컬럼 최상단에 "라벨 추가" 버튼 + 미니 팝업(텍스트/글자색/테두리색 입력, 저장 시 `labels`에 신규 항목 push, `id`는 `crypto.randomUUID()` 또는 순번 문자열).
+  - 팝업 타이틀과 팔레트+캔버스 사이(즉 `DynamicFormBuilder` 루트 최상단)에 라벨 칩 가로 스트립 신규(칩 클릭 시 동일 미니 팝업 값 프리필 재오픈해 수정, 칩에 삭제 버튼 — 삭제 시 `labels`에서 제거하고 `components` 순회하며 해당 `labelId`를 가진 항목을 null로 해제).
+  - `ComponentSettingsPopover`에 라벨 지정 Select 추가(7종 입력+`guide-text`+`guide-file` 공통, 후보는 `labels`, "없음" 옵션 포함) — `labels` 배열을 props로 전달받아야 하므로 `BuilderComponentCard`→`ComponentSettingsPopover` prop drilling 필요.
+  - **캔버스 라벨 경계 오버레이**: 캔버스 컨테이너 안에 컴포넌트 카드들과 별도로, `labels` 각각에 대해 참조 컴포넌트가 2개 이상이면 그 컴포넌트들의 최소/최대 그리드 좌표로 사각형을 계산해 절대 위치 오버레이 `div`(테두리만, 배경 없음, `borderColor` 사용)로 렌더링. 기존 셀→픽셀 변환(그리드 컬럼 반응형 폭·`GRID_ROW_HEIGHT_PX`)을 재사용. 매 렌더마다 파생 계산(별도 effect 불필요).
+  - 이 오버레이는 캔버스 전용 — Content 설정 팝업 개별 미리보기(`GridComponentBody` 단독 사용처)에는 렌더링하지 않는다(별도 오버레이 레이어이므로 자연히 미노출, 추가 조치 불필요).
+
+**`CatalogManagePage.tsx`(예외적으로 dev-ui 겸함, 계속)**
+- **A1**: "Form 설정" 버튼 아래에 축소 미리보기를 재도입 — `disabled`+`hideFooter`인 `DynamicFormRenderer`를 축소 비율(로컬 상수, 과거 `PREVIEW_SCALE=0.45` 패턴 재사용)로 렌더링, 필드 없으면 안내 문구만. "설정된 필드 N개" 텍스트는 이 축소 미리보기로 교체(직전 유지보수에서 제거했던 걸 재도입).
+- **A2**: "양식 필드" `Label`과 "Form 설정" `Button` 사이 여백을 다른 폼 필드 간격보다 넓게(예: 기존 `space-y-1.5` 그룹 내에서 이 버튼 위에 추가 `mt-*` 클래스, 좌측 정렬 유지).
+
+### 진행 순서
+
+1. DB(마이그레이션, 병렬 가능) / BE(regex text 전용, 병렬 가능) — FE와 독립적으로 진행.
+2. FE `form-schema.ts`(타입 전면 개편: label 제거, verticalAlign, labelId, labels 배열, hasRegexUi) → `dynamic-form-renderer.tsx`(정렬 9방향 렌더링, regex text 전용 클라이언트 검증) → `dynamic-form-builder.tsx`(DnD 배치, 9방향 위젯, 라벨 관리 UI+캔버스 오버레이) → `CatalogManagePage.tsx`(A1 축소 미리보기 재도입, A2 여백).
+
+### 완료(테스트 통과) 기준
+
+- 팔레트가 9종(label 없음)이고 클릭 배치·드래그앤드롭 배치 둘 다 정상 동작(겹침 시 양쪽 다 차단+경고, 드래그는 캔버스 밖 드롭 시 취소).
+- text/date/file/select/guide-file은 리사이즈해도 높이 1칸 이상 커지지 않음(2칸 시도 시 막힘), radio/checkbox/guide-text는 1~2칸 그대로, textarea는 무제한 그대로.
+- Content 설정 팝업에 정규식 입력이 `text`에서만 보이고 나머지 6종에서는 안 보임. 서버 제출 시 text가 아닌 타입에 저장된 regex 값이 있어도 400이 발생하지 않음(무시됨 확인).
+- Content 설정 팝업의 정렬 UI가 3×3 앵커 위젯으로 통일되고, 9방향 선택이 캔버스 카드·요청 제출 폼 렌더링에 정확히 반영됨(세로 top/middle/bottom 포함).
+- 팔레트에 `label` 항목이 없고, 대신 "라벨 추가" 버튼으로 라벨을 생성할 수 있으며 생성된 라벨이 칩 스트립에 표시됨. 칩 클릭으로 수정, 삭제(×)로 라벨 삭제 시 참조하던 컴포넌트의 `labelId`가 null로 해제됨(컴포넌트 자체는 유지). Content 설정 팝업에서 컴포넌트에 라벨을 지정/해제할 수 있음.
+- 같은 라벨을 2개 이상 컴포넌트에 지정하면 캔버스에 그 컴포넌트들을 포함하는 사각형 테두리(해당 라벨의 borderColor)가 오버레이로 표시되고, 1개 이하면 표시되지 않음. 이동·리사이즈·라벨 재지정 시 테두리가 즉시 재계산됨. 이 테두리는 Content 설정 팝업 개별 미리보기·요청 제출 폼·A1 축소 미리보기에는 나타나지 않음.
+- CatalogManagePage 편집 폼에 "Form 설정" 버튼 아래 축소 미리보기가 다시 표시되고(빌더 팝업 안의 캔버스=미리보기 통합과는 별개), "양식 필드" 라벨-버튼 사이 여백이 다른 필드보다 넓게 보임.
+- DB: `type:"label"` 컴포넌트를 포함했던 기존 로우(통합테스트로 생성된 데이터)만 리셋되고, label을 쓰지 않은 다른 로우는 그대로 유지됨. 신규 카탈로그 항목의 `form_schema` 기본값이 `{"components":[],"labels":[]}`.
+- 기존 SRM 회귀 없음(placeholder, guide-text/guide-file, date/file 박스+클릭, radio/checkbox 배치방향·여백, 유효성 순차 단일 오류, 캔버스=미리보기 통합 등 이전 유지보수 항목 재확인).
+- tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → Standards/Spec 코드 리뷰 → 완료 시 커밋(main).

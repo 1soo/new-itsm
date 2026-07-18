@@ -110,3 +110,5 @@
 | 20260718-172626 | srm | pass | placeholder 7종, guide 컴포넌트(안내+첨부), 1×1 캡션 아이콘화, 개별 실시간 미리보기, date/file 입력박스 롤백 | `docs/04_test/20260718-172626/srm/result/srm.md` |
 | 20260718-182813 | srm | pass | Form 설정 팝업 3분할 실시간 미리보기, radio/checkbox 배치방향·여백, guide-text/guide-file 2종 분리, 외부 pre-view 제거 | `docs/04_test/20260718-182813/srm/result/srm.md` |
 | 20260718-191941 | srm | pass | 3분할 폐기 → 캔버스=미리보기 통합(2분할), 캔버스 카드 실제 렌더링(상호작용 차단), hover 오버레이 액션, Content 설정 개별 미리보기(상호작용 가능) 구분 | `docs/04_test/20260718-191941/srm/result/srm.md` |
+| 20260718-210534 | srm | partial | 축소 미리보기 재도입, DnD 배치(드래그 직후 클릭 씹힘 결함), 높이 상한 세분화, 정규식 text 전용, 라벨 태그 개편(생성/수정/삭제/경계 오버레이), DB 조건부 리셋 | `docs/04_test/20260718-210534/srm/result/srm.md` |
+| 20260718-213750 | srm | pass | TC-GF4-B01e 수정확인(JUST_DRAGGED_RESET_MS 300→0), 드래그직후클릭·지연후클릭·드래그취소후클릭 3시나리오 | `docs/04_test/20260718-213750/srm/result/srm.md` |

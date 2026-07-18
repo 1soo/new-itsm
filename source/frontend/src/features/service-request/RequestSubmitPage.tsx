@@ -3,7 +3,13 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DynamicFormRenderer, type GridFormSchema, type GridFormValues, toast } from "@/components/common";
+import {
+  DynamicFormRenderer,
+  EMPTY_GRID_SCHEMA,
+  type GridFormSchema,
+  type GridFormValues,
+  toast,
+} from "@/components/common";
 import { FullscreenLoader } from "@/routes/FullscreenLoader";
 import { srmApi } from "@/features/service-request/api";
 import type {
@@ -11,8 +17,6 @@ import type {
   KnowledgeSuggestion,
 } from "@/features/service-request/types";
 import { extractErrorMessage } from "@/lib/apiClient";
-
-const EMPTY_SCHEMA: GridFormSchema = { components: [] };
 
 /*
  * 요청 제출(SCR-SRM-002) — 카탈로그 항목의 동적 양식(자체 8×n 그리드)을 작성해 제출.
@@ -30,7 +34,7 @@ export function RequestSubmitPage() {
   const [submitting, setSubmitting] = useState(false);
   const [suggestions, setSuggestions] = useState<KnowledgeSuggestion[]>([]);
 
-  const schema = useMemo<GridFormSchema>(() => catalog?.formSchema ?? EMPTY_SCHEMA, [catalog]);
+  const schema = useMemo<GridFormSchema>(() => catalog?.formSchema ?? EMPTY_GRID_SCHEMA, [catalog]);
 
   useEffect(() => {
     if (!itemId) {

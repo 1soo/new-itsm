@@ -59,11 +59,13 @@ class FormSubmissionValidatorTest {
     }
 
     @Test
-    void labelTypeComponentIsSkippedEvenWithoutValue() {
+    void regexIsIgnoredForNonTextTypeEvenWhenMismatching() {
+        Map<String, Object> validation = new HashMap<>();
+        validation.put("regex", "^[0-9]+$");
         Map<String, Object> schema = Map.of("components", List.of(
-                Map.of("type", "label", "label", "안내 문구")));
+                Map.of("key", "reason", "label", "사유", "type", "select", "validation", validation)));
 
-        assertThatCode(() -> FormSubmissionValidator.validate(schema, Map.of()))
+        assertThatCode(() -> FormSubmissionValidator.validate(schema, Map.of("reason", "abc")))
                 .doesNotThrowAnyException();
     }
 

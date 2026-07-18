@@ -13,6 +13,7 @@
 | 2026-07-18 | 0-2절 검증 절차를 "위반 전체 집계"에서 "첫 번째 위반 즉시 반환"으로 변경(FE 순차 1건 표시와 계약 통일), label 타입은 검증 대상에서 제외 |
 | 2026-07-18 | 0-2절 검증 대상 제외 타입에 guide(정적 안내/가이드) 추가 |
 | 2026-07-18 | 0-2절 검증 대상 제외 타입을 guide-text/guide-file로 갱신(guide 타입 폐기) |
+| 2026-07-18 | 0-2절 정규식(regex) 검증을 type=text 전용으로 축소(다른 입력 타입에 regex 값이 있어도 서버가 평가하지 않음), label 타입은 그리드 배치 컴포넌트에서 폐기되고 컴포넌트에 부여하는 라벨(태그)로 대체(검증 로직과 무관한 메타데이터) |
 
 ## 공통 규약
 
@@ -68,9 +69,9 @@
 
 - **캡슐화 위치**: `common.form.FormSubmissionValidator`(SRM `ServiceRequestService`가 요청 제출 유스케이스에서 호출).
 - **입력**: 카탈로그 항목의 `form_schema`(8×n 그리드 스키마, `components` 배열)와 제출된 `formValues`(key-value) 맵.
-- **검증 절차**: `form_schema.components`를 배열 순서대로 순회하며(중첩 레이아웃이 없는 평면 배열이라 재귀 순회 불필요), **첫 번째로 위반이 발견되는 컴포넌트에서 즉시 400을 반환**한다(여러 위반을 모아 반환하지 않음 — FE의 순차 1건 표시와 동일한 계약, [screen/service-request.md](../screen/service-request.md) 5.5절). `type=label`/`guide-text`/`guide-file`는 값이 없는 정적 컴포넌트라 검증 대상에서 제외한다(`guide` 타입은 폐기됨). 각 컴포넌트는 순서대로:
+- **검증 절차**: `form_schema.components`를 배열 순서대로 순회하며(중첩 레이아웃이 없는 평면 배열이라 재귀 순회 불필요), **첫 번째로 위반이 발견되는 컴포넌트에서 즉시 400을 반환**한다(여러 위반을 모아 반환하지 않음 — FE의 순차 1건 표시와 동일한 계약, [screen/service-request.md](../screen/service-request.md) 5.5절). `type=guide-text`/`guide-file`는 값이 없는 정적 컴포넌트라 검증 대상에서 제외한다(`guide`/그리드 배치형 `label` 타입은 폐기됨 — "라벨"은 컴포넌트에 부여하는 태그로만 남아 값·검증과 무관, [screen/service-request.md](../screen/service-request.md) 5.8절). 각 컴포넌트는 순서대로:
   1. `validation.required=true`이고 제출 값이 없으면 `REQUIRED_FIELD_MISSING`으로 즉시 거부.
-  2. `validation.regex`가 지정돼 있고 제출 값이 불일치하면 `FORM_FIELD_INVALID`로 즉시 거부(값이 없으면 1번에서 이미 거부되므로 정규식은 값이 있을 때만 평가).
+  2. `validation.regex`가 지정돼 있고(**`type=text`에서만 평가** — 다른 타입에 값이 있어도 무시) 제출 값이 불일치하면 `FORM_FIELD_INVALID`로 즉시 거부(값이 없으면 1번에서 이미 거부되므로 정규식은 값이 있을 때만 평가).
   3. 위 두 검사를 모두 통과하면 다음 컴포넌트로 진행한다.
 - **file 컴포넌트**: 제출 데이터에 파일을 base64 문자열로 인라인 포함하는 기존 방식을 유지한다 — 별도 업로드 API·크기 제한 검증은 이번 범위에 포함하지 않는다(대용량 첨부 필요 시 별도 유지보수로 업로드 API 설계 필요).
 

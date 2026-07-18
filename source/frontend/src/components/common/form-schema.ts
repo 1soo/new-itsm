@@ -18,11 +18,11 @@ export type GridComponentType =
   | "checkbox"
   | "date"
   | "file"
-  | "label"
   | "guide-text"
   | "guide-file";
 
-/** 팔레트 노출 순서(10종, service-request.md 5.3절 — label/guide-text/guide-file은 값 입력 없는 정적 컴포넌트). */
+/** 팔레트 노출 순서(9종, service-request.md 5.3절 — 그리드 직접 배치형 label은 폐기되고 라벨(태그)로
+ * 대체됨(5.8절), guide-text/guide-file은 값 입력 없는 정적 컴포넌트). */
 export const GRID_PALETTE_TYPES: readonly GridComponentType[] = [
   "text",
   "textarea",
@@ -31,7 +31,6 @@ export const GRID_PALETTE_TYPES: readonly GridComponentType[] = [
   "checkbox",
   "date",
   "file",
-  "label",
   "guide-text",
   "guide-file",
 ];
@@ -51,12 +50,25 @@ export function hasOptionsLayoutUi(type: GridComponentType): boolean {
   return type === "radio" || type === "checkbox";
 }
 
-/** 유형별 높이(h) 상한. textarea만 제약 없음(5.2절), label/guide-text/guide-file은 다른 비-textarea 타입과 동일하게 2. */
+/**
+ * 유형별 높이(h) 상한(2026-07-18 유지보수 요청 4차로 세분화, 5.2절).
+ * text/date/file/select/guide-file은 1칸 고정, radio/checkbox/guide-text는 1~2칸, textarea는 무제한.
+ * 변경 전 이미 2칸으로 저장된 대상은 강제 축소하지 않는다(재편집 시에만 새 상한 적용).
+ */
 export function gridMaxHeight(type: GridComponentType): number {
-  return type === "textarea" ? Infinity : 2;
+  if (type === "textarea") return Infinity;
+  if (type === "radio" || type === "checkbox" || type === "guide-text") return 2;
+  return 1;
+}
+
+/** 정규식 검증 UI·평가 대상 유형(2026-07-18 유지보수 요청 4차로 text 전용 축소, 5.4절). */
+export function hasRegexUi(type: GridComponentType): boolean {
+  return type === "text";
 }
 
 export type GridAlign = "left" | "center" | "right";
+/** 세로 정렬(2026-07-18 유지보수 요청 4차 신규, 5.4절). 기본값 top. */
+export type GridAlignVertical = "top" | "middle" | "bottom";
 
 export interface GridPosition {
   col: number; // 0~7
@@ -70,7 +82,8 @@ export interface GridSize {
 
 export interface GridComponentInput {
   widthPercent?: number; // 기본값 90
-  align?: GridAlign; // 기본값 center
+  align?: GridAlign; // 가로 정렬, 기본값 center
+  verticalAlign?: GridAlignVertical | null; // 세로 정렬(2026-07-18 유지보수 요청 4차 신규), 기본값 top
   placeholder?: string | null; // 선택, Content 설정 UI는 hasPlaceholderUi(type)인 유형에만 노출
   defaultValue?: string | null;
   readOnly?: boolean;
@@ -86,7 +99,7 @@ export type GridOptionsDirection = "row" | "column";
 export type GridOptionsGap = 1 | 2 | 3;
 
 /** 7개 입력 컴포넌트 유형(label/labelAlign 속성 없음, guide-text/guide-file도 값 입력 없어 제외 — 5.4절). */
-export type GridInputComponentType = Exclude<GridComponentType, "label" | "guide-text" | "guide-file">;
+export type GridInputComponentType = Exclude<GridComponentType, "guide-text" | "guide-file">;
 
 export interface GridInputComponent {
   key: string;
@@ -103,26 +116,21 @@ export interface GridInputComponent {
   optionsDirection?: GridOptionsDirection | null;
   /** radio/checkbox 전용 옵션 간 여백 3단계(기본 1, hasOptionsLayoutUi(type)인 유형만 편집 UI 노출). */
   optionsGap?: GridOptionsGap | null;
+  /** 선택, formSchema.labels 항목 하나를 참조(그리드 라벨/태그 지정, 2026-07-18 유지보수 요청 4차, 5.8절). */
+  labelId?: string | null;
 }
 
-/** 값 입력이 없는 정적 텍스트 전용 컴포넌트(5.4절). 입력 컴포넌트와 for/aria-label 연결 없음. */
-export interface GridLabelComponent {
-  key: string;
-  type: "label";
-  position: GridPosition;
-  size: GridSize;
-  text: string;
-  textAlign?: GridAlign; // 기본값 left
-}
-
-/** 값 입력이 없는 정적 안내 텍스트 전용 컴포넌트(guide 2종 분리, 5.4절). label과 구조는 동일하나 "안내문"으로 시각 구분해 렌더링. */
+/** 값 입력이 없는 정적 안내 텍스트 전용 컴포넌트(5.4절, guide 2종 분리). 그리드 직접 배치 정적 컴포넌트로 유지(5.8절 라벨 개편 대상 아님). */
 export interface GridGuideTextComponent {
   key: string;
   type: "guide-text";
   position: GridPosition;
   size: GridSize;
   text: string;
-  textAlign?: GridAlign; // 기본값 left
+  textAlign?: GridAlign; // 가로 정렬, 기본값 left
+  textVerticalAlign?: GridAlignVertical; // 세로 정렬(2026-07-18 유지보수 요청 4차 신규), 기본값 top
+  /** 선택, formSchema.labels 항목 하나를 참조(5.8절). */
+  labelId?: string | null;
 }
 
 /** 값 입력이 없는 정적 첨부 가이드 파일 전용 컴포넌트(guide 2종 분리, 5.4절). 첨부 파일은 base64 데이터 URL로 인라인 저장, 제출·검증 대상에서 제외. */
@@ -132,21 +140,29 @@ export interface GridGuideFileComponent {
   position: GridPosition;
   size: GridSize;
   file: { name: string; dataUrl: string } | null;
+  /** 선택, formSchema.labels 항목 하나를 참조(5.8절). */
+  labelId?: string | null;
 }
 
-export type GridComponent =
-  | GridInputComponent
-  | GridLabelComponent
-  | GridGuideTextComponent
-  | GridGuideFileComponent;
+export type GridComponent = GridInputComponent | GridGuideTextComponent | GridGuideFileComponent;
+
+/** 그리드 라벨(태그, 2026-07-18 유지보수 요청 4차 신규, 5.8절). 컴포넌트가 아니라 다른 컴포넌트에
+ * 선택적으로 부여하는 독립 엔티티 — 컴포넌트의 labelId로 참조한다. */
+export interface GridLabel {
+  id: string;
+  text: string;
+  textColor: string;
+  borderColor: string;
+}
 
 export interface GridFormSchema {
   components: GridComponent[];
+  labels: GridLabel[];
 }
 
 export type GridFormValues = Record<string, unknown>;
 
-export const EMPTY_GRID_SCHEMA: GridFormSchema = { components: [] };
+export const EMPTY_GRID_SCHEMA: GridFormSchema = { components: [], labels: [] };
 
 /* ----------------------------------------------------------------------
  * 레거시(ESM field-builder.tsx/dynamic-form.tsx 전용) — ESM은 레거시 EAV 그대로
