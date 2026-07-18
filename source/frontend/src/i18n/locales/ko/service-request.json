@@ -106,7 +106,8 @@
     "formBuilder": {
       "openButton": "Form 설정",
       "modalTitle": "Form 설정",
-      "previewEmpty": "설정된 양식이 없습니다. 클릭하여 Form을 설정하세요."
+      "previewEmpty": "설정된 양식이 없습니다. 클릭하여 Form을 설정하세요.",
+      "fieldCount": "설정된 필드 {{count}}개"
     },
     "nameRequiredError": "이름은 필수입니다.",
     "schemaRequiredError": "양식 필드를 하나 이상 정의하세요.",

@@ -490,3 +490,59 @@
 - 서버(`FormSubmissionValidator`)가 `guide` 타입을 검증 스킵함(테스트로 확인).
 - 기존 SRM 회귀 없음(팔레트 8종 기존 기능·겹침 방지·리사이즈·pre-view 라운드트립·label 컴포넌트 등 이전 통합테스트 항목 재확인).
 - tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → Standards/Spec 코드 리뷰 → 완료 시 커밋(main).
+
+## 개발 계획 — 2026-07-18 유지보수: 팝업 3분할 미리보기·radio/checkbox 배치·guide 2종 분리
+
+- 요구사항 3건: (1) CatalogManagePage(SCR-SRM-007) 바깥의 45% 축소 pre-view 제거 → "Form 설정" 팝업 내부를 좌 팔레트/중앙 캔버스/우 전체 레이아웃 미리보기 3분할 동시 표시로 통합, 팝업(모달) 폭 확대(뷰포트 90% 이상 권장). (2) radio/checkbox에 `optionsDirection`(row/column, 기본 row)·`optionsGap`(1~3, 기본 1) 신규 — 기존 세로 고정 기본값이 가로로 바뀌는 의도된 변경, 마이그레이션 없음. (3) `guide`(직전 유지보수 20260718-175042 신규) 타입을 완전 폐기하고 `guide-text`(안내 텍스트, label과 동일 구조)·`guide-file`(첨부 파일만) 2종으로 분리(팔레트 9종→10종). `guide` 운영 데이터 없음(테스트 픽스처만) 확인돼 마이그레이션 불필요.
+- 설계 근거: `docs/02_plan/screen/service-request.md` 5.1절(컴포넌트 역할, guide-text/guide-file)/5.3절(팔레트 10종)/5.4절(radio·checkbox 배치방향·여백, guide-text/guide-file Content 설정)/5.6절(팝업 3분할 레이아웃, 모달 크기)/5.7절(guide 폐기, 마이그레이션 불필요), `docs/02_plan/api_spec/service-request.md` API-SRM-002(컴포넌트 JSON — `optionsDirection`/`optionsGap` 필드, `guide-text`/`guide-file` 타입 스키마), `docs/02_plan/api_spec/common.md` 0-2절(검증 제외 타입을 label/guide-text/guide-file로 갱신), `docs/00_context/glossary.md`(동적 양식 스키마 10종). DB 스키마 변경 없음(JSONB 그대로) — dev-db 소집 불필요.
+- 참고 기존 코드: `source/frontend/src/components/common/form-schema.ts`·`dynamic-form-builder.tsx`·`dynamic-form-renderer.tsx`, `source/frontend/src/features/service-request/CatalogManagePage.tsx`(45% pre-view·Modal 폭, `PREVIEW_SCALE` 상수), `source/backend/src/main/java/com/itsm/common/form/FormSubmissionValidator.java`.
+
+### 담당 범위
+
+#### BE (dev-be) — `source/backend/src/main/java/com/itsm/common/form/FormSubmissionValidator.java`
+
+- `validateComponent()`의 스킵 조건을 `"label".equals(type) || "guide".equals(type)`에서 `"label".equals(type) || "guide-text".equals(type) || "guide-file".equals(type)`로 갱신(`guide` 조건 제거).
+- `FormSubmissionValidatorTest.java`의 `guideTypeComponentIsSkippedEvenWithoutValue` 테스트를 `guide-text`/`guide-file` 각각에 대한 스킵 케이스 2개로 교체(또는 파라미터화).
+- 클래스 주석·`CLAUDE.md`에서 `guide` 언급을 `guide-text`/`guide-file`로 갱신.
+
+#### FE (dev-ui) — `source/frontend/src/components/common/`
+
+**`form-schema.ts`**
+- `GridComponentType`에서 `"guide"` 제거, `"guide-text"`/`"guide-file"` 추가(10종). `GRID_PALETTE_TYPES` 순서: text/textarea/select/radio/checkbox/date/file/label/guide-text/guide-file.
+- `GridInputComponent`(또는 그 필드)에 `optionsDirection?: "row" | "column" | null`(기본 row), `optionsGap?: 1 | 2 | 3 | null`(기본 1) 추가 — `options`/`ciLinked`와 같은 레벨(컴포넌트 최상위, `input` 객체 안 아님, API-SRM-002 스키마 그대로).
+- 신규 헬퍼 `hasOptionsLayoutUi(type)`: `radio`/`checkbox`만 true(select 제외 — select는 배치방향 개념 없음).
+- 기존 `GridGuideComponent`(guideText+file 통합) 삭제. 신규 `GridGuideTextComponent{key; type:"guide-text"; position; size; text: string; textAlign?: GridAlign}`(`GridLabelComponent`와 구조 동일, type만 다름), `GridGuideFileComponent{key; type:"guide-file"; position; size; file: {name,dataUrl}|null}`.
+- `GridComponent = GridInputComponent | GridLabelComponent | GridGuideTextComponent | GridGuideFileComponent`. `GridInputComponentType = Exclude<GridComponentType, "label" | "guide-text" | "guide-file">`.
+- `gridMaxHeight`: `"guide-text"`/`"guide-file"` 둘 다 `label`과 동일하게 2.
+- `index.ts` 배럴에 `GridGuideTextComponent`/`GridGuideFileComponent`/`hasOptionsLayoutUi` 추가(직전 유지보수에서 배럴 export 누락 지적이 있었으니 이번엔 처음부터 반영).
+
+**`dynamic-form-renderer.tsx`**
+- `GridComponentBody`: `"guide"` 분기 제거, `"guide-text"` → 신규 `StaticGuideTextBody`(안내문 시각적 구분 — 아이콘 동반 등 FE 재량, `label`과 달리 안내문임을 구분), `"guide-file"` → 신규 `StaticGuideFileBody`(첨부 있으면 다운로드 버튼/링크, 없으면 빈 상태 안내 — 텍스트 입력 없음).
+- `handleSubmit` 스킵 조건에 `guide-text`/`guide-file` 추가(`guide` 제거).
+- radio/checkbox 렌더링에 `optionsDirection`(기본 row)·`optionsGap`(기본 1, 3단계)을 반영 — row면 가로 배치+wrap, column이면 기존처럼 세로 배치. 여백 3단계의 실제 값은 FE 재량(예: gap-1/gap-2/gap-3 매핑). 옵션이 셀 폭 넘으면 자동 줄바꿈+셀 내부 스크롤(기존 렌더링 요건 유지).
+
+**`dynamic-form-builder.tsx`**
+- 팔레트: `guide` 제거, `guide-text`/`guide-file` 2개 추가(10종). `PALETTE_LABELS`/`PALETTE_ICONS`/`defaultSize`(둘 다 1×1 기본) 갱신.
+- `handleAddComponent`: `"guide-text"` → `{guideText 아님, text:"", textAlign:"left"}`(label과 동일 필드명 `text`/`textAlign` 사용, API 스키마 그대로), `"guide-file"` → `{file: null}`.
+- `ComponentSettingsPopover`: `label` 분기 재사용 가능한 형태로 `guide-text` 분기 추가(텍스트+정렬만, `label` 분기와 거의 동일 UI). `guide-file` 분기 신규(파일 첨부 UI만, 텍스트 없음 — 직전 `guide` 분기의 파일첨부 부분만 재사용). 7종 입력 Content 설정에 `hasOptionsLayoutUi(component.type)`일 때만(radio/checkbox) 배치방향 토글(가로/세로)+여백 3단계(좁게/보통/넓게) 추가.
+- **팝업 3분할 레이아웃(핵심 변경)**: 현재 좌(팔레트)/우(캔버스) 2분할 구조를 좌(팔레트)/중앙(캔버스)/우(전체 레이아웃 미리보기) 3분할로 재구성. 우측 미리보기는 `dynamic-form-renderer.tsx`의 `DynamicFormRenderer`를 `disabled`+`hideFooter`로 재사용해 현재 편집 중인 `components` 상태를 실시간(적용 전) 반영(축소 비율은 `CatalogManagePage.tsx`의 기존 `PREVIEW_SCALE=0.45`를 그대로 재사용 — 이 상수를 `dynamic-form-builder.tsx`(또는 `form-schema.ts`)로 이전). 탭 전환이 아니라 세 영역이 항상 동시에 보여야 한다.
+- 팝업(모달) 자체는 `CatalogManagePage.tsx`가 감싸므로, 3분할을 담을 수 있도록 `DynamicFormBuilder`의 루트 레이아웃(flex)만 조정하고 실제 모달 폭 확대는 아래 dev-ui 담당 CatalogManagePage.tsx 항목에서 함께 처리(파일 경계상 예외적으로 dev-ui가 겸함 — 3분할 팝업 폭과 1:1로 묶인 기계적 변경이라 dev-lead 판단으로 별도 dev-frontend 소집 없이 진행. 이견 있으면 dev-lead에게 확인).
+
+**`CatalogManagePage.tsx`(예외적으로 dev-ui가 겸함, 위 3분할과 1:1로 묶인 변경)**
+- 466~499행 부근 외부 45% 축소 pre-view 블록(`role="button"` div + 내부 `scale(${PREVIEW_SCALE})` 렌더) 전체 삭제. "Form 설정" 버튼만 남기고, 필드 없음 안내 문구는 필요시 버튼 자체 또는 팝업 최초 진입 시 처리(FE 재량).
+- `PREVIEW_SCALE` 상수는 `dynamic-form-builder.tsx`로 이전했으므로 이 파일에서 제거.
+- `<Modal ... className="flex h-[85vh] max-w-4xl flex-col">`의 `max-w-4xl`을 뷰포트 90% 이상으로 확대(예: `max-w-[95vw]` 또는 `w-[90vw] max-w-[1600px]` 등, 구체 값은 FE 재량).
+
+### 진행 순서
+
+1. FE `form-schema.ts`(타입 교체) → `dynamic-form-renderer.tsx`(guide-text/guide-file 렌더+옵션 배치방향) → `dynamic-form-builder.tsx`(팔레트·Content 설정·3분할 레이아웃) → `CatalogManagePage.tsx`(외부 pre-view 제거·모달 확대) 순.
+2. BE는 FE와 독립적으로 진행 가능(병렬).
+
+### 완료(테스트 통과) 기준
+
+- 팔레트 10종(guide 없음, guide-text/guide-file 있음) 노출. guide-text는 텍스트+정렬만, guide-file은 첨부만 설정 가능. 둘 다 요청 제출·미리보기에서 조회 전용으로 렌더링되고 제출·검증 대상에서 제외(서버 400 없음).
+- radio/checkbox Content 설정에 배치방향(기본 가로)·여백(기본 1단계) 조정 가능, 렌더링에 즉시 반영. 미지정 기존 스키마는 가로로 렌더링(마이그레이션 없이 폴백).
+- SCR-SRM-007 "Form 설정" 팝업 내부에 팔레트/캔버스/전체 미리보기 3분할이 항상 동시에 보이고, 편집 중(적용 전) 변경이 미리보기에 실시간 반영됨. 팝업 바깥의 45% 축소 pre-view는 더 이상 없음. 팝업 폭이 기존보다 크게 확대됨(뷰포트 90% 이상 권장 수준 체감 확인).
+- 서버(`FormSubmissionValidator`)가 `guide-text`/`guide-file` 둘 다 검증 스킵(테스트로 확인), `guide` 관련 코드 완전 제거 확인.
+- 기존 SRM 회귀 없음(placeholder·1×1 캡션 아이콘화·개별 컴포넌트 미리보기·date/file 박스+클릭·label 컴포넌트·유효성 순차 단일 오류 등 직전 유지보수 항목 재확인).
+- tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → Standards/Spec 코드 리뷰 → 완료 시 커밋(main).

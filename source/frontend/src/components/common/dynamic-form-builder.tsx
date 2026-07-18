@@ -10,6 +10,7 @@ import {
   GripVertical,
   Info,
   List,
+  Paperclip,
   Settings2,
   Text as LabelIcon,
   Trash2,
@@ -21,35 +22,42 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { GridComponentBody } from "@/components/common/dynamic-form-renderer";
+import { DynamicFormRenderer, GridComponentBody } from "@/components/common/dynamic-form-renderer";
 import {
   GRID_COLUMNS,
   GRID_PALETTE_TYPES,
+  GRID_PREVIEW_SCALE,
   GRID_ROW_HEIGHT_PX,
   gridMaxHeight,
   hasGridOptions,
+  hasOptionsLayoutUi,
   hasPlaceholderUi,
   type GridAlign,
   type GridComponent,
   type GridComponentType,
   type GridFormSchema,
   type GridInputComponent,
+  type GridOptionsDirection,
+  type GridOptionsGap,
   type GridPosition,
   type GridSize,
 } from "@/components/common/form-schema";
 
 /**
  * 관리자용 그리드 폼 빌더 — SCR-SRM-007 "Form 설정" 팝업(2026-07-18 유지보수 요청,
- * form.io 완전 제거 → 자체 8×n 그리드). 좌측 팔레트(9종 — 입력 7종 + 값 입력 없는 정적
- * 컴포넌트 `label`/`guide`, 클릭으로 캔버스에 추가)/우측 8칸 그리드 캔버스(스크롤 가능,
- * 배치·리사이즈는 1칸 단위 스냅, 겹침 배치는 차단+인라인 안내). 입력 7종은 `label`/`labelAlign`
- * 속성을 갖지 않는다(2026-07-18 후속 유지보수 요청 — 라벨이 필요하면 `label` 컴포넌트를
- * 별도 셀에 배치, 접근성 연결 없음). `initialSchema`로 편집 모드 진입, 하단 적용/취소 버튼 —
- * 적용 시 `onApply`로 최신 그리드 스키마를 상위에 전달한다(자동저장 없음, 실제 API 저장은
- * 호출측의 "저장" 버튼). Content 설정 팝업 내 개별 실시간 미리보기는 렌더러(`GridComponentBody`,
- * dynamic-form-renderer.tsx)를 그대로 재사용한다(로직 중복 구현 금지, 2026-07-18 후속 유지보수).
+ * form.io 완전 제거 → 자체 8×n 그리드). 팝업 내부를 **좌 팔레트(10종 — 입력 7종 + 값 입력
+ * 없는 정적 컴포넌트 `label`/`guide-text`/`guide-file`) / 중앙 8칸 그리드 캔버스 / 우 전체
+ * 레이아웃 미리보기** 3분할로 항상 동시 표시한다(탭 전환 아님, 2026-07-18 후속 유지보수 요청).
+ * 캔버스는 스크롤 가능, 배치·리사이즈는 1칸 단위 스냅, 겹침 배치는 차단+인라인 안내. 입력 7종은
+ * `label`/`labelAlign` 속성을 갖지 않는다(라벨이 필요하면 `label` 컴포넌트를 별도 셀에 배치,
+ * 접근성 연결 없음). 우측 전체 미리보기는 `dynamic-form-renderer.tsx`의 `DynamicFormRenderer`를
+ * `disabled`+`hideFooter`로 재사용해 편집 중(적용 전) `components` 상태를 실시간 반영하며,
+ * 축소 비율은 `GRID_PREVIEW_SCALE`(기존 `CatalogManagePage`의 외부 pre-view와 동일 비율,
+ * 이제 폐기되어 이 팝업 안으로 이전됨)을 사용한다. `initialSchema`로 편집 모드 진입, 하단
+ * 적용/취소 버튼 — 적용 시 `onApply`로 최신 그리드 스키마를 상위에 전달한다(자동저장 없음,
+ * 실제 API 저장은 호출측의 "저장" 버튼). Content 설정 팝업 내 개별 실시간 미리보기는 렌더러
+ * (`GridComponentBody`, dynamic-form-renderer.tsx)를 그대로 재사용한다(로직 중복 구현 금지).
  */
 export interface DynamicFormBuilderProps {
   initialSchema?: GridFormSchema;
@@ -71,7 +79,8 @@ const PALETTE_LABELS: Record<GridComponentType, string> = {
   date: "날짜",
   file: "파일",
   label: "라벨",
-  guide: "안내/가이드",
+  "guide-text": "안내 텍스트",
+  "guide-file": "가이드 파일",
 };
 
 const PALETTE_ICONS: Record<GridComponentType, typeof Type> = {
@@ -83,8 +92,11 @@ const PALETTE_ICONS: Record<GridComponentType, typeof Type> = {
   date: Calendar,
   file: File,
   label: LabelIcon,
-  guide: Info,
+  "guide-text": Info,
+  "guide-file": Paperclip,
 };
+
+const OPTIONS_GAP_LABELS: Record<GridOptionsGap, string> = { 1: "좁게", 2: "보통", 3: "넓게" };
 
 function defaultSize(type: GridComponentType): GridSize {
   return type === "textarea" ? { w: 2, h: 2 } : { w: 1, h: 1 };
@@ -171,11 +183,15 @@ export function DynamicFormBuilder({ initialSchema, onApply, onCancel, className
       ]);
       return;
     }
-    if (type === "guide") {
+    if (type === "guide-text") {
       setComponents((cs) => [
         ...cs,
-        { key, type: "guide", position, size, guideText: "", file: null },
+        { key, type: "guide-text", position, size, text: "텍스트", textAlign: "left" },
       ]);
+      return;
+    }
+    if (type === "guide-file") {
+      setComponents((cs) => [...cs, { key, type: "guide-file", position, size, file: null }]);
       return;
     }
     const newComponent: GridInputComponent = {
@@ -323,6 +339,21 @@ export function DynamicFormBuilder({ initialSchema, onApply, onCancel, className
             })}
           </div>
         </div>
+
+        <div className="flex w-80 shrink-0 flex-col gap-1.5 overflow-hidden rounded-md border border-border bg-muted/20 p-2">
+          <Label className="text-xs text-muted-foreground">미리보기</Label>
+          <div className="flex-1 overflow-auto">
+            <div
+              style={{
+                transform: `scale(${GRID_PREVIEW_SCALE})`,
+                transformOrigin: "top left",
+                width: `${100 / GRID_PREVIEW_SCALE}%`,
+              }}
+            >
+              <DynamicFormRenderer schema={{ components }} onSubmit={() => {}} disabled hideFooter />
+            </div>
+          </div>
+        </div>
       </div>
 
       {overlapWarning ? (
@@ -363,7 +394,10 @@ function BuilderComponentCard({
   onUpdate,
 }: BuilderComponentCardProps) {
   const Icon = PALETTE_ICONS[component.type];
-  const caption = component.type === "label" ? component.text : PALETTE_LABELS[component.type];
+  const caption =
+    component.type === "label" || component.type === "guide-text"
+      ? component.text
+      : PALETTE_LABELS[component.type];
   const isCompact = size.w === 1 && size.h === 1;
 
   return (
@@ -434,7 +468,7 @@ function ComponentSettingsPopover({
         align="start"
         onPointerDown={(e) => e.stopPropagation()}
       >
-        {component.type === "label" ? (
+        {component.type === "label" || component.type === "guide-text" ? (
           <>
             <div className="space-y-1.5">
               <Label className="text-xs">표시 텍스트</Label>
@@ -452,44 +486,34 @@ function ComponentSettingsPopover({
               />
             </div>
           </>
-        ) : component.type === "guide" ? (
-          <>
-            <div className="space-y-1.5">
-              <Label className="text-xs">안내 텍스트</Label>
-              <Textarea
-                className="min-h-20"
-                value={component.guideText}
-                onChange={(e) => onUpdate({ guideText: e.target.value })}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">첨부 파일(선택)</Label>
-              <input
-                type="file"
-                className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-md file:border file:border-input file:bg-background file:px-2 file:py-1 file:text-xs"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  const reader = new FileReader();
-                  reader.onload = () =>
-                    onUpdate({ file: { name: file.name, dataUrl: reader.result as string } });
-                  reader.readAsDataURL(file);
-                }}
-              />
-              {component.file ? (
-                <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                  <span className="truncate">{component.file.name}</span>
-                  <button
-                    type="button"
-                    className="shrink-0 text-destructive hover:underline"
-                    onClick={() => onUpdate({ file: null })}
-                  >
-                    제거
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          </>
+        ) : component.type === "guide-file" ? (
+          <div className="space-y-1.5">
+            <Label className="text-xs">첨부 파일(선택)</Label>
+            <input
+              type="file"
+              className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-md file:border file:border-input file:bg-background file:px-2 file:py-1 file:text-xs"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () =>
+                  onUpdate({ file: { name: file.name, dataUrl: reader.result as string } });
+                reader.readAsDataURL(file);
+              }}
+            />
+            {component.file ? (
+              <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                <span className="truncate">{component.file.name}</span>
+                <button
+                  type="button"
+                  className="shrink-0 text-destructive hover:underline"
+                  onClick={() => onUpdate({ file: null })}
+                >
+                  제거
+                </button>
+              </div>
+            ) : null}
+          </div>
         ) : (
           <>
             <div className="grid grid-cols-2 gap-2">
@@ -592,6 +616,25 @@ function ComponentSettingsPopover({
                     CI 연계
                   </label>
                 </div>
+
+                {hasOptionsLayoutUi(component.type) ? (
+                  <div className="grid grid-cols-2 gap-2 pt-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">옵션 배치 방향</Label>
+                      <OptionsDirectionToggle
+                        value={component.optionsDirection ?? "row"}
+                        onChange={(dir) => onUpdate({ optionsDirection: dir })}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">옵션 간 여백</Label>
+                      <OptionsGapToggle
+                        value={component.optionsGap ?? 1}
+                        onChange={(gap) => onUpdate({ optionsGap: gap })}
+                      />
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </>
@@ -633,6 +676,61 @@ function AlignToggle({ value, onChange }: { value: GridAlign; onChange: (align: 
           )}
         >
           <Icon className="size-4" />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const TOGGLE_PILL_CLASS = "rounded-md border px-2 py-1 text-xs transition-colors";
+const TOGGLE_PILL_ACTIVE_CLASS = "border-primary bg-primary text-primary-foreground";
+const TOGGLE_PILL_INACTIVE_CLASS = "border-input bg-background text-muted-foreground hover:bg-accent";
+
+function OptionsDirectionToggle({
+  value,
+  onChange,
+}: {
+  value: GridOptionsDirection;
+  onChange: (direction: GridOptionsDirection) => void;
+}) {
+  const options: { value: GridOptionsDirection; label: string }[] = [
+    { value: "row", label: "가로" },
+    { value: "column", label: "세로" },
+  ];
+  return (
+    <div className="flex gap-1">
+      {options.map(({ value: v, label }) => (
+        <button
+          key={v}
+          type="button"
+          onClick={() => onChange(v)}
+          className={cn(TOGGLE_PILL_CLASS, value === v ? TOGGLE_PILL_ACTIVE_CLASS : TOGGLE_PILL_INACTIVE_CLASS)}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function OptionsGapToggle({
+  value,
+  onChange,
+}: {
+  value: GridOptionsGap;
+  onChange: (gap: GridOptionsGap) => void;
+}) {
+  const options: GridOptionsGap[] = [1, 2, 3];
+  return (
+    <div className="flex gap-1">
+      {options.map((g) => (
+        <button
+          key={g}
+          type="button"
+          onClick={() => onChange(g)}
+          className={cn(TOGGLE_PILL_CLASS, value === g ? TOGGLE_PILL_ACTIVE_CLASS : TOGGLE_PILL_INACTIVE_CLASS)}
+        >
+          {OPTIONS_GAP_LABELS[g]}
         </button>
       ))}
     </div>

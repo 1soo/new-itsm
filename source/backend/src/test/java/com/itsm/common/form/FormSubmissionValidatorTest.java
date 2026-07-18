@@ -68,9 +68,18 @@ class FormSubmissionValidatorTest {
     }
 
     @Test
-    void guideTypeComponentIsSkippedEvenWithoutValue() {
+    void guideTextTypeComponentIsSkippedEvenWithoutValue() {
         Map<String, Object> schema = Map.of("components", List.of(
-                Map.of("type", "guide", "guideText", "안내 텍스트")));
+                Map.of("type", "guide-text", "guideText", "안내 텍스트")));
+
+        assertThatCode(() -> FormSubmissionValidator.validate(schema, Map.of()))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void guideFileTypeComponentIsSkippedEvenWithoutValue() {
+        Map<String, Object> schema = Map.of("components", List.of(
+                Map.of("type", "guide-file", "file", Map.of("name", "안내.pdf", "dataUrl", "data:application/pdf;base64,AA=="))));
 
         assertThatCode(() -> FormSubmissionValidator.validate(schema, Map.of()))
                 .doesNotThrowAnyException();

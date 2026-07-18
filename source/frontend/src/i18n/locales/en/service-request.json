@@ -106,7 +106,8 @@
     "formBuilder": {
       "openButton": "Form Settings",
       "modalTitle": "Form Settings",
-      "previewEmpty": "No form has been configured. Click to set up the form."
+      "previewEmpty": "No form has been configured. Click to set up the form.",
+      "fieldCount": "{{count}} field(s) configured"
     },
     "nameRequiredError": "Name is required.",
     "schemaRequiredError": "Define at least one form field.",

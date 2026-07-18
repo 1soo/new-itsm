@@ -15,6 +15,7 @@
 | 2026-07-18 | form.io 완전 제거, API-SRM-002/003/004의 formSchema를 자체 8×n 그리드 스키마(컴포넌트 배열, 위치/크기/Content 설정)로 전면 재정의. formValues는 key-value 구조 그대로 유지(레이아웃 엔진과 무관) |
 | 2026-07-18 | formSchema 컴포넌트에 label 타입 추가(정적 텍스트), 입력 컴포넌트에서 label/labelAlign 필드 제거. API-SRM-006 400 응답은 여러 위반을 모으지 않고 components 배열 순서상 첫 번째 위반 1건만 반환 |
 | 2026-07-18 | formSchema 입력 컴포넌트에 input.placeholder 필드 추가, guide 타입(정적 안내/가이드+첨부파일) 신규 추가(9종) |
+| 2026-07-18 | formSchema radio/checkbox 컴포넌트에 optionsDirection/optionsGap 필드 추가(기본값 row/1), guide 타입을 guide-text/guide-file 2종으로 분리(guide 타입 폐기, 팔레트 10종) |
 
 ## 공통 규약
 
@@ -80,6 +81,8 @@
           "input": { "widthPercent": "number · 기본값 90", "align": "left|center|right · 기본값 center", "placeholder": "string|null · 선택, text/textarea/select/date/file만 Content 설정 UI 노출(radio/checkbox는 필드는 존재하나 UI 미노출·미반영)", "defaultValue": "string|null", "readOnly": "boolean · 기본값 false" },
           "validation": { "required": "boolean · 기본값 false", "regex": "string|null · 선택 입력, 미지정 시 형식 검증 없음" },
           "options": "string|null · select/radio/checkbox 전용, 콤마(,) 구분 텍스트",
+          "optionsDirection": "row|column|null · radio/checkbox 전용, 기본값 row(가로). select는 미사용",
+          "optionsGap": "1|2|3|null · radio/checkbox 전용, 옵션 간 여백 3단계(1=좁게, 기본값), select는 미사용",
           "ciLinked": "boolean · 기본값 false, select/radio/checkbox 옵션 설정 UI의 CI 연계 라디오 버튼 자리 표시용(실제 동작 없음, 향후 확장 대비)"
         },
         {
@@ -92,17 +95,24 @@
         },
         {
           "key": "string · 필드 식별자(고유)",
-          "type": "guide",
+          "type": "guide-text",
           "position": { "col": "number · 0~7", "row": "number · 0 이상" },
           "size": { "w": "number · 1~2", "h": "number · 1~2" },
-          "guideText": "string · 안내 텍스트",
+          "text": "string · 안내 텍스트",
+          "textAlign": "left|center|right · 기본값 left"
+        },
+        {
+          "key": "string · 필드 식별자(고유)",
+          "type": "guide-file",
+          "position": { "col": "number · 0~7", "row": "number · 0 이상" },
+          "size": { "w": "number · 1~2", "h": "number · 1~2" },
           "file": "{ name: string, dataUrl: string }|null · 선택, 첨부 가이드 파일(base64 데이터 URL), 미첨부 시 null"
         }
       ]
     }
   }
   ```
-  > `formSchema`는 자체 8×n 그리드 스키마다(`components` 배열, 중첩 레이아웃 없음 — form.io의 컬럼/패널/탭·Form JSON 계약은 폐기). `type=label`은 값 입력이 없는 정적 텍스트 컴포넌트로 `text`/`textAlign`만 가지며 `input`/`validation`/`options`가 없다. `type=guide`도 값 입력이 없는 정적 컴포넌트로 `guideText`(안내 텍스트)와 선택적 `file`(첨부 가이드 파일, base64 데이터 URL 인라인 — 기존 제출 파일과 동일한 저장 방식)만 가지며, 요청 제출 데이터(`formValues`)에는 포함되지 않고 조회 전용(요청자가 다운로드)이다. 나머지 7개 입력 타입은 `label`/`labelAlign` 속성을 갖지 않는다(라벨이 필요하면 관리자가 `label` 컴포넌트를 별도 셀에 배치, `for`/`aria-label` 연결 없음 — 순수 인접 배치로만 연관). FE는 이 객체를 그대로 그리드 렌더러(SCR-SRM-002)·"Form 설정" 팝업(SCR-SRM-007, [screen/service-request.md](../screen/service-request.md) 5절)에 전달한다.
+  > `formSchema`는 자체 8×n 그리드 스키마다(`components` 배열, 중첩 레이아웃 없음 — form.io의 컬럼/패널/탭·Form JSON 계약은 폐기). `type=label`은 값 입력이 없는 정적 텍스트 컴포넌트로 `text`/`textAlign`만 가지며 `input`/`validation`/`options`가 없다. `type=guide-text`도 값 입력이 없는 정적 텍스트 컴포넌트로 `label`과 동일하게 `text`/`textAlign`만 가진다(안내문 용도로 별도 팔레트 항목 유지). `type=guide-file`은 값 입력이 없는 정적 컴포넌트로 선택적 `file`(첨부 가이드 파일, base64 데이터 URL 인라인 — 기존 제출 파일과 동일한 저장 방식)만 가지며, 요청 제출 데이터(`formValues`)에는 포함되지 않고 조회 전용(요청자가 다운로드)이다. 기존 `guide`(안내 텍스트+파일 통합) 타입은 폐기됐다(운영 데이터 없어 마이그레이션 불필요). `radio`/`checkbox` 컴포넌트는 `optionsDirection`(가로/세로 배치, 기본값 `row`)·`optionsGap`(옵션 간 여백 3단계, 기본값 `1`)을 추가로 가진다(`select`는 미사용). 나머지 7개 입력 타입은 `label`/`labelAlign` 속성을 갖지 않는다(라벨이 필요하면 관리자가 `label` 컴포넌트를 별도 셀에 배치, `for`/`aria-label` 연결 없음 — 순수 인접 배치로만 연관). FE는 이 객체를 그대로 그리드 렌더러(SCR-SRM-002)·"Form 설정" 팝업(SCR-SRM-007, [screen/service-request.md](../screen/service-request.md) 5절)에 전달한다.
 - **Response Code**: 200 / 401 / 404
 
 ### API-SRM-003 · 카탈로그 항목 생성

@@ -18,7 +18,6 @@ import {
   ConfirmDialog,
   DataTable,
   DynamicFormBuilder,
-  DynamicFormRenderer,
   EMPTY_GRID_SCHEMA,
   type GridFormSchema,
   Modal,
@@ -39,15 +38,13 @@ import { cn } from "@/lib/utils";
  * 서비스 카탈로그 관리(SCR-SRM-007) — 프로세스 오너가 요청 유형(양식·SLA·큐·카테고리)을 정의.
  * 승인 여부·경로는 SCR-ADMIN-008(승인 프로세스 생성/편집)에서 별도 설정(승인 프로세스 커스텀 기능으로 대체).
  * 상단 탭("카탈로그 항목"/"카테고리 관리", Tabs 공통 컴포넌트 없어 버튼형 토글로 구현 — ESM DeptPortalPage와 동일 패턴).
- * "카탈로그 항목" 탭: 좌 카탈로그 목록 / 우 편집·생성 폼. 양식은 "Form 설정" 버튼으로 그리드 빌더 팝업을 열어
- * 설계(2026-07-18 유지보수 요청, form.io 완전 제거 → 자체 8×n 그리드)하고 그 아래 pre-view 축소판을 표시한다.
+ * "카탈로그 항목" 탭: 좌 카탈로그 목록 / 우 편집·생성 폼. 양식은 "Form 설정" 버튼으로 그리드 빌더 팝업을 연다
+ * (2026-07-18 유지보수 요청, form.io 완전 제거 → 자체 8×n 그리드) — 팝업 내부에 팔레트/캔버스/전체 레이아웃
+ * 미리보기 3분할이 항상 표시되므로(2026-07-18 후속 유지보수 요청) 팝업 바깥의 축소판 pre-view는 제거됨.
  * 이름·양식 누락 시 400 인라인. "카테고리 관리" 탭(SCR-SRM-009): 목록 표 + 생성/수정 모달 + 삭제 확인 다이얼로그.
  */
 /** Select value sentinel — "미분류"/"선택 안 함"(Radix Select는 빈 문자열 value를 허용하지 않음). */
 const NONE_VALUE = "__NONE__";
-
-/** Form 설정 pre-view 축소 비율(5.5절 "폰트·컴포넌트 크기만 축소한 동일 비율 렌더링"). */
-const PREVIEW_SCALE = 0.45;
 
 type ManageTab = "items" | "categories";
 
@@ -463,40 +460,16 @@ export function CatalogManagePage() {
                 <Button type="button" variant="outline" onClick={() => setBuilderOpen(true)}>
                   {t("catalogManage.formBuilder.openButton", { defaultValue: "Form 설정" })}
                 </Button>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setBuilderOpen(true)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") setBuilderOpen(true);
-                  }}
-                  className="relative block w-full cursor-pointer overflow-hidden rounded-md border border-border bg-muted/20 text-left"
-                  style={{ height: 160 }}
-                >
-                  {form.formSchema.components.length === 0 ? (
-                    <p className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                      {t("catalogManage.formBuilder.previewEmpty", {
+                <p className="text-xs text-muted-foreground">
+                  {form.formSchema.components.length === 0
+                    ? t("catalogManage.formBuilder.previewEmpty", {
                         defaultValue: "설정된 양식이 없습니다. 클릭하여 Form을 설정하세요.",
+                      })
+                    : t("catalogManage.formBuilder.fieldCount", {
+                        count: form.formSchema.components.length,
+                        defaultValue: "설정된 필드 {{count}}개",
                       })}
-                    </p>
-                  ) : (
-                    <div
-                      className="pointer-events-none absolute left-0 top-0"
-                      style={{
-                        transform: `scale(${PREVIEW_SCALE})`,
-                        transformOrigin: "top left",
-                        width: `${100 / PREVIEW_SCALE}%`,
-                      }}
-                    >
-                      <DynamicFormRenderer
-                        schema={form.formSchema}
-                        onSubmit={() => {}}
-                        disabled
-                        hideFooter
-                      />
-                    </div>
-                  )}
-                </div>
+                </p>
               </div>
 
               {error ? (
@@ -520,7 +493,7 @@ export function CatalogManagePage() {
         open={builderOpen}
         onOpenChange={setBuilderOpen}
         title={t("catalogManage.formBuilder.modalTitle", { defaultValue: "Form 설정" })}
-        className="flex h-[85vh] max-w-4xl flex-col"
+        className="flex h-[85vh] w-[90vw] max-w-[1600px] flex-col"
       >
         <DynamicFormBuilder
           initialSchema={form.formSchema}
