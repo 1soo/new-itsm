@@ -745,3 +745,33 @@
 - 라벨 텍스트가 오버레이 박스 안쪽이 아니라 테두리 선 위에 걸쳐(legend 스타일) 보임 — `showBorder=true`일 때 테두리 선과 텍스트 배경이 겹쳐 자연스럽게 legend처럼 보이고, `showBorder=false`일 때도 텍스트가 동일한 위치(테두리가 있었다면 걸쳤을 자리)에 표시됨.
 - 기존 SRM 회귀 없음(캔버스 카드=실제 렌더링, DnD 배치, 팔레트 9종, 높이 상한, regex text 전용, 9방향 정렬, 칩 스트립 스타일(showBorder 무관 항상 유지), 라벨 생성/수정/삭제+labelId 해제 등 이전 차수 항목 재확인).
 - tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → Standards/Spec 코드 리뷰 → 완료 시 커밋(main).
+
+## 개발 계획 — 2026-07-18 유지보수 7차: 미니팝업 위치·순서 보정
+
+- 요구사항 2건(순수 UI, API/DB 영향 없음):
+  1. Content 설정 팝업(`ComponentSettingsPopover`) 내부에서 라벨(태그) 지정 Select를 팝업 최상단(타입별 설정 항목보다 앞)으로 이동한다(현재는 팝업 맨 아래에 있음).
+  2. Content 설정 팝업(현재 Radix `Popover` 기반, 설정 아이콘 트리거 근처에 상대 배치)과 라벨 생성/수정 미니 팝업(현재 공용 `Modal`=Radix Dialog 기반, 화면 정중앙 고정)의 위치를 **화면 뷰포트 기준 동일한 고정 좌표(가로 정중앙·세로는 정중앙보다 살짝 위)**로 통일한다. Content 설정 팝업은 트리거 상대 배치를 포기하고 고정 좌표로 전환해야 한다. 두 팝업이 같은 좌표를 쓰도록 공용 CSS 클래스나 상수를 공유하는 방식을 권장한다.
+- 설계 근거: `docs/02_plan/screen/service-request.md` 5.4절(라벨 지정 위치 변경)/5.8절(팝업 위치 통일, 라벨 생성 팝업 위치 조정). API/DB 데이터 모델 변경 없음 — dev-be/dev-db 소집 불필요.
+- 참고 기존 코드: `source/frontend/src/components/common/dynamic-form-builder.tsx`(`ComponentSettingsPopover`의 라벨 Select 위치, 라벨 생성/수정 팝업의 `Modal` 사용부), `source/frontend/src/components/ui/dialog.tsx`(공용 `DialogContent`가 `fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2`로 항상 정중앙 고정 — **이 공용 파일은 앱 전역 모든 Modal에 영향을 주므로 직접 수정하지 말 것**, 위치 조정은 `dynamic-form-builder.tsx`의 개별 `Modal` 사용부에 `className`으로 오버라이드하는 방식으로 국한해야 한다), `source/frontend/src/components/ui/popover.tsx`(Radix Popover 기반 트리거 상대 배치 — Content 설정 팝업이 현재 이걸 사용 중).
+
+### 담당 범위
+
+#### FE (dev-ui) — `source/frontend/src/components/common/dynamic-form-builder.tsx`
+
+1. `ComponentSettingsPopover`: 라벨(태그) 지정 `Select` 블록(현재 팝업 최하단, "미리보기" 섹션 자리였던 근처)을 팝업 콘텐츠 최상단(타입별 분기 — `guide-text`/`guide-file`/7종 입력 — 시작 전)으로 이동.
+2. Content 설정 팝업의 위치를 트리거 상대 배치에서 화면 뷰포트 기준 고정 좌표로 전환한다. 현재 `Popover`/`PopoverContent`(Radix, 트리거 근처 자동 배치) 사용을 유지한 채 고정 좌표를 강제로 오버라이드하거나(예: `PopoverContent`에 `style`로 `position: fixed`+고정 `top`/`left`+`transform` 지정, Radix의 자동 위치 계산 무시), 또는 이 팝업을 공용 `Modal`(Radix Dialog)로 교체해 라벨 생성 팝업과 완전히 동일한 메커니즘을 쓰는 방식도 고려 가능(구현 방식은 FE 재량 — 다만 Radix Popover를 유지한 채 위치만 고정하는 방법이 트리거별 배치 계산 로직과 충돌할 수 있으니, 더 간단하다면 `Modal`로 전환해도 무방하다는 뜻).
+3. 라벨 생성/수정 미니 팝업(현재 `Modal` 컴포넌트 사용부)의 위치를 화면 정중앙보다 살짝 위로 조정한다 — **공용 `ui/dialog.tsx`는 건드리지 말고**, 이 `Modal` 사용부에 `className`(예: `top-[42%]` 등 임의값, `DialogContent`가 `cn(className)`으로 병합하므로 기존 `top-1/2` 유틸리티와 충돌 없이 우선 적용되는지 직접 확인 — Tailwind 유틸리티 우선순위 문제로 안 먹히면 `style` prop이나 별도 wrapper로 대체) 형태로 오버라이드.
+4. 2번(Content 설정 팝업)과 3번(라벨 생성 팝업)이 동일한 고정 좌표를 쓰도록 공용 CSS 클래스명이나 좌표 상수(예: `const MINI_POPUP_POSITION_CLASS = "..."` 형태)를 하나 정의해 두 곳에서 공유.
+
+### 진행 순서
+
+1. 라벨 Select 위치 이동(1번)과 팝업 위치 통일(2~4번)은 서로 독립적이라 순서 무관, 한 번에 진행 가능.
+
+### 완료(테스트 통과) 기준
+
+- Content 설정 팝업을 열면 라벨(태그) 지정 Select가 팝업 맨 위에 보이고, 그 아래 타입별 설정 항목이 이어짐.
+- Content 설정 팝업을 캔버스 위 서로 다른 위치의 카드에서 열어도(좌측 카드·우측 카드·상단 카드·하단 카드 등) 항상 화면 기준 동일한 고정 위치(가로 정중앙, 세로 정중앙보다 살짝 위)에 뜬다(더 이상 트리거 근처에 상대 배치되지 않음).
+- 라벨 생성/수정 팝업도 항상 동일한 화면 고정 위치에 뜨며, Content 설정 팝업과 정확히 같은 좌표를 공유한다(두 팝업을 번갈아 열어도 위치가 흔들리지 않음).
+- 공용 `ui/dialog.tsx`는 변경되지 않아, SRM 외 다른 화면의 기존 Modal들 위치·동작에 회귀가 없다(다른 도메인 화면에서 Modal 여는 것으로 간단히 확인 가능한 범위 내에서 회귀 없음 확인).
+- 기존 SRM 회귀 없음(캔버스 카드=실제 렌더링, DnD 배치, 팔레트 9종, 높이 상한, regex text 전용, 9방향 정렬, 라벨 텍스트 legend 스타일·showBorder 결함 수정 등 이전 차수 항목 재확인).
+- tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → Standards/Spec 코드 리뷰 → 완료 시 커밋(main).

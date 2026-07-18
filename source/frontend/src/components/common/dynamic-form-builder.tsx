@@ -20,7 +20,6 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -71,10 +70,14 @@ import {
  * 항상 표시한다(6차로 렌더링 여부와 테두리 스타일 여부를 분리 — 5차의 "showBorder=false면
  * 텍스트까지 사라지는" 결함 수정). `initialSchema`로 편집 모드 진입, 하단 적용/취소 버튼 —
  * 적용 시 `onApply({components, labels})`로 최신 그리드 스키마를 상위에 전달한다(자동저장
- * 없음, 실제 API 저장은 호출측의 "저장" 버튼). Content 설정 팝업의 개별 실시간 미리보기는
- * 2026-07-18 유지보수 요청 6차로 완전히 제거됐다(캔버스 카드 자체 렌더링과 SCR-SRM-007 축소
- * 미리보기(A1)로 충분하다고 판단, 중복 기능 정리) — `GridComponentBody`는 캔버스 카드
- * 렌더링(`BuilderComponentCard`)에서만 재사용한다.
+ * 없음, 실제 API 저장은 호출측의 "저장" 버튼). Content 설정 팝업(`ComponentSettingsPopover`)의
+ * 개별 실시간 미리보기는 2026-07-18 유지보수 요청 6차로 완전히 제거됐다(캔버스 카드 자체 렌더링과
+ * SCR-SRM-007 축소 미리보기(A1)로 충분하다고 판단, 중복 기능 정리) — `GridComponentBody`는
+ * 캔버스 카드 렌더링(`BuilderComponentCard`)에서만 재사용한다. Content 설정 팝업은 7차로
+ * Radix Popover(트리거 상대 배치) → 공용 `Modal`(Radix Dialog)로 전환돼, 라벨 생성/수정
+ * 팝업과 공유하는 `MINI_POPUP_POSITION_CLASS`(`top-[42%]`)로 항상 동일한 화면 고정 좌표(가로
+ * 정중앙, 세로 정중앙보다 살짝 위)에 뜬다(트리거 위치 무관). 라벨(태그) 지정 Select도 7차로
+ * 팝업 하단→최상단(타입별 설정 항목보다 앞)으로 이동했다.
  */
 export interface DynamicFormBuilderProps {
   initialSchema?: GridFormSchema;
@@ -100,6 +103,11 @@ const DRAG_THRESHOLD_PX = 4;
 const JUST_DRAGGED_RESET_MS = 0;
 const NO_LABEL_VALUE = "__NONE__";
 const DEFAULT_LABEL_FORM = { text: "", textColor: "#1d4ed8", borderColor: "#1d4ed8", showBorder: true };
+/** Content 설정 팝업·라벨 생성/수정 팝업 공용 고정 위치(2026-07-18 유지보수 요청 7차) — 각 팝업의
+ * 트리거(설정 아이콘·라벨 추가 버튼) 위치와 무관하게 항상 화면 뷰포트 기준 동일한 고정 좌표(가로
+ * 정중앙은 공용 `DialogContent`의 `left-1/2 -translate-x-1/2` 그대로, 세로만 정중앙(`top-1/2`)
+ * 보다 살짝 위로 오버라이드)에 뜬다. */
+const MINI_POPUP_POSITION_CLASS = "top-[42%]";
 
 const PALETTE_LABELS: Record<GridComponentType, string> = {
   text: "텍스트",
@@ -580,6 +588,7 @@ export function DynamicFormBuilder({ initialSchema, onApply, onCancel, className
         open={labelPopupOpen}
         onOpenChange={setLabelPopupOpen}
         title={editingLabelId == null ? "라벨 추가" : "라벨 수정"}
+        className={MINI_POPUP_POSITION_CLASS}
       >
         <div className="space-y-3">
           <div className="space-y-1.5">
@@ -705,218 +714,221 @@ function ComponentSettingsPopover({
   const [open, setOpen] = useState(false);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label="컴포넌트 설정"
-          className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          <Settings2 className="size-3.5" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-[420px] space-y-3 overflow-y-auto"
-        style={{ maxHeight: "var(--radix-popover-content-available-height)" }}
-        align="start"
+    <>
+      <button
+        type="button"
+        aria-label="컴포넌트 설정"
+        className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
         onPointerDown={(e) => e.stopPropagation()}
+        onClick={() => setOpen(true)}
       >
-        {component.type === "guide-text" ? (
-          <>
-            <div className="space-y-1.5">
-              <Label className="text-xs">안내 텍스트</Label>
-              <Input
-                className="h-8"
-                value={component.text}
-                onChange={(e) => onUpdate({ text: e.target.value })}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">정렬</Label>
-              <AnchorGridToggle
-                align={component.textAlign ?? "left"}
-                verticalAlign={component.textVerticalAlign ?? "top"}
-                onChange={(textAlign, textVerticalAlign) => onUpdate({ textAlign, textVerticalAlign })}
-              />
-            </div>
-          </>
-        ) : component.type === "guide-file" ? (
+        <Settings2 className="size-3.5" />
+      </button>
+      <Modal
+        open={open}
+        onOpenChange={setOpen}
+        title="컴포넌트 설정"
+        className={cn(MINI_POPUP_POSITION_CLASS, "w-[420px] max-h-[80vh] overflow-y-auto")}
+      >
+        <div className="space-y-3" onPointerDown={(e) => e.stopPropagation()}>
           <div className="space-y-1.5">
-            <Label className="text-xs">첨부 파일(선택)</Label>
-            <input
-              type="file"
-              className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-md file:border file:border-input file:bg-background file:px-2 file:py-1 file:text-xs"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = () =>
-                  onUpdate({ file: { name: file.name, dataUrl: reader.result as string } });
-                reader.readAsDataURL(file);
-              }}
-            />
-            {component.file ? (
-              <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                <span className="truncate">{component.file.name}</span>
-                <button
-                  type="button"
-                  className="shrink-0 text-destructive hover:underline"
-                  onClick={() => onUpdate({ file: null })}
-                >
-                  제거
-                </button>
-              </div>
-            ) : null}
+            <Label className="text-xs">라벨(태그)</Label>
+            <Select
+              value={component.labelId ?? NO_LABEL_VALUE}
+              onValueChange={(v) => onUpdate({ labelId: v === NO_LABEL_VALUE ? null : v })}
+            >
+              <SelectTrigger className="h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_LABEL_VALUE}>없음</SelectItem>
+                {labels.map((label) => (
+                  <SelectItem key={label.id} value={label.id}>
+                    {label.text}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        ) : (
-          <>
-            <div className="space-y-1.5">
-              <Label className="text-xs">input 폭(%)</Label>
-              <Input
-                className="h-8"
-                type="number"
-                min={10}
-                max={100}
-                value={component.input?.widthPercent ?? 90}
-                onChange={(e) =>
-                  onUpdate({ input: { ...component.input, widthPercent: Number(e.target.value) || 90 } })
-                }
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">input 정렬</Label>
-              <AnchorGridToggle
-                align={component.input?.align ?? "center"}
-                verticalAlign={component.input?.verticalAlign ?? "top"}
-                onChange={(align, verticalAlign) => onUpdate({ input: { ...component.input, align, verticalAlign } })}
-              />
-            </div>
 
-            {hasPlaceholderUi(component.type) ? (
+          {component.type === "guide-text" ? (
+            <>
               <div className="space-y-1.5">
-                <Label className="text-xs">Placeholder</Label>
+                <Label className="text-xs">안내 텍스트</Label>
                 <Input
                   className="h-8"
-                  value={component.input?.placeholder ?? ""}
-                  onChange={(e) => onUpdate({ input: { ...component.input, placeholder: e.target.value } })}
+                  value={component.text}
+                  onChange={(e) => onUpdate({ text: e.target.value })}
                 />
               </div>
-            ) : null}
-
-            <div className="space-y-1.5">
-              <Label className="text-xs">기본값</Label>
-              <Input
-                className="h-8"
-                value={component.input?.defaultValue ?? ""}
-                onChange={(e) => onUpdate({ input: { ...component.input, defaultValue: e.target.value } })}
-              />
-            </div>
-
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-1.5 text-xs">
-                <Checkbox
-                  checked={!!component.input?.readOnly}
-                  onCheckedChange={(v) => onUpdate({ input: { ...component.input, readOnly: !!v } })}
-                />
-                읽기 전용
-              </label>
-              <label className="flex items-center gap-1.5 text-xs">
-                <Checkbox
-                  checked={!!component.validation?.required}
-                  onCheckedChange={(v) => onUpdate({ validation: { ...component.validation, required: !!v } })}
-                />
-                필수 여부
-              </label>
-            </div>
-
-            {hasRegexUi(component.type) ? (
               <div className="space-y-1.5">
-                <Label className="text-xs">Validation 정규식(선택)</Label>
-                <Input
-                  className="h-8"
-                  value={component.validation?.regex ?? ""}
-                  placeholder="예: ^[0-9]{3}-[0-9]{4}$"
-                  onChange={(e) => onUpdate({ validation: { ...component.validation, regex: e.target.value } })}
+                <Label className="text-xs">정렬</Label>
+                <AnchorGridToggle
+                  align={component.textAlign ?? "left"}
+                  verticalAlign={component.textVerticalAlign ?? "top"}
+                  onChange={(textAlign, textVerticalAlign) => onUpdate({ textAlign, textVerticalAlign })}
                 />
               </div>
-            ) : null}
-
-            {hasGridOptions(component.type) ? (
-              <div className="space-y-1.5">
-                <Label className="text-xs">옵션(콤마로 구분)</Label>
-                <Input
-                  className="h-8"
-                  value={component.options ?? ""}
-                  onChange={(e) => onUpdate({ options: e.target.value })}
-                />
-                <div className="flex items-center gap-3 pt-1">
-                  <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <input
-                      type="radio"
-                      className="accent-primary"
-                      name={`ci-linked-${component.key}`}
-                      checked={!component.ciLinked}
-                      onChange={() => onUpdate({ ciLinked: false })}
-                    />
-                    일반
-                  </label>
-                  <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <input
-                      type="radio"
-                      className="accent-primary"
-                      name={`ci-linked-${component.key}`}
-                      checked={!!component.ciLinked}
-                      onChange={() => onUpdate({ ciLinked: true })}
-                    />
-                    CI 연계
-                  </label>
+            </>
+          ) : component.type === "guide-file" ? (
+            <div className="space-y-1.5">
+              <Label className="text-xs">첨부 파일(선택)</Label>
+              <input
+                type="file"
+                className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-md file:border file:border-input file:bg-background file:px-2 file:py-1 file:text-xs"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = () =>
+                    onUpdate({ file: { name: file.name, dataUrl: reader.result as string } });
+                  reader.readAsDataURL(file);
+                }}
+              />
+              {component.file ? (
+                <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <span className="truncate">{component.file.name}</span>
+                  <button
+                    type="button"
+                    className="shrink-0 text-destructive hover:underline"
+                    onClick={() => onUpdate({ file: null })}
+                  >
+                    제거
+                  </button>
                 </div>
-
-                {hasOptionsLayoutUi(component.type) ? (
-                  <div className="grid grid-cols-2 gap-2 pt-2">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">옵션 배치 방향</Label>
-                      <OptionsDirectionToggle
-                        value={component.optionsDirection ?? "row"}
-                        onChange={(dir) => onUpdate({ optionsDirection: dir })}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">옵션 간 여백</Label>
-                      <OptionsGapToggle
-                        value={component.optionsGap ?? 1}
-                        onChange={(gap) => onUpdate({ optionsGap: gap })}
-                      />
-                    </div>
-                  </div>
-                ) : null}
+              ) : null}
+            </div>
+          ) : (
+            <>
+              <div className="space-y-1.5">
+                <Label className="text-xs">input 폭(%)</Label>
+                <Input
+                  className="h-8"
+                  type="number"
+                  min={10}
+                  max={100}
+                  value={component.input?.widthPercent ?? 90}
+                  onChange={(e) =>
+                    onUpdate({ input: { ...component.input, widthPercent: Number(e.target.value) || 90 } })
+                  }
+                />
               </div>
-            ) : null}
-          </>
-        )}
+              <div className="space-y-1.5">
+                <Label className="text-xs">input 정렬</Label>
+                <AnchorGridToggle
+                  align={component.input?.align ?? "center"}
+                  verticalAlign={component.input?.verticalAlign ?? "top"}
+                  onChange={(align, verticalAlign) =>
+                    onUpdate({ input: { ...component.input, align, verticalAlign } })
+                  }
+                />
+              </div>
 
-        <div className="space-y-1.5 border-t border-border pt-3">
-          <Label className="text-xs">라벨(태그)</Label>
-          <Select
-            value={component.labelId ?? NO_LABEL_VALUE}
-            onValueChange={(v) => onUpdate({ labelId: v === NO_LABEL_VALUE ? null : v })}
-          >
-            <SelectTrigger className="h-8">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NO_LABEL_VALUE}>없음</SelectItem>
-              {labels.map((label) => (
-                <SelectItem key={label.id} value={label.id}>
-                  {label.text}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+              {hasPlaceholderUi(component.type) ? (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Placeholder</Label>
+                  <Input
+                    className="h-8"
+                    value={component.input?.placeholder ?? ""}
+                    onChange={(e) => onUpdate({ input: { ...component.input, placeholder: e.target.value } })}
+                  />
+                </div>
+              ) : null}
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">기본값</Label>
+                <Input
+                  className="h-8"
+                  value={component.input?.defaultValue ?? ""}
+                  onChange={(e) => onUpdate({ input: { ...component.input, defaultValue: e.target.value } })}
+                />
+              </div>
+
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-1.5 text-xs">
+                  <Checkbox
+                    checked={!!component.input?.readOnly}
+                    onCheckedChange={(v) => onUpdate({ input: { ...component.input, readOnly: !!v } })}
+                  />
+                  읽기 전용
+                </label>
+                <label className="flex items-center gap-1.5 text-xs">
+                  <Checkbox
+                    checked={!!component.validation?.required}
+                    onCheckedChange={(v) => onUpdate({ validation: { ...component.validation, required: !!v } })}
+                  />
+                  필수 여부
+                </label>
+              </div>
+
+              {hasRegexUi(component.type) ? (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Validation 정규식(선택)</Label>
+                  <Input
+                    className="h-8"
+                    value={component.validation?.regex ?? ""}
+                    placeholder="예: ^[0-9]{3}-[0-9]{4}$"
+                    onChange={(e) => onUpdate({ validation: { ...component.validation, regex: e.target.value } })}
+                  />
+                </div>
+              ) : null}
+
+              {hasGridOptions(component.type) ? (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">옵션(콤마로 구분)</Label>
+                  <Input
+                    className="h-8"
+                    value={component.options ?? ""}
+                    onChange={(e) => onUpdate({ options: e.target.value })}
+                  />
+                  <div className="flex items-center gap-3 pt-1">
+                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <input
+                        type="radio"
+                        className="accent-primary"
+                        name={`ci-linked-${component.key}`}
+                        checked={!component.ciLinked}
+                        onChange={() => onUpdate({ ciLinked: false })}
+                      />
+                      일반
+                    </label>
+                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <input
+                        type="radio"
+                        className="accent-primary"
+                        name={`ci-linked-${component.key}`}
+                        checked={!!component.ciLinked}
+                        onChange={() => onUpdate({ ciLinked: true })}
+                      />
+                      CI 연계
+                    </label>
+                  </div>
+
+                  {hasOptionsLayoutUi(component.type) ? (
+                    <div className="grid grid-cols-2 gap-2 pt-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">옵션 배치 방향</Label>
+                        <OptionsDirectionToggle
+                          value={component.optionsDirection ?? "row"}
+                          onChange={(dir) => onUpdate({ optionsDirection: dir })}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">옵션 간 여백</Label>
+                        <OptionsGapToggle
+                          value={component.optionsGap ?? 1}
+                          onChange={(gap) => onUpdate({ optionsGap: gap })}
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </>
+          )}
         </div>
-      </PopoverContent>
-    </Popover>
+      </Modal>
+    </>
   );
 }
 
