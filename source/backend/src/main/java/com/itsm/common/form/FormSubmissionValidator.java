@@ -10,7 +10,7 @@ import java.util.Map;
  * SRM 전용 8×n 그리드 폼 제출 데이터 서버 재검증기.
  * form_schema.components는 중첩 레이아웃이 없는 평면 배열이라 재귀 순회가 불필요하다.
  * 배열 순서대로 순회하며 첫 번째로 위반이 발견되는 컴포넌트에서 즉시 예외를 던진다(여러 위반을 모아 반환하지 않음,
- * FE의 순차 1건 표시와 동일한 계약). type=label은 값이 없는 정적 컴포넌트라 검증 대상에서 제외한다
+ * FE의 순차 1건 표시와 동일한 계약). type=label/guide는 값이 없는 정적 컴포넌트라 검증 대상에서 제외한다
  * (docs/02_plan/api_spec/common.md 0-2절, docs/02_plan/api_spec/service-request.md API-SRM-002).
  */
 public final class FormSubmissionValidator {
@@ -34,7 +34,8 @@ public final class FormSubmissionValidator {
 
     @SuppressWarnings("unchecked")
     private static void validateComponent(Map<String, Object> component, Map<String, Object> values) {
-        if ("label".equals(component.get("type"))) {
+        Object type = component.get("type");
+        if ("label".equals(type) || "guide".equals(type)) {
             return;
         }
         Object keyObj = component.get("key");

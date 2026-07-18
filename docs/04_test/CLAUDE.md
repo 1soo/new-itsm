@@ -107,3 +107,4 @@
 | 20260718-112351 | srm | pass | 요청 큐 폐지, 카테고리 기반 분류 일원화, 실시간 조인(요구사항 충족, /api/v1/queues 500은 도메인 무관 별도 결함) | `docs/04_test/20260718-112351/srm/result/srm.md` |
 | 20260718-135109 | srm | pass | form.io 완전 제거, 자체 8×n 그리드 폼 빌더, 팔레트 7종, 겹침 차단, Content 설정, 서버 재검증, ESM 회귀 없음 | `docs/04_test/20260718-135109/srm/result/srm.md` |
 | 20260718-145952 | srm | pass | label 컴포넌트, date/file 아이콘화, 순차 단일 오류(배열 순서 기준), 서버 재검증 동일 계약, 기존 SRM 회귀 없음 | `docs/04_test/20260718-145952/srm/result/srm.md` |
+| 20260718-172626 | srm | pass | placeholder 7종, guide 컴포넌트(안내+첨부), 1×1 캡션 아이콘화, 개별 실시간 미리보기, date/file 입력박스 롤백 | `docs/04_test/20260718-172626/srm/result/srm.md` |

@@ -434,3 +434,59 @@
 - 서버 400 응답도 첫 위반 1건만 반환(다건 동시 위반 시나리오로 확인).
 - 기존 SRM 회귀 없음(팔레트 7종 기능·겹침 방지·리사이즈·pre-view 라운드트립 등 이전 통합테스트 항목 재확인).
 - tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → Standards/Spec 코드 리뷰 → 완료 시 커밋(main).
+
+## 개발 계획 — 2026-07-18 유지보수: 그리드 폼 빌더 후속 개선(placeholder·guide 컴포넌트·1×1 캡션·개별 미리보기·date/file 롤백)
+
+- 요구사항 5건: (1) placeholder를 7종 입력 컴포넌트 스키마에 공통 추가하되 Content 설정 UI는 text/textarea/select/date/file에만 노출(radio/checkbox 제외). (2) 9번째 팔레트 `guide`(정적 안내+첨부파일, base64 인라인, 제출/검증 대상 제외) 신규. (3) 빌더 캔버스 카드가 1×1일 때 캡션을 아이콘만 표시(텍스트 숨김), Content 설정 팝업 폭을 320px→400px 이상으로 확대. (4) Content 설정 팝업 내 편집 중인 컴포넌트 단독 실시간 미리보기 신규(기존 폼 전체 pre-view와 별개, 렌더러 로직 재사용 — 중복 구현 금지). (5) date/file "아이콘 전용 표시"(직전 유지보수)를 "입력 박스(widthPercent/align 적용)+박스 우측 아이콘" 형태로 롤백, 박스 전체가 클릭 영역.
+- 설계 근거: `docs/02_plan/screen/service-request.md` 5.2절(1×1 캡션 규칙)/5.3절(팔레트 9종)/5.4절(placeholder 노출 조건, date/file 렌더링 롤백, guide 컴포넌트, 개별 실시간 미리보기, 팝업 폭)/5.5절(변경 없음)/5.6절(pre-view는 guide 다운로드·date/file 박스 규칙 동일 적용), `docs/02_plan/api_spec/service-request.md` API-SRM-002(`input.placeholder` 필드, `guide` 타입 JSON 스키마), `docs/02_plan/api_spec/common.md` 0-2절(검증 대상 제외 타입에 `guide` 추가), `docs/00_context/glossary.md`(동적 양식 스키마 — 9종 팔레트·guide 정의). DB 스키마 변경 없음(`form_schema` JSONB 그대로, 내부 JSON 구조만 확장) — dev-db 소집 불필요.
+- 참고 기존 코드: `source/frontend/src/components/common/form-schema.ts`·`dynamic-form-builder.tsx`·`dynamic-form-renderer.tsx`, `source/backend/src/main/java/com/itsm/common/form/FormSubmissionValidator.java`·`FormSubmissionValidatorTest.java`.
+
+### 담당 범위
+
+#### BE (dev-be) — `source/backend/src/main/java/com/itsm/common/form/`
+
+- `FormSubmissionValidator.validateComponent()`: `type=="label"` 스킵 조건에 `type=="guide"`도 추가(둘 다 값 없는 정적 컴포넌트, 검증 대상 제외).
+- `FormSubmissionValidatorTest.java`에 `guide` 타입 컴포넌트가 섞인 케이스(검증 스킵 확인) 추가.
+- DTO(`CatalogItemDetailResponse` 등) `@Schema` 설명 문구에 `guide`/`input.placeholder` 존재를 반영할 필요가 있으면 갱신(형식은 opaque `Map<String,Object>`라 구조 강제는 없음 — 문서 문구만).
+
+#### FE (dev-ui) — `source/frontend/src/components/common/`
+
+**`form-schema.ts`**
+- `GridComponentType`에 `"guide"` 추가(9종), `GRID_PALETTE_TYPES` 마지막에 추가.
+- `GridComponentInput`에 `placeholder?: string | null` 추가.
+- 신규 헬퍼 `hasPlaceholderUi(type)`: `text`/`textarea`/`select`/`date`/`file`만 true(radio/checkbox는 false — `hasGridOptions`와 동일 패턴).
+- 신규 `GridGuideComponent` 인터페이스: `key`/`type:"guide"`/`position`/`size`/`guideText: string`/`file: { name: string; dataUrl: string } | null`. `GridComponent = GridInputComponent | GridLabelComponent | GridGuideComponent`로 유니온 확장.
+- `gridMaxHeight("guide")`은 `label`과 동일하게 2(textarea만 예외 유지).
+
+**`dynamic-form-builder.tsx`**
+- 팔레트에 `guide`(9번째, 아이콘은 안내/정보 계열 — 예 `Info`/`FileText`, 다른 아이콘과 겹치지 않게 dev-ui 재량) 추가. `PALETTE_LABELS`/`PALETTE_ICONS`/`defaultSize`("guide"는 1×1 기본)에 항목 추가.
+- `handleAddComponent`: `type === "guide"`면 `GridGuideComponent`(`guideText: ""`, `file: null`)로 생성.
+- **1×1 캡션 아이콘 전환**: `BuilderComponentCard`에서 `size.w === 1 && size.h === 1`이면 캡션의 텍스트 span을 숨기고 아이콘만 표시(1×1보다 크면 기존처럼 아이콘+텍스트 유지). `label`/`guide` 포함 모든 타입에 적용.
+- **Content 설정 팝업 확대**: `ComponentSettingsPopover`의 `PopoverContent` 폭을 `w-80`(320px)에서 400px 이상(예: `w-[420px]`)으로 확대.
+- **placeholder 입력 UI**: 7종 입력 컴포넌트 설정 블록에 `hasPlaceholderUi(component.type)`일 때만 "Placeholder" Input 추가(다른 input 필드들과 동일한 패턴, `component.input?.placeholder ?? ""`).
+- **guide 설정 UI**: `component.type === "guide"`분기 신규 — "안내 텍스트"(Textarea, 여러 줄) + "첨부 파일"(파일 선택 input, 선택 입력) 편집. 파일 선택 시 `FileReader.readAsDataURL()`로 base64 변환해 `{name, dataUrl}`로 저장(기존 `dynamic-form-renderer.tsx`의 `FileFieldControl` base64 변환 패턴 재사용). 첨부된 파일이 있으면 파일명 표시+제거 버튼 제공.
+- **개별 컴포넌트 실시간 미리보기**: 팝업 내부에 편집 중인 컴포넌트 단독 미리보기 영역 신규. **`dynamic-form-renderer.tsx`가 이미 가진 유형별 컨트롤 렌더링 로직을 export해 그대로 재사용**(예: 렌더러에서 단일 컴포넌트를 렌더하는 함수/컴포넌트를 export하고 빌더가 import — switch-case 로직을 빌더에 다시 구현하지 않는다). 미리보기 내 입력값은 팝업 전용 로컬 state(제출 데이터·`defaultValue`에 영향 없음), 팝업에서 설정을 바꾸면(placeholder/폭%/정렬/기본값/읽기전용/옵션/정규식/guide 텍스트·파일 등) 즉시 반영.
+
+**`dynamic-form-renderer.tsx`**
+- **개별 미리보기 재사용을 위한 export**: 현재 파일 내부에만 있는 컴포넌트별 렌더 로직(`GridFieldControl`/`renderControl`/`GridLabelCell` 등)을 단일 컴포넌트(`component`+`value`+`onChange`+`disabled` 정도의 props)를 렌더하는 형태로 정리해 export하고, 메인 그리드 렌더링(기존 `schema.components.map(...)`)과 빌더 팝업 미리보기가 동일 함수를 호출하도록 리팩터링(로직 분기 자체는 기존 그대로 유지, export 경계만 정리).
+- **guide 렌더링**: 신규 `type === "guide"` 분기 — `GridLabelCell`과 유사한 정적 셀로 `guideText`를 표시하고, `file`이 있으면 다운로드 버튼/링크(다운로드 시 `file.dataUrl`을 그대로 사용, 신규 인프라 없음) 노출. `handleSubmit`의 검증 순회 루프에서 `comp.type === "label" || comp.type === "guide"`면 스킵(값 자체가 없음, 제출 데이터에도 미포함).
+- **placeholder 적용**: `text`(`Input`)/`textarea`(`Textarea`)에 `placeholder={component.input?.placeholder ?? undefined}` 전달. `select`의 `SelectValue placeholder`를 `component.input?.placeholder ?? "선택"`(기존 폴백 유지)로 교체. `date`/`file`은 아래 롤백 항목에서 함께 처리(값 없을 때 박스 안에 placeholder 또는 유형별 기본 안내 표시).
+- **date/file 롤백(아이콘 전용 → 입력 박스+우측 아이콘)**: `DateFieldControl`/`FileFieldControl`을 "아이콘 버튼+옆 텍스트" 레이아웃에서 "입력 박스(border/rounded, 다른 `Input`과 유사한 시각적 톤)+박스 우측 끝에 아이콘(`Calendar`/`FileIcon`)" 레이아웃으로 되돌린다. 박스 안 텍스트는 값이 있으면 값(날짜 `yyyy-MM-dd`/파일명), 없으면 placeholder(미지정 시 유형별 기본 안내, 예: "날짜를 선택하세요"/"파일을 선택하세요")를 표시하고 셀 폭 안에서 `truncate` 처리. **박스 전체(텍스트 영역+아이콘 포함)를 하나의 클릭 영역**으로 만들어(`<div>` 또는 `<button type="button">`으로 감싸 `onClick`에서 `showPicker()`/`click()` 트리거) 어디를 클릭해도 네이티브 피커/파일선택이 열리게 한다(자유 텍스트 타이핑 불가, 기존처럼 숨겨진 `sr-only` 네이티브 input을 내부에 유지). 박스는 `component.input?.widthPercent`/`align`이 적용되는 외부 wrapper(`GridFieldControl`) 안에서 `w-full`로 채운다.
+
+**연동 화면**: `CatalogManagePage.tsx`(pre-view)·`RequestSubmitPage.tsx`는 렌더러 변경만으로 자동 반영 — 별도 수정 불필요(guide 다운로드·date/file 박스·placeholder가 pre-view에서도 정상 보이는지만 확인).
+
+### 진행 순서
+
+1. FE `form-schema.ts`(타입 확장) → `dynamic-form-renderer.tsx`(렌더 로직 export 정리+guide/placeholder/date-file 롤백) → `dynamic-form-builder.tsx`(팔레트·1×1 캡션·팝업 확대·placeholder UI·guide 설정 UI·개별 미리보기, 렌더러 export 의존) 순.
+2. BE는 FE와 독립적으로 진행 가능(병렬).
+
+### 완료(테스트 통과) 기준
+
+- 7종 입력 컴포넌트 Content 설정에 placeholder 입력이 노출되는 유형(text/textarea/select/date/file)과 안 되는 유형(radio/checkbox)이 설계대로 구분되고, 렌더링 시 값 없으면 placeholder(또는 폴백 문구)가 표시됨.
+- 팔레트에 `guide`(9번째) 추가, 안내 텍스트+선택적 첨부 파일을 설정할 수 있고 요청 제출 화면·pre-view에서 안내 텍스트와 다운로드 버튼이 표시됨. `guide`는 제출 데이터·유효성 검증 대상에서 제외됨(서버 400도 발생하지 않음).
+- 빌더 캔버스에서 1×1 카드는 아이콘만, 1×1보다 크면 아이콘+텍스트가 표시됨. Content 설정 팝업 폭이 400px 이상으로 확대됨.
+- Content 설정 팝업에서 설정을 바꾸면 팝업 내 개별 미리보기가 즉시 갱신되고, 렌더러의 유형별 렌더링 로직이 중복 구현 없이 재사용됨(코드 리뷰에서 확인).
+- date/file 필드가 입력 박스+우측 아이콘 형태로 표시되고, 박스 어디를 클릭해도 네이티브 피커/파일선택이 열리며, label 분리·유효성 순차 단일 오류 표시 등 직전 유지보수 변경은 회귀 없이 유지됨.
+- 서버(`FormSubmissionValidator`)가 `guide` 타입을 검증 스킵함(테스트로 확인).
+- 기존 SRM 회귀 없음(팔레트 8종 기존 기능·겹침 방지·리사이즈·pre-view 라운드트립·label 컴포넌트 등 이전 통합테스트 항목 재확인).
+- tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → Standards/Spec 코드 리뷰 → 완료 시 커밋(main).

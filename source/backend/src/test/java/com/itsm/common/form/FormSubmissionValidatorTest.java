@@ -68,6 +68,15 @@ class FormSubmissionValidatorTest {
     }
 
     @Test
+    void guideTypeComponentIsSkippedEvenWithoutValue() {
+        Map<String, Object> schema = Map.of("components", List.of(
+                Map.of("type", "guide", "guideText", "안내 텍스트")));
+
+        assertThatCode(() -> FormSubmissionValidator.validate(schema, Map.of()))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
     void firstViolationInArrayOrderIsReturnedAmongMultiple() {
         Map<String, Object> firstRequired = new HashMap<>();
         firstRequired.put("required", true);

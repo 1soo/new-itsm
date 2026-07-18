@@ -11,6 +11,7 @@
 | 2026-07-17 | 동적 폼 스키마·제출 데이터 공통 서버 재검증 규칙 신규(0-2절), SRM/ESM 공용 적용 |
 | 2026-07-18 | 0-2절을 form.io 스키마 기반에서 SRM 자체 8×n 그리드 스키마 기반으로 재정의, SRM 전용임을 명시(ESM은 이 재검증기를 사용한 적 없음이 코드 확인됨) |
 | 2026-07-18 | 0-2절 검증 절차를 "위반 전체 집계"에서 "첫 번째 위반 즉시 반환"으로 변경(FE 순차 1건 표시와 계약 통일), label 타입은 검증 대상에서 제외 |
+| 2026-07-18 | 0-2절 검증 대상 제외 타입에 guide(정적 안내/가이드) 추가 |
 
 ## 공통 규약
 
@@ -66,7 +67,7 @@
 
 - **캡슐화 위치**: `common.form.FormSubmissionValidator`(SRM `ServiceRequestService`가 요청 제출 유스케이스에서 호출).
 - **입력**: 카탈로그 항목의 `form_schema`(8×n 그리드 스키마, `components` 배열)와 제출된 `formValues`(key-value) 맵.
-- **검증 절차**: `form_schema.components`를 배열 순서대로 순회하며(중첩 레이아웃이 없는 평면 배열이라 재귀 순회 불필요), **첫 번째로 위반이 발견되는 컴포넌트에서 즉시 400을 반환**한다(여러 위반을 모아 반환하지 않음 — FE의 순차 1건 표시와 동일한 계약, [screen/service-request.md](../screen/service-request.md) 5.5절). `type=label`은 값이 없는 정적 컴포넌트라 검증 대상에서 제외한다. 각 컴포넌트는 순서대로:
+- **검증 절차**: `form_schema.components`를 배열 순서대로 순회하며(중첩 레이아웃이 없는 평면 배열이라 재귀 순회 불필요), **첫 번째로 위반이 발견되는 컴포넌트에서 즉시 400을 반환**한다(여러 위반을 모아 반환하지 않음 — FE의 순차 1건 표시와 동일한 계약, [screen/service-request.md](../screen/service-request.md) 5.5절). `type=label`/`guide`는 값이 없는 정적 컴포넌트라 검증 대상에서 제외한다. 각 컴포넌트는 순서대로:
   1. `validation.required=true`이고 제출 값이 없으면 `REQUIRED_FIELD_MISSING`으로 즉시 거부.
   2. `validation.regex`가 지정돼 있고 제출 값이 불일치하면 `FORM_FIELD_INVALID`로 즉시 거부(값이 없으면 1번에서 이미 거부되므로 정규식은 값이 있을 때만 평가).
   3. 위 두 검사를 모두 통과하면 다음 컴포넌트로 진행한다.

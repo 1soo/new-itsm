@@ -18,9 +18,10 @@ export type GridComponentType =
   | "checkbox"
   | "date"
   | "file"
-  | "label";
+  | "label"
+  | "guide";
 
-/** 팔레트 노출 순서(8종, service-request.md 5.3절 — label은 값 입력 없는 정적 텍스트). */
+/** 팔레트 노출 순서(9종, service-request.md 5.3절 — label/guide는 값 입력 없는 정적 컴포넌트). */
 export const GRID_PALETTE_TYPES: readonly GridComponentType[] = [
   "text",
   "textarea",
@@ -30,6 +31,7 @@ export const GRID_PALETTE_TYPES: readonly GridComponentType[] = [
   "date",
   "file",
   "label",
+  "guide",
 ];
 
 /** select/radio/checkbox 등 옵션 목록이 필요한 유형. */
@@ -37,7 +39,12 @@ export function hasGridOptions(type: GridComponentType): boolean {
   return type === "select" || type === "radio" || type === "checkbox";
 }
 
-/** 유형별 높이(h) 상한. textarea만 제약 없음(5.2절), label은 다른 비-textarea 타입과 동일하게 2. */
+/** placeholder 입력 UI가 노출되는 유형(5.4절 — 단일 값 표시 컨트롤을 갖는 유형만, radio/checkbox 제외). */
+export function hasPlaceholderUi(type: GridComponentType): boolean {
+  return type === "text" || type === "textarea" || type === "select" || type === "date" || type === "file";
+}
+
+/** 유형별 높이(h) 상한. textarea만 제약 없음(5.2절), label/guide는 다른 비-textarea 타입과 동일하게 2. */
 export function gridMaxHeight(type: GridComponentType): number {
   return type === "textarea" ? Infinity : 2;
 }
@@ -57,6 +64,7 @@ export interface GridSize {
 export interface GridComponentInput {
   widthPercent?: number; // 기본값 90
   align?: GridAlign; // 기본값 center
+  placeholder?: string | null; // 선택, Content 설정 UI는 hasPlaceholderUi(type)인 유형에만 노출
   defaultValue?: string | null;
   readOnly?: boolean;
 }
@@ -66,8 +74,8 @@ export interface GridComponentValidation {
   regex?: string | null; // 선택 입력, 미지정 시 형식 검증 없음
 }
 
-/** 7개 입력 컴포넌트 유형(2026-07-18 유지보수 요청으로 label/labelAlign 속성 완전 제거 — 5.4절). */
-export type GridInputComponentType = Exclude<GridComponentType, "label">;
+/** 7개 입력 컴포넌트 유형(2026-07-18 유지보수 요청으로 label/labelAlign 속성 완전 제거, guide도 값 입력 없어 제외 — 5.4절). */
+export type GridInputComponentType = Exclude<GridComponentType, "label" | "guide">;
 
 export interface GridInputComponent {
   key: string;
@@ -92,7 +100,17 @@ export interface GridLabelComponent {
   textAlign?: GridAlign; // 기본값 left
 }
 
-export type GridComponent = GridInputComponent | GridLabelComponent;
+/** 값 입력이 없는 정적 안내/가이드 전용 컴포넌트(9번째 팔레트, 5.4절). 첨부 파일은 base64 데이터 URL로 인라인 저장, 제출·검증 대상에서 제외. */
+export interface GridGuideComponent {
+  key: string;
+  type: "guide";
+  position: GridPosition;
+  size: GridSize;
+  guideText: string;
+  file: { name: string; dataUrl: string } | null;
+}
+
+export type GridComponent = GridInputComponent | GridLabelComponent | GridGuideComponent;
 
 export interface GridFormSchema {
   components: GridComponent[];

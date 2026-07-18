@@ -8,6 +8,7 @@ import {
   CircleDot,
   File,
   GripVertical,
+  Info,
   List,
   Settings2,
   Text as LabelIcon,
@@ -20,13 +21,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { GridComponentBody } from "@/components/common/dynamic-form-renderer";
 import {
   GRID_COLUMNS,
   GRID_PALETTE_TYPES,
   GRID_ROW_HEIGHT_PX,
   gridMaxHeight,
   hasGridOptions,
+  hasPlaceholderUi,
   type GridAlign,
   type GridComponent,
   type GridComponentType,
@@ -38,13 +42,14 @@ import {
 
 /**
  * 관리자용 그리드 폼 빌더 — SCR-SRM-007 "Form 설정" 팝업(2026-07-18 유지보수 요청,
- * form.io 완전 제거 → 자체 8×n 그리드). 좌측 팔레트(8종 — 입력 7종 + 값 입력 없는 정적
- * 텍스트 전용 `label`, 클릭으로 캔버스에 추가)/우측 8칸 그리드 캔버스(스크롤 가능,
+ * form.io 완전 제거 → 자체 8×n 그리드). 좌측 팔레트(9종 — 입력 7종 + 값 입력 없는 정적
+ * 컴포넌트 `label`/`guide`, 클릭으로 캔버스에 추가)/우측 8칸 그리드 캔버스(스크롤 가능,
  * 배치·리사이즈는 1칸 단위 스냅, 겹침 배치는 차단+인라인 안내). 입력 7종은 `label`/`labelAlign`
  * 속성을 갖지 않는다(2026-07-18 후속 유지보수 요청 — 라벨이 필요하면 `label` 컴포넌트를
  * 별도 셀에 배치, 접근성 연결 없음). `initialSchema`로 편집 모드 진입, 하단 적용/취소 버튼 —
  * 적용 시 `onApply`로 최신 그리드 스키마를 상위에 전달한다(자동저장 없음, 실제 API 저장은
- * 호출측의 "저장" 버튼).
+ * 호출측의 "저장" 버튼). Content 설정 팝업 내 개별 실시간 미리보기는 렌더러(`GridComponentBody`,
+ * dynamic-form-renderer.tsx)를 그대로 재사용한다(로직 중복 구현 금지, 2026-07-18 후속 유지보수).
  */
 export interface DynamicFormBuilderProps {
   initialSchema?: GridFormSchema;
@@ -66,6 +71,7 @@ const PALETTE_LABELS: Record<GridComponentType, string> = {
   date: "날짜",
   file: "파일",
   label: "라벨",
+  guide: "안내/가이드",
 };
 
 const PALETTE_ICONS: Record<GridComponentType, typeof Type> = {
@@ -77,6 +83,7 @@ const PALETTE_ICONS: Record<GridComponentType, typeof Type> = {
   date: Calendar,
   file: File,
   label: LabelIcon,
+  guide: Info,
 };
 
 function defaultSize(type: GridComponentType): GridSize {
@@ -161,6 +168,13 @@ export function DynamicFormBuilder({ initialSchema, onApply, onCancel, className
       setComponents((cs) => [
         ...cs,
         { key, type: "label", position, size, text: "텍스트", textAlign: "left" },
+      ]);
+      return;
+    }
+    if (type === "guide") {
+      setComponents((cs) => [
+        ...cs,
+        { key, type: "guide", position, size, guideText: "", file: null },
       ]);
       return;
     }
@@ -350,6 +364,7 @@ function BuilderComponentCard({
 }: BuilderComponentCardProps) {
   const Icon = PALETTE_ICONS[component.type];
   const caption = component.type === "label" ? component.text : PALETTE_LABELS[component.type];
+  const isCompact = size.w === 1 && size.h === 1;
 
   return (
     <div
@@ -363,7 +378,7 @@ function BuilderComponentCard({
       <div className="flex items-center justify-between gap-1">
         <span className="flex min-w-0 items-center gap-1 truncate font-medium text-foreground">
           <Icon className="size-3.5 shrink-0" />
-          <span className="truncate">{caption}</span>
+          {isCompact ? null : <span className="truncate">{caption}</span>}
         </span>
         <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
           <ComponentSettingsPopover component={component} onUpdate={onUpdate} />
@@ -399,6 +414,7 @@ function ComponentSettingsPopover({
   onUpdate: (patch: Partial<GridComponent>) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [previewValue, setPreviewValue] = useState<unknown>(undefined);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -413,7 +429,7 @@ function ComponentSettingsPopover({
         </button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-80 space-y-3 overflow-y-auto"
+        className="w-[420px] space-y-3 overflow-y-auto"
         style={{ maxHeight: "var(--radix-popover-content-available-height)" }}
         align="start"
         onPointerDown={(e) => e.stopPropagation()}
@@ -434,6 +450,44 @@ function ComponentSettingsPopover({
                 value={component.textAlign ?? "left"}
                 onChange={(align) => onUpdate({ textAlign: align })}
               />
+            </div>
+          </>
+        ) : component.type === "guide" ? (
+          <>
+            <div className="space-y-1.5">
+              <Label className="text-xs">안내 텍스트</Label>
+              <Textarea
+                className="min-h-20"
+                value={component.guideText}
+                onChange={(e) => onUpdate({ guideText: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">첨부 파일(선택)</Label>
+              <input
+                type="file"
+                className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded-md file:border file:border-input file:bg-background file:px-2 file:py-1 file:text-xs"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = () =>
+                    onUpdate({ file: { name: file.name, dataUrl: reader.result as string } });
+                  reader.readAsDataURL(file);
+                }}
+              />
+              {component.file ? (
+                <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <span className="truncate">{component.file.name}</span>
+                  <button
+                    type="button"
+                    className="shrink-0 text-destructive hover:underline"
+                    onClick={() => onUpdate({ file: null })}
+                  >
+                    제거
+                  </button>
+                </div>
+              ) : null}
             </div>
           </>
         ) : (
@@ -460,6 +514,17 @@ function ComponentSettingsPopover({
                 />
               </div>
             </div>
+
+            {hasPlaceholderUi(component.type) ? (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Placeholder</Label>
+                <Input
+                  className="h-8"
+                  value={component.input?.placeholder ?? ""}
+                  onChange={(e) => onUpdate({ input: { ...component.input, placeholder: e.target.value } })}
+                />
+              </div>
+            ) : null}
 
             <div className="space-y-1.5">
               <Label className="text-xs">기본값</Label>
@@ -531,6 +596,16 @@ function ComponentSettingsPopover({
             ) : null}
           </>
         )}
+
+        <div className="space-y-1.5 border-t border-border pt-3">
+          <Label className="text-xs">미리보기</Label>
+          <div
+            className="flex overflow-hidden rounded-md border border-dashed border-border bg-muted/20 p-1"
+            style={{ height: GRID_ROW_HEIGHT_PX * component.size.h }}
+          >
+            <GridComponentBody component={component} value={previewValue} onChange={setPreviewValue} />
+          </div>
+        </div>
       </PopoverContent>
     </Popover>
   );
