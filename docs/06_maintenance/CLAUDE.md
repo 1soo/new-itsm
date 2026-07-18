@@ -60,3 +60,4 @@
 | 20260718-114544 | srm | 요청 큐(Queue 엔티티·테이블) 완전 폐지, 요청 분류/필터링을 카탈로그 카테고리 실시간 조인으로 일원화(category-counts API 신규, categoryId 파싱 400 회귀 수정) | docs/06_maintenance/20260718-114544/srm/history.md |
 | 20260718-120242 | common | 미매핑 경로 404 catch-all 회귀 수정(GlobalExceptionHandler가 NoResourceFoundException까지 500 처리하던 결함, ENDPOINT_NOT_FOUND 404 신규, 전 도메인 영향) | docs/06_maintenance/20260718-120242/common/history.md |
 | 20260718-141927 | srm | 서비스 카탈로그 동적 폼 빌더를 form.io(@formio) 완전 제거 후 자체 8×n 그리드 드래그앤드롭 빌더로 전면 재구현(팔레트 7종, Content 설정+정규식/필수 검증, pre-view, 기존 form_schema 리셋, file base64 변환 결함 수정) | docs/06_maintenance/20260718-141927/srm/history.md |
+| 20260718-151522 | srm | 그리드 폼 빌더 후속 개선: 유효성 실패 메시지 하단 공통 표시(배열 순서상 첫 위반 1건 순차 진행), date/file 아이콘 전용 표시+선택값 텍스트, label을 입력 컴포넌트에서 완전 분리해 독립 팔레트 컴포넌트로 신규(팔레트 8종) | docs/06_maintenance/20260718-151522/srm/history.md |
