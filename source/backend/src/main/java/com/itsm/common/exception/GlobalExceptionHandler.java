@@ -10,6 +10,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * 공통 예외 처리 모듈. 모든 예외를 표준 오류 응답({code, message, timestamp})으로 변환한다.
@@ -51,6 +53,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleAccessDenied(RuntimeException ex) {
         return ResponseEntity.status(ErrorCode.ACCESS_DENIED.getStatus())
                 .body(ErrorResponse.of(ErrorCode.ACCESS_DENIED.name(), ErrorCode.ACCESS_DENIED.getDefaultMessage()));
+    }
+
+    @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
+    public ResponseEntity<ErrorResponse> handleNotFound(Exception ex) {
+        return ResponseEntity.status(ErrorCode.ENDPOINT_NOT_FOUND.getStatus())
+                .body(ErrorResponse.of(ErrorCode.ENDPOINT_NOT_FOUND.name(), ErrorCode.ENDPOINT_NOT_FOUND.getDefaultMessage()));
     }
 
     @ExceptionHandler(Exception.class)

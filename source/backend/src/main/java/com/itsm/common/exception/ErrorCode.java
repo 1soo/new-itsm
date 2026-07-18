@@ -26,6 +26,7 @@ public enum ErrorCode {
     CSRF_TOKEN_MISMATCH(HttpStatus.FORBIDDEN, "CSRF 토큰이 누락되었거나 일치하지 않습니다."),
 
     // 404
+    ENDPOINT_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 경로를 찾을 수 없습니다."),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "계정을 찾을 수 없습니다."),
     SCREEN_NOT_FOUND(HttpStatus.NOT_FOUND, "메뉴를 찾을 수 없습니다."),
 
