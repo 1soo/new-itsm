@@ -7,6 +7,7 @@
 | 날짜 | 요약 |
 |------|------|
 | 2026-07-10 | 최초 작성 |
+| 2026-07-10 | REQ-UIX-013 근거 재검증: grep 오탐 확인, raw 색상 하드코딩 화면 없음으로 정정 |
 
 ## 1. 개요
 
@@ -49,7 +50,7 @@
 | REQ-UIX-010 | 기능 | 아이콘은 기본 16px 크기·정사각 선 끝 원칙으로 정렬되고, 단독 사용 시 접근성 라벨을 가져야 한다 | Med | docs/source/uiux/iconography.md |
 | REQ-UIX-011 | 비기능 | 시스템은 포커스 표시 시 `border.width.focused`(2px)와 색상 토큰을 함께 적용해야 한다 | High | docs/source/uiux/accessibility.md |
 | REQ-UIX-012 | 비기능 | 시스템은 WCAG 2.2 AA 색상 대비 기준(24px 미만 텍스트 4.5:1, 24px 이상/그래픽 3:1)을 충족해야 한다 | High | docs/source/uiux/accessibility.md |
-| REQ-UIX-013 | 비기능 | 토큰 개편만으로 자동 반영되지 않는 화면(raw 색상 하드코딩 등)은 식별되어 에스컬레이션되어야 한다 | High | 재검증 결과 하드코딩 미발견(2026-07-10) — 최초 grep은 오탐으로 정정 |
+| REQ-UIX-013 | 비기능 | 토큰 개편만으로 자동 반영되지 않는 화면(raw 색상 하드코딩 등)은 식별되어 에스컬레이션되어야 한다 | High | 코드 점검(raw 색상 하드코딩 미발견) |
 
 ## 4. 인수 기준 (Acceptance Criteria · EARS)
 
@@ -118,4 +119,4 @@
 - (Ubiquitous) 시스템은 raw Tailwind 색상 클래스가 하드코딩된 화면이 발견되는 경우 "개별 화면 FE 수정 필요 대상"으로 최종 산출물에 명시해야 한다.
 - (Unwanted) **IF** 개편 진행 중 위와 같은 하드코딩 화면이 새로 발견되고 이번 이니셔티브(dev-ui 단독) 범위에서 수정되지 않으면, **THEN** dev-lead는 이 사실을 Main에게 에스컬레이션해야 한다.
 
-> **정정 (2026-07-10)**: 최초 분석 시 근거로 든 grep 결과(UserCreatePage, UserDetailPage, LoginPage, IncidentDetailPage, PortalPage 5개 화면)는 재검증 결과 오탐으로 확인됐다. `-{color}-{100~900}` 패턴과 hex 패턴으로 `source/frontend/src` 전체를 재grep한 결과 0건이며, 해당 5개 파일을 직접 열람해도 전부 시맨틱 토큰(`bg-danger`/`text-warning`/`text-muted-foreground` 등)만 사용 중이다. 최초 grep이 `gap-2`/`size-3`/`w-28`/`text-xl` 등 숫자를 포함한 일반 유틸리티 클래스를 색상 클래스로 오인한 것으로 추정된다. 현재 코드 기준으로는 raw 색상 하드코딩 화면이 **없다**.
+> 현재 코드 기준으로 raw 색상 하드코딩 화면은 **없다**. `-{color}-{100~900}` 패턴과 hex 패턴으로 `source/frontend/src` 전체를 grep한 결과 0건이며, 모든 화면이 시맨틱 토큰(`bg-danger`/`text-warning`/`text-muted-foreground` 등)만 사용한다.

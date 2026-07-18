@@ -1,16 +1,14 @@
 # API 명세서 — 공통 (Common)
 
-> 도메인: common · 버전: 0.5 · 작성일: 2026-07-17 · 서비스 카탈로그 커스텀 폼 빌더(form.io 스타일) 유지보수 요청 — 동적 폼 스키마·제출 데이터 공통 서버 재검증 규칙 신규(0-2절), SRM/ESM 공용 적용
->
-> 이전 버전: 승인 대상자 역할 기반 동적 상세조회 권한(유지보수 요청) 신규 — 0-1절 추가, SRM/CHANGE/INCIDENT/PROBLEM/ASSET/VULNERABILITY/COMPLIANCE/ESM 8개 도메인 상세조회 RBAC에 적용(각 도메인 문서·`security/authorization/approver.md` 참조). INCIDENT는 기존 백엔드 역할체크 누락 결함도 이번에 함께 정리(Main 확인). ASSET은 개발 중 발견(dev-lead) — 역할 제한 없음이 `AssetService` 클래스 주석상 의도된 설계로 확인되어 INCIDENT와 달리 축소 변경 없이 현행 유지(동적 판정 no-op)
->
-> 이전 버전: 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 전 도메인 공용 승인 대기함·결정 API(API-COM-003~005) 신규, 기존 도메인별 전용 승인 API(API-SRM-011/012, API-CHG-006/007, API-KM-007/008) 대체
+> 도메인: common · 버전: 0.5
 
 ## 변경 이력
 
 | 날짜 | 요약 |
 |------|------|
-| 2026-07-11 | 최초 작성 |
+| 2026-07-11 | 최초 작성. 전 도메인 공용 승인 대기함·결정 API(API-COM-003~005) 신규(기존 도메인별 전용 승인 API 대체) |
+| 2026-07-15 | 승인 대상자 역할 기반 동적 상세조회 권한 신규(0-1절) |
+| 2026-07-17 | 동적 폼 스키마·제출 데이터 공통 서버 재검증 규칙 신규(0-2절), SRM/ESM 공용 적용 |
 
 ## 공통 규약
 
@@ -24,7 +22,7 @@
 
 ## 0. 설계 배경 — 공통 승인 게이트·결정 엔진
 
-승인 프로세스 커스텀 기능(유지보수 요청)에 따라 서비스요청·변경·지식뿐 아니라 인시던트·문제 등 전 도메인이 동일한 승인 엔진을 공유한다. 규칙 정의(`docs/02_plan/database/common.md` `approval_process*`)의 CRUD는 관리자 전용이라 [auth.md](auth.md)에 별도로 정의하며(API-AUTH-023~029), 이 문서는 **인스턴스(진행 중 승인 건) 조회·결정 API**만 다룬다.
+승인 프로세스 커스텀 기능에 따라 서비스요청·변경·지식뿐 아니라 인시던트·문제 등 전 도메인이 동일한 승인 엔진을 공유한다. 규칙 정의(`docs/02_plan/database/common.md` `approval_process*`)의 CRUD는 관리자 전용이라 [auth.md](auth.md)에 별도로 정의하며(API-AUTH-023~029), 이 문서는 **인스턴스(진행 중 승인 건) 조회·결정 API**만 다룬다.
 
 **게이트 체크(내부 공통 로직, 각 도메인 상태 전이 API가 호출)**: 각 도메인의 상태 전이 API(예: `PATCH .../status`)가 게이트가 걸린 target 전이를 처리하기 전에 아래 순서로 판정한다.
 
@@ -38,7 +36,7 @@
 
 **결정 처리(각 도메인 공용, API-COM-005)**: 차수의 `decision_mode`가 **OR**이면 그 차수에 필요한 역할 중 아무 역할이나 최초 1건의 결정이 기록되는 즉시 차수 전체가 그 결정(APPROVE/REJECT)으로 확정된다(공유 대기함 + 선처리자 결정, 기존 SRM/CHANGE 패턴과 동일). **AND**이면 차수에 필요한 각 역할마다 APPROVE가 모두 채워져야 차수가 APPROVED되며, 어느 역할이든 REJECT가 기록되면 그 즉시 차수·인스턴스 전체가 REJECTED로 확정된다. 처리자가 해당 차수에서 필요한 역할을 2개 이상 보유하면 1회 결정으로 보유한 역할 슬롯이 모두 채워진다. 차수가 APPROVED되면 다음 차수로 진행(`current_step_no` 증가)하고 마지막 차수까지 APPROVED되면 인스턴스 전체가 APPROVED로 확정되어 원래 전이가 재시도 시 허용된다. 인스턴스가 APPROVED/REJECTED로 확정되면, 해당 도메인은 후속 처리를 수행한다(예: KNOWLEDGE는 APPROVED 시 PUBLISHED로, REJECTED 시 DRAFT+반려사유로 전환 — 각 도메인 문서 참조).
 
-## 0-1. 승인 대상자 역할 기반 동적 상세조회 권한(신규, 2026-07-15 유지보수 요청)
+## 0-1. 승인 대상자 역할 기반 동적 상세조회 권한
 
 도메인 티켓 상세조회 API(예: SRM `GET /api/v1/service-requests/{id}`, CHANGE `GET /api/v1/changes/{id}` 등)가 자체 역할 규칙(요청자 본인·도메인 매니저 등) 외에, **승인자 역할(승인 대상자)** 보유자에게도 조회 권한을 부여할 때 공통으로 적용하는 판정 로직이다. 공용 승인 엔진(`common.approval.application.ApprovalGateService`)에 캡슐화된 `canApproverView(domain, requestSubtypeKey, requesterId)` 메서드로 제공되며, 각 도메인은 자신의 상세조회 접근 체크(예: SRM `assertCanView`, CHANGE `requireRole`)에서 기존 역할 조건과 **OR**로 호출한다.
 
@@ -52,15 +50,15 @@
 
 **적용 방식(도메인별 차이)**:
 - **SRM/CHANGE**: 기존에 존재하던 정적 "APPROVER 역할이면 도메인 내 모든 티켓 상세조회 가능" 권한을 폐지하고, 이 동적 판정으로 완전히 대체한다(요청자 본인 조회 등 기존 다른 조건은 유지).
-- **INCIDENT**: 상세조회(API-INC-003)는 원래 백엔드에 역할 제한이 전혀 없어(FE 라우트 가드로만 SERVICE_DESK_AGENT/INCIDENT_MANAGER를 걸러내고 있었을 뿐, 인증된 사용자면 API 직접 호출로 전체조회가 가능한 결함성 상태) 이번에 **범위에 포함해 함께 정리**한다: 다른 도메인과 동일하게 백엔드에 `SecurityUtils.hasAnyRole(SERVICE_DESK_AGENT, INCIDENT_MANAGER)` 명시적 체크를 신설하고, 이 조건에 이 동적 판정을 OR로 추가한다(Main 확인 완료, 2026-07-15).
-- **ASSET**: 상세조회(API-ITAM-003)도 현재 백엔드 역할 제한이 없다(등록·수정·폐기·생애주기 전이만 `ASSET_MANAGER` 전용). 다만 이는 INCIDENT와 달리 **의도된 설계**다 — `AssetService` 클래스 주석에 "등록·수정·폐기·생애주기 전이만 ASSET_MANAGER 전용, 조회·CI·연계·지표는 인증된 사용자 전반 허용"이라고 명시되어 있다(개발 중 발견, 2026-07-15). 따라서 이번 유지보수에서 ASSET 상세조회를 좁히는 변경(ASSET_MANAGER 전용화)은 **포함하지 않는다** — 기존처럼 인증된 사용자 전반 허용을 유지하며, 승인자 역할 보유자는 이미 조회 가능하므로 이 동적 판정 자체가 사실상 no-op이다(백엔드 코드 변경 불필요, FE 라우트 가드만 추가).
+- **INCIDENT**: 상세조회(API-INC-003)는 원래 백엔드에 역할 제한이 전혀 없어(FE 라우트 가드로만 SERVICE_DESK_AGENT/INCIDENT_MANAGER를 걸러내고 있었을 뿐, 인증된 사용자면 API 직접 호출로 전체조회가 가능한 결함성 상태) 이번에 **범위에 포함해 함께 정리**한다: 다른 도메인과 동일하게 백엔드에 `SecurityUtils.hasAnyRole(SERVICE_DESK_AGENT, INCIDENT_MANAGER)` 명시적 체크를 신설하고, 이 조건에 이 동적 판정을 OR로 추가한다.
+- **ASSET**: 상세조회(API-ITAM-003)도 현재 백엔드 역할 제한이 없다(등록·수정·폐기·생애주기 전이만 `ASSET_MANAGER` 전용). 다만 이는 INCIDENT와 달리 **의도된 설계**다 — `AssetService` 클래스 주석에 "등록·수정·폐기·생애주기 전이만 ASSET_MANAGER 전용, 조회·CI·연계·지표는 인증된 사용자 전반 허용"이라고 명시되어 있다. 따라서 이번 유지보수에서 ASSET 상세조회를 좁히는 변경(ASSET_MANAGER 전용화)은 **포함하지 않는다** — 기존처럼 인증된 사용자 전반 허용을 유지하며, 승인자 역할 보유자는 이미 조회 가능하므로 이 동적 판정 자체가 사실상 no-op이다(백엔드 코드 변경 불필요, FE 라우트 가드만 추가).
 - **PROBLEM/VULNERABILITY/COMPLIANCE/ESM**: 기존에는 각 도메인 매니저 역할(PROBLEM_MANAGER/VULNERABILITY_MANAGER/COMPLIANCE_OFFICER, ESM은 요청자 본인+DEPT_COORDINATOR) 전용으로 제한되어 있었고 APPROVER는 접근 불가였다. 이번에 이 동적 판정을 **신규로 추가**해 매칭되는 승인자 역할 보유자에게도 조회를 허용한다(기존 매니저 전용 조건은 유지, OR로 추가).
 
 **FE 라우트 가드**: 위 7개 도메인(SRM/CHANGE는 기존부터, INCIDENT/ASSET/PROBLEM/VULNERABILITY/COMPLIANCE/ESM은 신규) 상세 화면의 `RequireRoles`(`source/frontend/src/routes/index.tsx`)에 `ROLE_APPROVER`를 추가해야 매칭된 승인자가 실제로 내비게이션할 수 있다. 라우트 가드는 역할 보유 여부만 굵게 거르는 관문이며, 실제 조회 가능 여부(매칭 여부)는 백엔드 403으로 최종 판정된다(매칭 안 되면 화면 진입 후 403 처리. 단 ASSET은 백엔드가 역할 무관 전면 허용이라 이 403 자체가 발생하지 않는다).
 
 각 도메인의 상세조회 RBAC 최종 규칙은 [security/authorization/approver.md](../security/authorization/approver.md)(승인자 관점)와 각 역할 정의서(매니저 관점)를 함께 참조한다.
 
-## 0-2. 동적 폼 스키마·제출 데이터 공통 서버 재검증(신규, 2026-07-17 유지보수 요청)
+## 0-2. 동적 폼 스키마·제출 데이터 공통 서버 재검증
 
 서비스 카탈로그(SRM)·부서 카탈로그(ESM)가 공유하는 동적 폼 빌더(form.io 스타일, [database/service-request.md](../database/service-request.md) `service_catalog_item.form_schema` 참조)의 제출 데이터는 클라이언트(`@formio/react` `Form`) 검증만으로 신뢰하지 않고, **도메인 공통 서버 재검증기**를 거친다.
 
@@ -70,7 +68,7 @@
   1. `form_schema.components`를 재귀 순회해 `input:true`인 리프 컴포넌트만 수집한다(컬럼/패널/탭 등 `input:false` 레이아웃 컴포넌트는 하위 `components`만 펼치고 그 자체는 검증 대상에서 제외).
   2. 각 리프 컴포넌트의 `validate` 규칙을 적용한다 — `required`(값 존재 여부, 기존과 동일), `minLength`/`maxLength`(문자열류), `min`/`max`(숫자류), `pattern`(정규식). [`docs/source/form_io/component-schema-and-validation.md`](../../source/form_io/component-schema-and-validation.md) 3절 규칙을 그대로 따른다.
   3. 위반 항목이 하나라도 있으면 400으로 거부한다(응답 코드는 각 도메인 API 문서의 제출 API 참조 — API-SRM-006/API-ESM-005).
-- **범위 밖(이번 유지보수 미포함)**: `conditional`(조건부 표시)·`calculateValue`(계산 필드)·`custom`(커스텀 JS 검증)은 Form.io 빌더 UI에 기본 노출될 수 있으나 서버가 별도로 해석·집행하지 않는다(사용자가 설정해도 서버는 무시). 향후 요구사항으로 확정되면 별도 유지보수로 다룬다.
+- **범위 밖**: `conditional`(조건부 표시)·`calculateValue`(계산 필드)·`custom`(커스텀 JS 검증)은 Form.io 빌더 UI에 기본 노출될 수 있으나 서버가 별도로 해석·집행하지 않는다(사용자가 설정해도 서버는 무시). 향후 요구사항으로 확정되면 별도 유지보수로 다룬다.
 - **file 컴포넌트**: Form.io Enterprise 유료 스토리지 프로바이더 없이 `storage:'base64'`로 구성한다 — 제출 데이터에 파일이 base64 문자열로 인라인 포함되므로 별도 업로드 API·크기 제한 검증은 이번 범위에 포함하지 않는다(대용량 첨부 필요 시 별도 유지보수로 업로드 API 설계 필요).
 
 ## 1. API 목록

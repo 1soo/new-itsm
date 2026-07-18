@@ -1,17 +1,14 @@
 # 테이블 정의서 — 엔터프라이즈 서비스 관리 (ESM)
 
 > 도메인: esm · 버전: 0.3
->
-> **변경 이력**
-> - 2026-07-17: 서비스 카탈로그 커스텀 폼 빌더(form.io 스타일 완전 자유배치) 유지보수 요청 — `esm_catalog_form_field`(EAV) 폐기, `esm_catalog_item.form_schema`(JSONB, Form.io Form JSON 전체) 신규. `esm_request_form_value`(EAV) 폐기, `esm_request.form_values`(JSONB, `submission.data` 그대로) 신규. SRM과 동일 패턴([service-request.md](service-request.md) 참조)
-> - 2026-07-16: `esm_catalog_form_field.field_type`에 `textarea` 추가(SRM `catalog_form_field`와 공유하는 `FormFieldType` 계약)
-> - 2026-07-10: 최초 작성
 
 ## 변경 이력
 
 | 날짜 | 요약 |
 |------|------|
 | 2026-07-10 | 최초 작성 |
+| 2026-07-16 | esm_catalog_form_field.field_type에 textarea 추가(SRM catalog_form_field와 공유하는 FormFieldType 계약) |
+| 2026-07-17 | esm_catalog_form_field(EAV) 폐기, esm_catalog_item.form_schema(JSONB, Form.io Form JSON 전체) 신규. esm_request_form_value(EAV) 폐기, esm_request.form_values(JSONB, submission.data 그대로) 신규. SRM과 동일 패턴([service-request.md](service-request.md) 참조) |
 
 부서별 서비스 카탈로그(체크리스트 템플릿 포함), 부서 요청, HR 케이스, 온보딩/오프보딩 체크리스트·하위 작업을 정의한다. 코멘트·타임라인(상태 이력)은 [common.md](common.md)의 `comment`/`timeline_event`(ticket_type='ESM_REQUEST' 또는 'HR_CASE')를 재사용한다.
 
@@ -21,8 +18,8 @@
 
 | 대상 | 적용 정규화 | 근거 (왜 필요한가) |
 |------|-------------|--------------------|
-| esm_catalog_item.form_schema | 의도적 비정규화(JSON 문서) | SRM `service_catalog_item.form_schema`와 동일 근거 — 레이아웃 트리를 EAV로 표현할 수 없어 폼 전체를 JSON 문서로 저장(2026-07-17 유지보수 요청). 기존 `esm_catalog_form_field`(1NF EAV)는 폐기. |
-| esm_request.form_values | 의도적 비정규화(JSON 문서) | SRM `service_request.form_values`와 동일 근거 — 필드별 집계 로직 없음(maintainer 확인)이라 `submission.data`를 그대로 저장. 기존 `esm_request_form_value`(EAV)는 폐기. |
+| esm_catalog_item.form_schema | 의도적 비정규화(JSON 문서) | SRM `service_catalog_item.form_schema`와 동일 근거 — 레이아웃 트리를 EAV로 표현할 수 없어 폼 전체를 JSON 문서로 저장한다. 기존 `esm_catalog_form_field`(1NF EAV)는 폐기. |
+| esm_request.form_values | 의도적 비정규화(JSON 문서) | SRM `service_request.form_values`와 동일 근거 — 필드별 집계 로직이 없어 `submission.data`를 그대로 저장한다. 기존 `esm_request_form_value`(EAV)는 폐기. |
 | esm_checklist_template_task | 1NF | 카탈로그 항목당 체크리스트 하위 작업 템플릿이 가변 개수라 별도 행으로 분리. |
 | esm_checklist_task | 3NF | 체크리스트(1) : 하위 작업(N) — 하위 작업은 체크리스트 생성 시점에 템플릿을 복제해 개별 상태를 갖는 실행 인스턴스이므로 템플릿 테이블과 분리. |
 
@@ -35,10 +32,8 @@
 | 테이블명 | 설명 | 관련 요구사항 |
 |----------|------|---------------|
 | esm_catalog_item | 부서별 요청 유형(카탈로그 항목, 동적 양식 스키마 포함) | REQ-ESM-001 |
-| ~~esm_catalog_form_field~~ | ~~요청 유형 동적 양식 필드~~ — **제거됨**, `esm_catalog_item.form_schema`(JSONB)로 흡수(2026-07-17 유지보수 요청) | REQ-ESM-001/002 |
 | esm_checklist_template_task | 카탈로그 항목의 체크리스트 하위 작업 템플릿 | REQ-ESM-005/006 |
 | esm_request | 부서 요청 티켓(양식 제출 데이터 포함) | REQ-ESM-002 |
-| ~~esm_request_form_value~~ | ~~요청 양식 입력 값~~ — **제거됨**, `esm_request.form_values`(JSONB)로 흡수(2026-07-17 유지보수 요청) | REQ-ESM-002 |
 | esm_hr_case | HR 케이스 | REQ-ESM-003/004 |
 | esm_checklist | 온보딩/오프보딩 체크리스트 | REQ-ESM-005/006/007 |
 | esm_checklist_task | 체크리스트 하위 작업(실행 인스턴스) | REQ-ESM-005/006/007 |
@@ -54,12 +49,8 @@
 | description | VARCHAR(500) | NULL | 설명 |
 | department | VARCHAR(20) | NOT NULL | HR/LEGAL/FACILITIES/FINANCE/IT |
 | checklist_template_type | VARCHAR(15) | NOT NULL, DEFAULT 'NONE' | NONE/ONBOARDING/OFFBOARDING |
-| form_schema | JSONB | NOT NULL, DEFAULT `{"display":"form","components":[]}` | 동적 양식 스키마(Form.io Form JSON 전체). SCR-ESM-006 폼 빌더가 편집·저장(2026-07-17 유지보수 요청, `esm_catalog_form_field` 대체) |
+| form_schema | JSONB | NOT NULL, DEFAULT `{"display":"form","components":[]}` | 동적 양식 스키마(Form.io Form JSON 전체). SCR-ESM-006 폼 빌더가 편집·저장 |
 | ...공통 컬럼... | | | |
-
-### ~~esm_catalog_form_field~~ (제거됨, 2026-07-17 유지보수 요청)
-
-`esm_catalog_item.form_schema`(JSONB)로 흡수되어 테이블 자체를 삭제한다. 마이그레이션 방향은 [service-request.md](service-request.md) `catalog_form_field` 절과 동일(SRM/ESM 필드 타입 계약이 동일하므로 변환 규칙도 동일하게 적용).
 
 ### esm_checklist_template_task
 
@@ -87,12 +78,8 @@
 | target_user_name | VARCHAR(100) | NULL | 온보딩/오프보딩 대상자명 |
 | checklist_id | BIGINT | FK → esm_checklist.id, NULL, UNIQUE | 연계 체크리스트(1:1, 있을 때만) |
 | status | VARCHAR(15) | NOT NULL, DEFAULT 'SUBMITTED' | SUBMITTED/IN_PROGRESS/COMPLETED/REJECTED |
-| form_values | JSONB | NOT NULL, DEFAULT `{}` | 양식 제출 데이터(Form.io `submission.data` 그대로). SCR-ESM-002 렌더러 제출 시 저장(2026-07-17 유지보수 요청, `esm_request_form_value` 대체) |
+| form_values | JSONB | NOT NULL, DEFAULT `{}` | 양식 제출 데이터(Form.io `submission.data` 그대로). SCR-ESM-002 렌더러 제출 시 저장 |
 | ...공통 컬럼... | | | |
-
-### ~~esm_request_form_value~~ (제거됨, 2026-07-17 유지보수 요청)
-
-`esm_request.form_values`(JSONB)로 흡수되어 테이블 자체를 삭제한다. 마이그레이션 방향은 [service-request.md](service-request.md) `service_request_form_value` 절과 동일.
 
 ### esm_hr_case
 

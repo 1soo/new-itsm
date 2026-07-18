@@ -1,17 +1,16 @@
 # 역할 정의 — PROCESS_OWNER
 
-> 역할: PROCESS_OWNER · 버전: 0.4
->
-> **변경 이력**
-> - 2026-07-16: 카탈로그 카테고리 관리(SCR-SRM-009) 접근 권한 및 카테고리 CRUD API(API-SRM-018~021) 접근 권한 추가
-> - 2026-07-15: 카탈로그 항목 생성/수정(API-SRM-003/004)에 담당자 역할(assigneeRoleId) 필드 추가, 역할 선택용 API-AUTH-030 접근 권한 추가
-> - 2026-07-12: 카탈로그 항목의 승인 설정 권한 제거(SYSTEM_ADMIN 전용 SCR-ADMIN-008로 이관)
+> 역할: PROCESS_OWNER · 버전: 0.4 · 작성일: 2026-07-09
 
 ## 변경 이력
 
 | 날짜 | 요약 |
 |------|------|
 | 2026-07-09 | 최초 작성 |
+| 2026-07-12 | 카탈로그 항목의 승인 설정 권한 제거(SYSTEM_ADMIN 전용 SCR-ADMIN-008로 이관) |
+| 2026-07-15 | 카탈로그 항목 생성/수정(API-SRM-003/004)에 담당자 역할(assigneeRoleId) 필드 추가, 역할 선택용 API-AUTH-030 접근 권한 추가 |
+| 2026-07-16 | 카탈로그 카테고리 관리(SCR-SRM-009) 접근 권한 및 카테고리 CRUD API(API-SRM-018~021) 접근 권한 추가 |
+| 2026-07-18 | 서비스 요청 처리 큐 축 폐지 — 페르소나 설명·API-SRM-003 비고에서 "큐" 표현 제거(카테고리로 일원화) |
 
 ## 공통 기본 접근 (전 역할 공통)
 
@@ -20,7 +19,7 @@
 ## 1. 페르소나
 
 - **역할명**: PROCESS_OWNER (프로세스 오너)
-- **설명**: 서비스 카탈로그(요청 유형·양식·SLA·승인·큐)를 정의·정리하고 서비스 요청 지표를 모니터링하는 프로세스 책임자.
+- **설명**: 서비스 카탈로그(요청 유형·양식·SLA·승인·카테고리)를 정의·정리하고 서비스 요청 지표를 모니터링하는 프로세스 책임자.
 - **주요 목표**: 요청 유형을 표준화하고 SLA·CSAT 등 지표를 개선한다.
 
 ## 2. 접근 가능 화면
@@ -39,7 +38,7 @@
 |--------|----------|--------|------|
 | API-SRM-001 | /api/v1/service-catalog/items | GET | 카탈로그 목록 |
 | API-SRM-002 | /api/v1/service-catalog/items/{id} | GET | 항목 상세 |
-| API-SRM-003 | /api/v1/service-catalog/items | POST | 항목 생성(이름·설명·양식·큐·담당자 역할(선택)·SLA. 승인 설정은 포함하지 않음 — SYSTEM_ADMIN이 SCR-ADMIN-008에서 도메인=SERVICE_REQUEST·요청유형=이 항목으로 별도 설정) |
+| API-SRM-003 | /api/v1/service-catalog/items | POST | 항목 생성(이름·설명·양식·카테고리·담당자 역할(선택)·SLA. 승인 설정은 포함하지 않음 — SYSTEM_ADMIN이 SCR-ADMIN-008에서 도메인=SERVICE_REQUEST·요청유형=이 항목으로 별도 설정) |
 | API-SRM-004 | /api/v1/service-catalog/items/{id} | PATCH | 항목 수정(승인 관련 필드 없음) |
 | API-AUTH-030 | /api/v1/roles | GET | 역할 목록 조회(공개 — 담당자 역할 select 후보 조회용) |
 | API-SRM-018 | /api/v1/service-catalog/categories | GET | 카테고리 목록 조회(공개 — 카테고리 select 후보·관리 목록 공용) |

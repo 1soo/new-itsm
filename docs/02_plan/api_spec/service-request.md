@@ -1,18 +1,17 @@
 # API 명세서 — 서비스 요청 관리 (Service Request)
 
 > 도메인: service-request · 버전: 0.5
->
-> **변경 이력**
-> - 2026-07-17: 서비스 카탈로그 커스텀 폼 빌더(form.io 스타일) 유지보수 요청 — API-SRM-002/003/004의 `formSchema`가 필드 배열(`{key,label,type,required,options}[]`)에서 **Form.io Form JSON 전체**(`{display,components}`, 컬럼/패널/탭 등 레이아웃 포함)로 전환. API-SRM-006 `formValues`는 Form.io `submission.data`를 그대로 전달(키-값 형태는 기존과 동일, 값 형태만 컴포넌트별로 확장). 서버 재검증 규칙은 [common.md](common.md) 0-2절 참조
-> - 2026-07-16: 카탈로그 카테고리 CRUD API(API-SRM-018~021) 신규, 카탈로그 CRUD(API-SRM-001~004)의 `category`(자유 텍스트) 필드를 `categoryId`/`categoryName`으로 전환, `formSchema.type`에 `textarea` 추가, API-SRM-008 응답 `timeline` 항목에 `actor` 필드 추가
-> - 2026-07-15: 카탈로그 CRUD(API-SRM-002/003/004)에 `assigneeRoleId` 필드 추가, 담당자 후보 목록 조회 API(API-SRM-017) 신규
-> - 2026-07-12: 카탈로그 항목별 approvalRequired/approverRole 필드 제거, 전용 승인 API(API-SRM-011/012) 삭제 후 공통 승인 API([common.md](common.md) API-COM-003~005)로 대체
 
 ## 변경 이력
 
 | 날짜 | 요약 |
 |------|------|
 | 2026-07-09 | 최초 작성 |
+| 2026-07-12 | 카탈로그 항목별 approvalRequired/approverRole 필드 제거, 전용 승인 API(API-SRM-011/012) 삭제 후 공통 승인 API([common.md](common.md) API-COM-003~005)로 대체 |
+| 2026-07-15 | 카탈로그 CRUD(API-SRM-002/003/004)에 assigneeRoleId 필드 추가, 담당자 후보 목록 조회 API(API-SRM-017) 신규 |
+| 2026-07-16 | 카탈로그 카테고리 CRUD API(API-SRM-018~021) 신규, 카탈로그 CRUD(API-SRM-001~004)의 category(자유 텍스트) 필드를 categoryId/categoryName으로 전환, formSchema.type에 textarea 추가, API-SRM-008 응답 timeline 항목에 actor 필드 추가 |
+| 2026-07-17 | API-SRM-002/003/004의 formSchema가 필드 배열에서 Form.io Form JSON 전체(`{display,components}`)로 전환. API-SRM-006 formValues는 Form.io submission.data 그대로 전달 |
+| 2026-07-18 | API-SRM-016을 "큐 목록·건수 조회"에서 "요청 카테고리별 건수 조회"(`GET /api/v1/service-requests/category-counts`)로 대체. API-SRM-007 목록 필터를 `queue=`→`categoryId=`로 전환. API-SRM-002/003/004의 queueId 필드, API-SRM-008 응답의 queue 필드 제거 |
 
 ## 공통 규약
 
@@ -36,7 +35,7 @@
 | API-SRM-013 | 요청 코멘트 등록 | POST | /api/v1/service-requests/{id}/comments | 필요 |
 | API-SRM-014 | CSAT 제출 | POST | /api/v1/service-requests/{id}/csat | 필요(요청자) |
 | API-SRM-015 | 요청 지표 조회 | GET | /api/v1/service-requests/metrics | 필요 |
-| API-SRM-016 | 큐 목록·건수 조회 | GET | /api/v1/queues | 필요(Agent) |
+| API-SRM-016 | 요청 카테고리별 건수 조회 | GET | /api/v1/service-requests/category-counts | 필요(Agent) |
 | API-SRM-017 | 요청 담당자 후보 목록 조회 | GET | /api/v1/service-requests/{id}/assignee-candidates | 필요(Agent) |
 | API-SRM-018 | 카탈로그 카테고리 목록 조회 | GET | /api/v1/service-catalog/categories | 필요 |
 | API-SRM-019 | 카탈로그 카테고리 생성 | POST | /api/v1/service-catalog/categories | 필요(Process Owner) |
@@ -66,12 +65,12 @@
   {
     "id": "number", "name": "string", "description": "string",
     "categoryId": "number|null", "categoryName": "string|null · categoryId 표시용",
-    "queueId": "number|null", "assigneeRoleId": "number|null", "assigneeRoleName": "string|null · assigneeRoleId 표시용",
+    "assigneeRoleId": "number|null", "assigneeRoleName": "string|null · assigneeRoleId 표시용",
     "slaResponseMinutes": "number", "slaResolveMinutes": "number",
     "formSchema": { "display": "form", "components": [ "object · Form.io Component 객체(type/key/label/validate/conditional/columns 등), 중첩 레이아웃(columns/panel/tabs) 포함" ] }
   }
   ```
-  > `formSchema`는 2026-07-17 유지보수 요청부터 필드 배열이 아니라 **Form.io Form JSON 전체**다. FE는 이 객체를 그대로 `@formio/react`의 `Form`(SCR-SRM-002)·`FormBuilder`(SCR-SRM-007, 편집 모드 `initialForm`)에 전달한다.
+  > `formSchema`는 필드 배열이 아니라 **Form.io Form JSON 전체**다. FE는 이 객체를 그대로 `@formio/react`의 `Form`(SCR-SRM-002)·`FormBuilder`(SCR-SRM-007, 편집 모드 `initialForm`)에 전달한다.
 - **Response Code**: 200 / 401 / 404
 
 ### API-SRM-003 · 카탈로그 항목 생성
@@ -84,8 +83,7 @@
   {
     "name": "string · 필수", "description": "string",
     "categoryId": "number · 선택(미지정 시 미분류)",
-    "queueId": "number · 선택(미지정 시 요청 생성 시점 기본 큐로 배정, 미분류)",
-    "assigneeRoleId": "number · 선택(2026-07-15 유지보수 요청, 담당자 역할. 지정 시 라우팅/배정 시점 후보 목록 조회(API-SRM-017)에 사용, 자동배정 아님)",
+    "assigneeRoleId": "number · 선택(담당자 역할. 지정 시 라우팅/배정 시점 후보 목록 조회(API-SRM-017)에 사용, 자동배정 아님)",
     "slaResponseMinutes": "number", "slaResolveMinutes": "number",
     "formSchema": { "display": "form", "components": [ "object · Form.io Component 객체" ] }
   }
@@ -128,12 +126,13 @@
 
 ### API-SRM-007 · 요청 목록 조회
 
-- **Endpoint**: `GET /api/v1/service-requests?scope=mine|all&queue=&status=&from=&to=&page=&size=`
-- **인증**: 필요 (scope=mine: 본인 요청 / all·queue: 상담원 이상)
+- **Endpoint**: `GET /api/v1/service-requests?scope=mine|all&categoryId=&status=&from=&to=&page=&size=`
+  > `categoryId`: 숫자 값은 해당 카테고리(`service_catalog_item.category_id`)로 필터링, 리터럴 `"uncategorized"`는 미분류(`category_id IS NULL`)로 필터링, 미지정 시 필터 없음. `catalog_item_id → service_catalog_item.category_id` 실시간 조인으로 판정(스냅샷 없음).
+- **인증**: 필요 (scope=mine: 본인 요청 / all·categoryId: 상담원 이상)
 - **Response Body** (200):
   ```json
   {
-    "content": [ { "id": "number", "ticketKey": "string", "catalogItemName": "string", "status": "string", "slaStatus": "OK|WARNING|BREACHED", "assignee": "string", "assigneeId": "number|null · 2026-07-15 유지보수 요청, 요청 큐(SCR-SRM-004) 배정 버튼 노출 조건(본인 배정 여부) 판정용", "updatedAt": "ISO-8601" } ],
+    "content": [ { "id": "number", "ticketKey": "string", "catalogItemName": "string", "status": "string", "slaStatus": "OK|WARNING|BREACHED", "assignee": "string", "assigneeId": "number|null · 요청 처리함(SCR-SRM-004) 배정 버튼 노출 조건(본인 배정 여부) 판정용", "updatedAt": "ISO-8601" } ],
     "page": "number", "size": "number", "totalElements": "number"
   }
   ```
@@ -147,7 +146,7 @@
   ```json
   {
     "id": "number", "ticketKey": "string", "catalogItemName": "string", "status": "string",
-    "formValues": {}, "requester": "string", "assignee": "string", "queue": "string",
+    "formValues": {}, "requester": "string", "assignee": "string",
     "approval": { "approvalRequestId": "number|null", "status": "IN_PROGRESS|APPROVED|REJECTED|null · null=매칭되는 승인 프로세스 없음(게이트 없이 진행)" },
     "sla": { "responseStatus": "string", "resolveStatus": "string" },
     "linkedArticles": [ { "articleId": "number", "title": "string" } ],
@@ -164,18 +163,18 @@
 - **Endpoint**: `POST /api/v1/service-requests/{id}/assign`
 - **인증**: 필요(Agent)
 - **Request Body**: `{ "assigneeId": "number · 미지정 시 본인" }`
-  > 2026-07-15 유지보수 요청부터 요청 큐(SCR-SRM-004)의 담당자 배정 UI가 API-SRM-017 후보 목록 중 하나를 선택해 `assigneeId`로 명시 전달하는 방식이 추가되었다(자동배정 아님, 계약 자체는 변경 없음 — 기존처럼 미지정 시 본인도 그대로 지원).
+  > 요청 처리함(SCR-SRM-004)의 담당자 배정 UI가 API-SRM-017 후보 목록 중 하나를 선택해 `assigneeId`로 명시 전달하는 방식도 지원한다(자동배정 아님, 미지정 시 본인 배정도 그대로 지원).
 - **Response Code**: 200 / 403 권한 없는 배정 / 404
 
 ### API-SRM-017 · 요청 담당자 후보 목록 조회
 
 - **Endpoint**: `GET /api/v1/service-requests/{id}/assignee-candidates`
-- **인증**: 필요(Agent) — 요청 큐(SCR-SRM-004) 담당자 배정 팝업이 사용.
+- **인증**: 필요(Agent) — 요청 처리함(SCR-SRM-004) 담당자 배정 팝업이 사용.
 - **Response Body** (200):
   ```json
   [ { "id": "number", "name": "string" } ]
   ```
-  > 대상 요청의 카탈로그 항목(`service_catalog_item.assignee_role_id`)에 지정된 역할을 보유한 ACTIVE 상태 사용자 목록(2026-07-15 유지보수 요청). 카탈로그 항목에 담당자 역할이 지정되지 않았으면 빈 배열을 반환한다(이 경우 FE는 본인 배정만 노출).
+  > 대상 요청의 카탈로그 항목(`service_catalog_item.assignee_role_id`)에 지정된 역할을 보유한 ACTIVE 상태 사용자 목록. 카탈로그 항목에 담당자 역할이 지정되지 않았으면 빈 배열을 반환한다(이 경우 FE는 본인 배정만 노출).
 - **Response Code**: 200(빈 배열 가능) / 401 / 403 / 404
 
 ### API-SRM-018 · 카탈로그 카테고리 목록 조회
@@ -231,7 +230,7 @@
   | 200 | 전이 성공 |
   | 400 | 허용되지 않은 전이 / 이미 종료된 요청 재종료 |
   | 403 | 권한 부족(이행 등) |
-  | 409 | 담당자 미배정 상태로 라우팅(ROUTED) 전이 시도(2026-07-15 유지보수 요청, VULNERABILITY 도메인의 `ASSIGNEE_REQUIRED_FOR_REMEDIATION`과 동일 패턴 재사용 — `ASSIGNEE_REQUIRED_FOR_ROUTING`) / 승인 완료 전 이행(IN_FULFILLMENT) 전이 시도 — [common.md](common.md) 0절 공통 게이트 로직(domain=SERVICE_REQUEST, requestSubtypeKey=service_catalog_item.id) 적용. 매칭되는 승인 프로세스가 없거나 0차 승인이면 게이트 없이 통과 |
+  | 409 | 담당자 미배정 상태로 라우팅(ROUTED) 전이 시도(VULNERABILITY 도메인의 담당자 미배정 상태 REMEDIATION 전이 가드와 동일 패턴 — `ASSIGNEE_REQUIRED_FOR_ROUTING`) / 승인 완료 전 이행(IN_FULFILLMENT) 전이 시도 — [common.md](common.md) 0절 공통 게이트 로직(domain=SERVICE_REQUEST, requestSubtypeKey=service_catalog_item.id) 적용. 매칭되는 승인 프로세스가 없거나 0차 승인이면 게이트 없이 통과 |
 
 ### API-SRM-013 · 요청 코멘트 등록
 
@@ -259,13 +258,14 @@
   ```
 - **Response Code**: 200(데이터 없으면 0값) / 401 / 403
 
-### API-SRM-016 · 큐 목록·건수 조회
+### API-SRM-016 · 요청 카테고리별 건수 조회
 
-- **Endpoint**: `GET /api/v1/queues`
-- **인증**: 필요(Agent 이상) — SCR-SRM-004 좌측 큐 목록 렌더용.
+- **Endpoint**: `GET /api/v1/service-requests/category-counts`
+- **인증**: 필요(Agent 이상) — SCR-SRM-004 좌측 카테고리 목록 렌더용.
 - **Request Body**: 없음
 - **Response Body** (200):
   ```json
-  [ { "id": "number", "name": "string", "isDefault": "boolean · 미분류 기본 큐", "openCount": "number · 미종료 요청 건수" } ]
+  [ { "categoryId": "number|null", "categoryName": "string|null · null이면 미분류", "openCount": "number · 미종료 요청 건수" } ]
   ```
+  > `service_catalog_category.sort_order` 오름차순으로 정렬하고, 미분류(`categoryId: null`) 항목은 목록 마지막에 고정 노출한다.
 - **Response Code**: 200 / 401 / 403

@@ -1,14 +1,14 @@
 # 역할 정의 — SERVICE_DESK_AGENT
 
-> 역할: SERVICE_DESK_AGENT · 버전: 0.2 · 작성일: 2026-07-15 · 요청 유형별 담당자 역할 지정 기능(유지보수 요청) 반영 — 담당자 후보 목록 조회 API(API-SRM-017) 접근 권한 추가
->
-> 이전 버전: 2026-07-09 최초 작성
+> 역할: SERVICE_DESK_AGENT · 버전: 0.3 · 작성일: 2026-07-09
 
 ## 변경 이력
 
 | 날짜 | 요약 |
 |------|------|
 | 2026-07-09 | 최초 작성 |
+| 2026-07-15 | 요청 유형별 담당자 역할 지정 — 담당자 후보 목록 조회 API(API-SRM-017) 접근 권한 추가 |
+| 2026-07-18 | 서비스 요청 처리 큐 축 폐지 — 접근 화면/API를 카테고리 기준으로 전환(API-SRM-016을 카테고리별 건수 조회로 대체) |
 
 ## 공통 기본 접근 (전 역할 공통)
 
@@ -17,7 +17,7 @@
 ## 1. 페르소나
 
 - **역할명**: SERVICE_DESK_AGENT (서비스 데스크 상담원)
-- **설명**: 큐에서 서비스 요청을 배정받아 이행하고 요청자와 소통하는 1차 대응 담당자. 인시던트 접수도 수행한다.
+- **설명**: 카테고리별 요청 처리함에서 서비스 요청을 배정받아 이행하고 요청자와 소통하는 1차 대응 담당자. 인시던트 접수도 수행한다.
 - **주요 목표**: 요청을 신속·정확히 이행하고 SLA를 준수하며, 필요 시 인시던트를 등록/에스컬레이션.
 
 ## 2. 접근 가능 화면
@@ -25,7 +25,7 @@
 | 화면 ID | 화면명 | 비고 |
 |---------|--------|------|
 | SCR-SRM-003 | 내 요청 목록 | 담당/전체 조회 |
-| SCR-SRM-004 | 요청 큐(상담원) | 배정·처리 |
+| SCR-SRM-004 | 요청 처리함(상담원) | 카테고리별 배정·처리 |
 | SCR-SRM-005 | 요청 상세 | 이행·상태 갱신·코멘트 |
 | SCR-INC-001 | 인시던트 목록 | 접수·조회 |
 | SCR-INC-002 | 인시던트 등록 | 탐지 시 등록 |
@@ -37,10 +37,11 @@
 
 | API ID | Endpoint | Method | 비고 |
 |--------|----------|--------|------|
-| API-SRM-007 | /api/v1/service-requests?scope=all&queue= | GET | 큐/전체 목록 |
+| API-SRM-007 | /api/v1/service-requests?scope=all&categoryId= | GET | 카테고리별/전체 목록 |
 | API-SRM-008 | /api/v1/service-requests/{id} | GET | 상세 |
 | API-SRM-009 | /api/v1/service-requests/{id}/assign | POST | 배정 |
-| API-SRM-017 | /api/v1/service-requests/{id}/assignee-candidates | GET | 담당자 후보 목록(2026-07-15 유지보수 요청, 요청 큐 배정 팝업용) |
+| API-SRM-016 | /api/v1/service-requests/category-counts | GET | 카테고리별 건수(요청 처리함 좌측 목록용) |
+| API-SRM-017 | /api/v1/service-requests/{id}/assignee-candidates | GET | 담당자 후보 목록(요청 처리함 배정 팝업용) |
 | API-SRM-010 | /api/v1/service-requests/{id}/status | PATCH | 이행·상태 전이 |
 | API-SRM-013 | /api/v1/service-requests/{id}/comments | POST | 코멘트 |
 | API-INC-001 | /api/v1/incidents | GET | 목록 |

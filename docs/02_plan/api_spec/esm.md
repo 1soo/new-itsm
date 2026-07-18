@@ -1,17 +1,15 @@
 # API 명세서 — 엔터프라이즈 서비스 관리 (ESM)
 
 > 도메인: esm · 버전: 0.4
->
-> **변경 이력**
-> - 2026-07-17: 서비스 카탈로그 커스텀 폼 빌더(form.io 스타일) 유지보수 요청 — API-ESM-002/003/004의 `formSchema`가 필드 배열에서 **Form.io Form JSON 전체**(`{display,components}`)로 전환. API-ESM-005 `formValues`는 Form.io `submission.data` 그대로 전달. 서버 재검증 규칙은 [common.md](common.md) 0-2절 참조(SRM과 동일 패턴)
-> - 2026-07-16: API-ESM-007 응답 `timeline` 항목에 `actor` 필드 추가, `STATUS_*` 타임라인 기본 메시지의 상태 코드를 라벨로 정리, `formSchema.type`에 `textarea` 추가(API-ESM-002/003, SRM과 공유하는 `FormFieldType` 계약)
-> - 2026-07-12: 부서 요청 IN_PROGRESS → COMPLETED 전이에 공통 승인 게이트([common.md](common.md) API-COM-003~005) 추가(관리자가 규칙을 설정하지 않으면 게이트 없이 진행). HR 케이스·체크리스트 하위 작업은 게이트 대상에서 제외
 
 ## 변경 이력
 
 | 날짜 | 요약 |
 |------|------|
 | 2026-07-10 | 최초 작성 |
+| 2026-07-12 | 부서 요청 IN_PROGRESS → COMPLETED 전이에 공통 승인 게이트([common.md](common.md) API-COM-003~005) 추가(관리자가 규칙을 설정하지 않으면 게이트 없이 진행). HR 케이스·체크리스트 하위 작업은 게이트 대상에서 제외 |
+| 2026-07-16 | API-ESM-007 응답 timeline 항목에 actor 필드 추가, STATUS_* 타임라인 기본 메시지의 상태 코드를 라벨로 정리, formSchema.type에 textarea 추가(API-ESM-002/003) |
+| 2026-07-17 | API-ESM-002/003/004의 formSchema가 필드 배열에서 Form.io Form JSON 전체(`{display,components}`)로 전환. API-ESM-005 formValues는 Form.io submission.data 그대로 전달(서버 재검증 규칙은 [common.md](common.md) 0-2절 참조, SRM과 동일 패턴) |
 
 ## 공통 규약
 
@@ -21,7 +19,7 @@
 
 ## 0. 설계 배경
 
-- 부서 요청 처리는 서비스 요청(SRM) 도메인과 별도의 엔드포인트(`/api/v1/esm/*`)로 분리하되, 개념·상태 흐름은 단순화해 재사용한다(원 설계 시점엔 승인 단계가 요구사항에 없었으나, 승인 프로세스 커스텀 기능·유지보수 요청으로 IN_PROGRESS→COMPLETED 전이에 공통 승인 게이트가 opt-in으로 추가됨 — 관리자가 규칙을 만들지 않으면 기존과 동일). 카탈로그 항목에 담당 부서(`department`)를 필수로 지정한다(REQ-ESM-001 Unwanted).
+- 부서 요청 처리는 서비스 요청(SRM) 도메인과 별도의 엔드포인트(`/api/v1/esm/*`)로 분리하되, 개념·상태 흐름은 단순화해 재사용한다. IN_PROGRESS→COMPLETED 전이에 공통 승인 게이트가 opt-in으로 적용된다(관리자가 규칙을 만들지 않으면 기존과 동일하게 게이트 없이 진행). 카탈로그 항목에 담당 부서(`department`)를 필수로 지정한다(REQ-ESM-001 Unwanted).
 - 카탈로그 항목에 `checklistTemplateType`(NONE/ONBOARDING/OFFBOARDING)과 `checklistTemplate`(하위 작업 템플릿 목록)을 정의할 수 있다. 요청 제출 시(API-ESM-005) 해당 항목의 타입이 ONBOARDING/OFFBOARDING이면 시스템이 체크리스트를 자동 생성하고 템플릿의 하위 작업을 관련 부서에 배정한다. 템플릿이 비어 있으면 제출을 400으로 거부한다(REQ-ESM-005 Unwanted).
 - 오프보딩 체크리스트는 생성 시 자산(ITAM) 도메인의 `GET /api/v1/assets?owner={대상자명}`([asset.md](asset.md) API-ITAM-001)을 조회해 대상자 보유 자산마다 자산 회수 하위 작업을 자동 추가한다(REQ-ESM-006). 대상자 보유 자산이 없으면 자산 회수 하위 작업 없이 체크리스트만 생성한다(FEAT-ESM-006 예외 처리).
 - HR 케이스는 부서 요청과 별개 엔티티다. HR 담당자(HR_CASE_MANAGER)가 직접 접수(Intake)하며, 민감 정보이므로 해당 역할만 조회·처리할 수 있다(REQ-ESM-004).
@@ -73,7 +71,7 @@
     "formSchema": { "display": "form", "components": [ "object · Form.io Component 객체(SRM API-SRM-002와 동일 계약)" ] }
   }
   ```
-  > `formSchema`는 2026-07-17 유지보수 요청부터 필드 배열이 아니라 **Form.io Form JSON 전체**다. FE는 이 객체를 그대로 `Form`(SCR-ESM-002)·`FormBuilder`(SCR-ESM-006)에 전달한다.
+  > `formSchema`는 필드 배열이 아니라 **Form.io Form JSON 전체**다. FE는 이 객체를 그대로 `Form`(SCR-ESM-002)·`FormBuilder`(SCR-ESM-006)에 전달한다.
 - **Response Code**: 200 / 401 / 404
 
 ### API-ESM-003 · 카탈로그 항목 생성
@@ -152,7 +150,7 @@
 - **인증**: 필요(담당 부서 처리자)
 - **Request Body**: `{ "targetStatus": "IN_PROGRESS|COMPLETED|REJECTED", "note": "string" }`
 - **Response Body** (200): `{ "id": "number", "status": "string" }`
-- **Response Code**: 200 / 400 허용되지 않은 전이 / 403 담당 부서 아님 / 404 / 409 승인 완료 전 COMPLETED 전이 시도 — [common.md](common.md) 0절 공통 게이트 로직(domain=ESM, 요청유형 스코프 없음) 적용. 매칭되는 승인 프로세스가 없거나 0차 승인이면 게이트 없이 통과(기존과 동일)
+- **Response Code**: 200 / 400 허용되지 않은 전이 / 403 담당 부서 아님 / 404 / 409 승인 완료 전 COMPLETED 전이 시도 — [common.md](common.md) 0절 공통 게이트 로직(domain=ESM, 요청유형 스코프 없음) 적용. 매칭되는 승인 프로세스가 없거나 0차 승인이면 게이트 없이 통과
 
 ### API-ESM-009 · 부서 요청 코멘트 등록
 

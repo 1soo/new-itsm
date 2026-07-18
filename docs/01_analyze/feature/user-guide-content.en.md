@@ -1,6 +1,6 @@
 # User Guide Content (FEAT-COM-002)
 
-> Domain: common · Version: 0.2 · Written: 2026-07-11 (English translation added 2026-07-12, maintenance request)
+> Domain: common · Version: 0.2 · Written: 2026-07-12
 > This is the content of the dedicated user guide screen reached by clicking the "?" icon in the header (REQ-COM-002). Written in Markdown; the screen either renders this document as-is or converts it into data with the same structure. It consists of 3 sections (tabs): Overview, Domains & Principles, and Role-by-Role Guide.
 >
 > Basis: Domain overviews/principles are based on `docs/01_analyze/prd/*.md`, role personas/access scope are based on `docs/02_plan/security/authorization/*.md`, actual menu names are from `source/frontend/src/routes/navConfig.tsx`, and actual screen/button names are from `docs/02_plan/screen/*.md`. Menu and button names quote the actual implementation names verbatim and are not paraphrased.
@@ -9,7 +9,7 @@
 
 | 날짜 | 요약 |
 |------|------|
-| 2026-07-12 | 최초 작성 |
+| 2026-07-12 | 최초 작성 (한국어 사용자 가이드의 영문 번역본) |
 
 ---
 

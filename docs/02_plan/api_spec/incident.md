@@ -1,16 +1,14 @@
 # API 명세서 — 인시던트 관리 (Incident)
 
 > 도메인: incident · 버전: 0.4
->
-> **변경 이력**
-> - 2026-07-16: API-INC-003 응답 `timeline` 항목에 `actor` 필드 추가, `STATUS_*` 타임라인 기본 메시지의 상태 코드를 라벨로 정리
-> - 2026-07-12: IN_PROGRESS → RESOLVED 전이(API-INC-005, API-INC-009 두 경로 모두)에 공통 승인 게이트([common.md](common.md) API-COM-003~005) 추가(관리자가 규칙을 설정하지 않으면 게이트 없이 진행)
 
 ## 변경 이력
 
 | 날짜 | 요약 |
 |------|------|
 | 2026-07-09 | 최초 작성 |
+| 2026-07-12 | IN_PROGRESS→RESOLVED 전이(API-INC-005/009 두 경로)에 공통 승인 게이트([common.md](common.md) API-COM-003~005) 추가 |
+| 2026-07-16 | API-INC-003 응답 `timeline` 항목에 `actor` 필드 추가; `STATUS_*` 타임라인 기본 메시지의 상태 코드를 라벨로 정리 |
 
 ## 공통 규약
 
