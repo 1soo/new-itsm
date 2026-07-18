@@ -378,3 +378,59 @@
 - BE: 요청 제출 시 `FormSubmissionValidator`가 `required`/`regex` 위반만 400으로 거부(구 minLength/maxLength/min/max 검증 없음), 정상 제출은 `form_values`에 그대로 저장.
 - DB: 기존 카탈로그 항목의 `form_schema`가 배포 후 빈 그리드(`{"components":[]}`)로 리셋되어 있음.
 - tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → Standards/Spec 코드 리뷰 → 완료 시 커밋(main).
+
+## 개발 계획 — 2026-07-18 유지보수: 그리드 폼 빌더 세부 개선(label 컴포넌트·date/file 아이콘화·순차 단일 오류)
+
+- 요구사항: (1) 입력 컴포넌트 7종에서 `label`/`labelAlign` 속성을 완전히 제거하고, 팔레트에 값 입력이 없는 정적 텍스트 전용 8번째 컴포넌트 `label`(text/textAlign만 가짐)을 추가한다 — 라벨이 필요하면 관리자가 별도 셀에 `label` 컴포넌트를 배치(입력 요소와 `for`/`aria-label` 연결 없음, 순수 인접 배치). (2) `date`/`file`은 브라우저 기본 input을 그대로 노출하지 않고 아이콘(캘린더/파일)만 표시, 클릭 시 숨겨진 네이티브 input을 트리거해 피커/파일선택 다이얼로그를 열며 선택값은 아이콘 옆 작은 텍스트로 표시. (3) 폼 유효성 오류 표시를 필드별 인라인에서 "제출 클릭 시 `components` 배열 순서상 첫 번째 위반 컴포넌트 오류 1건만 폼 하단에 표시"로 전환(여러 오류 동시 표시 금지, 재제출 시 처음부터 재검사). 서버(`FormSubmissionValidator`)도 동일하게 "첫 위반 즉시 400" 계약을 유지(이미 그렇게 동작 중일 가능성 높음 — 검증 후 그대로면 변경 불필요, 아니면 조정).
+- 설계 근거: `docs/02_plan/screen/service-request.md` 5.3절(팔레트 8종)/5.4절(label 컴포넌트·date/file 아이콘 렌더링)/5.5절(신규, 유효성 검증·오류 표시)/5.6절(pre-view, 절 번호 이동)/5.7절(기존 데이터 처리, 절 번호 이동), SCR-SRM-002(4절, 오류 표시 UX), `docs/02_plan/api_spec/service-request.md` API-SRM-002(label 타입 JSON 스키마, 입력 타입에서 label/labelAlign 제거) 및 변경이력(API-SRM-006 400 응답 첫 위반 1건만), `docs/02_plan/api_spec/common.md` 0-2절(검증 절차 재정의 — 순차 첫 위반 즉시 반환, label 제외), `docs/02_plan/database/service-request.md`(컬럼 타입/기본값 변경 없음, 내부 JSON 구조만 조정 — **DB 마이그레이션 불필요**).
+- 참고 기존 코드: `source/frontend/src/components/common/form-schema.ts`·`dynamic-form-builder.tsx`·`dynamic-form-renderer.tsx`, `source/backend/src/main/java/com/itsm/common/form/FormSubmissionValidator.java`.
+
+### 담당 범위
+
+#### DB
+
+- 변경 없음(컬럼 타입·기본값 그대로, JSON 내부 구조만 바뀌고 이미 전 로우가 빈 그리드로 리셋된 상태라 백필 대상 데이터 없음). dev-db 소집 불필요.
+
+#### BE (dev-be) — `source/backend/src/main/java/com/itsm/common/form/FormSubmissionValidator.java`
+
+- **먼저 확인**: 현재 구현이 이미 `components` 배열을 순서대로 순회하며 각 컴포넌트에서 위반 발견 시 즉시 예외를 던지는 구조라, "첫 위반 즉시 400" 계약을 이미 만족할 가능성이 높다(순회 중 첫 실패 지점에서 즉시 throw → 뒤 컴포넌트는 검사되지 않음). 실제로 그런지 코드로 재확인해라.
+- **`label` 타입 제외**: `type=label` 컴포넌트는 검증 대상에서 제외해야 한다(애초에 `validation` 필드가 없을 것이므로 현재 로직대로도 통과하겠지만, 명시적으로 `component.get("type")`이 `"label"`이면 continue하는 방어적 처리를 추가해라 — 스펙에 명시된 항목이라 명확성 차원).
+- 위 확인·필요 시 방어적 처리 추가 후 `FormSubmissionValidatorTest.java`에 label 타입 컴포넌트가 섞인 케이스(검증 스킵 확인)와 다중 위반 중 배열상 첫 번째만 반환되는지 확인하는 케이스를 추가해라.
+- 변경이 실질적으로 없다고 판단되면(이미 충족) 그 근거를 dev-lead에게 보고만 해도 된다.
+
+#### FE (dev-fe) — `source/frontend/src/components/common/`
+
+**`form-schema.ts`**
+- `GridComponentType`에 `"label"` 추가(8종), `GRID_PALETTE_TYPES`에 순서상 마지막 추가.
+- 기존 `GridComponent` 인터페이스를 판별 유니온으로 재정의: 7개 입력 타입(text/textarea/select/radio/checkbox/date/file)은 `label`/`labelAlign` 필드를 제거하고 기존 `input`/`validation`/`options`/`ciLinked` 그대로 유지하는 `GridInputComponent`, `label` 타입은 `text: string`/`textAlign?: GridAlign`만 갖는 `GridLabelComponent`로 분리. `GridComponent = GridInputComponent | GridLabelComponent`(export 이름은 유지해 하위 호환).
+- `hasGridOptions`/`gridMaxHeight`가 `"label"`도 다뤄야 한다 — `gridMaxHeight("label")`은 다른 비-textarea 타입과 동일하게 2(제약 있음, textarea만 예외).
+
+**`dynamic-form-builder.tsx`**
+- 팔레트에 `label`(8번째, 아이콘은 `Type`/`AlignLeft` 등 텍스트 계열에서 겹치지 않는 걸로 dev-fe 재량) 추가. `PALETTE_LABELS`/`PALETTE_ICONS`/`defaultSize`(1×1 기본, 다른 비-textarea 타입과 동일)에 항목 추가.
+- `handleAddComponent`: `type === "label"`이면 `GridLabelComponent` 형태(`text: "텍스트"`, `textAlign: "left"`)로 생성, 그 외는 기존 `GridInputComponent` 형태 그대로(단 `label`/`labelAlign` 필드는 더 이상 넣지 않는다).
+- `ComponentSettingsPopover`: `component.type === "label"`이면 "표시 텍스트" Input + 정렬 토글(`AlignToggle`, 좌/가운데/우)만 노출하고 나머지(input 폭/정렬/default/읽기전용/필수/정규식/옵션)는 렌더하지 않는다. 그 외 7종은 기존 항목 그대로 유지하되 "라벨 텍스트"/"label 정렬" 필드는 제거한다(더 이상 해당 속성이 없으므로).
+- `BuilderComponentCard`: `label` 타입 카드는 아이콘+`component.text`(라벨 텍스트 자체)를 표시(다른 카드가 `component.label` 대신 자기 `type` 라벨을 보여주던 것과 달리, label 컴포넌트는 실제 표시 텍스트를 카드에도 보여주는 게 직관적 — dev-fe 재량으로 UX 다듬어도 됨).
+
+**`dynamic-form-renderer.tsx`**
+- 기존 `GridFieldControl`이 렌더하던 `<label htmlFor=...>{component.label}...</label>` 캡션을 제거(입력 컴포넌트에 더 이상 `label` 속성이 없음).
+- 신규 `type === "label"` 분기: 값 입력 없이 `component.text`를 `component.textAlign`에 따라 정렬한 정적 텍스트로 렌더링(셀 크기 그대로 차지).
+- `date`/`file` 렌더링을 아이콘 전용으로 변경: 숨겨진 네이티브 `<input type="date"|"file">`(`ref`로 참조, `className="sr-only"` 등으로 시각적으로 숨김, 접근성 상 완전 제거는 아님)을 두고, 화면에는 아이콘 버튼만 노출 — 클릭 시 `inputRef.current?.showPicker?.()`(date, 미지원 브라우저 폴백으로 `inputRef.current?.click()`) 또는 `inputRef.current?.click()`(file)으로 네이티브 UI를 연다. 선택된 값(날짜 문자열/파일명)을 아이콘 옆 작은 텍스트로 표시.
+- 유효성 검증·오류 표시 전면 변경: 기존 필드별 `errors: Record<string, string>` + 인라인 오류 문단을 제거하고, 단일 `formError: string | null` state로 교체. 제출 클릭 시 `schema.components`를 배열 순서대로 순회해 **첫 번째로 위반되는 컴포넌트**를 찾으면(required 우선, 그다음 regex — 기존 컴포넌트 내부 검사 순서 그대로) 그 오류 메시지 1건만 `formError`에 설정하고 제출 차단, 폼 하단(제출/취소 버튼 위)에 표시한다. 통과하면 `formError`를 비우고 `onSubmit(values)` 호출. `type=label`은 검증 대상에서 제외(값 자체가 없음).
+- 서버 재검증 실패(400) 토스트 메시지도 이미 "첫 위반 1건"이라 별도 FE 변경 불필요(BE가 이미 그런 메시지 하나만 반환).
+
+**연동 화면**: `CatalogManagePage.tsx`의 pre-view는 `DynamicFormRenderer`를 그대로 재사용하므로 렌더러 변경만으로 `label`/`date`/`file` 아이콘화가 자동 반영된다 — 별도 수정 불필요(다만 실제로 pre-view에서도 정상 보이는지 확인은 필요).
+
+### 진행 순서
+
+1. FE `form-schema.ts`(타입 재정의) → `dynamic-form-builder.tsx`/`dynamic-form-renderer.tsx`(병렬 가능, 타입 의존) 순.
+2. BE는 FE와 독립적으로 확인·필요시 방어 코드 추가(병렬 진행 가능).
+
+### 완료(테스트 통과) 기준
+
+- 팔레트에 `label` 포함 8종 노출, `label` 컴포넌트는 표시 텍스트+정렬만 설정 가능하고 값 입력·필수·정규식 등이 없음.
+- 나머지 7종 Content 설정에 "라벨 텍스트"/"label 정렬" 항목이 없음(별도 `label` 컴포넌트로만 캡션 구현).
+- `date`/`file` 필드가 요청 제출 화면·pre-view에서 아이콘 전용으로 표시되고, 클릭 시 네이티브 피커/파일선택이 정상 동작하며 선택값이 아이콘 옆에 표시됨.
+- 요청 제출 화면에서 여러 필드가 동시에 위반이어도 폼 하단에 오류 메시지가 항상 1건만 표시되고, 수정 후 재제출 시 다음 위반이 순서대로 표시됨(배열 순서 기준, 그리드 시각적 위치 아님).
+- 서버 400 응답도 첫 위반 1건만 반환(다건 동시 위반 시나리오로 확인).
+- 기존 SRM 회귀 없음(팔레트 7종 기능·겹침 방지·리사이즈·pre-view 라운드트립 등 이전 통합테스트 항목 재확인).
+- tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → Standards/Spec 코드 리뷰 → 완료 시 커밋(main).

@@ -13,6 +13,7 @@
 | 2026-07-17 | API-SRM-002/003/004의 formSchema가 필드 배열에서 Form.io Form JSON 전체(`{display,components}`)로 전환. API-SRM-006 formValues는 Form.io submission.data 그대로 전달 |
 | 2026-07-18 | API-SRM-016을 "큐 목록·건수 조회"에서 "요청 카테고리별 건수 조회"(`GET /api/v1/service-requests/category-counts`)로 대체. API-SRM-007 목록 필터를 `queue=`→`categoryId=`로 전환. API-SRM-002/003/004의 queueId 필드, API-SRM-008 응답의 queue 필드 제거 |
 | 2026-07-18 | form.io 완전 제거, API-SRM-002/003/004의 formSchema를 자체 8×n 그리드 스키마(컴포넌트 배열, 위치/크기/Content 설정)로 전면 재정의. formValues는 key-value 구조 그대로 유지(레이아웃 엔진과 무관) |
+| 2026-07-18 | formSchema 컴포넌트에 label 타입 추가(정적 텍스트), 입력 컴포넌트에서 label/labelAlign 필드 제거. API-SRM-006 400 응답은 여러 위반을 모으지 않고 components 배열 순서상 첫 번째 위반 1건만 반환 |
 
 ## 공통 규약
 
@@ -73,20 +74,26 @@
         {
           "key": "string · 필드 식별자(고유)",
           "type": "text|textarea|select|radio|checkbox|date|file",
-          "label": "string",
           "position": { "col": "number · 0~7", "row": "number · 0 이상" },
           "size": { "w": "number · 1~2", "h": "number · 1~2(textarea는 높이 제약 없음)" },
-          "labelAlign": "left|center|right · 기본값 left",
           "input": { "widthPercent": "number · 기본값 90", "align": "left|center|right · 기본값 center", "defaultValue": "string|null", "readOnly": "boolean · 기본값 false" },
           "validation": { "required": "boolean · 기본값 false", "regex": "string|null · 선택 입력, 미지정 시 형식 검증 없음" },
           "options": "string|null · select/radio/checkbox 전용, 콤마(,) 구분 텍스트",
           "ciLinked": "boolean · 기본값 false, select/radio/checkbox 옵션 설정 UI의 CI 연계 라디오 버튼 자리 표시용(실제 동작 없음, 향후 확장 대비)"
+        },
+        {
+          "key": "string · 필드 식별자(고유)",
+          "type": "label",
+          "position": { "col": "number · 0~7", "row": "number · 0 이상" },
+          "size": { "w": "number · 1~2", "h": "number · 1~2" },
+          "text": "string · 표시 텍스트",
+          "textAlign": "left|center|right · 기본값 left"
         }
       ]
     }
   }
   ```
-  > `formSchema`는 자체 8×n 그리드 스키마다(`components` 배열, 중첩 레이아웃 없음 — form.io의 컬럼/패널/탭·Form JSON 계약은 폐기). FE는 이 객체를 그대로 그리드 렌더러(SCR-SRM-002)·"Form 설정" 팝업(SCR-SRM-007, [screen/service-request.md](../screen/service-request.md) 5절)에 전달한다.
+  > `formSchema`는 자체 8×n 그리드 스키마다(`components` 배열, 중첩 레이아웃 없음 — form.io의 컬럼/패널/탭·Form JSON 계약은 폐기). `type=label`은 값 입력이 없는 정적 텍스트 컴포넌트로 `text`/`textAlign`만 가지며 `input`/`validation`/`options`가 없다. 나머지 7개 입력 타입은 `label`/`labelAlign` 속성을 갖지 않는다(라벨이 필요하면 관리자가 `label` 컴포넌트를 별도 셀에 배치, `for`/`aria-label` 연결 없음 — 순수 인접 배치로만 연관). FE는 이 객체를 그대로 그리드 렌더러(SCR-SRM-002)·"Form 설정" 팝업(SCR-SRM-007, [screen/service-request.md](../screen/service-request.md) 5절)에 전달한다.
 - **Response Code**: 200 / 401 / 404
 
 ### API-SRM-003 · 카탈로그 항목 생성

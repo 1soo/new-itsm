@@ -17,9 +17,10 @@ export type GridComponentType =
   | "radio"
   | "checkbox"
   | "date"
-  | "file";
+  | "file"
+  | "label";
 
-/** 팔레트 노출 순서(7종, service-request.md 5.3절). */
+/** 팔레트 노출 순서(8종, service-request.md 5.3절 — label은 값 입력 없는 정적 텍스트). */
 export const GRID_PALETTE_TYPES: readonly GridComponentType[] = [
   "text",
   "textarea",
@@ -28,6 +29,7 @@ export const GRID_PALETTE_TYPES: readonly GridComponentType[] = [
   "checkbox",
   "date",
   "file",
+  "label",
 ];
 
 /** select/radio/checkbox 등 옵션 목록이 필요한 유형. */
@@ -35,7 +37,7 @@ export function hasGridOptions(type: GridComponentType): boolean {
   return type === "select" || type === "radio" || type === "checkbox";
 }
 
-/** 유형별 높이(h) 상한. textarea만 제약 없음(5.2절). */
+/** 유형별 높이(h) 상한. textarea만 제약 없음(5.2절), label은 다른 비-textarea 타입과 동일하게 2. */
 export function gridMaxHeight(type: GridComponentType): number {
   return type === "textarea" ? Infinity : 2;
 }
@@ -64,13 +66,14 @@ export interface GridComponentValidation {
   regex?: string | null; // 선택 입력, 미지정 시 형식 검증 없음
 }
 
-export interface GridComponent {
+/** 7개 입력 컴포넌트 유형(2026-07-18 유지보수 요청으로 label/labelAlign 속성 완전 제거 — 5.4절). */
+export type GridInputComponentType = Exclude<GridComponentType, "label">;
+
+export interface GridInputComponent {
   key: string;
-  type: GridComponentType;
-  label: string;
+  type: GridInputComponentType;
   position: GridPosition;
   size: GridSize;
-  labelAlign?: GridAlign; // 기본값 left
   input?: GridComponentInput;
   validation?: GridComponentValidation;
   /** select/radio/checkbox 전용, 콤마(,) 구분 텍스트. */
@@ -78,6 +81,18 @@ export interface GridComponent {
   /** select/radio/checkbox 옵션 설정 UI의 "CI 연계" 라디오 자리 표시용(실제 동작 없음, 향후 확장). */
   ciLinked?: boolean;
 }
+
+/** 값 입력이 없는 정적 텍스트 전용 컴포넌트(5.4절). 입력 컴포넌트와 for/aria-label 연결 없음. */
+export interface GridLabelComponent {
+  key: string;
+  type: "label";
+  position: GridPosition;
+  size: GridSize;
+  text: string;
+  textAlign?: GridAlign; // 기본값 left
+}
+
+export type GridComponent = GridInputComponent | GridLabelComponent;
 
 export interface GridFormSchema {
   components: GridComponent[];

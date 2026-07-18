@@ -10,6 +10,7 @@ import {
   GripVertical,
   List,
   Settings2,
+  Text as LabelIcon,
   Trash2,
   Type,
 } from "lucide-react";
@@ -30,16 +31,20 @@ import {
   type GridComponent,
   type GridComponentType,
   type GridFormSchema,
+  type GridInputComponent,
   type GridPosition,
   type GridSize,
 } from "@/components/common/form-schema";
 
 /**
  * 관리자용 그리드 폼 빌더 — SCR-SRM-007 "Form 설정" 팝업(2026-07-18 유지보수 요청,
- * form.io 완전 제거 → 자체 8×n 그리드). 좌측 팔레트(7종, 클릭으로 캔버스에 추가)/우측
- * 8칸 그리드 캔버스(스크롤 가능, 배치·리사이즈는 1칸 단위 스냅, 겹침 배치는 차단+인라인 안내).
- * `initialSchema`로 편집 모드 진입, 하단 적용/취소 버튼 — 적용 시 `onApply`로 최신 그리드
- * 스키마를 상위에 전달한다(자동저장 없음, 실제 API 저장은 호출측의 "저장" 버튼).
+ * form.io 완전 제거 → 자체 8×n 그리드). 좌측 팔레트(8종 — 입력 7종 + 값 입력 없는 정적
+ * 텍스트 전용 `label`, 클릭으로 캔버스에 추가)/우측 8칸 그리드 캔버스(스크롤 가능,
+ * 배치·리사이즈는 1칸 단위 스냅, 겹침 배치는 차단+인라인 안내). 입력 7종은 `label`/`labelAlign`
+ * 속성을 갖지 않는다(2026-07-18 후속 유지보수 요청 — 라벨이 필요하면 `label` 컴포넌트를
+ * 별도 셀에 배치, 접근성 연결 없음). `initialSchema`로 편집 모드 진입, 하단 적용/취소 버튼 —
+ * 적용 시 `onApply`로 최신 그리드 스키마를 상위에 전달한다(자동저장 없음, 실제 API 저장은
+ * 호출측의 "저장" 버튼).
  */
 export interface DynamicFormBuilderProps {
   initialSchema?: GridFormSchema;
@@ -60,6 +65,7 @@ const PALETTE_LABELS: Record<GridComponentType, string> = {
   checkbox: "체크박스",
   date: "날짜",
   file: "파일",
+  label: "라벨",
 };
 
 const PALETTE_ICONS: Record<GridComponentType, typeof Type> = {
@@ -70,6 +76,7 @@ const PALETTE_ICONS: Record<GridComponentType, typeof Type> = {
   checkbox: CheckSquare,
   date: Calendar,
   file: File,
+  label: LabelIcon,
 };
 
 function defaultSize(type: GridComponentType): GridSize {
@@ -137,7 +144,9 @@ export function DynamicFormBuilder({ initialSchema, onApply, onCancel, className
   };
 
   const updateComponent = (key: string, patch: Partial<GridComponent>) => {
-    setComponents((cs) => cs.map((c) => (c.key === key ? { ...c, ...patch } : c)));
+    setComponents((cs) =>
+      cs.map((c) => (c.key === key ? ({ ...c, ...patch } as GridComponent) : c)),
+    );
   };
 
   const removeComponent = (key: string) => {
@@ -148,13 +157,18 @@ export function DynamicFormBuilder({ initialSchema, onApply, onCancel, className
     const size = defaultSize(type);
     const position = findFreePosition(components, size);
     const key = nextKey(components);
-    const newComponent: GridComponent = {
+    if (type === "label") {
+      setComponents((cs) => [
+        ...cs,
+        { key, type: "label", position, size, text: "텍스트", textAlign: "left" },
+      ]);
+      return;
+    }
+    const newComponent: GridInputComponent = {
       key,
       type,
-      label: PALETTE_LABELS[type],
       position,
       size,
-      labelAlign: "left",
       input: { widthPercent: 90, align: "center", readOnly: false, defaultValue: "" },
       validation: { required: false, regex: "" },
       options: hasGridOptions(type) ? "옵션1,옵션2" : undefined,
@@ -335,6 +349,7 @@ function BuilderComponentCard({
   onUpdate,
 }: BuilderComponentCardProps) {
   const Icon = PALETTE_ICONS[component.type];
+  const caption = component.type === "label" ? component.text : PALETTE_LABELS[component.type];
 
   return (
     <div
@@ -348,7 +363,7 @@ function BuilderComponentCard({
       <div className="flex items-center justify-between gap-1">
         <span className="flex min-w-0 items-center gap-1 truncate font-medium text-foreground">
           <Icon className="size-3.5 shrink-0" />
-          <span className="truncate">{component.label}</span>
+          <span className="truncate">{caption}</span>
         </span>
         <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
           <ComponentSettingsPopover component={component} onUpdate={onUpdate} />
@@ -403,114 +418,119 @@ function ComponentSettingsPopover({
         align="start"
         onPointerDown={(e) => e.stopPropagation()}
       >
-        <div className="space-y-1.5">
-          <Label className="text-xs">라벨 텍스트</Label>
-          <Input
-            className="h-8"
-            value={component.label}
-            onChange={(e) => onUpdate({ label: e.target.value })}
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label className="text-xs">label 정렬</Label>
-          <AlignToggle
-            value={component.labelAlign ?? "left"}
-            onChange={(align) => onUpdate({ labelAlign: align })}
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          <div className="space-y-1.5">
-            <Label className="text-xs">input 폭(%)</Label>
-            <Input
-              className="h-8"
-              type="number"
-              min={10}
-              max={100}
-              value={component.input?.widthPercent ?? 90}
-              onChange={(e) =>
-                onUpdate({ input: { ...component.input, widthPercent: Number(e.target.value) || 90 } })
-              }
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">input 정렬</Label>
-            <AlignToggle
-              value={component.input?.align ?? "center"}
-              onChange={(align) => onUpdate({ input: { ...component.input, align } })}
-            />
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label className="text-xs">기본값</Label>
-          <Input
-            className="h-8"
-            value={component.input?.defaultValue ?? ""}
-            onChange={(e) => onUpdate({ input: { ...component.input, defaultValue: e.target.value } })}
-          />
-        </div>
-
-        <div className="flex items-center gap-4">
-          <label className="flex items-center gap-1.5 text-xs">
-            <Checkbox
-              checked={!!component.input?.readOnly}
-              onCheckedChange={(v) => onUpdate({ input: { ...component.input, readOnly: !!v } })}
-            />
-            읽기 전용
-          </label>
-          <label className="flex items-center gap-1.5 text-xs">
-            <Checkbox
-              checked={!!component.validation?.required}
-              onCheckedChange={(v) => onUpdate({ validation: { ...component.validation, required: !!v } })}
-            />
-            필수 여부
-          </label>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label className="text-xs">Validation 정규식(선택)</Label>
-          <Input
-            className="h-8"
-            value={component.validation?.regex ?? ""}
-            placeholder="예: ^[0-9]{3}-[0-9]{4}$"
-            onChange={(e) => onUpdate({ validation: { ...component.validation, regex: e.target.value } })}
-          />
-        </div>
-
-        {hasGridOptions(component.type) ? (
-          <div className="space-y-1.5">
-            <Label className="text-xs">옵션(콤마로 구분)</Label>
-            <Input
-              className="h-8"
-              value={component.options ?? ""}
-              onChange={(e) => onUpdate({ options: e.target.value })}
-            />
-            <div className="flex items-center gap-3 pt-1">
-              <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <input
-                  type="radio"
-                  className="accent-primary"
-                  name={`ci-linked-${component.key}`}
-                  checked={!component.ciLinked}
-                  onChange={() => onUpdate({ ciLinked: false })}
+        {component.type === "label" ? (
+          <>
+            <div className="space-y-1.5">
+              <Label className="text-xs">표시 텍스트</Label>
+              <Input
+                className="h-8"
+                value={component.text}
+                onChange={(e) => onUpdate({ text: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">정렬</Label>
+              <AlignToggle
+                value={component.textAlign ?? "left"}
+                onChange={(align) => onUpdate({ textAlign: align })}
+              />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">input 폭(%)</Label>
+                <Input
+                  className="h-8"
+                  type="number"
+                  min={10}
+                  max={100}
+                  value={component.input?.widthPercent ?? 90}
+                  onChange={(e) =>
+                    onUpdate({ input: { ...component.input, widthPercent: Number(e.target.value) || 90 } })
+                  }
                 />
-                일반
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">input 정렬</Label>
+                <AlignToggle
+                  value={component.input?.align ?? "center"}
+                  onChange={(align) => onUpdate({ input: { ...component.input, align } })}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs">기본값</Label>
+              <Input
+                className="h-8"
+                value={component.input?.defaultValue ?? ""}
+                onChange={(e) => onUpdate({ input: { ...component.input, defaultValue: e.target.value } })}
+              />
+            </div>
+
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-1.5 text-xs">
+                <Checkbox
+                  checked={!!component.input?.readOnly}
+                  onCheckedChange={(v) => onUpdate({ input: { ...component.input, readOnly: !!v } })}
+                />
+                읽기 전용
               </label>
-              <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <input
-                  type="radio"
-                  className="accent-primary"
-                  name={`ci-linked-${component.key}`}
-                  checked={!!component.ciLinked}
-                  onChange={() => onUpdate({ ciLinked: true })}
+              <label className="flex items-center gap-1.5 text-xs">
+                <Checkbox
+                  checked={!!component.validation?.required}
+                  onCheckedChange={(v) => onUpdate({ validation: { ...component.validation, required: !!v } })}
                 />
-                CI 연계
+                필수 여부
               </label>
             </div>
-          </div>
-        ) : null}
+
+            <div className="space-y-1.5">
+              <Label className="text-xs">Validation 정규식(선택)</Label>
+              <Input
+                className="h-8"
+                value={component.validation?.regex ?? ""}
+                placeholder="예: ^[0-9]{3}-[0-9]{4}$"
+                onChange={(e) => onUpdate({ validation: { ...component.validation, regex: e.target.value } })}
+              />
+            </div>
+
+            {hasGridOptions(component.type) ? (
+              <div className="space-y-1.5">
+                <Label className="text-xs">옵션(콤마로 구분)</Label>
+                <Input
+                  className="h-8"
+                  value={component.options ?? ""}
+                  onChange={(e) => onUpdate({ options: e.target.value })}
+                />
+                <div className="flex items-center gap-3 pt-1">
+                  <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <input
+                      type="radio"
+                      className="accent-primary"
+                      name={`ci-linked-${component.key}`}
+                      checked={!component.ciLinked}
+                      onChange={() => onUpdate({ ciLinked: false })}
+                    />
+                    일반
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <input
+                      type="radio"
+                      className="accent-primary"
+                      name={`ci-linked-${component.key}`}
+                      checked={!!component.ciLinked}
+                      onChange={() => onUpdate({ ciLinked: true })}
+                    />
+                    CI 연계
+                  </label>
+                </div>
+              </div>
+            ) : null}
+          </>
+        )}
       </PopoverContent>
     </Popover>
   );

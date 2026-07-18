@@ -57,4 +57,28 @@ class FormSubmissionValidatorTest {
                 .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                         .isEqualTo(ErrorCode.FORM_FIELD_INVALID));
     }
+
+    @Test
+    void labelTypeComponentIsSkippedEvenWithoutValue() {
+        Map<String, Object> schema = Map.of("components", List.of(
+                Map.of("type", "label", "label", "안내 문구")));
+
+        assertThatCode(() -> FormSubmissionValidator.validate(schema, Map.of()))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void firstViolationInArrayOrderIsReturnedAmongMultiple() {
+        Map<String, Object> firstRequired = new HashMap<>();
+        firstRequired.put("required", true);
+        Map<String, Object> secondRequired = new HashMap<>();
+        secondRequired.put("required", true);
+        Map<String, Object> schema = Map.of("components", List.of(
+                Map.of("key", "first", "label", "첫번째", "type", "text", "validation", firstRequired),
+                Map.of("key", "second", "label", "두번째", "type", "text", "validation", secondRequired)));
+
+        assertThatThrownBy(() -> FormSubmissionValidator.validate(schema, Map.of()))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getMessage()).contains("첫번째"));
+    }
 }
