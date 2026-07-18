@@ -23,7 +23,6 @@ export { DynamicFormRenderer, type DynamicFormRendererProps } from "./dynamic-fo
 export {
   GRID_COLUMNS,
   GRID_PALETTE_TYPES,
-  GRID_PREVIEW_SCALE,
   GRID_ROW_HEIGHT_PX,
   EMPTY_GRID_SCHEMA,
   hasGridOptions,

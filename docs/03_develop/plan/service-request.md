@@ -546,3 +546,39 @@
 - 서버(`FormSubmissionValidator`)가 `guide-text`/`guide-file` 둘 다 검증 스킵(테스트로 확인), `guide` 관련 코드 완전 제거 확인.
 - 기존 SRM 회귀 없음(placeholder·1×1 캡션 아이콘화·개별 컴포넌트 미리보기·date/file 박스+클릭·label 컴포넌트·유효성 순차 단일 오류 등 직전 유지보수 항목 재확인).
 - tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → Standards/Spec 코드 리뷰 → 완료 시 커밋(main).
+
+## 개발 계획 — 2026-07-18 유지보수 정정: 3분할 폐기 → 캔버스=미리보기 통합
+
+- 정정 배경: 직전 커밋(c5232d5)의 "팔레트/캔버스/우측 미리보기" 3분할 구현이 사용자 의도와 다르다는 피드백에 따라 designer가 설계를 정정함. 별도 미리보기 패널을 두지 않고 **캔버스 카드 자체가 실제 렌더링 모습을 직접 보여주는 2분할(팔레트/캔버스)**로 되돌린다. radio/checkbox 배치 방향·여백, guide-text/guide-file 분리는 변경 없음(직전 커밋 그대로 유지).
+- 설계 근거: `docs/02_plan/screen/service-request.md` 5.1절(표, 캔버스=미리보기 통합)/5.2절(캔버스 카드=실제 렌더링, 유형 아이콘 제거, hover 액션 오버레이)/5.4절(Content 설정 팝업 개별 미리보기는 변경 없음·상호작용 가능함을 명확화)/5.6절(팝업 2분할로 환원, 모달 폭 확대 강제 아님).
+- 참고 기존 코드(직전 커밋 c5232d5로 3분할이 반영된 파일): `source/frontend/src/components/common/dynamic-form-builder.tsx`(우측 미리보기 패널·`GRID_PREVIEW_SCALE` 사용부), `form-schema.ts`(`GRID_PREVIEW_SCALE` 상수), `source/frontend/src/features/service-request/CatalogManagePage.tsx`(Modal 폭 `w-[90vw] max-w-[1600px]`, 이번엔 강제 아니므로 되돌리거나 유지 모두 FE 재량).
+
+### 담당 범위
+
+#### FE (dev-ui) — `source/frontend/src/components/common/`
+
+**`dynamic-form-builder.tsx`**
+- 우측 "미리보기" 패널(`w-80` 블록, `DynamicFormRenderer` 임베드) 완전 삭제. 팝업 내부 레이아웃을 팔레트(`w-40`)/캔버스(`flex-1`) 2분할로 환원.
+- `BuilderComponentCard`: 헤더의 타입 아이콘(`PALETTE_ICONS[component.type]`)·캡션(`caption` 텍스트, `label`/`guide-text`의 `component.text` 포함)을 제거하고, 카드 콘텐츠 영역에 `GridComponentBody`(렌더러에서 이미 export된 컴포넌트)를 그대로 렌더링한다(`disabled` 또는 `onChange` 미전달로 상호작용 차단 — 순수 시각적 표현). 기존 점선 placeholder(`border-dashed`) 블록 삭제.
+- hover 시 노출되는 설정(`Settings2`)/삭제(`Trash2`) 버튼은 렌더링된 `GridComponentBody` 콘텐츠 위에 절대 위치(`absolute`) 오버레이로 배치(기존 헤더 바 안의 버튼 그룹 대신). 카드 드래그 이동(`onPointerDown={onMoveStart}`)은 카드 루트에 그대로 유지하되, `GridComponentBody` 내부 컨트롤(버튼·input 등)에 대한 포인터 이벤트는 이동/설정·삭제 버튼과 충돌하지 않도록 처리(예: 렌더링 영역에 `pointer-events-none` 적용해 클릭이 카드 자체로 전파되게 하거나, 기존 `onPointerDown` stopPropagation 패턴 재사용 — 구체 방식은 FE 재량, 목적은 "시각적 표현만, 실제 입력 불가·드래그는 정상 동작").
+- 1×1 캡션 아이콘 전환 로직(`isCompact`, `size.w === 1 && size.h === 1`일 때 텍스트 숨김)은 타입 아이콘·캡션 자체가 없어졌으므로 관련 조건부 렌더링 코드 삭제(자연 폐기, 5.2절).
+- `GRID_PREVIEW_SCALE` 임포트 제거(더 이상 사용 안 함 — `form-schema.ts`의 export 자체는 유지할지 삭제할지는 아래 참고).
+
+**`form-schema.ts`**
+- `GRID_PREVIEW_SCALE` 상수: 캔버스 미리보기 패널에서는 더 이상 안 쓰지만, `CatalogManagePage.tsx`가 기존 45% 축소 pre-view를 되살릴지 여부에 따라 계속 쓰일 수 있다(아래 CatalogManagePage.tsx 항목 참고). 그쪽에서도 안 쓰면 이 상수도 함께 제거(미사용 export 방지).
+
+**`CatalogManagePage.tsx`(예외 겸함, 3분할 도입 시 손댔던 파일 원상 복구 성격)**
+- Modal `className`의 `w-[90vw] max-w-[1600px]`는 강제 요건이 아니게 됐다 — 캔버스 카드가 실제 콘텐츠(옵션 목록 등)를 그대로 보여주므로 기존 카드 크기(1~2칸)보다 조금 더 여유 있는 폭이 유용할 수 있다는 점을 감안해 유지할지, 기존 3분할 이전 폭(`max-w-4xl`)으로 되돌릴지는 FE 재량으로 판단(설계는 "강제 아님"이라고만 명시). 팝업 바깥 45% 축소 pre-view(직전 유지보수에서 이미 제거됨)는 이번에도 되살리지 않는다(5.6절 "축소판이 불필요"로 재확인됨) — "설정된 필드 N개" 텍스트 안내는 그대로 유지.
+
+### 진행 순서
+
+1. FE `dynamic-form-builder.tsx`(3분할 → 2분할 환원, 카드=실제 렌더링) 우선 → `form-schema.ts`(미사용 export 정리, 필요시) → `CatalogManagePage.tsx`(모달 폭 재검토, FE 재량).
+2. BE/DB 변경 없음.
+
+### 완료(테스트 통과) 기준
+
+- "Form 설정" 팝업이 팔레트/캔버스 2분할이며 별도 미리보기 패널이 없음.
+- 캔버스에 배치된 카드가 타입 아이콘·캡션 텍스트 대신 실제 렌더링 모습(GridComponentBody)을 직접 보여주고, 배치·리사이즈·Content 설정 변경이 카드에 즉시 반영됨. 카드 안 렌더링은 클릭해도 값이 바뀌지 않음(순수 시각적)이면서 카드 자체 드래그 이동·hover 설정/삭제 버튼은 정상 동작.
+- Content 설정 팝업 내 개별 실시간 미리보기(상호작용 가능, 5.4절)는 이번 변경과 무관하게 그대로 정상 동작.
+- radio/checkbox 배치 방향·여백, guide-text/guide-file 분리 등 직전 커밋(c5232d5) 반영 사항은 회귀 없이 유지.
+- tester 재테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → Standards/Spec 코드 리뷰 → 완료 시 커밋(main).

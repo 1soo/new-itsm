@@ -36,9 +36,6 @@ export const GRID_PALETTE_TYPES: readonly GridComponentType[] = [
   "guide-file",
 ];
 
-/** 축소 비율 — 빌더 팝업 3분할 미리보기(5.6절)가 사용. 기존 CatalogManagePage 외부 pre-view와 동일 비율 재사용. */
-export const GRID_PREVIEW_SCALE = 0.45;
-
 /** select/radio/checkbox 등 옵션 목록이 필요한 유형. */
 export function hasGridOptions(type: GridComponentType): boolean {
   return type === "select" || type === "radio" || type === "checkbox";

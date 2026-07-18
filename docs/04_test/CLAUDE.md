@@ -109,3 +109,4 @@
 | 20260718-145952 | srm | pass | label 컴포넌트, date/file 아이콘화, 순차 단일 오류(배열 순서 기준), 서버 재검증 동일 계약, 기존 SRM 회귀 없음 | `docs/04_test/20260718-145952/srm/result/srm.md` |
 | 20260718-172626 | srm | pass | placeholder 7종, guide 컴포넌트(안내+첨부), 1×1 캡션 아이콘화, 개별 실시간 미리보기, date/file 입력박스 롤백 | `docs/04_test/20260718-172626/srm/result/srm.md` |
 | 20260718-182813 | srm | pass | Form 설정 팝업 3분할 실시간 미리보기, radio/checkbox 배치방향·여백, guide-text/guide-file 2종 분리, 외부 pre-view 제거 | `docs/04_test/20260718-182813/srm/result/srm.md` |
+| 20260718-191941 | srm | pass | 3분할 폐기 → 캔버스=미리보기 통합(2분할), 캔버스 카드 실제 렌더링(상호작용 차단), hover 오버레이 액션, Content 설정 개별 미리보기(상호작용 가능) 구분 | `docs/04_test/20260718-191941/srm/result/srm.md` |

@@ -23,11 +23,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { DynamicFormRenderer, GridComponentBody } from "@/components/common/dynamic-form-renderer";
+import { GridComponentBody } from "@/components/common/dynamic-form-renderer";
 import {
   GRID_COLUMNS,
   GRID_PALETTE_TYPES,
-  GRID_PREVIEW_SCALE,
   GRID_ROW_HEIGHT_PX,
   gridMaxHeight,
   hasGridOptions,
@@ -45,19 +44,18 @@ import {
 } from "@/components/common/form-schema";
 
 /**
- * 관리자용 그리드 폼 빌더 — SCR-SRM-007 "Form 설정" 팝업(2026-07-18 유지보수 요청,
- * form.io 완전 제거 → 자체 8×n 그리드). 팝업 내부를 **좌 팔레트(10종 — 입력 7종 + 값 입력
- * 없는 정적 컴포넌트 `label`/`guide-text`/`guide-file`) / 중앙 8칸 그리드 캔버스 / 우 전체
- * 레이아웃 미리보기** 3분할로 항상 동시 표시한다(탭 전환 아님, 2026-07-18 후속 유지보수 요청).
- * 캔버스는 스크롤 가능, 배치·리사이즈는 1칸 단위 스냅, 겹침 배치는 차단+인라인 안내. 입력 7종은
- * `label`/`labelAlign` 속성을 갖지 않는다(라벨이 필요하면 `label` 컴포넌트를 별도 셀에 배치,
- * 접근성 연결 없음). 우측 전체 미리보기는 `dynamic-form-renderer.tsx`의 `DynamicFormRenderer`를
- * `disabled`+`hideFooter`로 재사용해 편집 중(적용 전) `components` 상태를 실시간 반영하며,
- * 축소 비율은 `GRID_PREVIEW_SCALE`(기존 `CatalogManagePage`의 외부 pre-view와 동일 비율,
- * 이제 폐기되어 이 팝업 안으로 이전됨)을 사용한다. `initialSchema`로 편집 모드 진입, 하단
- * 적용/취소 버튼 — 적용 시 `onApply`로 최신 그리드 스키마를 상위에 전달한다(자동저장 없음,
- * 실제 API 저장은 호출측의 "저장" 버튼). Content 설정 팝업 내 개별 실시간 미리보기는 렌더러
- * (`GridComponentBody`, dynamic-form-renderer.tsx)를 그대로 재사용한다(로직 중복 구현 금지).
+ * 관리자용 그리드 폼 빌더 — SCR-SRM-007 "Form 설정" 팝업(form.io 완전 제거 → 자체 8×n
+ * 그리드). 팝업 내부는 **좌 팔레트(10종 — 입력 7종 + 값 입력 없는 정적 컴포넌트
+ * `label`/`guide-text`/`guide-file`) / 우 8칸 그리드 캔버스** 2분할이다(2026-07-18 후속
+ * 유지보수 정정 — 별도 미리보기 패널은 사용자 피드백으로 폐기, **캔버스=미리보기 통합**: 각
+ * 캔버스 카드가 `GridComponentBody`를 그대로 렌더링해 실제 렌더링 모습을 직접 보여준다,
+ * 순수 시각적 표현·상호작용 불가). 캔버스는 스크롤 가능, 배치·리사이즈는 1칸 단위 스냅,
+ * 겹침 배치는 차단+인라인 안내. 입력 7종은 `label`/`labelAlign` 속성을 갖지 않는다(라벨이
+ * 필요하면 `label` 컴포넌트를 별도 셀에 배치, 접근성 연결 없음). `initialSchema`로 편집
+ * 모드 진입, 하단 적용/취소 버튼 — 적용 시 `onApply`로 최신 그리드 스키마를 상위에 전달한다
+ * (자동저장 없음, 실제 API 저장은 호출측의 "저장" 버튼). Content 설정 팝업 내 개별 실시간
+ * 미리보기(상호작용 가능)는 렌더러(`GridComponentBody`, dynamic-form-renderer.tsx)를 그대로
+ * 재사용한다(로직 중복 구현 금지, 캔버스 카드 렌더링과 별개 기능).
  */
 export interface DynamicFormBuilderProps {
   initialSchema?: GridFormSchema;
@@ -339,21 +337,6 @@ export function DynamicFormBuilder({ initialSchema, onApply, onCancel, className
             })}
           </div>
         </div>
-
-        <div className="flex w-80 shrink-0 flex-col gap-1.5 overflow-hidden rounded-md border border-border bg-muted/20 p-2">
-          <Label className="text-xs text-muted-foreground">미리보기</Label>
-          <div className="flex-1 overflow-auto">
-            <div
-              style={{
-                transform: `scale(${GRID_PREVIEW_SCALE})`,
-                transformOrigin: "top left",
-                width: `${100 / GRID_PREVIEW_SCALE}%`,
-              }}
-            >
-              <DynamicFormRenderer schema={{ components }} onSubmit={() => {}} disabled hideFooter />
-            </div>
-          </div>
-        </div>
       </div>
 
       {overlapWarning ? (
@@ -393,41 +376,33 @@ function BuilderComponentCard({
   onDelete,
   onUpdate,
 }: BuilderComponentCardProps) {
-  const Icon = PALETTE_ICONS[component.type];
-  const caption =
-    component.type === "label" || component.type === "guide-text"
-      ? component.text
-      : PALETTE_LABELS[component.type];
-  const isCompact = size.w === 1 && size.h === 1;
-
   return (
     <div
       style={{
         gridColumn: `${position.col + 1} / span ${size.w}`,
         gridRow: `${position.row + 1} / span ${size.h}`,
       }}
-      className="group relative flex cursor-move select-none flex-col gap-1 overflow-hidden rounded-md border border-border bg-card p-1.5 text-xs"
+      className="group relative flex cursor-move select-none overflow-hidden rounded-md border border-border bg-card p-1 text-xs"
       onPointerDown={onMoveStart}
     >
-      <div className="flex items-center justify-between gap-1">
-        <span className="flex min-w-0 items-center gap-1 truncate font-medium text-foreground">
-          <Icon className="size-3.5 shrink-0" />
-          {isCompact ? null : <span className="truncate">{caption}</span>}
-        </span>
-        <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-          <ComponentSettingsPopover component={component} onUpdate={onUpdate} />
-          <button
-            type="button"
-            aria-label="필드 삭제"
-            className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-destructive"
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={onDelete}
-          >
-            <Trash2 className="size-3.5" />
-          </button>
-        </div>
+      {/* 캔버스=미리보기 통합(5.2절) — 실제 렌더링 모습을 그대로 보여주되 순수 시각적 표현이라
+          카드 드래그·오버레이 액션과 충돌하지 않도록 pointer-events-none으로 상호작용을 차단한다. */}
+      <div className="pointer-events-none flex-1 overflow-hidden">
+        <GridComponentBody component={component} />
       </div>
-      <div className="pointer-events-none flex-1 rounded-sm border border-dashed border-border bg-background/60" />
+
+      <div className="absolute right-1 top-1 flex items-center gap-0.5 rounded-md bg-background/80 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100">
+        <ComponentSettingsPopover component={component} onUpdate={onUpdate} />
+        <button
+          type="button"
+          aria-label="필드 삭제"
+          className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-destructive"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={onDelete}
+        >
+          <Trash2 className="size-3.5" />
+        </button>
+      </div>
       <div
         role="presentation"
         aria-hidden="true"
