@@ -103,6 +103,11 @@
     "assigneeRoleId": "담당자 역할",
     "assigneeRoleUnselected": "선택 안 함",
     "formSchema": "양식 필드",
+    "formBuilder": {
+      "openButton": "Form 설정",
+      "modalTitle": "Form 설정",
+      "previewEmpty": "설정된 양식이 없습니다. 클릭하여 Form을 설정하세요."
+    },
     "nameRequiredError": "이름은 필수입니다.",
     "schemaRequiredError": "양식 필드를 하나 이상 정의하세요.",
     "createSuccess": "카탈로그 항목이 생성되었습니다",

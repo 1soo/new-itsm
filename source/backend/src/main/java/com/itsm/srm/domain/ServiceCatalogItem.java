@@ -14,8 +14,8 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 /**
- * 요청 유형(카탈로그 항목). 동적 양식은 formSchema(Form.io Form JSON, JSONB)에 통째로 저장한다
- * (2026-07-17 유지보수 요청, 기존 CatalogFormField EAV 대체).
+ * 요청 유형(카탈로그 항목). 동적 양식은 formSchema(자체 8×n 그리드 스키마, components 배열, JSONB)에 통째로 저장한다
+ * (2026-07-18 유지보수 요청, form.io 완전 제거).
  * 승인 필요 여부는 더 이상 카탈로그 항목의 고정 속성이 아니다(승인 프로세스 커스텀 기능으로 완전 대체 —
  * SYSTEM_ADMIN이 도메인=SERVICE_REQUEST, 요청유형=이 항목으로 별도 설정, docs/02_plan/api_spec/auth.md API-AUTH-027).
  */

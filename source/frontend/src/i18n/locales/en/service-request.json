@@ -103,6 +103,11 @@
     "assigneeRoleId": "Assignee Role",
     "assigneeRoleUnselected": "None",
     "formSchema": "Form Fields",
+    "formBuilder": {
+      "openButton": "Form Settings",
+      "modalTitle": "Form Settings",
+      "previewEmpty": "No form has been configured. Click to set up the form."
+    },
     "nameRequiredError": "Name is required.",
     "schemaRequiredError": "Define at least one form field.",
     "createSuccess": "Catalog item created successfully",

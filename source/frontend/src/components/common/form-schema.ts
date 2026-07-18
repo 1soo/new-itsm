@@ -1,103 +1,95 @@
 import type { TFunction } from "i18next";
 
 /**
- * 동적 폼 스키마 계약 — form.io Form JSON 타입 별칭(2026-07-17 유지보수 요청, form.io 전환).
- * DynamicFormBuilder가 편집(SCR-SRM-007), DynamicFormRenderer가 렌더(SCR-SRM-002)를 담당한다.
- *
- * 기존 FormFieldSchema/FormFieldType/validateForm/hasOptions는 SRM+ESM 화면이 모두
- * 새 컴포넌트로 전환 완료할 때까지(field-builder.tsx/dynamic-form.tsx가 삭제될 때까지)
- * 하위 호환을 위해 남겨둔다 — 전환 완료 후 이 파일 하단 "레거시" 구획째 제거한다.
+ * 동적 폼 그리드 스키마 계약 — SRM 전용 자체 8×n 그리드 빌더(2026-07-18 유지보수 요청,
+ * form.io 완전 제거 → 자체 구현). DynamicFormBuilder가 편집(SCR-SRM-007 "Form 설정" 팝업),
+ * DynamicFormRenderer가 렌더(SCR-SRM-002)를 담당한다. screen/service-request.md 5절 계약.
  */
-export type FormIoDisplay = "form" | "pdf" | "wizard";
+export const GRID_COLUMNS = 8;
 
-export interface FormIoSchema {
-  display?: FormIoDisplay;
-  components: unknown[];
+/** 그리드 행 높이(px, 고정값 — 5.2절 "세로 행 높이는 고정값을 사용"). 빌더 캔버스·렌더러·pre-view가 공유. */
+export const GRID_ROW_HEIGHT_PX = 88;
+
+export type GridComponentType =
+  | "text"
+  | "textarea"
+  | "select"
+  | "radio"
+  | "checkbox"
+  | "date"
+  | "file";
+
+/** 팔레트 노출 순서(7종, service-request.md 5.3절). */
+export const GRID_PALETTE_TYPES: readonly GridComponentType[] = [
+  "text",
+  "textarea",
+  "select",
+  "radio",
+  "checkbox",
+  "date",
+  "file",
+];
+
+/** select/radio/checkbox 등 옵션 목록이 필요한 유형. */
+export function hasGridOptions(type: GridComponentType): boolean {
+  return type === "select" || type === "radio" || type === "checkbox";
 }
 
-export type FormIoSubmissionData = Record<string, unknown>;
+/** 유형별 높이(h) 상한. textarea만 제약 없음(5.2절). */
+export function gridMaxHeight(type: GridComponentType): number {
+  return type === "textarea" ? Infinity : 2;
+}
 
-/**
- * FormBuilder/Form의 options.builder 팔레트 구성(common.md 8.2절).
- * Basic+Advanced+Layout만 노출하고 Data/Premium/Resource는 완전히 숨긴다.
- *
- * form.io는 컴포넌트별로 고정된 기본 그룹(`builderInfo.group`)을 갖지만, 팔레트에
- * 실제로 표시되는 그룹은 각 그룹의 `components` 맵에 그 키가 `true`(또는 커스텀
- * 디스크립터)로 선언돼 있는지로 결정된다 — `advanced.components.file = true`처럼
- * 컴포넌트 고유 그룹(`file`은 원래 'premium')과 다른 그룹에 선언해도 팔레트에는
- * 선언한 그룹(advanced) 아래 노출된다(WebformBuilder 내부 로직 확인, 2026-07-17
- * TC-SRM-002 결함 수정 — 이전엔 `file`을 별도 `premium` 그룹에 남겨둬 8.2절과
- * 다르게 Premium 탭 자체가 노출되고 File이 그 아래 표시됐다). 그룹당 노출하려는
- * 항목만 `true`, **같은 그룹의 나머지 기본 항목은 전부 명시적으로 `false`** 로
- * 감춰야 한다(생략하면 기본값 그대로 노출됨).
- */
-export const FORM_BUILDER_OPTIONS = {
-  /**
-   * form.io는 폼에 submit 액션의 button 컴포넌트가 하나도 없으면 편집 시작 시 기본 "Submit"
-   * 버튼을 스키마에 자동 추가한다(WebformBuilder 내부 동작). `button`을 팔레트에서 숨겨(위
-   * Basic 그룹) 관리자가 직접 추가할 수 없게 했더라도 이 자동 추가는 막지 못해, 저장된
-   * 스키마에 의도치 않은 "Submit" 버튼이 포함되고 DynamicFormRenderer의 신규 하단
-   * 제출/취소 푸터와 중복 노출되는 결함이 있었다(TC-SRM-105, 2026-07-17). 자동 추가 자체를
-   * 끈다.
-   */
-  noAddSubmitButton: true,
-  noDefaultSubmitButton: true,
-  builder: {
-    basic: {
-      title: "Basic",
-      weight: 0,
-      components: {
-        textfield: true,
-        textarea: true,
-        number: true,
-        checkbox: true,
-        selectboxes: true,
-        select: true,
-        radio: true,
-        password: false,
-        button: false,
-      },
-    },
-    advanced: {
-      title: "Advanced",
-      weight: 10,
-      components: {
-        email: true,
-        phoneNumber: true,
-        datetime: true,
-        file: true,
-        url: false,
-        tags: false,
-        address: false,
-        day: false,
-        time: false,
-        currency: false,
-        survey: false,
-        signature: false,
-      },
-    },
-    layout: {
-      title: "Layout",
-      weight: 20,
-      components: {
-        columns: true,
-        panel: true,
-        tabs: true,
-        fieldset: true,
-        htmlelement: false,
-        content: false,
-        table: false,
-        well: false,
-      },
-    },
-    data: false,
-    premium: false,
-    resource: false,
-  },
-} as const;
+export type GridAlign = "left" | "center" | "right";
+
+export interface GridPosition {
+  col: number; // 0~7
+  row: number; // 0 이상
+}
+
+export interface GridSize {
+  w: number; // 1~2
+  h: number; // 1~2(textarea는 높이 제약 없음)
+}
+
+export interface GridComponentInput {
+  widthPercent?: number; // 기본값 90
+  align?: GridAlign; // 기본값 center
+  defaultValue?: string | null;
+  readOnly?: boolean;
+}
+
+export interface GridComponentValidation {
+  required?: boolean;
+  regex?: string | null; // 선택 입력, 미지정 시 형식 검증 없음
+}
+
+export interface GridComponent {
+  key: string;
+  type: GridComponentType;
+  label: string;
+  position: GridPosition;
+  size: GridSize;
+  labelAlign?: GridAlign; // 기본값 left
+  input?: GridComponentInput;
+  validation?: GridComponentValidation;
+  /** select/radio/checkbox 전용, 콤마(,) 구분 텍스트. */
+  options?: string | null;
+  /** select/radio/checkbox 옵션 설정 UI의 "CI 연계" 라디오 자리 표시용(실제 동작 없음, 향후 확장). */
+  ciLinked?: boolean;
+}
+
+export interface GridFormSchema {
+  components: GridComponent[];
+}
+
+export type GridFormValues = Record<string, unknown>;
+
+export const EMPTY_GRID_SCHEMA: GridFormSchema = { components: [] };
 
 /* ----------------------------------------------------------------------
- * 레거시(field-builder.tsx/dynamic-form.tsx 전용) — 삭제 예정
+ * 레거시(ESM field-builder.tsx/dynamic-form.tsx 전용) — ESM은 레거시 EAV 그대로
+ * 사용하므로(screen/service-request.md 5절 참고) SRM의 form.io 제거와 무관하게 유지한다.
  * -------------------------------------------------------------------- */
 export type FormFieldType = "text" | "textarea" | "select" | "number" | "date" | "file";
 

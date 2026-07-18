@@ -24,12 +24,12 @@ import java.util.Map;
 /**
  * 서비스 카탈로그 유스케이스 (조회는 인증 사용자, 생성/수정은 PROCESS_OWNER).
  * 승인 필요 여부·담당 역할은 더 이상 카탈로그 항목의 속성이 아니다(승인 프로세스 커스텀 기능으로 대체).
- * 동적 양식(formSchema)은 Form.io Form JSON을 통째로 JSONB에 저장한다(2026-07-17 유지보수 요청).
+ * 동적 양식(formSchema)은 자체 8×n 그리드 스키마(components 배열)를 통째로 JSONB에 저장한다(2026-07-18 유지보수 요청, form.io 완전 제거).
  */
 @Service
 public class ServiceCatalogService {
 
-    private static final String DEFAULT_FORM_SCHEMA = "{\"display\":\"form\",\"components\":[]}";
+    private static final String DEFAULT_FORM_SCHEMA = "{\"components\":[]}";
 
     private final ServiceCatalogItemRepository catalogItemRepository;
     private final ServiceCatalogCategoryRepository categoryRepository;

@@ -319,3 +319,62 @@
 - BE: `GET /api/v1/service-requests?categoryId=` 숫자/`"uncategorized"`/미지정 3가지 모두 정상 필터링, `GET /api/v1/service-requests/category-counts`가 카테고리별(+미분류 마지막) 미종료 건수 정상 반환, `/api/v1/queues` 관련 엔드포인트·클래스 완전 제거.
 - FE: SCR-SRM-004 좌측 카테고리 목록 클릭 시 우측 표 필터링 정상 동작, 카탈로그 항목의 카테고리를 바꾸면 기존 요청 분류도 즉시 반영됨(실시간 조인 확인), 카탈로그 관리 화면에 담당 큐 select가 더 이상 없음, 요청 상세에 "큐" 표시 없음.
 - tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → 완료 시 커밋.
+
+## 개발 계획 — 2026-07-18 유지보수: form.io 완전 제거 → 자체 8×n 그리드 폼 빌더 전면 재구현
+
+- 요구사항: `@formio/js`/`@formio/react` 의존성과 관련 코드를 완전히 제거하고(주석 처리 금지), SRM 서비스 카탈로그의 동적 양식을 자체 구현한 8칸 고정×n행(스크롤 가능) 그리드 드래그앤드롭 빌더로 전면 재구현한다. 팔레트 7종(text/textarea/select/radio/checkbox/date/file), 컴포넌트 크기 1~2칸×1~2칸(textarea만 높이 제약 없음), 컴포넌트별 Content 설정(label 정렬, input 폭%/정렬/default/읽기전용, 필수 여부, 정규식 validation, select/radio/checkbox는 콤마구분 옵션+CI연계 라디오 자리(로직 미구현)), pre-view 축소판. 기존 `service_catalog_item.form_schema`(form.io 스키마) 데이터는 호환 불가능하므로 빈 그리드로 리셋(사용자 승인 완료, 마이그레이션 아님). 이 아키텍처는 SRM 전용이다(ESM은 레거시 EAV 그대로 사용, 대상 아님).
+- 설계 근거: `docs/02_plan/screen/service-request.md` 5절(그리드 아키텍처 전체 — 5.1 공용 컴포넌트/5.2 그리드 규칙/5.3 팔레트/5.4 Content 설정/5.5 pre-view·저장 흐름/5.6 기존 데이터 처리), SCR-SRM-002/007(4절), `docs/02_plan/database/service-request.md`(`form_schema` 컬럼 상세·리셋 노트), `docs/02_plan/api_spec/service-request.md`(API-SRM-002/003/004 grid 컴포넌트 JSON 스키마 예시), `docs/02_plan/api_spec/common.md` 0-2절(서버 재검증 규칙, SRM 전용으로 재정의됨), `docs/02_plan/screen/common.md` 8절(SRM으로 이전 완료, 포인터만 남음).
+- 참고 기존 코드(전면 재작성 대상 — form.io 기반): `source/frontend/src/components/common/dynamic-form-builder.tsx`·`dynamic-form-renderer.tsx`·`form-schema.ts`·`index.ts`, `source/frontend/src/index.css`(`.formio-scope`/`.formio-dialog`/`.formio-render-scope` 관련 규칙 전부 제거 대상), `source/frontend/src/features/service-request/CatalogManagePage.tsx`·`RequestSubmitPage.tsx`, `source/frontend/package.json`(`@formio/js`/`@formio/react` 의존성 제거), `source/backend/.../common/form/FormSubmissionValidator.java`·`FormJsonMapper.java`, `source/backend/.../srm/application/ServiceCatalogService.java`. 유사 이력(반대 방향 전환): `docs/06_maintenance/20260718-070801/srm/report.md`.
+
+### 담당 범위
+
+#### DB (dev-db) — `source/db/sql/`
+
+- 신규 파일 `38_srm_form_schema_reset.sql`(다음 순번):
+  1. `UPDATE service_catalog_item SET form_schema = '{"components":[]}'::jsonb;`(전체 로우 리셋 — 마이그레이션이 아니라 단순 초기화, `docs/02_plan/database/service-request.md` "기존 데이터 리셋" 노트 근거).
+  2. `ALTER TABLE service_catalog_item ALTER COLUMN form_schema SET DEFAULT '{"components":[]}';`(36번 마이그레이션이 설정한 구 기본값 `{"display":"form","components":[]}` 정리 — BE가 생성 시 항상 명시적으로 `formSchema`를 채우므로 실사용 영향은 없으나 스키마 일관성 차원).
+- `service_request.form_values`(제출 데이터, key-value)는 레이아웃과 무관해 리셋 대상 아님 — 손대지 마라.
+- 완료 후 `source/db/sql/CLAUDE.md`에 파일 반영.
+
+#### BE (dev-be) — `source/backend/src/main/java/com/itsm/common/form/`, `source/backend/src/main/java/com/itsm/srm/`
+
+> 이미 상당 부분 진행됨(FormSubmissionValidator 평면 배열 재검증 리라이트, ServiceCatalogService `DEFAULT_FORM_SCHEMA`/DTO `@Schema` 설명 갱신 확인함, compileJava/compileTestJava 성공). 아래는 전체 범위 기준 재확인용 — 이미 끝난 항목은 스킵하고 남은 것만 마무리.
+
+- `common/form/FormSubmissionValidator.java`: `form_schema.components`(평면 배열, 재귀 불필요)를 순회하며 각 컴포넌트의 `key`/`label`/`validation.required`/`validation.regex`만 검증(기존 `validate.required`/`pattern`/`minLength`/`maxLength`/`min`/`max` 계약 완전 폐기 — 그리드 스키마엔 그 필드들 자체가 없음). `required`면서 값 없으면 `REQUIRED_FIELD_MISSING`, `regex` 지정 시(값 있을 때만) 불일치하면 `FORM_FIELD_INVALID`. `type`/`position`/`size`/`labelAlign`/`input`/`options`/`ciLinked`는 서버 재검증 대상 아님(레이아웃·표시 전용, `docs/02_plan/api_spec/common.md` 0-2절 그대로).
+- `common/form/FormJsonMapper.java`: 변경 불필요(범용 `Map<String,Object>`↔JSON 직렬화 유틸이라 그리드 스키마에도 그대로 재사용 가능, 확인만 하면 됨).
+- `application/ServiceCatalogService.java`: `DEFAULT_FORM_SCHEMA` 상수를 `{"components":[]}`로 갱신(이미 확인됨). `writeSchema`/`readSchema` 로직 자체는 불변(여전히 opaque `Map<String,Object>` 왕복).
+- `application/dto/CatalogItemDetailResponse.java`·`CreateCatalogItemRequest.java`·`UpdateCatalogItemRequest.java`의 `formSchema` `@Schema(description=...)` 문구를 "자체 8×n 그리드 스키마({components})"로 갱신(이미 확인됨).
+- `common/form/CLAUDE.md`·`srm/application/CLAUDE.md` 등 관련 CLAUDE.md 문서에서 form.io 언급 정리.
+- 테스트: `source/backend/src/test/java/com/itsm/common/form/FormSubmissionValidatorTest.java`를 새 검증 로직(required/regex만) 기준으로 갱신, `ServiceCatalogServiceTest`/`ServiceRequestServiceTest`/`SrmApprovalIntegrationTest`의 formSchema 테스트 픽스처를 그리드 컴포넌트 객체 형태(`{key,type,label,position,size,validation:{required,regex}}`)로 갱신.
+- `build.gradle`에 `@formio` 관련 BE 의존성은 원래 없었으므로(FE 전용 라이브러리) 변경 불필요.
+
+#### FE (dev-fe) — `source/frontend/src/components/common/`, `source/frontend/src/features/service-request/`
+
+**공용 컴포넌트 전면 재작성(form.io 완전 제거)**
+- `form-schema.ts`: 기존 `FormIoSchema`/`FormIoSubmissionData`/`FORM_BUILDER_OPTIONS`(form.io 전용)만 삭제. 신규 타입 정의: `GridComponentType = "text"|"textarea"|"select"|"radio"|"checkbox"|"date"|"file"`, `GridPosition{col:number; row:number}`, `GridSize{w:number; h:number}`, `GridComponent{key; type; label; position; size; labelAlign?; input?:{widthPercent?; align?; defaultValue?; readOnly?}; validation?:{required?; regex?}; options?:string; ciLinked?:boolean}`, `GridFormSchema{components: GridComponent[]}`, `GridFormValues = Record<string, unknown>`.
+  > **정정(2026-07-18)**: 계획 초안에 "레거시 구획(FormFieldSchema 등)은 field-builder.tsx/dynamic-form.tsx 삭제로 이미 죽은 코드"라고 적었으나 오류였다 — 두 파일 다 여전히 존재하고 **ESM**(`EsmCatalogManagePage.tsx`/`DeptRequestSubmitPage.tsx`)이 계속 사용 중이다(설계도 "ESM은 레거시 EAV 그대로 사용, 대상 아님" 명시). 레거시 구획·`field-builder.tsx`·`dynamic-form.tsx`는 ESM용으로 그대로 유지, 삭제하지 않는다(dev-fe 발견).
+- `dynamic-form-builder.tsx`: `@formio/react` `FormBuilder` 임포트·래핑 제거. 신규 자체 그리드 캔버스 컴포넌트로 전면 재작성 — 좌측 팔레트(7종 아이콘+라벨, 클릭 또는 드래그로 캔버스에 추가) / 우측 8칸 그리드 캔버스(스크롤 가능, `initialSchema`로 편집 모드 진입). 드래그앤드롭·리사이즈는 신규 빌드 의존성 없이 구현 가능하면 네이티브 pointer 이벤트로, 필요하면 이미 `package.json`에 있는 라이브러리 우선 검토(신규 의존성 추가는 최소화 — 정말 필요하면 dev-lead에게 확인 후 추가). 겹침 배치 시 인라인 오류 안내("이미 배치된 컴포넌트와 겹칩니다"). 컴포넌트 hover 시 설정 버튼 노출 → 클릭 시 Content 설정 미니 팝업(5.4절 항목 그대로: label 정렬, input 폭%/정렬/default/읽기전용/필수, validation regex, select/radio/checkbox는 콤마 옵션+CI연계 라디오(비활성 자리)). 하단 적용/취소 버튼 — 적용 시 `onChange`(또는 `onApply`)로 최신 그리드 스키마를 상위에 전달(자동저장 없음).
+- `dynamic-form-renderer.tsx`: `@formio/react` `Form` 임포트·래핑 제거. 신규 자체 렌더러로 재작성 — `schema.components`를 `position`/`size` 그대로 CSS Grid(8열)로 배치 렌더링, 각 컴포넌트 타입별 입력 요소 렌더(select/radio/checkbox는 `options`(콤마 분리) 파싱, 옵션 많으면 자동 줄바꿈+셀 내부 스크롤). 클라이언트 검증은 `validation.regex`(정규식 매칭)만 수행(기존 minLength/maxLength/min/max 개념 없음). 기존 하단 제출/취소 버튼 푸터 패턴은 유지(SCR-SRM-002 "하단 제출 버튼" 요건 그대로).
+- `index.ts`: `FormIoSchema`/`FORM_BUILDER_OPTIONS` 등 form.io 관련 export 제거, 신규 `GridFormSchema`/`GridComponent`/`GridFormValues` 등 export로 교체.
+- `source/frontend/src/index.css`: `.formio-scope`/`.formio-dialog`/`.formio-render-scope` 관련 규칙(8.3절 스코핑 CSS 전체 — line 423 이후 새로 추가됐던 블록) 완전 삭제. 그리드 캔버스·팝업에 필요한 스타일은 기존 ADS 토큰·Tailwind 유틸리티로 직접 작성(신규 전역 CSS 오버라이드 최소화).
+- `package.json`/`package-lock.json`: `@formio/js`·`@formio/react` 의존성 제거(`npm uninstall` 또는 수동 삭제 후 `npm install`로 lock 갱신).
+
+**기능 화면**
+- `CatalogManagePage.tsx`(SCR-SRM-007): 기존 인라인 `DynamicFormBuilder` 임베드를 "Form 설정" 버튼(팝업 오픈)+그 아래 pre-view 축소판으로 교체. 팝업은 공용 `Modal`(또는 신규 전용 다이얼로그, 캔버스가 커서 기존 `Modal` 크기로 부족하면 dev-lead와 상의) 안에 `DynamicFormBuilder` 렌더, 하단 적용/취소는 팝업 자체가 담당(카탈로그 항목 폼의 "저장"과는 별개 — 적용 시 로컬 상태만 갱신). pre-view는 저장된/적용된 스키마를 읽기 전용 축소 렌더로 표시, 클릭 시 팝업 재오픈.
+- `RequestSubmitPage.tsx`(SCR-SRM-002): `DynamicForm(Io)Renderer` 교체만 반영(그리드 스키마 그대로 주입), 기존 지식 추천 패널·제출 성공 토스트·상세 이동 로직은 변경 없음.
+- `types.ts`(`features/service-request/`): `FormIoSchema` 재export 부분을 `GridFormSchema`(from `components/common`)로 교체.
+
+**참고**: UI 역할 소집 없이 이번에도 FE가 공용 컴포넌트까지 전담한다(20260718-070801 전례와 동일).
+
+### 진행 순서
+
+1. DB(리셋 SQL) → BE(재검증기 리라이트, DTO 문구) → FE(공용 컴포넌트 전면 재작성 → 기능 화면 연동) — DB/BE는 이미 상당 부분 진행됨, FE 착수.
+2. FE는 공용 컴포넌트(그리드 빌더/렌더러) 완료 후 기능 화면(CatalogManagePage/RequestSubmitPage) 연동.
+
+### 완료(테스트 통과) 기준
+
+- 전 코드베이스에 `@formio` 관련 의존성·import·CSS가 남아있지 않음(주석 처리 아님, 완전 삭제).
+- FE: SCR-SRM-007 "Form 설정" 팝업에서 8칸 그리드에 7종 컴포넌트를 배치·리사이즈(1~2칸, textarea 높이 제약 없음)·겹침 방지·Content 설정(label 정렬/input 폭·정렬·default·읽기전용·필수/정규식, 옵션 콤마 입력)까지 가능하고 pre-view가 정상 표시됨. SCR-SRM-002에서 그 그리드가 그대로 렌더링되고 정규식 클라이언트 검증 후 제출 가능.
+- BE: 요청 제출 시 `FormSubmissionValidator`가 `required`/`regex` 위반만 400으로 거부(구 minLength/maxLength/min/max 검증 없음), 정상 제출은 `form_values`에 그대로 저장.
+- DB: 기존 카탈로그 항목의 `form_schema`가 배포 후 빈 그리드(`{"components":[]}`)로 리셋되어 있음.
+- tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → Standards/Spec 코드 리뷰 → 완료 시 커밋(main).

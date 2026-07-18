@@ -9,6 +9,7 @@
 | 2026-07-11 | 최초 작성. 전 도메인 공용 승인 대기함·결정 API(API-COM-003~005) 신규(기존 도메인별 전용 승인 API 대체) |
 | 2026-07-15 | 승인 대상자 역할 기반 동적 상세조회 권한 신규(0-1절) |
 | 2026-07-17 | 동적 폼 스키마·제출 데이터 공통 서버 재검증 규칙 신규(0-2절), SRM/ESM 공용 적용 |
+| 2026-07-18 | 0-2절을 form.io 스키마 기반에서 SRM 자체 8×n 그리드 스키마 기반으로 재정의, SRM 전용임을 명시(ESM은 이 재검증기를 사용한 적 없음이 코드 확인됨) |
 
 ## 공통 규약
 
@@ -58,18 +59,18 @@
 
 각 도메인의 상세조회 RBAC 최종 규칙은 [security/authorization/approver.md](../security/authorization/approver.md)(승인자 관점)와 각 역할 정의서(매니저 관점)를 함께 참조한다.
 
-## 0-2. 동적 폼 스키마·제출 데이터 공통 서버 재검증
+## 0-2. 동적 폼 스키마·제출 데이터 서버 재검증 (SRM 전용)
 
-서비스 카탈로그(SRM)·부서 카탈로그(ESM)가 공유하는 동적 폼 빌더(form.io 스타일, [database/service-request.md](../database/service-request.md) `service_catalog_item.form_schema` 참조)의 제출 데이터는 클라이언트(`@formio/react` `Form`) 검증만으로 신뢰하지 않고, **도메인 공통 서버 재검증기**를 거친다.
+서비스 카탈로그(SRM)의 자체 8×n 그리드 폼 빌더([database/service-request.md](../database/service-request.md) `service_catalog_item.form_schema`, [screen/service-request.md](../screen/service-request.md) 5절 참조)의 제출 데이터는 클라이언트(그리드 렌더러의 정규식 검증) 검증만으로 신뢰하지 않고 **서버 재검증기**를 거친다. `common.form` 패키지에 위치하지만 현재 실제 호출자는 SRM `ServiceRequestService`뿐이다(ESM은 이 그리드 폼 빌더를 사용하지 않고 기존 레거시 EAV를 그대로 사용 — 부서 카탈로그 재구현이 확정되면 그때 ESM 연동 여부를 다시 설계한다).
 
-- **캡슐화 위치**: `common.form.FormSubmissionValidator`(SRM `ServiceRequestService`, ESM `EsmRequestService`가 각자의 요청 제출 유스케이스에서 호출). 기존 SRM `validateRequiredFields`(required 전용)를 대체·확장한다.
-- **입력**: 카탈로그 항목의 `form_schema`(Form.io Form JSON)와 제출된 `formValues`(submission.data) 맵.
+- **캡슐화 위치**: `common.form.FormSubmissionValidator`(SRM `ServiceRequestService`가 요청 제출 유스케이스에서 호출).
+- **입력**: 카탈로그 항목의 `form_schema`(8×n 그리드 스키마, `components` 배열)와 제출된 `formValues`(key-value) 맵.
 - **검증 절차**:
-  1. `form_schema.components`를 재귀 순회해 `input:true`인 리프 컴포넌트만 수집한다(컬럼/패널/탭 등 `input:false` 레이아웃 컴포넌트는 하위 `components`만 펼치고 그 자체는 검증 대상에서 제외).
-  2. 각 리프 컴포넌트의 `validate` 규칙을 적용한다 — `required`(값 존재 여부, 기존과 동일), `minLength`/`maxLength`(문자열류), `min`/`max`(숫자류), `pattern`(정규식). [`docs/source/form_io/component-schema-and-validation.md`](../../source/form_io/component-schema-and-validation.md) 3절 규칙을 그대로 따른다.
-  3. 위반 항목이 하나라도 있으면 400으로 거부한다(응답 코드는 각 도메인 API 문서의 제출 API 참조 — API-SRM-006/API-ESM-005).
-- **범위 밖**: `conditional`(조건부 표시)·`calculateValue`(계산 필드)·`custom`(커스텀 JS 검증)은 Form.io 빌더 UI에 기본 노출될 수 있으나 서버가 별도로 해석·집행하지 않는다(사용자가 설정해도 서버는 무시). 향후 요구사항으로 확정되면 별도 유지보수로 다룬다.
-- **file 컴포넌트**: Form.io Enterprise 유료 스토리지 프로바이더 없이 `storage:'base64'`로 구성한다 — 제출 데이터에 파일이 base64 문자열로 인라인 포함되므로 별도 업로드 API·크기 제한 검증은 이번 범위에 포함하지 않는다(대용량 첨부 필요 시 별도 유지보수로 업로드 API 설계 필요).
+  1. `form_schema.components`를 순회한다(중첩 레이아웃이 없는 평면 배열이라 재귀 순회가 불필요하다).
+  2. `validation.required=true`인 컴포넌트는 제출 값 존재 여부를 검증한다(값 없으면 `REQUIRED_FIELD_MISSING`).
+  3. `validation.regex`가 지정된 컴포넌트는 제출 값에 정규식을 적용한다(불일치 시 `FORM_FIELD_INVALID`). `required`와 `regex`가 함께 지정되면 둘 다 적용한다(값이 없으면 2번에서 이미 거부되므로 정규식은 값이 있을 때만 평가).
+  4. 위반 항목이 하나라도 있으면 400으로 거부한다(응답 코드는 API-SRM-006 참조).
+- **file 컴포넌트**: 제출 데이터에 파일을 base64 문자열로 인라인 포함하는 기존 방식을 유지한다 — 별도 업로드 API·크기 제한 검증은 이번 범위에 포함하지 않는다(대용량 첨부 필요 시 별도 유지보수로 업로드 API 설계 필요).
 
 ## 1. API 목록
 

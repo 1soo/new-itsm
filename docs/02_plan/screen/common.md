@@ -14,6 +14,7 @@
 | 2026-07-14 | 사이드바 폭/폰트 축소(펼침 240→190px/접힘 64→48px, 라벨 14→12px/그룹헤더 12→10px, SCR-COM-003), 공통 목록 표(SCR-COM-007) `Column<T>`에 `width` 도입해 컬럼 폭 고정 아키텍처 정의(구체 px 값은 도메인별 screen 문서), 페이지당 아이템 수 재산정 기준(7절 신규) |
 | 2026-07-16 | SCR-COM-008 상태 전이 버튼 라벨을 도착 상태명 대신 동작 동사형으로 전환하는 공통 아키텍처 정의(구체 라벨 매핑은 SRM/INCIDENT/PROBLEM/CHANGE/VULNERABILITY/ASSET/ESM 도메인별 screen 문서), 타임라인에 행위 수행 주체자(actor) 표시 추가(SRM/ESM/INCIDENT 3개 도메인), SCR-COM-014 승인 대기함에 "상세보기" 버튼 신규 |
 | 2026-07-17 | 서비스 카탈로그 커스텀 폼 빌더(form.io 스타일) — `@formio/react` 기반 동적 폼 빌더/렌더러 공통 아키텍처 정의(8절 신규, SRM/ESM 공용). 팔레트 구성·Bootstrap↔ADS 스타일 통합 방안·서버 저장 흐름 포함(구체 화면 배치는 [service-request.md](service-request.md) SCR-SRM-007/002, [esm.md](esm.md) SCR-ESM-006/002) |
+| 2026-07-18 | 8절 아키텍처를 form.io 완전 제거 후 자체 8×n 그리드 엔진으로 재구현 — SRM 전용임을 정정하고 상세 내용을 [service-request.md](service-request.md) 5절로 이전(ESM은 이 아키텍처를 사용한 적 없음이 코드 확인됨) |
 
 ## 1. 개요
 
@@ -610,45 +611,6 @@ SCR-COM-009(4절) "구현 참고" 참조. 요약: `ConfirmDialog`+`toast`만 Swe
 
 **확정 결정(Main)**: 근본원인/워크어라운드 미리보기에 줄 수 제한(`line-clamp`)을 추가하는 등 카드 콘텐츠 축약 기능은 이번 유지보수 요청 범위(원 요구사항 3건: 사이드바·컬럼 폭·페이지당 아이템 수)를 벗어나므로 넣지 않는다. 이 화면은 **기존 `PAGE_SIZE=10`을 그대로 유지**하고, 카드 높이 가변으로 무스크롤을 보장할 수 없다는 사유만 본 절에 기록한다(코드 변경 없음).
 
-## 8. 동적 폼 빌더·렌더러 아키텍처 (form.io 도입)
+## 8. 동적 폼 빌더·렌더러 아키텍처
 
-서비스 카탈로그의 입력항목 설계 화면을 form.io 스타일의 완전한 드래그앤드롭 자유배치 폼 빌더로 전환한다(SRM/ESM 공용, 레이아웃 컴포넌트 포함 — [database/service-request.md](../database/service-request.md) `form_schema` JSONB 전환 참조). Form.io 자체 서버는 사용하지 않고 `@formio/js`+`@formio/react` 라이브러리(Builder+Renderer)만 임베드하며, 저장은 기존 Spring Boot API가 담당한다(`docs/source/form_io/overview.md`·`integration-guide-for-itsm.md` 근거).
-
-### 8.1 공용 컴포넌트
-
-기존 공용 컴포넌트(`components/common/field-builder.tsx`·`dynamic-form.tsx`·`form-schema.ts`)를 아래로 대체한다. SRM(SCR-SRM-007/002)·ESM(SCR-ESM-006/002) 모두 이 공용 컴포넌트를 그대로 재사용한다.
-
-| 컴포넌트(대체 대상) | 역할 |
-|---|---|
-| `dynamic-form-builder.tsx`(← `field-builder.tsx`) | `@formio/react`의 `FormBuilder`를 감싼 관리자용 폼 설계 컴포넌트. `initialForm`(기존 저장된 스키마)으로 편집 모드 진입, `onChange`로 최신 Form JSON을 상위 상태에 축적, 명시적 "저장" 버튼 클릭 시에만 카탈로그 CRUD API로 전달(자동저장 없음 — `onChange`가 편집 중에도 잦게 호출되므로) |
-| `dynamic-form-renderer.tsx`(← `dynamic-form.tsx`) | `@formio/react`의 `Form`을 감싼 요청자용 렌더 컴포넌트. `src`에 조회한 `formSchema`를 그대로 주입, `onSubmit`으로 제출 데이터(`submission.data`)를 상위로 전달(클라이언트 검증은 Form.io 내장 기능 사용, 서버 재검증은 [api_spec/common.md](../api_spec/common.md) 0-2절) |
-| `form-schema.ts` | 기존 `FormFieldSchema`/`FormFieldType`/`validateForm`/`hasOptions` 계약을 폐기하고, Form.io Form JSON 타입 별칭과 8.2절 팔레트 옵션 상수만 남긴다 |
-
-> **Known limitation**: `FormBuilder`가 필드 라벨에서 key(Property Name)를 자동생성할 때 영숫자만 허용해, 한글 라벨 입력 시 저장이 차단된다(우회: 컴포넌트 편집 모달의 API 탭에서 영문 key 직접 입력). Form.io 자체 동작이며 별도 자동변환 로직 추가는 이번 범위 밖 — 관리자는 새 필드 추가 시 API 탭에서 영문 key를 직접 지정한다.
-
-### 8.2 팔레트 구성
-
-관리자에게 ITSM 카탈로그 설계에 필요한 컴포넌트만 노출한다(`FormBuilder`의 `options.builder`).
-
-| 그룹 | 노출 | 포함 컴포넌트 |
-|---|---|---|
-| Basic | 노출 | textfield, textarea, number, checkbox, selectboxes, select, radio |
-| Advanced | 노출 | email, phoneNumber, datetime(기존 `date` 유형 대체, `enableTime:false`), file(`storage:'base64'` 기본값 강제 — [api_spec/common.md](../api_spec/common.md) 0-2절) |
-| Layout | 노출 | columns, panel, tabs, fieldset(요구사항의 "레이아웃 포함 자유 배치" 충족) |
-| Data(datagrid/editgrid/datamap/tree) | 숨김 | 반복 그리드 등은 이번 요구사항에 없어 과잉기능 방지 차원에서 제외 |
-| Premium/Resource | 숨김 | 서명·설문·reCAPTCHA·외부 리소스 연동 등 요구사항 범위 밖 |
-
-조건부 표시(Conditional)·계산 필드(Calculated Value) 편집 UI는 Form.io 컴포넌트 편집 모달에 기본 내장되어 완전히 숨기기 어려우나, 서버는 이를 해석·집행하지 않는다([api_spec/common.md](../api_spec/common.md) 0-2절 — 이번 유지보수 범위 밖).
-
-### 8.3 Bootstrap ↔ ADS(우리 디자인 시스템) 통합 방안
-
-Form.io Builder/Renderer는 기본적으로 Bootstrap 전제 스타일이다(`docs/source/form_io/form-builder.md` 주의사항). 전면 Bootstrap CSS(`bootstrap.min.css`) 도입은 전역 리셋·타이포그래피가 ADS 토큰과 충돌하므로, 아래 방식으로 스코핑한다.
-
-- `@formio/js`가 배포하는 폼 전용 CSS(예: `formio.form.min.css` 계열, 전역 리셋이 없는 컴포넌트 스타일 시트)만 임포트한다 — Bootstrap 전체 리셋 CSS는 임포트하지 않는다.
-- `dynamic-form-builder.tsx`/`dynamic-form-renderer.tsx`는 렌더 최상위를 전용 래퍼(`.formio-scope`)로 감싸, 그 안에서만 Form.io CSS가 적용되도록 컨테이너를 분리한다.
-- `.formio-scope` 하위에 오버라이드 스타일시트(`index.css`에 추가)를 두어 버튼 강조색(`.btn-primary` → `color.background.brand.bold`), 입력 테두리·라운드(`border.radius`), 폰트(Atlassian Sans/시스템 폰트 스택)를 ADS 토큰 값으로 재정의한다. 컴포넌트 구조 자체(`.formio-component-*` 클래스 등)는 건드리지 않고 색상·타이포·spacing 토큰만 덮어써 시각적 일관성을 맞춘다.
-- 아이콘은 Bootstrap Icons 대신 프로젝트가 이미 쓰는 `lucide-react`로 대체 가능한지 우선 검토하되, 팔레트 아이콘은 Form.io 내장 아이콘 폰트에 의존하므로 이번 범위에서는 Bootstrap Icons CSS만 최소로 유지한다(전체 Bootstrap CSS는 미도입).
-
-### 8.4 저장 흐름
-
-`FormBuilder`는 URL 기반 자동 로드·저장을 하지 않으므로([form-builder.md](../../source/form_io/form-builder.md) 3절), 스키마 로드·저장은 기존 apiClient로 명시 처리한다 — 카탈로그 상세 조회(API-SRM-002/API-ESM-002)로 받은 `formSchema`를 `initialForm`에 주입해 편집 모드로 열고, `onChange`로 축적한 최신 스키마를 "저장" 버튼 클릭 시 카탈로그 생성/수정 API(API-SRM-003/004, API-ESM-003/004)로 PUT/PATCH한다.
+이 아키텍처는 SRM 전용이다(form.io 완전 제거 후 자체 8×n 그리드 엔진으로 재구현되어 [service-request.md](service-request.md) 5절로 이전). ESM은 이 아키텍처를 사용한 적이 없으며, 기존 행 기반 EAV(`esm_catalog_form_field`/`esm_request_form_value`)를 그대로 사용한다 — 부서 카탈로그의 동적 양식 재구현이 별도로 확정되면 그때 다시 설계한다.

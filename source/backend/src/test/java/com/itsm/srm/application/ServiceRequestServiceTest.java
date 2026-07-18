@@ -108,18 +108,18 @@ class ServiceRequestServiceTest {
 
     private ServiceCatalogItem catalog() {
         return new ServiceCatalogItem("Laptop", null, null, null, null, null,
-                "{\"display\":\"form\",\"components\":[]}");
+                "{\"components\":[]}");
     }
 
     private ServiceCatalogItem catalogWithRequiredField() {
         return new ServiceCatalogItem("Laptop", null, null, null, null, null,
-                "{\"display\":\"form\",\"components\":[{\"key\":\"reason\",\"label\":\"사유\",\"type\":\"textfield\","
-                        + "\"input\":true,\"validate\":{\"required\":true}}]}");
+                "{\"components\":[{\"key\":\"reason\",\"label\":\"사유\",\"type\":\"text\","
+                        + "\"validation\":{\"required\":true}}]}");
     }
 
     private ServiceCatalogItem catalogWithAssigneeRole(Long roleId) {
         return new ServiceCatalogItem("Laptop", null, null, null, null, roleId,
-                "{\"display\":\"form\",\"components\":[]}");
+                "{\"components\":[]}");
     }
 
     private ErrorCode codeOf(Throwable e) {

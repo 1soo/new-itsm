@@ -61,8 +61,8 @@ import java.util.Map;
  * RBAC: scope mine/all, Agent 배정·이행, 요청자 CSAT.
  * 승인은 전 도메인 공용 승인 엔진(common.approval)이 담당하며, IN_FULFILLMENT 전이 시 게이트를 통과해야 한다
  * (docs/02_plan/api_spec/service-request.md API-SRM-010, docs/02_plan/api_spec/common.md 0절).
- * 양식 제출 데이터(formValues)는 Form.io submission.data를 통째로 JSONB에 저장하고,
- * 제출 시 공용 FormSubmissionValidator(common.form)로 재검증한다(2026-07-17 유지보수 요청).
+ * 양식 제출 데이터(formValues)는 컴포넌트 key 기준 key-value 맵을 통째로 JSONB에 저장하고,
+ * 제출 시 공용 FormSubmissionValidator(common.form)로 재검증한다(2026-07-18 유지보수 요청, form.io 완전 제거).
  */
 @Service
 public class ServiceRequestService {

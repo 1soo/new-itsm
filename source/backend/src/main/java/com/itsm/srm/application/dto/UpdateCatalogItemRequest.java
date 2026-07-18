@@ -12,6 +12,6 @@ public record UpdateCatalogItemRequest(
         Integer slaResponseMinutes,
         Integer slaResolveMinutes,
         @Schema(description = "담당자 역할(선택)") Long assigneeRoleId,
-        @Schema(description = "제공 시 양식 전체 교체(Form.io Form JSON, {display, components})") Map<String, Object> formSchema
+        @Schema(description = "제공 시 양식 전체 교체(자체 8×n 그리드 스키마, {components})") Map<String, Object> formSchema
 ) {
 }

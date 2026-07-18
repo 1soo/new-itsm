@@ -4,44 +4,57 @@ import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import org.junit.jupiter.api.Test;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class FormSubmissionValidatorTest {
 
-    private Map<String, Object> schemaWithPattern(Object pattern) {
-        Map<String, Object> validate = pattern == null ? Map.of() : Map.of("pattern", pattern);
-        return Map.of("display", "form", "components", List.of(
-                Map.of("key", "reason", "label", "사유", "type", "textfield", "input", true, "validate", validate)));
+    private Map<String, Object> schema(boolean required, String regex) {
+        Map<String, Object> validation = new HashMap<>();
+        validation.put("required", required);
+        validation.put("regex", regex);
+        return Map.of("components", List.of(
+                Map.of("key", "reason", "label", "사유", "type", "text", "validation", validation)));
     }
 
     @Test
-    void blankPatternFromFormBuilderDoesNotRejectValidValue() {
-        // TC-SRM-004/006 회귀: Form.io Builder가 pattern 미설정 필드도 "pattern":""로 직렬화한다.
-        Map<String, Object> schema = schemaWithPattern("");
+    void requiredFieldMissingRejected() {
+        assertThatThrownBy(() -> FormSubmissionValidator.validate(schema(true, null), Map.of()))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                        .isEqualTo(ErrorCode.REQUIRED_FIELD_MISSING));
+    }
 
-        assertThatCode(() -> FormSubmissionValidator.validate(schema, Map.of("reason", "고장")))
+    @Test
+    void blankRegexDoesNotRejectValidValue() {
+        assertThatCode(() -> FormSubmissionValidator.validate(schema(false, ""), Map.of("reason", "고장")))
                 .doesNotThrowAnyException();
     }
 
     @Test
-    void actualPatternStillRejectsMismatchingValue() {
-        Map<String, Object> schema = schemaWithPattern("^[0-9]+$");
-
-        assertThatThrownBy(() -> FormSubmissionValidator.validate(schema, Map.of("reason", "고장")))
+    void actualRegexStillRejectsMismatchingValue() {
+        assertThatThrownBy(() -> FormSubmissionValidator.validate(schema(false, "^[0-9]+$"), Map.of("reason", "고장")))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(e -> org.assertj.core.api.Assertions.assertThat(((BusinessException) e).getErrorCode())
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                         .isEqualTo(ErrorCode.FORM_FIELD_INVALID));
     }
 
     @Test
-    void actualPatternAllowsMatchingValue() {
-        Map<String, Object> schema = schemaWithPattern("^[0-9]+$");
-
-        assertThatCode(() -> FormSubmissionValidator.validate(schema, Map.of("reason", "123")))
+    void actualRegexAllowsMatchingValue() {
+        assertThatCode(() -> FormSubmissionValidator.validate(schema(false, "^[0-9]+$"), Map.of("reason", "123")))
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    void requiredAndRegexBothAppliedWhenValuePresent() {
+        assertThatThrownBy(() -> FormSubmissionValidator.validate(schema(true, "^[0-9]+$"), Map.of("reason", "abc")))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                        .isEqualTo(ErrorCode.FORM_FIELD_INVALID));
     }
 }

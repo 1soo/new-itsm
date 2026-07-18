@@ -8,7 +8,7 @@ import com.itsm.common.exception.ErrorCode;
 import java.util.Map;
 
 /**
- * SRM/ESM 공용 동적 폼(form.io) formSchema/formValues의 Map&lt;String,Object&gt; ↔ JSON 문자열 직렬화 유틸.
+ * SRM 동적 폼(8×n 그리드) formSchema/formValues의 Map&lt;String,Object&gt; ↔ JSON 문자열 직렬화 유틸.
  * ServiceCatalogService/ServiceRequestService가 각자 구현하던 중복 로직을 추출함(2026-07-18 코드 리뷰).
  */
 public final class FormJsonMapper {

@@ -131,13 +131,13 @@ class SrmApprovalIntegrationTest {
     }
 
     private Map<String, Object> emptyFormSchema() {
-        return Map.of("display", "form", "components", List.of());
+        return Map.of("components", List.of());
     }
 
     private Map<String, Object> formSchemaWith(String key, boolean required) {
-        return Map.of("display", "form", "components", List.of(
-                Map.of("key", key, "label", key, "type", "textfield", "input", true,
-                        "validate", Map.of("required", required))));
+        return Map.of("components", List.of(
+                Map.of("key", key, "label", key, "type", "text",
+                        "validation", Map.of("required", required))));
     }
 
     private Long insertUser(String email) {

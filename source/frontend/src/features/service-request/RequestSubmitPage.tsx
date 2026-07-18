@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DynamicFormRenderer, type FormIoSchema, type FormIoSubmissionData, toast } from "@/components/common";
+import { DynamicFormRenderer, type GridFormSchema, type GridFormValues, toast } from "@/components/common";
 import { FullscreenLoader } from "@/routes/FullscreenLoader";
 import { srmApi } from "@/features/service-request/api";
 import type {
@@ -12,11 +12,11 @@ import type {
 } from "@/features/service-request/types";
 import { extractErrorMessage } from "@/lib/apiClient";
 
-const EMPTY_SCHEMA: FormIoSchema = { display: "form", components: [] };
+const EMPTY_SCHEMA: GridFormSchema = { components: [] };
 
 /*
- * 요청 제출(SCR-SRM-002) — 카탈로그 항목의 동적 양식(form.io)을 작성해 제출.
- * 우측 "관련 지식 기사" 추천 패널(있을 때만). 필수·형식 위반 필드는 DynamicFormRenderer(Form.io) 내장 검증이 제출을 차단.
+ * 요청 제출(SCR-SRM-002) — 카탈로그 항목의 동적 양식(자체 8×n 그리드)을 작성해 제출.
+ * 우측 "관련 지식 기사" 추천 패널(있을 때만). 필수·정규식 위반 필드는 DynamicFormRenderer 내장 검증이 제출을 차단.
  * 제출 성공 시 접수번호 토스트 + 상세 이동. 서버 재검증 실패(400)는 오류 토스트로 안내.
  */
 export function RequestSubmitPage() {
@@ -30,7 +30,7 @@ export function RequestSubmitPage() {
   const [submitting, setSubmitting] = useState(false);
   const [suggestions, setSuggestions] = useState<KnowledgeSuggestion[]>([]);
 
-  const schema = useMemo<FormIoSchema>(() => catalog?.formSchema ?? EMPTY_SCHEMA, [catalog]);
+  const schema = useMemo<GridFormSchema>(() => catalog?.formSchema ?? EMPTY_SCHEMA, [catalog]);
 
   useEffect(() => {
     if (!itemId) {
@@ -62,7 +62,7 @@ export function RequestSubmitPage() {
       .catch(() => setSuggestions([]));
   }, [itemId]);
 
-  const handleFormSubmit = async (formValues: FormIoSubmissionData) => {
+  const handleFormSubmit = async (formValues: GridFormValues) => {
     if (!catalog) return;
 
     setSubmitting(true);

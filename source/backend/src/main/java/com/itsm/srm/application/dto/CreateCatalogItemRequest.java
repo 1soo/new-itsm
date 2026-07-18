@@ -15,7 +15,7 @@ public record CreateCatalogItemRequest(
         Integer slaResponseMinutes,
         Integer slaResolveMinutes,
         @Schema(description = "담당자 역할(선택, 배정 후보 역할)") Long assigneeRoleId,
-        @Schema(description = "동적 양식(Form.io Form JSON, {display, components})")
+        @Schema(description = "동적 양식(자체 8×n 그리드 스키마, {components})")
         @NotNull Map<String, Object> formSchema
 ) {
 }

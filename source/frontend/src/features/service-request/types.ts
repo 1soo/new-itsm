@@ -1,9 +1,9 @@
 /* service-request(SRM) 도메인 타입 — api_spec/service-request.md 계약 기준. */
 
-// 동적 폼 스키마는 dev-ui 공통 컴포넌트(DynamicFormBuilder/DynamicFormRenderer)와 계약을 공유한다
-// (2026-07-17 유지보수 요청, form.io 전환 — Form.io Form JSON 전체).
-export type { FormIoSchema } from "@/components/common";
-import type { FormIoSchema } from "@/components/common";
+// 동적 폼 스키마는 공통 컴포넌트(DynamicFormBuilder/DynamicFormRenderer)와 계약을 공유한다
+// (2026-07-18 유지보수 요청, form.io 완전 제거 → 자체 8×n 그리드 스키마).
+export type { GridFormSchema } from "@/components/common";
+import type { GridFormSchema } from "@/components/common";
 
 export type SrStatus =
   | "SUBMITTED"
@@ -45,7 +45,7 @@ export interface CatalogItemDetail {
   assigneeRoleName?: string | null;
   slaResponseMinutes: number;
   slaResolveMinutes: number;
-  formSchema: FormIoSchema;
+  formSchema: GridFormSchema;
 }
 
 export interface CatalogItemInput {
@@ -55,7 +55,7 @@ export interface CatalogItemInput {
   assigneeRoleId?: number;
   slaResponseMinutes: number;
   slaResolveMinutes: number;
-  formSchema: FormIoSchema;
+  formSchema: GridFormSchema;
 }
 
 /** 카탈로그 카테고리(API-SRM-018~021, 2026-07-16 유지보수 요청). `itemCount`는 목록 조회(카테고리 관리 탭)에만 제공. */

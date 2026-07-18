@@ -18,8 +18,8 @@ import org.hibernate.type.SqlTypes;
 import java.time.OffsetDateTime;
 
 /**
- * 서비스 요청 티켓. 양식 제출 데이터는 formValues(Form.io submission.data, JSONB)에 통째로 저장한다
- * (2026-07-17 유지보수 요청, 기존 ServiceRequestFormValue EAV 대체).
+ * 서비스 요청 티켓. 양식 제출 데이터는 formValues(컴포넌트 key 기준 key-value 맵, JSONB)에 통째로 저장한다
+ * (2026-07-18 유지보수 요청, form.io 완전 제거).
  */
 @Getter
 @Entity

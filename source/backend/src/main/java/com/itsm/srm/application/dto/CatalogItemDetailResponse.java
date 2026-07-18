@@ -15,6 +15,6 @@ public record CatalogItemDetailResponse(
         Integer slaResolveMinutes,
         Long assigneeRoleId,
         String assigneeRoleName,
-        @Schema(description = "동적 양식(Form.io Form JSON, {display, components})") Map<String, Object> formSchema
+        @Schema(description = "동적 양식(자체 8×n 그리드 스키마, {components})") Map<String, Object> formSchema
 ) {
 }

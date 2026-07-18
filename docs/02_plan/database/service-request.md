@@ -12,6 +12,7 @@
 | 2026-07-16 | service_catalog_category 신규, service_catalog_item.category → category_id(FK) 전환, catalog_form_field.field_type에 textarea 추가 |
 | 2026-07-17 | catalog_form_field·service_request_form_value(EAV) 폐기, service_catalog_item.form_schema·service_request.form_values(JSONB) 신규 |
 | 2026-07-18 | queue 테이블 및 service_catalog_item.queue_id/service_request.queue_id 제거, 요청 분류를 카테고리로 일원화 |
+| 2026-07-18 | form.io 완전 제거, service_catalog_item.form_schema를 자체 8×n 그리드 스키마로 전면 재정의(컬럼 타입 JSONB 유지, 내부 구조만 교체). 기존 저장된 form.io 스키마는 빈 그리드로 리셋 |
 
 서비스 카탈로그(요청 유형·동적 양식), 서비스 요청, 동적 양식 값, CSAT를 정의한다. 승인은 [common.md](common.md)의 `approval_process`/`approval_request` 커스텀 승인 엔진(전 도메인 공용), 코멘트는 `comment`를 사용한다. 카탈로그 항목(`service_catalog_item.id`)은 승인 프로세스의 요청유형 스코프(`approval_process.request_subtype_key`)로도 사용된다.
 
@@ -19,8 +20,8 @@
 
 | 대상 | 적용 정규화 | 근거 (왜 필요한가) |
 |------|-------------|--------------------|
-| service_catalog_item.form_schema | 의도적 비정규화(JSON 문서) | Form.io 스타일 폼은 컬럼/패널/탭 등 임의 깊이로 중첩되는 트리 구조라 EAV(행의 집합)로는 레이아웃 계층을 표현할 수 없다. 폼 전체를 하나의 JSON 문서로 저장해 `@formio/react`의 `FormBuilder`/`Form`이 가공 없이 그대로 소비하도록 한다. |
-| service_request.form_values | 의도적 비정규화(JSON 문서) | 제출 데이터는 필드별 집계·통계 로직이 없어 EAV로 분해해 얻는 실익이 없다. Form.io `submission.data`(key-value JSON)를 가공 없이 그대로 저장해 조회 시 재조립 비용을 없앤다. |
+| service_catalog_item.form_schema | 의도적 비정규화(JSON 문서) | 8×n 그리드 폼은 컴포넌트별 위치(그리드 좌표)·크기(칸 수)·Content 설정을 함께 갖는 배열 구조라 EAV(행의 집합)로는 배치 정보를 표현할 수 없다. 폼 전체를 하나의 JSON 문서로 저장해 자체 그리드 빌더/렌더러가 가공 없이 그대로 소비하도록 한다. |
+| service_request.form_values | 의도적 비정규화(JSON 문서) | 제출 데이터는 필드별 집계·통계 로직이 없어 EAV로 분해해 얻는 실익이 없다. 컴포넌트 `key` 기준 key-value JSON을 가공 없이 그대로 저장해 조회 시 재조립 비용을 없앤다. |
 | service_catalog_item ↔ service_catalog_category | 3NF | 카테고리를 자유 텍스트로 두면 표기 불일치(오타·중복 표현)가 생기므로 고정 목록 테이블로 분리. |
 
 ## 2. 공통 컬럼 규칙
@@ -60,8 +61,10 @@
 | assignee_role_id | BIGINT | FK → role.id, NULL | 담당자 역할(선택). 지정 시 상담원이 라우팅/배정 시점에 이 역할 보유자 후보 목록 중 수동으로 담당자를 선택하는 데 사용(자동배정 아님). 미지정이면 본인 배정만 가능 |
 | sla_response_minutes | INT | NULL | 응답 SLA(분) |
 | sla_resolve_minutes | INT | NULL | 해결 SLA(분) |
-| form_schema | JSONB | NOT NULL, DEFAULT `{"display":"form","components":[]}` | 동적 양식 스키마(Form.io Form JSON 전체 — `display`·`components` 트리, 컬럼/패널/탭 등 레이아웃 컴포넌트 포함). SCR-SRM-007 폼 빌더(`@formio/react` `FormBuilder`)가 편집·저장 |
+| form_schema | JSONB | NOT NULL, DEFAULT `{"components":[]}` | 동적 양식 스키마(자체 8×n 그리드 — `components` 배열, 각 컴포넌트는 `type`(text/textarea/select/radio/checkbox/date/file)·`key`·`label`·`position`{col,row}·`size`{w,h}·Content 설정을 포함, 상세 스키마는 [api_spec/service-request.md](../api_spec/service-request.md) API-SRM-002 참조). SCR-SRM-007 "Form 설정" 팝업(자체 그리드 빌더, [screen/service-request.md](../screen/service-request.md) 5절)이 편집·저장 |
 | ...공통 컬럼... | | | |
+
+> **기존 데이터 리셋**: 이전 form.io Form JSON은 신규 그리드 스키마와 구조가 호환되지 않아 자동 마이그레이션이 불가능하다. 배포 시 `service_catalog_item.form_schema`의 모든 로우를 초기값(`{"components":[]}`)으로 리셋한다(사용자 승인 완료). 프로세스 오너가 배포 후 각 항목의 폼을 새 빌더로 다시 구성해야 한다.
 
 ### service_request
 
@@ -76,7 +79,7 @@
 | sla_response_due | TIMESTAMPTZ | NULL | 응답 SLA 기한 |
 | sla_resolve_due | TIMESTAMPTZ | NULL | 해결 SLA 기한 |
 | sla_status | VARCHAR(10) | NOT NULL, DEFAULT 'OK' | OK/WARNING/BREACHED |
-| form_values | JSONB | NOT NULL, DEFAULT `{}` | 양식 제출 데이터(Form.io `submission.data` 그대로, key=컴포넌트 `key`). SCR-SRM-002 렌더러(`@formio/react` `Form`) 제출 시 저장 |
+| form_values | JSONB | NOT NULL, DEFAULT `{}` | 양식 제출 데이터(key=컴포넌트 `key`인 key-value 맵, 레이아웃 무관). SCR-SRM-002 그리드 렌더러 제출 시 저장 |
 | ...공통 컬럼... | | | |
 
 ### csat

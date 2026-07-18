@@ -18,19 +18,28 @@ export { KpiCard } from "./kpi-card";
 export { TrendChart, type TrendPoint } from "./trend-chart";
 export { DistributionChart, type DistributionDatum } from "./distribution-chart";
 export { Rating } from "./rating";
-export { DynamicFormBuilder } from "./dynamic-form-builder";
-export { DynamicFormRenderer } from "./dynamic-form-renderer";
+export { DynamicFormBuilder, type DynamicFormBuilderProps } from "./dynamic-form-builder";
+export { DynamicFormRenderer, type DynamicFormRendererProps } from "./dynamic-form-renderer";
 export {
-  FORM_BUILDER_OPTIONS,
-  type FormIoDisplay,
-  type FormIoSchema,
-  type FormIoSubmissionData,
+  GRID_COLUMNS,
+  GRID_PALETTE_TYPES,
+  GRID_ROW_HEIGHT_PX,
+  EMPTY_GRID_SCHEMA,
+  hasGridOptions,
+  gridMaxHeight,
+  type GridAlign,
+  type GridComponentType,
+  type GridPosition,
+  type GridSize,
+  type GridComponentInput,
+  type GridComponentValidation,
+  type GridComponent,
+  type GridFormSchema,
+  type GridFormValues,
 } from "./form-schema";
-/** @deprecated field-builder.tsx/dynamic-form.tsx 전환 완료 후 제거 예정(SRM+ESM 화면 전환 완료 시) */
+/** ESM은 레거시 EAV 그대로 사용(screen/service-request.md 5절, SRM 전용 그리드 전환 대상 아님) */
 export { DynamicForm } from "./dynamic-form";
-/** @deprecated field-builder.tsx/dynamic-form.tsx 전환 완료 후 제거 예정(SRM+ESM 화면 전환 완료 시) */
 export { FieldBuilder } from "./field-builder";
-/** @deprecated form-schema.ts 레거시 구획, 전환 완료 후 제거 예정 */
 export {
   validateForm,
   hasOptions,

@@ -8,7 +8,7 @@
 |------|------|
 | 2026-07-10 | 최초 작성 |
 | 2026-07-16 | esm_catalog_form_field.field_type에 textarea 추가(SRM catalog_form_field와 공유하는 FormFieldType 계약) |
-| 2026-07-17 | esm_catalog_form_field(EAV) 폐기, esm_catalog_item.form_schema(JSONB, Form.io Form JSON 전체) 신규. esm_request_form_value(EAV) 폐기, esm_request.form_values(JSONB, submission.data 그대로) 신규. SRM과 동일 패턴([service-request.md](service-request.md) 참조) |
+| 2026-07-18 | 문서 정정 — 이전 버전이 실제 구현되지 않은 SRM 스타일 form.io 전환(esm_catalog_item.form_schema/esm_request.form_values JSONB, esm_catalog_form_field/esm_request_form_value 폐기)을 반영하고 있었음을 확인(코드 조사, `source/db/sql/16_esm_schema.sql` 기준). ESM은 이 전환이 적용된 적이 없으므로 실제 구현(레거시 EAV: esm_catalog_form_field/esm_request_form_value 유지)에 맞게 되돌림 |
 
 부서별 서비스 카탈로그(체크리스트 템플릿 포함), 부서 요청, HR 케이스, 온보딩/오프보딩 체크리스트·하위 작업을 정의한다. 코멘트·타임라인(상태 이력)은 [common.md](common.md)의 `comment`/`timeline_event`(ticket_type='ESM_REQUEST' 또는 'HR_CASE')를 재사용한다.
 
@@ -18,8 +18,8 @@
 
 | 대상 | 적용 정규화 | 근거 (왜 필요한가) |
 |------|-------------|--------------------|
-| esm_catalog_item.form_schema | 의도적 비정규화(JSON 문서) | SRM `service_catalog_item.form_schema`와 동일 근거 — 레이아웃 트리를 EAV로 표현할 수 없어 폼 전체를 JSON 문서로 저장한다. 기존 `esm_catalog_form_field`(1NF EAV)는 폐기. |
-| esm_request.form_values | 의도적 비정규화(JSON 문서) | SRM `service_request.form_values`와 동일 근거 — 필드별 집계 로직이 없어 `submission.data`를 그대로 저장한다. 기존 `esm_request_form_value`(EAV)는 폐기. |
+| esm_catalog_item ↔ esm_catalog_form_field | 1NF(EAV) | 카탈로그 항목별 동적 양식 필드 개수가 가변이라 별도 행으로 분리한다. |
+| esm_request ↔ esm_request_form_value | 1NF(EAV) | 요청 제출 값도 필드 개수가 가변이며 필드별 집계·통계 로직이 없어 행 기반 key-value로 충분하다. |
 | esm_checklist_template_task | 1NF | 카탈로그 항목당 체크리스트 하위 작업 템플릿이 가변 개수라 별도 행으로 분리. |
 | esm_checklist_task | 3NF | 체크리스트(1) : 하위 작업(N) — 하위 작업은 체크리스트 생성 시점에 템플릿을 복제해 개별 상태를 갖는 실행 인스턴스이므로 템플릿 테이블과 분리. |
 
@@ -31,9 +31,11 @@
 
 | 테이블명 | 설명 | 관련 요구사항 |
 |----------|------|---------------|
-| esm_catalog_item | 부서별 요청 유형(카탈로그 항목, 동적 양식 스키마 포함) | REQ-ESM-001 |
+| esm_catalog_item | 부서별 요청 유형(카탈로그 항목) | REQ-ESM-001 |
+| esm_catalog_form_field | 요청 유형 동적 양식 필드(EAV) | REQ-ESM-001/002 |
 | esm_checklist_template_task | 카탈로그 항목의 체크리스트 하위 작업 템플릿 | REQ-ESM-005/006 |
-| esm_request | 부서 요청 티켓(양식 제출 데이터 포함) | REQ-ESM-002 |
+| esm_request | 부서 요청 티켓 | REQ-ESM-002 |
+| esm_request_form_value | 요청 양식 입력 값(EAV) | REQ-ESM-002 |
 | esm_hr_case | HR 케이스 | REQ-ESM-003/004 |
 | esm_checklist | 온보딩/오프보딩 체크리스트 | REQ-ESM-005/006/007 |
 | esm_checklist_task | 체크리스트 하위 작업(실행 인스턴스) | REQ-ESM-005/006/007 |
@@ -47,10 +49,24 @@
 | id | BIGINT | PK | |
 | name | VARCHAR(150) | NOT NULL | 요청 유형명 |
 | description | VARCHAR(500) | NULL | 설명 |
-| department | VARCHAR(20) | NOT NULL | HR/LEGAL/FACILITIES/FINANCE/IT |
+| department | VARCHAR(20) | NOT NULL | HR/LEGAL/FACILITIES/FINANCE |
 | checklist_template_type | VARCHAR(15) | NOT NULL, DEFAULT 'NONE' | NONE/ONBOARDING/OFFBOARDING |
-| form_schema | JSONB | NOT NULL, DEFAULT `{"display":"form","components":[]}` | 동적 양식 스키마(Form.io Form JSON 전체). SCR-ESM-006 폼 빌더가 편집·저장 |
 | ...공통 컬럼... | | | |
+
+### esm_catalog_form_field
+
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| id | BIGINT | PK | |
+| catalog_item_id | BIGINT | FK → esm_catalog_item.id, NOT NULL | 소속 카탈로그 항목 |
+| field_key | VARCHAR(50) | NOT NULL | 필드 식별자 |
+| label | VARCHAR(150) | NOT NULL | 필드 라벨 |
+| field_type | VARCHAR(20) | NOT NULL | text/select/number/date/file/textarea |
+| required | BOOLEAN | NOT NULL, DEFAULT false | 필수 여부 |
+| options | JSONB | NULL | select 옵션 목록 |
+| sort_order | INT | NOT NULL, DEFAULT 0 | 표시 순서 |
+| ...공통 컬럼... | | | |
+| | | UNIQUE(catalog_item_id, field_key) | 카탈로그 항목 내 필드 키 중복 방지 |
 
 ### esm_checklist_template_task
 
@@ -78,8 +94,18 @@
 | target_user_name | VARCHAR(100) | NULL | 온보딩/오프보딩 대상자명 |
 | checklist_id | BIGINT | FK → esm_checklist.id, NULL, UNIQUE | 연계 체크리스트(1:1, 있을 때만) |
 | status | VARCHAR(15) | NOT NULL, DEFAULT 'SUBMITTED' | SUBMITTED/IN_PROGRESS/COMPLETED/REJECTED |
-| form_values | JSONB | NOT NULL, DEFAULT `{}` | 양식 제출 데이터(Form.io `submission.data` 그대로). SCR-ESM-002 렌더러 제출 시 저장 |
 | ...공통 컬럼... | | | |
+
+### esm_request_form_value
+
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| id | BIGINT | PK | |
+| esm_request_id | BIGINT | FK → esm_request.id, NOT NULL | 소속 요청 |
+| field_key | VARCHAR(50) | NOT NULL | 필드 식별자(`esm_catalog_form_field.field_key`) |
+| field_value | TEXT | NULL | 제출 값 |
+| ...공통 컬럼... | | | |
+| | | UNIQUE(esm_request_id, field_key) | 요청 내 필드 키 중복 방지 |
 
 ### esm_hr_case
 
@@ -125,9 +151,10 @@
 
 ## 6. 관계 · 제약조건 요약
 
-- esm_catalog_item.form_schema는 JSONB 컬럼(관계형 FK 없음). esm_checklist_template_task.catalog_item_id → esm_catalog_item.id (FK)
+- esm_catalog_form_field.catalog_item_id → esm_catalog_item.id (FK), UNIQUE(catalog_item_id, field_key)
+- esm_checklist_template_task.catalog_item_id → esm_catalog_item.id (FK)
 - esm_request.catalog_item_id → esm_catalog_item.id, requester_id/assignee_id → app_user.id, checklist_id → esm_checklist.id (FK, UNIQUE)
-- esm_request.form_values는 JSONB 컬럼(관계형 FK 없음)
+- esm_request_form_value.esm_request_id → esm_request.id (FK), UNIQUE(esm_request_id, field_key)
 - esm_checklist_task.checklist_id → esm_checklist.id (FK), related_asset_id → asset.id (FK, nullable)
 - 코멘트는 common.comment(ticket_type='ESM_REQUEST'), 상태 이력은 common.timeline_event(ticket_type='ESM_REQUEST' 또는 'HR_CASE') 사용
 - **사용자-부서 매핑**: 부서 요청 처리자·체크리스트 하위 작업 담당자의 "소속 부서" 판정을 위해 [auth.md](auth.md)의 `app_user`에 `department` 컬럼을 추가했다(HR/LEGAL/FACILITIES/FINANCE/IT, NULL 허용). 부서 요청 목록/처리 큐·내 하위 작업 목록 조회 시 `app_user.department = esm_request.department`(또는 `esm_checklist_task.department`) 조건으로 필터링한다.

@@ -105,3 +105,4 @@
 | 20260717-152015 | srm | partial | pattern 버그 수정확인, 팔레트 구성 수정확인, 제출/취소 버튼 배치(중복 Submit 버튼 결함) | `docs/04_test/20260717-152015/srm/result/srm.md` |
 | 20260717-153547 | srm | pass | 중복 Submit 버튼 결함 수정확인, 제출/취소 버튼 배치 | `docs/04_test/20260717-153547/srm/result/srm.md` |
 | 20260718-112351 | srm | pass | 요청 큐 폐지, 카테고리 기반 분류 일원화, 실시간 조인(요구사항 충족, /api/v1/queues 500은 도메인 무관 별도 결함) | `docs/04_test/20260718-112351/srm/result/srm.md` |
+| 20260718-135109 | srm | pass | form.io 완전 제거, 자체 8×n 그리드 폼 빌더, 팔레트 7종, 겹침 차단, Content 설정, 서버 재검증, ESM 회귀 없음 | `docs/04_test/20260718-135109/srm/result/srm.md` |

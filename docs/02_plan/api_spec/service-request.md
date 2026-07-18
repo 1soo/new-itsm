@@ -12,6 +12,7 @@
 | 2026-07-16 | 카탈로그 카테고리 CRUD API(API-SRM-018~021) 신규, 카탈로그 CRUD(API-SRM-001~004)의 category(자유 텍스트) 필드를 categoryId/categoryName으로 전환, formSchema.type에 textarea 추가, API-SRM-008 응답 timeline 항목에 actor 필드 추가 |
 | 2026-07-17 | API-SRM-002/003/004의 formSchema가 필드 배열에서 Form.io Form JSON 전체(`{display,components}`)로 전환. API-SRM-006 formValues는 Form.io submission.data 그대로 전달 |
 | 2026-07-18 | API-SRM-016을 "큐 목록·건수 조회"에서 "요청 카테고리별 건수 조회"(`GET /api/v1/service-requests/category-counts`)로 대체. API-SRM-007 목록 필터를 `queue=`→`categoryId=`로 전환. API-SRM-002/003/004의 queueId 필드, API-SRM-008 응답의 queue 필드 제거 |
+| 2026-07-18 | form.io 완전 제거, API-SRM-002/003/004의 formSchema를 자체 8×n 그리드 스키마(컴포넌트 배열, 위치/크기/Content 설정)로 전면 재정의. formValues는 key-value 구조 그대로 유지(레이아웃 엔진과 무관) |
 
 ## 공통 규약
 
@@ -67,10 +68,25 @@
     "categoryId": "number|null", "categoryName": "string|null · categoryId 표시용",
     "assigneeRoleId": "number|null", "assigneeRoleName": "string|null · assigneeRoleId 표시용",
     "slaResponseMinutes": "number", "slaResolveMinutes": "number",
-    "formSchema": { "display": "form", "components": [ "object · Form.io Component 객체(type/key/label/validate/conditional/columns 등), 중첩 레이아웃(columns/panel/tabs) 포함" ] }
+    "formSchema": {
+      "components": [
+        {
+          "key": "string · 필드 식별자(고유)",
+          "type": "text|textarea|select|radio|checkbox|date|file",
+          "label": "string",
+          "position": { "col": "number · 0~7", "row": "number · 0 이상" },
+          "size": { "w": "number · 1~2", "h": "number · 1~2(textarea는 높이 제약 없음)" },
+          "labelAlign": "left|center|right · 기본값 left",
+          "input": { "widthPercent": "number · 기본값 90", "align": "left|center|right · 기본값 center", "defaultValue": "string|null", "readOnly": "boolean · 기본값 false" },
+          "validation": { "required": "boolean · 기본값 false", "regex": "string|null · 선택 입력, 미지정 시 형식 검증 없음" },
+          "options": "string|null · select/radio/checkbox 전용, 콤마(,) 구분 텍스트",
+          "ciLinked": "boolean · 기본값 false, select/radio/checkbox 옵션 설정 UI의 CI 연계 라디오 버튼 자리 표시용(실제 동작 없음, 향후 확장 대비)"
+        }
+      ]
+    }
   }
   ```
-  > `formSchema`는 필드 배열이 아니라 **Form.io Form JSON 전체**다. FE는 이 객체를 그대로 `@formio/react`의 `Form`(SCR-SRM-002)·`FormBuilder`(SCR-SRM-007, 편집 모드 `initialForm`)에 전달한다.
+  > `formSchema`는 자체 8×n 그리드 스키마다(`components` 배열, 중첩 레이아웃 없음 — form.io의 컬럼/패널/탭·Form JSON 계약은 폐기). FE는 이 객체를 그대로 그리드 렌더러(SCR-SRM-002)·"Form 설정" 팝업(SCR-SRM-007, [screen/service-request.md](../screen/service-request.md) 5절)에 전달한다.
 - **Response Code**: 200 / 401 / 404
 
 ### API-SRM-003 · 카탈로그 항목 생성
@@ -85,10 +101,10 @@
     "categoryId": "number · 선택(미지정 시 미분류)",
     "assigneeRoleId": "number · 선택(담당자 역할. 지정 시 라우팅/배정 시점 후보 목록 조회(API-SRM-017)에 사용, 자동배정 아님)",
     "slaResponseMinutes": "number", "slaResolveMinutes": "number",
-    "formSchema": { "display": "form", "components": [ "object · Form.io Component 객체" ] }
+    "formSchema": { "components": [ "object · API-SRM-002 응답과 동일한 그리드 컴포넌트 객체" ] }
   }
   ```
-  > 승인 필요 여부·승인 담당 역할은 더 이상 카탈로그 항목 생성 시 지정하지 않는다(승인 프로세스 커스텀 기능으로 완전 대체 — [auth.md](auth.md) API-AUTH-027에서 SYSTEM_ADMIN이 도메인=SERVICE_REQUEST, 요청유형=이 카탈로그 항목으로 별도 설정). `assigneeRoleId`는 [auth.md](auth.md) API-AUTH-030(역할 목록 조회)로 후보를 조회해 선택하고, `categoryId`는 API-SRM-018(카테고리 목록 조회)로 후보를 조회해 선택한다. `formSchema`는 SCR-SRM-007 폼 빌더(`FormBuilder`)의 `onChange`로 축적된 최신 Form JSON을 그대로 전달한다.
+  > 승인 필요 여부·승인 담당 역할은 더 이상 카탈로그 항목 생성 시 지정하지 않는다(승인 프로세스 커스텀 기능으로 완전 대체 — [auth.md](auth.md) API-AUTH-027에서 SYSTEM_ADMIN이 도메인=SERVICE_REQUEST, 요청유형=이 카탈로그 항목으로 별도 설정). `assigneeRoleId`는 [auth.md](auth.md) API-AUTH-030(역할 목록 조회)로 후보를 조회해 선택하고, `categoryId`는 API-SRM-018(카테고리 목록 조회)로 후보를 조회해 선택한다. `formSchema`는 SCR-SRM-007 "Form 설정" 팝업(그리드 빌더)에서 적용된 최신 그리드 스키마를 그대로 전달한다.
 - **Response Body** (201): 생성된 항목
 - **Response Code**: 201 / 400 이름·양식 누락 / 403 권한 부족 / 404 존재하지 않는 categoryId
 
@@ -116,7 +132,7 @@
 - **Header**: `Content-Type: application/json`
 - **Request Body**:
   ```json
-  { "catalogItemId": "number · 필수", "formValues": { "key": "value · Form.io submission.data 그대로" } }
+  { "catalogItemId": "number · 필수", "formValues": { "key": "value · 컴포넌트 key 기준 제출 값" } }
   ```
 - **Response Body** (201):
   ```json
