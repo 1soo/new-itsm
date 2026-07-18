@@ -9,7 +9,6 @@ public record UpdateCatalogItemRequest(
         String name,
         String description,
         @Schema(description = "카테고리(선택)") Long categoryId,
-        Long queueId,
         Integer slaResponseMinutes,
         Integer slaResolveMinutes,
         @Schema(description = "담당자 역할(선택)") Long assigneeRoleId,

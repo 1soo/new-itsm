@@ -26,7 +26,7 @@ import com.itsm.srm.domain.RequestStatus;
 import com.itsm.srm.domain.ServiceCatalogItem;
 import com.itsm.srm.domain.ServiceRequest;
 import com.itsm.srm.domain.repository.CsatRepository;
-import com.itsm.srm.domain.repository.QueueRepository;
+import com.itsm.srm.domain.repository.ServiceCatalogCategoryRepository;
 import com.itsm.srm.domain.repository.ServiceCatalogItemRepository;
 import com.itsm.srm.domain.repository.ServiceRequestRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -64,7 +64,7 @@ class ServiceRequestServiceTest {
 
     @Mock ServiceRequestRepository requestRepository;
     @Mock ServiceCatalogItemRepository catalogItemRepository;
-    @Mock QueueRepository queueRepository;
+    @Mock ServiceCatalogCategoryRepository categoryRepository;
     @Mock CsatRepository csatRepository;
     @Mock CommentRepository commentRepository;
     @Mock TimelineEventRepository timelineRepository;
@@ -80,7 +80,7 @@ class ServiceRequestServiceTest {
     @BeforeEach
     void setUp() {
         service = new ServiceRequestService(requestRepository, catalogItemRepository,
-                queueRepository, csatRepository, commentRepository,
+                categoryRepository, csatRepository, commentRepository,
                 timelineRepository, appUserRepository, roleRepository, ticketLinkRepository, assetService,
                 approvalGateService, approvalRequestRepository, new ObjectMapper());
         when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -99,7 +99,7 @@ class ServiceRequestServiceTest {
     }
 
     private ServiceRequest request(Long requesterId, RequestStatus status) {
-        ServiceRequest r = new ServiceRequest("SRM-2026-0001", 10L, requesterId, 1L, null, null, "{}");
+        ServiceRequest r = new ServiceRequest("SRM-2026-0001", 10L, requesterId, null, null, "{}");
         if (status != RequestStatus.SUBMITTED) {
             r.changeStatus(status);
         }
@@ -107,18 +107,18 @@ class ServiceRequestServiceTest {
     }
 
     private ServiceCatalogItem catalog() {
-        return new ServiceCatalogItem("Laptop", null, null, 1L, null, null, null,
+        return new ServiceCatalogItem("Laptop", null, null, null, null, null,
                 "{\"display\":\"form\",\"components\":[]}");
     }
 
     private ServiceCatalogItem catalogWithRequiredField() {
-        return new ServiceCatalogItem("Laptop", null, null, 1L, null, null, null,
+        return new ServiceCatalogItem("Laptop", null, null, null, null, null,
                 "{\"display\":\"form\",\"components\":[{\"key\":\"reason\",\"label\":\"사유\",\"type\":\"textfield\","
                         + "\"input\":true,\"validate\":{\"required\":true}}]}");
     }
 
     private ServiceCatalogItem catalogWithAssigneeRole(Long roleId) {
-        return new ServiceCatalogItem("Laptop", null, null, 1L, null, null, roleId,
+        return new ServiceCatalogItem("Laptop", null, null, null, null, roleId,
                 "{\"display\":\"form\",\"components\":[]}");
     }
 
@@ -166,7 +166,7 @@ class ServiceRequestServiceTest {
     void listScopeAllWithoutRoleForbidden() {
         login(1L, "END_USER");
 
-        assertThatThrownBy(() -> service.list("all", null, null, null, null, PageRequest.of(0, 20)))
+        assertThatThrownBy(() -> service.list("all", null, false, null, null, null, PageRequest.of(0, 20)))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(codeOf(e)).isEqualTo(ErrorCode.ACCESS_DENIED));
     }

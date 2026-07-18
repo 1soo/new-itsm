@@ -29,7 +29,6 @@ import type {
   CatalogItemInput,
   CatalogItemSummary,
   Category,
-  Queue,
 } from "@/features/service-request/types";
 import { extractErrorMessage } from "@/lib/apiClient";
 import { cn } from "@/lib/utils";
@@ -50,7 +49,6 @@ interface FormState {
   name: string;
   description: string;
   categoryId: string;
-  queueId: string;
   assigneeRoleId: string;
   slaResponseMinutes: string;
   slaResolveMinutes: string;
@@ -63,7 +61,6 @@ const EMPTY_FORM: FormState = {
   name: "",
   description: "",
   categoryId: NONE_VALUE,
-  queueId: NONE_VALUE,
   assigneeRoleId: NONE_VALUE,
   slaResponseMinutes: "",
   slaResolveMinutes: "",
@@ -81,7 +78,6 @@ export function CatalogManagePage() {
   const { t } = useTranslation("service-request");
   const [tab, setTab] = useState<ManageTab>("items");
   const [items, setItems] = useState<CatalogItemSummary[]>([]);
-  const [queues, setQueues] = useState<Queue[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -115,7 +111,6 @@ export function CatalogManagePage() {
   useEffect(loadCategories, []);
 
   useEffect(() => {
-    srmApi.listQueues().then(setQueues).catch((err) => toast.error(extractErrorMessage(err)));
     authApi.getRoles().then(setRoles).catch((err) => toast.error(extractErrorMessage(err)));
   }, []);
 
@@ -128,7 +123,6 @@ export function CatalogManagePage() {
         name: detail.name,
         description: detail.description ?? "",
         categoryId: detail.categoryId != null ? String(detail.categoryId) : NONE_VALUE,
-        queueId: detail.queueId != null ? String(detail.queueId) : NONE_VALUE,
         assigneeRoleId: detail.assigneeRoleId != null ? String(detail.assigneeRoleId) : NONE_VALUE,
         slaResponseMinutes: String(detail.slaResponseMinutes ?? ""),
         slaResolveMinutes: String(detail.slaResolveMinutes ?? ""),
@@ -162,7 +156,6 @@ export function CatalogManagePage() {
       name: form.name.trim(),
       description: form.description.trim(),
       categoryId: form.categoryId === NONE_VALUE ? undefined : Number(form.categoryId),
-      queueId: form.queueId === NONE_VALUE ? undefined : Number(form.queueId),
       assigneeRoleId: form.assigneeRoleId === NONE_VALUE ? undefined : Number(form.assigneeRoleId),
       slaResponseMinutes: Number(form.slaResponseMinutes) || 0,
       slaResolveMinutes: Number(form.slaResolveMinutes) || 0,
@@ -429,27 +422,6 @@ export function CatalogManagePage() {
                       {categories.map((c) => (
                         <SelectItem key={c.id} value={String(c.id)}>
                           {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="queue">{t("catalogManage.queueId", { defaultValue: "담당 큐" })}</Label>
-                  <Select
-                    value={form.queueId}
-                    onValueChange={(v) => setForm((f) => ({ ...f, queueId: v }))}
-                  >
-                    <SelectTrigger id="queue">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={NONE_VALUE}>
-                        {t("catalogManage.queueUnassigned", { defaultValue: "미분류" })}
-                      </SelectItem>
-                      {queues.map((q) => (
-                        <SelectItem key={q.id} value={String(q.id)}>
-                          {q.name}
                         </SelectItem>
                       ))}
                     </SelectContent>

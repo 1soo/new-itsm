@@ -11,7 +11,6 @@ public record CatalogItemDetailResponse(
         String description,
         Long categoryId,
         String categoryName,
-        Long queueId,
         Integer slaResponseMinutes,
         Integer slaResolveMinutes,
         Long assigneeRoleId,

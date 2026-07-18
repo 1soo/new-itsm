@@ -64,7 +64,7 @@ public class ServiceCatalogService {
         assertCategoryExists(request.categoryId());
         ServiceCatalogItem item = catalogItemRepository.save(new ServiceCatalogItem(
                 request.name(), request.description(), request.categoryId(),
-                request.queueId(), request.slaResponseMinutes(), request.slaResolveMinutes(),
+                request.slaResponseMinutes(), request.slaResolveMinutes(),
                 request.assigneeRoleId(), writeSchema(request.formSchema())));
         return toDetail(item);
     }
@@ -74,7 +74,7 @@ public class ServiceCatalogService {
         assertCategoryExists(request.categoryId());
         ServiceCatalogItem item = findItem(id);
         item.update(request.name(), request.description(), request.categoryId(),
-                request.queueId(), request.slaResponseMinutes(), request.slaResolveMinutes(),
+                request.slaResponseMinutes(), request.slaResolveMinutes(),
                 request.assigneeRoleId(),
                 request.formSchema() != null ? writeSchema(request.formSchema()) : null);
         catalogItemRepository.save(item);
@@ -103,7 +103,7 @@ public class ServiceCatalogService {
         String assigneeRoleName = item.getAssigneeRoleId() == null ? null
                 : roleRepository.findById(item.getAssigneeRoleId()).map(Role::getRoleName).orElse(null);
         return new CatalogItemDetailResponse(item.getId(), item.getName(), item.getDescription(),
-                item.getCategoryId(), categoryName(item.getCategoryId()), item.getQueueId(),
+                item.getCategoryId(), categoryName(item.getCategoryId()),
                 item.getSlaResponseMinutes(), item.getSlaResolveMinutes(),
                 item.getAssigneeRoleId(), assigneeRoleName, readSchema(item.getFormSchema()));
     }

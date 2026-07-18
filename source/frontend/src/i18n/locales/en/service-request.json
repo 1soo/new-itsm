@@ -47,9 +47,9 @@
     "emptyDescription": "No requests match the criteria."
   },
   "requestQueue": {
-    "title": "Request Queue",
+    "title": "Request Inbox",
     "allQueues": "All",
-    "defaultBadge": "Default",
+    "uncategorized": "Uncategorized",
     "unassigned": "Unassigned",
     "assign": "Assign",
     "assignToMe": "Assign to Me",
@@ -58,7 +58,7 @@
     "assignCandidatesLoading": "Loading candidates...",
     "assignNoCandidates": "No assignee role is set for this request type.",
     "emptyTitle": "No requests",
-    "emptyDescription": "There are no requests to process in this queue."
+    "emptyDescription": "There are no requests to process in this category."
   },
   "requestDetail": {
     "notFound": "Request not found.",
@@ -67,7 +67,6 @@
     "infoTitle": "Info",
     "requester": "Requester",
     "assignee": "Assignee",
-    "queue": "Queue",
     "noApproval": "This request has no approval process",
     "approvalGatePending": "Whether an approval process applies will be determined when this request moves to fulfillment",
     "routingBlockedTooltip": "Cannot transition to routing while unassigned",
@@ -101,8 +100,6 @@
     "description": "Description",
     "slaResponseMinutes": "Response SLA (min)",
     "slaResolveMinutes": "Resolution SLA (min)",
-    "queueId": "Queue",
-    "queueUnassigned": "Unassigned",
     "assigneeRoleId": "Assignee Role",
     "assigneeRoleUnselected": "None",
     "formSchema": "Form Fields",

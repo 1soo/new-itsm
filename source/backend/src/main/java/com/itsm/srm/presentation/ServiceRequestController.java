@@ -1,11 +1,14 @@
 package com.itsm.srm.presentation;
 
 import com.itsm.auth.application.dto.PageResponse;
+import com.itsm.common.exception.BusinessException;
+import com.itsm.common.exception.ErrorCode;
 import com.itsm.common.exception.ErrorResponse;
 import com.itsm.srm.application.MetricsService;
 import com.itsm.srm.application.ServiceRequestService;
 import com.itsm.srm.application.dto.AssignRequest;
 import com.itsm.srm.application.dto.AssigneeCandidateResponse;
+import com.itsm.srm.application.dto.CategoryCountResponse;
 import com.itsm.srm.application.dto.CommentCreateRequest;
 import com.itsm.srm.application.dto.CommentResponse;
 import com.itsm.srm.application.dto.CreateRequestRequest;
@@ -69,18 +72,35 @@ public class ServiceRequestController {
         return ResponseEntity.status(HttpStatus.CREATED).body(requestService.create(request));
     }
 
-    @Operation(summary = "요청 목록 조회", description = "scope=mine(본인) | all|queue(상담원 이상)")
+    @Operation(summary = "요청 목록 조회", description = "scope=mine(본인) | all(상담원 이상). categoryId=숫자|\"uncategorized\"")
     @GetMapping
     public ResponseEntity<PageResponse<RequestSummaryResponse>> list(
             @RequestParam(required = false, defaultValue = "mine") String scope,
-            @RequestParam(required = false) Long queue,
+            @RequestParam(required = false) String categoryId,
             @RequestParam(required = false) RequestStatus status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        return ResponseEntity.ok(requestService.list(scope, queue, status, from, to, pageable));
+        boolean uncategorized = "uncategorized".equalsIgnoreCase(categoryId);
+        Long categoryIdValue = null;
+        if (categoryId != null && !uncategorized) {
+            try {
+                categoryIdValue = Long.valueOf(categoryId);
+            } catch (NumberFormatException e) {
+                throw new BusinessException(ErrorCode.VALIDATION_ERROR,
+                        "categoryId는 숫자 또는 \"uncategorized\"여야 합니다.");
+            }
+        }
+        return ResponseEntity.ok(requestService.list(scope, categoryIdValue, uncategorized, status, from, to, pageable));
+    }
+
+    @Operation(summary = "요청 카테고리별 건수 조회(Agent)", description = "카테고리별(+미분류, 목록 마지막) 미종료 요청 건수")
+    @PreAuthorize("hasAnyRole('SERVICE_DESK_AGENT','PROCESS_OWNER')")
+    @GetMapping("/category-counts")
+    public ResponseEntity<List<CategoryCountResponse>> categoryCounts() {
+        return ResponseEntity.ok(requestService.categoryCounts());
     }
 
     @Operation(summary = "요청 지표 조회(PROCESS_OWNER)")

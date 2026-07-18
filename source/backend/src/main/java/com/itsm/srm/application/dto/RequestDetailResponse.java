@@ -15,7 +15,6 @@ public record RequestDetailResponse(
         Map<String, Object> formValues,
         String requester,
         String assignee,
-        String queue,
         ApprovalInfo approval,
         SlaInfo sla,
         List<LinkedArticle> linkedArticles,

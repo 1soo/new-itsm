@@ -36,14 +36,14 @@ import com.itsm.srm.application.dto.RequestDetailResponse;
 import com.itsm.srm.application.dto.RequestSummaryResponse;
 import com.itsm.srm.application.dto.StatusResponse;
 import com.itsm.srm.application.dto.StatusTransitionRequest;
+import com.itsm.srm.application.dto.CategoryCountResponse;
 import com.itsm.srm.domain.Csat;
-import com.itsm.srm.domain.Queue;
 import com.itsm.srm.domain.RequestStatus;
 import com.itsm.srm.domain.ServiceCatalogItem;
 import com.itsm.srm.domain.ServiceRequest;
 import com.itsm.srm.domain.SlaStatus;
 import com.itsm.srm.domain.repository.CsatRepository;
-import com.itsm.srm.domain.repository.QueueRepository;
+import com.itsm.srm.domain.repository.ServiceCatalogCategoryRepository;
 import com.itsm.srm.domain.repository.ServiceCatalogItemRepository;
 import com.itsm.srm.domain.repository.ServiceRequestRepository;
 import org.springframework.data.domain.Pageable;
@@ -75,7 +75,7 @@ public class ServiceRequestService {
 
     private final ServiceRequestRepository requestRepository;
     private final ServiceCatalogItemRepository catalogItemRepository;
-    private final QueueRepository queueRepository;
+    private final ServiceCatalogCategoryRepository categoryRepository;
     private final CsatRepository csatRepository;
     private final CommentRepository commentRepository;
     private final TimelineEventRepository timelineRepository;
@@ -89,7 +89,7 @@ public class ServiceRequestService {
 
     public ServiceRequestService(ServiceRequestRepository requestRepository,
                                  ServiceCatalogItemRepository catalogItemRepository,
-                                 QueueRepository queueRepository,
+                                 ServiceCatalogCategoryRepository categoryRepository,
                                  CsatRepository csatRepository,
                                  CommentRepository commentRepository,
                                  TimelineEventRepository timelineRepository,
@@ -102,7 +102,7 @@ public class ServiceRequestService {
                                  ObjectMapper objectMapper) {
         this.requestRepository = requestRepository;
         this.catalogItemRepository = catalogItemRepository;
-        this.queueRepository = queueRepository;
+        this.categoryRepository = categoryRepository;
         this.csatRepository = csatRepository;
         this.commentRepository = commentRepository;
         this.timelineRepository = timelineRepository;
@@ -126,8 +126,6 @@ public class ServiceRequestService {
 
         FormSubmissionValidator.validate(readSchema(item.getFormSchema()), request.formValues());
 
-        Long queueId = item.getQueueId() != null ? item.getQueueId()
-                : queueRepository.findFirstByIsDefaultTrue().map(Queue::getId).orElse(null);
         OffsetDateTime now = OffsetDateTime.now();
         OffsetDateTime responseDue = item.getSlaResponseMinutes() != null
                 ? now.plusMinutes(item.getSlaResponseMinutes()) : null;
@@ -135,7 +133,7 @@ public class ServiceRequestService {
                 ? now.plusMinutes(item.getSlaResolveMinutes()) : null;
 
         ServiceRequest saved = requestRepository.save(new ServiceRequest(
-                nextTicketKey(), item.getId(), principal.userId(), queueId, responseDue, resolveDue,
+                nextTicketKey(), item.getId(), principal.userId(), responseDue, resolveDue,
                 writeValues(request.formValues())));
 
         timelineRepository.save(TimelineEvent.of(TT, saved.getId(), "SUBMIT", "요청이 제출되었습니다."));
@@ -145,7 +143,8 @@ public class ServiceRequestService {
     // ---------- list ----------
 
     @Transactional(readOnly = true)
-    public PageResponse<RequestSummaryResponse> list(String scope, Long queueId, RequestStatus status,
+    public PageResponse<RequestSummaryResponse> list(String scope, Long categoryId, boolean uncategorized,
+                                                     RequestStatus status,
                                                      OffsetDateTime from, OffsetDateTime to, Pageable pageable) {
         AuthPrincipal principal = SecurityUtils.currentPrincipal();
         Long requesterFilter;
@@ -160,8 +159,21 @@ public class ServiceRequestService {
         OffsetDateTime fromV = from != null ? from : OffsetDateTime.parse("1970-01-01T00:00:00Z");
         OffsetDateTime toV = to != null ? to : OffsetDateTime.now().plusYears(100);
         return PageResponse.from(
-                requestRepository.search(requesterFilter, queueId, status, fromV, toV, pageable),
+                requestRepository.search(requesterFilter, categoryId, uncategorized, status, fromV, toV, pageable),
                 this::toSummary);
+    }
+
+    // ---------- category counts ----------
+
+    @Transactional(readOnly = true)
+    public List<CategoryCountResponse> categoryCounts() {
+        List<CategoryCountResponse> counts = new java.util.ArrayList<>();
+        for (var category : categoryRepository.findAllOrderBySortOrderAsc()) {
+            counts.add(new CategoryCountResponse(category.getId(), category.getName(),
+                    requestRepository.countOpenByCategoryId(category.getId())));
+        }
+        counts.add(new CategoryCountResponse(null, null, requestRepository.countOpenUncategorized()));
+        return counts;
     }
 
     // ---------- detail ----------
@@ -206,7 +218,7 @@ public class ServiceRequestService {
         return new RequestDetailResponse(
                 request.getId(), request.getTicketKey(), item != null ? item.getName() : null,
                 request.getStatus().name(), formValues,
-                userName(request.getRequesterId()), userName(request.getAssigneeId()), queueName(request.getQueueId()),
+                userName(request.getRequesterId()), userName(request.getAssigneeId()),
                 approvalInfo, slaInfo, List.of(), linkedAssets, comments, timeline,
                 allowedTransitions(principal, request));
     }
@@ -376,10 +388,6 @@ public class ServiceRequestService {
 
     private String userName(Long id) {
         return id == null ? null : appUserRepository.findById(id).map(AppUser::getName).orElse(null);
-    }
-
-    private String queueName(Long id) {
-        return id == null ? null : queueRepository.findById(id).map(Queue::getName).orElse(null);
     }
 
     private String catalogName(Long id) {

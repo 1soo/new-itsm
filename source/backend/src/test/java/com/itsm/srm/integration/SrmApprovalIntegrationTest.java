@@ -194,7 +194,7 @@ class SrmApprovalIntegrationTest {
 
         as(1L, "PROCESS_OWNER");
         CatalogItemDetailResponse item = catalogService.create(new CreateCatalogItemRequest(
-                "Item" + ts, "d", null, null, null, null, null,
+                "Item" + ts, "d", null, null, null, null,
                 formSchemaWith("note", false)));
         seedSubtypeProcess(domain, String.valueOf(item.id()), "APPROVER");
 
@@ -247,7 +247,7 @@ class SrmApprovalIntegrationTest {
 
         as(1L, "PROCESS_OWNER");
         CatalogItemDetailResponse item = catalogService.create(new CreateCatalogItemRequest(
-                "Item" + ts, "d", null, null, null, null, null,
+                "Item" + ts, "d", null, null, null, null,
                 formSchemaWith("note", false)));
         seedSubtypeProcess(domain, String.valueOf(item.id()), "APPROVER");
 
@@ -291,7 +291,7 @@ class SrmApprovalIntegrationTest {
 
         as(1L, "PROCESS_OWNER");
         CatalogItemDetailResponse item = catalogService.create(new CreateCatalogItemRequest(
-                "CatchAllItem" + ts, "d", null, null, null, null, null,
+                "CatchAllItem" + ts, "d", null, null, null, null,
                 formSchemaWith("note", false)));
         seedCatchAllProcess("APPROVER", "전체 도메인 캐치올 " + ts);
 
@@ -335,7 +335,7 @@ class SrmApprovalIntegrationTest {
 
         as(1L, "PROCESS_OWNER");
         CatalogItemDetailResponse item = catalogService.create(new CreateCatalogItemRequest(
-                "AssetLinkItem" + ts, "d", null, null, null, null, null, emptyFormSchema()));
+                "AssetLinkItem" + ts, "d", null, null, null, null, emptyFormSchema()));
 
         as(requesterId, "END_USER");
         RequestCreatedResponse created = requestService.create(new CreateRequestRequest(item.id(), Map.of()));
@@ -358,11 +358,11 @@ class SrmApprovalIntegrationTest {
 
         as(1L, "PROCESS_OWNER");
         CatalogItemDetailResponse created = catalogService.create(new CreateCatalogItemRequest(
-                "Laptop" + ts, "d", null, null, null, null, null,
+                "Laptop" + ts, "d", null, null, null, null,
                 formSchemaWith("model", true)));
 
         CatalogItemDetailResponse updated = catalogService.update(created.id(), new UpdateCatalogItemRequest(
-                "Laptop" + ts, "updated", null, null, null, null, null,
+                "Laptop" + ts, "updated", null, null, null, null,
                 formSchemaWith("model", true)));
 
         @SuppressWarnings("unchecked")

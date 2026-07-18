@@ -47,9 +47,9 @@
     "emptyDescription": "조건에 맞는 요청이 없습니다."
   },
   "requestQueue": {
-    "title": "요청 큐",
+    "title": "요청 처리함",
     "allQueues": "전체",
-    "defaultBadge": "기본",
+    "uncategorized": "미분류",
     "unassigned": "미배정",
     "assign": "배정",
     "assignToMe": "나에게 배정",
@@ -58,7 +58,7 @@
     "assignCandidatesLoading": "후보를 불러오는 중...",
     "assignNoCandidates": "지정된 담당자 역할이 없습니다.",
     "emptyTitle": "요청이 없습니다",
-    "emptyDescription": "이 큐에 처리할 요청이 없습니다."
+    "emptyDescription": "이 분류에 처리할 요청이 없습니다."
   },
   "requestDetail": {
     "notFound": "요청을 찾을 수 없습니다.",
@@ -67,7 +67,6 @@
     "infoTitle": "정보",
     "requester": "요청자",
     "assignee": "담당자",
-    "queue": "큐",
     "noApproval": "이 요청에는 승인 절차가 없습니다",
     "approvalGatePending": "이행 단계로 전환 시 승인 절차 적용 여부가 결정됩니다",
     "routingBlockedTooltip": "담당자 미배정 상태로는 라우팅 단계로 전이할 수 없습니다",
@@ -101,8 +100,6 @@
     "description": "설명",
     "slaResponseMinutes": "응답 SLA(분)",
     "slaResolveMinutes": "해결 SLA(분)",
-    "queueId": "담당 큐",
-    "queueUnassigned": "미분류",
     "assigneeRoleId": "담당자 역할",
     "assigneeRoleUnselected": "선택 안 함",
     "formSchema": "양식 필드",

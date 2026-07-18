@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import type { TFunction } from "i18next";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,8 +17,8 @@ import { formatDate } from "@/features/service-request/format";
 import { slaLabel, slaTone, statusLabel, statusTone } from "@/features/service-request/status";
 import type {
   AssigneeCandidate,
+  CategoryCount,
   PageResponse,
-  Queue,
   RequestSummary,
 } from "@/features/service-request/types";
 import { extractErrorMessage } from "@/lib/apiClient";
@@ -27,12 +26,13 @@ import { useAppSelector } from "@/store/hooks";
 import { cn } from "@/lib/utils";
 
 /*
- * 요청 큐(SCR-SRM-004) — 좌측 큐 목록(건수 포함) + 우측 요청 표 + 배정.
- * 큐 선택 시 해당 큐 요청으로 필터. "나에게 배정"으로 담당자 갱신(권한 없으면 BE 403).
- * 큐 목록은 API-SRM-016(GET /queues) 사용.
+ * 요청 처리함(SCR-SRM-004, 구 "요청 큐") — 좌측 카테고리 목록(건수 포함) + 우측 요청 표 + 배정.
+ * 카테고리 선택 시 해당 카테고리 요청으로 필터(미분류는 "uncategorized" 리터럴). "나에게 배정"으로 담당자 갱신(권한 없으면 BE 403).
+ * 카테고리별 건수는 API-SRM-016(GET /service-requests/category-counts) 사용(2026-07-18 유지보수 요청 — 요청 큐 폐지).
  */
 const PAGE_SIZE = 16;
-const ALL_QUEUE = "__ALL__";
+const ALL_CATEGORIES = "__ALL__";
+const UNCATEGORIZED = "uncategorized";
 /** 라우팅(ROUTED) 이후 상태 — 배정 버튼 노출 조건 판정용(2026-07-15 유지보수 요청). */
 const POST_ROUTING_STATUSES = new Set(["ROUTED", "IN_FULFILLMENT", "FULFILLED", "CLOSED"]);
 
@@ -41,19 +41,15 @@ function canAssign(r: RequestSummary, myId?: number): boolean {
   return !POST_ROUTING_STATUSES.has(r.status);
 }
 
-function QueueButton({
-  t,
+function CategoryButton({
   label,
   count,
   active,
-  isDefault,
   onClick,
 }: {
-  t: TFunction;
   label: string;
   count?: number;
   active: boolean;
-  isDefault?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -65,14 +61,7 @@ function QueueButton({
         active ? "bg-accent font-medium text-foreground" : "text-muted-foreground",
       )}
     >
-      <span className="flex items-center gap-1.5 truncate">
-        {label}
-        {isDefault ? (
-          <Badge variant="outline" className="shrink-0">
-            {t("requestQueue.defaultBadge", { defaultValue: "기본" })}
-          </Badge>
-        ) : null}
-      </span>
+      <span className="truncate">{label}</span>
       {count != null ? (
         <Badge variant="secondary" className="shrink-0">
           {count}
@@ -86,8 +75,8 @@ export function RequestQueuePage() {
   const { t } = useTranslation("service-request");
   const navigate = useNavigate();
   const user = useAppSelector((s) => s.auth.user);
-  const [queues, setQueues] = useState<Queue[]>([]);
-  const [selected, setSelected] = useState<string>(ALL_QUEUE);
+  const [categories, setCategories] = useState<CategoryCount[]>([]);
+  const [selected, setSelected] = useState<string>(ALL_CATEGORIES);
   const [page, setPage] = useState(0);
   const [data, setData] = useState<PageResponse<RequestSummary> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -97,14 +86,14 @@ export function RequestQueuePage() {
   const [candidatesLoading, setCandidatesLoading] = useState(false);
   const [assigning, setAssigning] = useState(false);
 
-  const loadQueues = useCallback(() => {
+  const loadCategories = useCallback(() => {
     srmApi
-      .listQueues()
-      .then(setQueues)
+      .getCategoryCounts()
+      .then(setCategories)
       .catch((err) => toast.error(extractErrorMessage(err)));
   }, []);
 
-  useEffect(loadQueues, [loadQueues]);
+  useEffect(loadCategories, [loadCategories]);
 
   const loadRequests = useCallback(() => {
     let active = true;
@@ -112,7 +101,7 @@ export function RequestQueuePage() {
     srmApi
       .listRequests({
         scope: "all",
-        queue: selected === ALL_QUEUE ? undefined : selected,
+        categoryId: selected === ALL_CATEGORIES ? undefined : selected,
         page,
         size: PAGE_SIZE,
       })
@@ -126,7 +115,7 @@ export function RequestQueuePage() {
 
   useEffect(() => loadRequests(), [loadRequests]);
 
-  const selectQueue = (key: string) => {
+  const selectCategory = (key: string) => {
     setPage(0);
     setSelected(key);
   };
@@ -158,7 +147,7 @@ export function RequestQueuePage() {
       toast.success(t("requestQueue.assignSuccess", { defaultValue: "담당자가 배정되었습니다" }));
       closeAssignModal();
       loadRequests();
-      loadQueues();
+      loadCategories();
     } catch (err) {
       toast.error(extractErrorMessage(err));
     } finally {
@@ -216,26 +205,23 @@ export function RequestQueuePage() {
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold text-foreground">
-        {t("requestQueue.title", { defaultValue: "요청 큐" })}
+        {t("requestQueue.title", { defaultValue: "요청 처리함" })}
       </h1>
 
       <div className="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
         <aside className="space-y-1 rounded-lg border border-border bg-card p-2">
-          <QueueButton
-            t={t}
+          <CategoryButton
             label={t("requestQueue.allQueues", { defaultValue: "전체" })}
-            active={selected === ALL_QUEUE}
-            onClick={() => selectQueue(ALL_QUEUE)}
+            active={selected === ALL_CATEGORIES}
+            onClick={() => selectCategory(ALL_CATEGORIES)}
           />
-          {queues.map((q) => (
-            <QueueButton
-              key={q.id}
-              t={t}
-              label={q.name}
-              count={q.openCount}
-              isDefault={q.isDefault}
-              active={selected === String(q.id)}
-              onClick={() => selectQueue(String(q.id))}
+          {categories.map((c) => (
+            <CategoryButton
+              key={c.categoryId ?? UNCATEGORIZED}
+              label={c.categoryName ?? t("requestQueue.uncategorized", { defaultValue: "미분류" })}
+              count={c.openCount}
+              active={selected === (c.categoryId != null ? String(c.categoryId) : UNCATEGORIZED)}
+              onClick={() => selectCategory(c.categoryId != null ? String(c.categoryId) : UNCATEGORIZED)}
             />
           ))}
         </aside>

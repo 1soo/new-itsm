@@ -19,10 +19,10 @@ export type SlaStatus = "OK" | "WARNING" | "BREACHED";
 
 export type TargetStatus = "VALIDATED" | "ROUTED" | "IN_FULFILLMENT" | "FULFILLED" | "CLOSED";
 
-export interface Queue {
-  id: number;
-  name: string;
-  isDefault: boolean;
+/** 카테고리별 미종료 요청 건수(API-SRM-016, 2026-07-18 유지보수 요청 — 요청 큐 폐지). categoryId=null이면 미분류. */
+export interface CategoryCount {
+  categoryId: number | null;
+  categoryName: string | null;
   openCount: number;
 }
 
@@ -40,7 +40,6 @@ export interface CatalogItemDetail {
   description: string;
   categoryId: number | null;
   categoryName?: string | null;
-  queueId: number | null;
   /** 담당자 역할(2026-07-15 유지보수 요청) — 지정 시 요청 큐 배정 팝업의 후보 조회(API-SRM-017)에 사용. */
   assigneeRoleId: number | null;
   assigneeRoleName?: string | null;
@@ -53,7 +52,6 @@ export interface CatalogItemInput {
   name: string;
   description: string;
   categoryId?: number;
-  queueId?: number;
   assigneeRoleId?: number;
   slaResponseMinutes: number;
   slaResolveMinutes: number;
@@ -147,7 +145,6 @@ export interface RequestDetail {
   formValues: Record<string, unknown>;
   requester: string;
   assignee?: string;
-  queue?: string;
   approval: RequestApproval;
   sla: RequestSla;
   linkedArticles: LinkedArticle[];
@@ -167,7 +164,7 @@ export interface RequestMetrics {
 
 export interface RequestListQuery {
   scope?: "mine" | "all";
-  queue?: string;
+  categoryId?: string;
   status?: SrStatus | "";
   from?: string;
   to?: string;

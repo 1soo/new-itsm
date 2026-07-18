@@ -253,3 +253,69 @@
 - BE: 카탈로그 생성/수정 시 Form.io Form JSON 그대로 저장·조회, 요청 제출 시 `FormSubmissionValidator`가 required/minLength/maxLength/min/max/pattern 위반을 400으로 거부, 정상 제출은 `form_values`에 `submission.data` 그대로 저장.
 - FE: SCR-SRM-007에서 컬럼/패널/탭 포함 자유배치 폼 설계·저장, SCR-SRM-002에서 그 폼이 그대로 렌더링되고 제출 가능. ADS 톤에 어긋나지 않는 스타일(`.formio-scope` 오버라이드 적용 확인).
 - tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → 완료 시 커밋.
+
+## 개발 계획 — 2026-07-18 유지보수: 요청 큐 폐지 → 카테고리 기반 분류 일원화
+
+- 요구사항: `queue` 테이블·`service_catalog_item.queue_id`·`service_request.queue_id`를 완전히 제거하고, 요청 분류/필터링을 `service_request.catalog_item_id → service_catalog_item.category_id` **실시간 조인**으로 대체(스냅샷 컬럼 없음 — 카탈로그 항목의 카테고리를 바꾸면 과거 요청 분류도 즉시 반영). `category_id`는 계속 nullable(미분류 그룹 유지). 담당자 배정 후보 필터링(`assigneeRoleId`)은 이번 변경과 무관 — 손대지 않는다.
+- 설계 근거: `docs/02_plan/database/service-request.md`(변경 이력 표 2026-07-18 행, queue 테이블/컬럼 제거), `docs/02_plan/api_spec/service-request.md`(API-SRM-007 `categoryId=` 필터, API-SRM-016 "요청 카테고리별 건수 조회"로 대체, API-SRM-002/003/004 `queueId` 제거, API-SRM-008 응답 `queue` 필드 제거), `docs/02_plan/screen/service-request.md`(SCR-SRM-004 "요청 처리함"으로 개칭, SCR-SRM-007 담당 큐 select 제거).
+- 참고 기존 코드: `source/backend/.../srm/domain/Queue.java`·`ServiceCatalogItem.java`·`ServiceRequest.java`, `application/QueueService.java`·`ServiceCatalogService.java`·`ServiceRequestService.java`, `application/dto/QueueResponse.java`·`CatalogItemDetailResponse.java`·`CreateCatalogItemRequest.java`·`UpdateCatalogItemRequest.java`·`RequestDetailResponse.java`, `presentation/QueueController.java`·`ServiceRequestController.java`, `infrastructure/persistence/QueueJpaRepository.java`·`ServiceRequestJpaRepository.java`; `source/frontend/.../service-request/RequestQueuePage.tsx`·`CatalogManagePage.tsx`·`RequestDetailPage.tsx`·`api.ts`·`types.ts`.
+
+### 담당 범위
+
+#### DB (dev-database) — `source/db/sql/`
+
+- 신규 파일 `37_srm_queue_retirement.sql`(다음 순번, 실제 생성 시점의 최신 파일 다음 번호로 확인):
+  1. `ALTER TABLE service_catalog_item DROP COLUMN queue_id;`
+  2. `ALTER TABLE service_request DROP COLUMN queue_id;`
+  3. `DROP TABLE queue;`
+  4. `UPDATE screen SET screen_name = '요청 처리함', screen_name_en = 'Request Inbox' WHERE screen_code = 'SCR-SRM-004';`(경로·아이콘·그룹·정렬순서는 변경하지 않는다 — 라벨만 개칭, dev-lead 판단).
+- 백필 불필요(컬럼 자체 삭제, 스냅샷 없음).
+- `05_srm_seed.sql`(큐 시드)은 원본 미수정(26/33/34/35/36번 선례와 동일 패턴 — 이후 마이그레이션이 DROP하므로 무해).
+- 완료 후 `source/db/sql/CLAUDE.md`에 파일 반영.
+
+#### BE (dev-backend) — `source/backend/src/main/java/com/itsm/srm/`
+
+**삭제 대상**
+- `domain/Queue.java`, `domain/repository/QueueRepository.java`, `infrastructure/persistence/QueueJpaRepository.java`, `application/QueueService.java`, `application/dto/QueueResponse.java`, `presentation/QueueController.java`(→ `GET /api/v1/queues` 폐지).
+
+**엔티티/DTO**
+- `domain/ServiceCatalogItem.java`: `queueId` 필드·생성자 파라미터·`update()` 파라미터 제거.
+- `domain/ServiceRequest.java`: `queueId` 필드·생성자 파라미터 제거.
+- `application/dto/CreateCatalogItemRequest.java`·`UpdateCatalogItemRequest.java`·`CatalogItemDetailResponse.java`: `queueId` 필드 제거.
+- `application/dto/RequestDetailResponse.java`: `queue` 필드 제거.
+- 신규 `application/dto/CategoryCountResponse.java`(API-SRM-016): `categoryId: Long|null`, `categoryName: String|null`, `openCount: long`.
+
+**서비스 로직**
+- `application/ServiceCatalogService.java`: create/update에서 `queueId` 처리 로직 제거.
+- `application/ServiceRequestService.java`:
+  - `create()`: 기존 "카탈로그 큐 없으면 기본 큐로 배정" 로직(`queueRepository.findFirstByIsDefaultTrue()` 포함) 완전 제거, `ServiceRequest` 생성자 호출에서 `queueId` 인자 제거.
+  - `list()`/검색: 파라미터를 `queueId` → `categoryId`(nullable Long) + `uncategorized`(boolean, 컨트롤러가 raw 쿼리 파라미터 `categoryId=uncategorized` 리터럴을 파싱해 전달)로 교체. `service_catalog_item.category_id`와 조인해 필터링(기존 `searchByKeyword`의 `exists (select 1 from ServiceCatalogItem c where c.id = r.catalogItemId ...)` 패턴 참고, 이번엔 존재 확인이 아니라 `categoryId` 값 비교이므로 스칼라 서브쿼리 또는 세미조인으로 구현).
+  - 신규 `categoryCounts()`(API-SRM-016): `service_catalog_category`를 `sort_order` 오름차순으로 순회하며 각 카테고리에 속한 카탈로그 항목들의 미종료(`status <> CLOSED`) 요청 건수를 집계, 마지막에 미분류(`category_id IS NULL`) 그룹 건수를 추가.
+- `domain/repository/ServiceRequestRepository.java`·`infrastructure/persistence/ServiceRequestJpaRepository.java`: `search(Long requesterId, Long queueId, ...)` 시그니처를 `categoryId`/`uncategorized` 기준으로 교체, `countOpenByQueueId` 삭제하고 카테고리별 집계 쿼리 신규 추가(신규 메서드명은 dev-backend 재량, 예: `countOpenByCategoryId`/`countOpenUncategorized` 또는 집계 전용 프로젝션 쿼리 1개).
+- `presentation/ServiceRequestController.java`:
+  - 목록 조회 쿼리 파라미터 `queue=` → `categoryId=`(문자열: 숫자 또는 리터럴 `"uncategorized"`, api_spec 그대로).
+  - 신규 `GET /api/v1/service-requests/category-counts`(API-SRM-016) 추가. 기존 `/{id}` 경로와 충돌 검토(이 코드베이스에 이미 `/metrics` 같은 정적 서브경로가 `/{id}`와 공존하는 전례 있음 — 동일 패턴으로 안전).
+- `common/exception/ErrorCode.java`: 이번 변경으로 신규 오류코드 없음(큐 관련 오류코드가 있었다면 확인 후 제거).
+
+**테스트**
+- `ServiceCatalogServiceTest`/`ServiceRequestServiceTest`/`SrmApprovalIntegrationTest`의 `queueId`/`Queue` 관련 mock·생성자 호출 전부 제거·갱신(직전 form.io phase에서 이미 유사 작업 진행한 경험 참고).
+
+#### FE (dev-frontend) — `source/frontend/src/features/service-request/`
+
+- **파일명 유지**: `RequestQueuePage.tsx` 파일명은 그대로 둔다(설계는 화면 개념·라벨만 개칭했고, 파일명 변경은 불필요한 참조 churn이므로 — dev-lead 판단). 화면 타이틀 텍스트만 "요청 큐" → "요청 처리함"(`requestQueue.title` i18n 값 갱신).
+- **`RequestQueuePage.tsx`**: 좌측 `QueueButton` 목록(큐+건수, `listQueues()`)을 카테고리 목록(카테고리명/"미분류"+건수, 신규 `getCategoryCounts()`)으로 교체. 카테고리 클릭 시 우측 표를 `categoryId=`(숫자 또는 `"uncategorized"`)로 서버 필터링. `isDefault`/"기본" 배지는 제거(카테고리엔 해당 개념 없음), "미분류" 그룹은 목록 마지막 고정 노출(API 응답이 이미 이 순서로 옴).
+- **`RequestDetailPage.tsx`**: 268행 `<MetaRow label={t("requestDetail.queue", ...)} value={detail.queue || "-"} />` 삭제(백엔드 응답에서 `queue` 필드 자체가 사라지므로).
+- **`CatalogManagePage.tsx`**: "담당 큐 선택" Select 블록(438~453행 부근) 전체 삭제, `FormState.queueId`/`EMPTY_FORM.queueId`/`queues` state/`listQueues()` 호출/제출 payload의 `queueId` 매핑 모두 제거.
+- **`api.ts`**: `listQueues()` 삭제, 신규 `getCategoryCounts(): Promise<CategoryCount[]>`(`GET /service-requests/category-counts`) 추가. `listRequests`의 query 타입에서 `queue` → `categoryId`(string) 교체.
+- **`types.ts`**: `Queue` 인터페이스 삭제, 신규 `CategoryCount { categoryId: number | null; categoryName: string | null; openCount: number }` 추가. `CatalogItemDetail`/`CatalogItemInput`의 `queueId` 필드 삭제. `RequestSummary`/`RequestDetail`의 `queue?: string` 필드 삭제. `RequestListQuery`의 `queue?: string` → `categoryId?: string` 교체.
+
+### 진행 순서
+
+1. DB(큐 테이블/컬럼 제거) → BE(엔티티/서비스/컨트롤러 정리 + 카테고리 필터·집계 API) → FE(처리함 화면 카테고리 전환, 카탈로그 관리 큐 select 제거) — 순차.
+
+### 완료(테스트 통과) 기준
+
+- DB: `queue` 테이블 및 관련 FK 컬럼 완전 제거, 기존 요청/카탈로그 데이터 정상 조회(카테고리 조인 정상 동작).
+- BE: `GET /api/v1/service-requests?categoryId=` 숫자/`"uncategorized"`/미지정 3가지 모두 정상 필터링, `GET /api/v1/service-requests/category-counts`가 카테고리별(+미분류 마지막) 미종료 건수 정상 반환, `/api/v1/queues` 관련 엔드포인트·클래스 완전 제거.
+- FE: SCR-SRM-004 좌측 카테고리 목록 클릭 시 우측 표 필터링 정상 동작, 카탈로그 항목의 카테고리를 바꾸면 기존 요청 분류도 즉시 반영됨(실시간 조인 확인), 카탈로그 관리 화면에 담당 큐 select가 더 이상 없음, 요청 상세에 "큐" 표시 없음.
+- tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → 완료 시 커밋.

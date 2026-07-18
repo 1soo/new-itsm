@@ -43,9 +43,6 @@ public class ServiceRequest extends BaseEntity {
     @Column(name = "assignee_id")
     private Long assigneeId;
 
-    @Column(name = "queue_id")
-    private Long queueId;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private RequestStatus status;
@@ -64,12 +61,11 @@ public class ServiceRequest extends BaseEntity {
     @Column(name = "form_values", nullable = false, columnDefinition = "jsonb")
     private String formValues;
 
-    public ServiceRequest(String ticketKey, Long catalogItemId, Long requesterId, Long queueId,
+    public ServiceRequest(String ticketKey, Long catalogItemId, Long requesterId,
                           OffsetDateTime slaResponseDue, OffsetDateTime slaResolveDue, String formValues) {
         this.ticketKey = ticketKey;
         this.catalogItemId = catalogItemId;
         this.requesterId = requesterId;
-        this.queueId = queueId;
         this.status = RequestStatus.SUBMITTED;
         this.slaResponseDue = slaResponseDue;
         this.slaResolveDue = slaResolveDue;

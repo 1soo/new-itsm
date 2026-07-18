@@ -265,7 +265,6 @@ export function RequestDetailPage() {
                 label={t("requestDetail.assignee", { defaultValue: "담당자" })}
                 value={detail.assignee || t("requestQueue.unassigned", { defaultValue: "미배정" })}
               />
-              <MetaRow label={t("requestDetail.queue", { defaultValue: "큐" })} value={detail.queue || "-"} />
             </CardContent>
           </Card>
 

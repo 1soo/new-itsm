@@ -5,11 +5,11 @@ import type {
   CatalogItemDetail,
   CatalogItemInput,
   CatalogItemSummary,
+  CategoryCount,
   CreateRequestInput,
   CreatedRequest,
   KnowledgeSuggestion,
   PageResponse,
-  Queue,
   RequestComment,
   RequestDetail,
   RequestListQuery,
@@ -69,9 +69,9 @@ export const srmApi = {
     return res.data;
   },
 
-  // API-SRM-016 큐 목록(건수 포함, Agent 이상)
-  async listQueues(): Promise<Queue[]> {
-    const res = await apiClient.get<Queue[]>("/queues");
+  // API-SRM-016 카테고리별 미종료 요청 건수(Agent 이상, 2026-07-18 유지보수 요청 — 요청 큐 폐지)
+  async getCategoryCounts(): Promise<CategoryCount[]> {
+    const res = await apiClient.get<CategoryCount[]>("/service-requests/category-counts");
     return res.data;
   },
 

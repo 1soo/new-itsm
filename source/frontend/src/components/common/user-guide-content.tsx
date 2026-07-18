@@ -287,9 +287,9 @@ const ROLES_KO: GuideRole[] = [
   {
     code: "SERVICE_DESK_AGENT",
     name: "SERVICE_DESK_AGENT — 서비스 데스크 상담원",
-    body: `**페르소나**: 김민수 대리, IT 서비스 데스크 1차 대응 담당자. 하루 종일 큐에 들어오는 요청과 장애 신고를 처리한다.
+    body: `**페르소나**: 김민수 대리, IT 서비스 데스크 1차 대응 담당자. 하루 종일 접수되는 요청과 장애 신고를 처리한다.
 
-김민수 대리는 근무를 시작하면 사이드바 **"서비스 요청"** 그룹의 **"요청 큐"** 메뉴를 연다. 좌측 큐 목록에서 담당 큐를 확인하고, 처리할 요청 행에서 **"배정"** 버튼을 클릭해 본인에게 배정한다. 배정된 요청은 상세 화면으로 들어가 코멘트로 요청자와 소통하고, 처리가 끝나면 상태 전이 버튼(예: "이행완료")을 눌러 상태를 갱신한다.
+김민수 대리는 근무를 시작하면 사이드바 **"서비스 요청"** 그룹의 **"요청 처리함"** 메뉴를 연다. 좌측 카테고리 목록에서 담당 카테고리를 확인하고, 처리할 요청 행에서 **"배정"** 버튼을 클릭해 본인에게 배정한다. 배정된 요청은 상세 화면으로 들어가 코멘트로 요청자와 소통하고, 처리가 끝나면 상태 전이 버튼(예: "이행완료")을 눌러 상태를 갱신한다.
 
 전산 장애 신고 전화를 받으면 **"인시던트"** 그룹의 **"인시던트"** 메뉴에서 **"인시던트 등록"** 버튼을 눌러 요약·심각도·영향 서비스를 입력해 인시던트를 만든다. 이후 처리 경과를 상태 업데이트로 남기고, 본인 선에서 해결이 어려운 사안은 상세 화면의 **"에스컬레이션"** 버튼으로 상위 담당자에게 이관한다.
 
@@ -309,7 +309,7 @@ const ROLES_KO: GuideRole[] = [
     name: "PROCESS_OWNER — 프로세스 오너",
     body: `**페르소나**: 한지수 매니저, 서비스 운영 프로세스를 표준화하는 담당자. 새로운 요청 유형을 만들고 SLA 목표를 관리한다.
 
-한지수 매니저는 신입사원 온보딩 시즌마다 요청 유형을 정비하기 위해 **"서비스 요청"** 그룹의 **"서비스 카탈로그"** 메뉴로 들어가 카탈로그 항목 목록에서 새 항목을 추가하거나 기존 항목의 양식 필드·승인 필요 여부·담당 큐·SLA 목표(응답/해결 시간)를 편집한다.
+한지수 매니저는 신입사원 온보딩 시즌마다 요청 유형을 정비하기 위해 **"서비스 요청"** 그룹의 **"서비스 카탈로그"** 메뉴로 들어가 카탈로그 항목 목록에서 새 항목을 추가하거나 기존 항목의 양식 필드·담당자 역할·카테고리·SLA 목표(응답/해결 시간)를 편집한다.
 
 부서 서비스 쪽 카탈로그가 필요하면 **"부서 서비스"** 그룹의 **"부서별 카탈로그 관리"** 메뉴에서 담당 부서(HR/법무/시설/재무)를 지정하고 양식 필드와 (온보딩/오프보딩이라면) 체크리스트 템플릿까지 함께 정의한다.
 
@@ -462,9 +462,9 @@ When she has a question, she first searches by keyword in the **"Knowledge Base"
   {
     code: "SERVICE_DESK_AGENT",
     name: "SERVICE_DESK_AGENT — Service Desk Agent",
-    body: `**Persona**: Assistant Manager Kim Min-su, a first-line responder on the IT service desk. Handles requests and incident reports coming into the queue all day long.
+    body: `**Persona**: Assistant Manager Kim Min-su, a first-line responder on the IT service desk. Handles incoming requests and incident reports all day long.
 
-When Assistant Manager Kim Min-su starts his shift, he opens the **"Request Queue"** menu in the sidebar's **"Service Requests"** group. He checks his assigned queue in the queue list on the left, and clicks the **"Assign"** button on a request row to assign it to himself. He goes into the detail screen of an assigned request to communicate with the requester via comments, and once processing is done, clicks a status transition button (e.g., "Fulfilled") to update the status.
+When Assistant Manager Kim Min-su starts his shift, he opens the **"Request Inbox"** menu in the sidebar's **"Service Requests"** group. He checks his assigned category in the category list on the left, and clicks the **"Assign"** button on a request row to assign it to himself. He goes into the detail screen of an assigned request to communicate with the requester via comments, and once processing is done, clicks a status transition button (e.g., "Fulfilled") to update the status.
 
 When he receives a call reporting a system failure, he clicks the **"Register Incident"** button on the **"Incident"** menu of the **"Incident"** group and enters a summary, severity, and affected service to create an incident. He then leaves progress updates as status updates, and for issues that are difficult to resolve himself, he hands off to a senior handler using the **"Escalate"** button on the detail screen.
 
@@ -484,7 +484,7 @@ He processes change request approvals in the **"CAB Approval Inbox"** menu of th
     name: "PROCESS_OWNER — Process Owner",
     body: `**Persona**: Manager Han Ji-su, in charge of standardizing service operation processes. Creates new request types and manages SLA targets.
 
-Every new-hire onboarding season, Manager Han Ji-su goes into the **"Service Catalog"** menu of the **"Service Requests"** group to organize request types, adding new items to the catalog item list or editing existing items' form fields, whether approval is required, the assigned queue, and SLA targets (response/resolution time).
+Every new-hire onboarding season, Manager Han Ji-su goes into the **"Service Catalog"** menu of the **"Service Requests"** group to organize request types, adding new items to the catalog item list or editing existing items' form fields, assignee role, category, and SLA targets (response/resolution time).
 
 When a catalog for department services is needed, in the **"Department Catalog Management"** menu of the **"Department Services"** group, she designates the responsible department (HR/Legal/Facilities/Finance) and defines the form fields and, for onboarding/offboarding, the checklist template as well.
 

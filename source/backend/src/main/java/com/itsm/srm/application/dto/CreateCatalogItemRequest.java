@@ -12,10 +12,9 @@ public record CreateCatalogItemRequest(
         @NotBlank String name,
         String description,
         @Schema(description = "카테고리(선택, 미지정 시 미분류)") Long categoryId,
-        Long queueId,
         Integer slaResponseMinutes,
         Integer slaResolveMinutes,
-        @Schema(description = "담당자 역할(선택, 요청 큐 배정 후보 역할)") Long assigneeRoleId,
+        @Schema(description = "담당자 역할(선택, 배정 후보 역할)") Long assigneeRoleId,
         @Schema(description = "동적 양식(Form.io Form JSON, {display, components})")
         @NotNull Map<String, Object> formSchema
 ) {

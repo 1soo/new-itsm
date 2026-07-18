@@ -18,12 +18,19 @@ public interface ServiceRequestJpaRepository extends JpaRepository<ServiceReques
             select r from ServiceRequest r
             where r.isDeleted = false
               and (:requesterId is null or r.requesterId = :requesterId)
-              and (:queueId is null or r.queueId = :queueId)
+              and (
+                    (:categoryId is null and :uncategorized = false)
+                 or exists (select 1 from ServiceCatalogItem c
+                            where c.id = r.catalogItemId
+                              and ((:uncategorized = true and c.categoryId is null)
+                                or (:uncategorized = false and c.categoryId = :categoryId)))
+              )
               and (:status is null or r.status = :status)
               and r.createdAt >= :from and r.createdAt <= :to
             """)
     Page<ServiceRequest> search(@Param("requesterId") Long requesterId,
-                                @Param("queueId") Long queueId,
+                                @Param("categoryId") Long categoryId,
+                                @Param("uncategorized") boolean uncategorized,
                                 @Param("status") RequestStatus status,
                                 @Param("from") OffsetDateTime from,
                                 @Param("to") OffsetDateTime to,
@@ -32,10 +39,22 @@ public interface ServiceRequestJpaRepository extends JpaRepository<ServiceReques
     @Override
     @Query("""
             select count(r) from ServiceRequest r
-            where r.isDeleted = false and r.queueId = :queueId
+            where r.isDeleted = false
               and r.status <> com.itsm.srm.domain.RequestStatus.CLOSED
+              and exists (select 1 from ServiceCatalogItem c
+                          where c.id = r.catalogItemId and c.categoryId = :categoryId)
             """)
-    long countOpenByQueueId(@Param("queueId") Long queueId);
+    long countOpenByCategoryId(@Param("categoryId") Long categoryId);
+
+    @Override
+    @Query("""
+            select count(r) from ServiceRequest r
+            where r.isDeleted = false
+              and r.status <> com.itsm.srm.domain.RequestStatus.CLOSED
+              and exists (select 1 from ServiceCatalogItem c
+                          where c.id = r.catalogItemId and c.categoryId is null)
+            """)
+    long countOpenUncategorized();
 
     @Override
     @Query("""

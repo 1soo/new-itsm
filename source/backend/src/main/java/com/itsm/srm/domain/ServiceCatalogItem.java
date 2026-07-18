@@ -38,9 +38,6 @@ public class ServiceCatalogItem extends BaseEntity {
     @Column(name = "category_id")
     private Long categoryId;
 
-    @Column(name = "queue_id")
-    private Long queueId;
-
     @Column(name = "sla_response_minutes")
     private Integer slaResponseMinutes;
 
@@ -55,12 +52,11 @@ public class ServiceCatalogItem extends BaseEntity {
     private String formSchema;
 
     public ServiceCatalogItem(String name, String description, Long categoryId,
-                              Long queueId, Integer slaResponseMinutes, Integer slaResolveMinutes,
+                              Integer slaResponseMinutes, Integer slaResolveMinutes,
                               Long assigneeRoleId, String formSchema) {
         this.name = name;
         this.description = description;
         this.categoryId = categoryId;
-        this.queueId = queueId;
         this.slaResponseMinutes = slaResponseMinutes;
         this.slaResolveMinutes = slaResolveMinutes;
         this.assigneeRoleId = assigneeRoleId;
@@ -68,12 +64,11 @@ public class ServiceCatalogItem extends BaseEntity {
     }
 
     public void update(String name, String description, Long categoryId,
-                       Long queueId, Integer slaResponseMinutes, Integer slaResolveMinutes,
+                       Integer slaResponseMinutes, Integer slaResolveMinutes,
                        Long assigneeRoleId, String formSchema) {
         if (name != null) this.name = name;
         if (description != null) this.description = description;
         if (categoryId != null) this.categoryId = categoryId;
-        if (queueId != null) this.queueId = queueId;
         if (slaResponseMinutes != null) this.slaResponseMinutes = slaResponseMinutes;
         if (slaResolveMinutes != null) this.slaResolveMinutes = slaResolveMinutes;
         if (assigneeRoleId != null) this.assigneeRoleId = assigneeRoleId;

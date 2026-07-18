@@ -57,7 +57,7 @@ class ServiceCatalogServiceTest {
                 "display", "form",
                 "components", List.of(Map.of("key", "reason", "label", "Reason", "type", "textfield", "input", true)));
         CreateCatalogItemRequest request = new CreateCatalogItemRequest(
-                "Laptop", "desc", null, 1L, 60, 480, null, formSchema);
+                "Laptop", "desc", null, 60, 480, null, formSchema);
 
         CatalogItemDetailResponse response = service.create(request);
 
