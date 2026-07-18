@@ -670,3 +670,46 @@
 - DB: `type:"label"` 컴포넌트를 포함했던 기존 로우(통합테스트로 생성된 데이터)만 리셋되고, label을 쓰지 않은 다른 로우는 그대로 유지됨. 신규 카탈로그 항목의 `form_schema` 기본값이 `{"components":[],"labels":[]}`.
 - 기존 SRM 회귀 없음(placeholder, guide-text/guide-file, date/file 박스+클릭, radio/checkbox 배치방향·여백, 유효성 순차 단일 오류, 캔버스=미리보기 통합 등 이전 유지보수 항목 재확인).
 - tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → Standards/Spec 코드 리뷰 → 완료 시 커밋(main).
+
+## 개발 계획 — 2026-07-18 유지보수 5차: 라벨 경계 테두리 보정(4px 확장·텍스트 표시·1개 이상 기준·showBorder)
+
+- 요구사항 4건(직전 4차의 라벨 경계 테두리 세부 보정):
+  1. 경계 테두리를 각 변 2px(전체 4px) 바깥으로 확장(그리드 라인 좌표 계산 자체는 셀 경계 그대로, 시각적 확장만 — 음수 마진 등 구현 방식은 FE 재량).
+  2. 테두리 오버레이 내부 좌측 상단에 라벨 텍스트(`textColor`)를 표시(신규 — 기존 칩 스트립 텍스트 표시와는 별개로 추가).
+  3. 테두리 표시 기준을 "참조 컴포넌트 2개 이상"에서 **"1개 이상"**으로 변경(직전 4차 설계를 명시적으로 뒤집음 — 참조 0개면 여전히 테두리 없음, 1개만 있어도 그 컴포넌트 영역에 테두리를 그림).
+  4. 라벨에 `showBorder`(기본값 true) 필드 신규 — 생성/수정 팝업에 "테두리 없음" 체크박스로 제어. `false`면 캔버스 위 컴포넌트 그룹 경계 테두리만 숨기고, 칩 스트립 배지(테두리+틴트 배경)는 `showBorder`와 무관하게 항상 표시(`borderColor` 값 자체는 체크박스가 지우지 않고 보존).
+- 설계 근거: `docs/02_plan/screen/service-request.md` 5.8절(4차 대비 조건·스타일 보정 전체), `docs/02_plan/api_spec/service-request.md` API-SRM-002(`labels[].showBorder` 필드), `docs/02_plan/database/service-request.md`(컬럼 타입 변경 없음, JSONB 내부 필드만 추가), `docs/00_context/glossary.md`(그리드 라벨(태그) 항목 갱신). DB/BE 변경 없음(JSONB 내부 필드 추가일 뿐, 컬럼 마이그레이션·서버 검증 로직과 무관) — dev-db/dev-be 소집 불필요.
+- 참고 기존 코드: `source/frontend/src/components/common/form-schema.ts`·`dynamic-form-builder.tsx`(라벨 생성 팝업·칩 스트립·캔버스 경계 오버레이 부분, 4차에서 이미 구현됨).
+
+### 담당 범위
+
+#### FE (dev-ui) — `source/frontend/src/components/common/`
+
+**`form-schema.ts`**
+- `GridLabel` 인터페이스에 `showBorder?: boolean`(기본값 true, 미지정 시 true로 취급 — 소비하는 쪽에서 `?? true` 폴백) 추가.
+
+**`dynamic-form-builder.tsx`**
+- 라벨 생성/수정 미니 팝업(`labelForm` state·`DEFAULT_LABEL_FORM`)에 "테두리 없음" 체크박스 추가 → 체크 시 `showBorder: false`로 저장(기본값 true, 체크 해제 시 true로 되돌림). `saveLabel`이 이 필드를 포함해 저장.
+- 칩 스트립(`labels.map(...)`) 렌더링은 `showBorder` 값과 무관하게 기존 스타일(테두리+틴트 배경) 그대로 유지(변경 불필요, 확인만).
+- 캔버스 경계 테두리 오버레이(`labels.map(...)` 블록, 현재 `refs.length < 2`면 스킵하는 조건):
+  - 조건을 "`refs.length < 1` 또는 `label.showBorder === false`면 스킵"으로 변경(0개면 여전히 없음, 1개 이상이고 showBorder가 false가 아니면(미지정 포함 기본 true) 그림).
+  - 사각형 좌표 계산(min/max col/row) 로직 자체는 유지하되(1개짜리 참조도 그 컴포넌트 하나의 footprint로 최소/최대가 동일하게 나오므로 로직 변경 없이 그대로 동작), 렌더링 시 그리드 라인 좌표(`gridColumn`/`gridRow`)는 그대로 두고 시각적으로만 각 변 2px(전체 4px) 확장 — 예: overlay `div`에 `-inset-[2px]`(또는 `top/right/bottom/left: -2px` 음수 마진) 클래스 추가.
+  - 오버레이 내부에 라벨 텍스트를 좌측 상단 절대 위치(`absolute left-0 top-0` 등)로 추가, 색상은 `label.textColor`(작은 폰트, 배경 살짝 대비 처리는 FE 재량 — 가독성 확보 목적, 배경색 강제 사항 없음).
+- 컴포넌트 이동·리사이즈·라벨 지정/해제·`showBorder` 토글 시 즉시 재계산되는 기존 파생 계산 구조(effect 없이 렌더 시 계산)는 그대로 유지(추가 effect 불필요, 확인만).
+- Content 설정 팝업의 라벨 지정 Select는 이번 변경과 무관(그대로 유지).
+
+### 진행 순서
+
+1. FE `form-schema.ts`(`showBorder` 필드 추가) → `dynamic-form-builder.tsx`(생성 팝업 체크박스, 오버레이 조건·확장·텍스트 표시) 순, 단일 파일 조합이라 순차 진행.
+
+### 완료(테스트 통과) 기준
+
+- 라벨을 컴포넌트 1개에만 지정해도(2개 미만) 캔버스에 그 컴포넌트 영역 테두리가 표시됨(직전 4차엔 안 보였던 케이스).
+- 테두리가 셀 경계보다 살짝(각 변 2px, 전체 4px) 바깥으로 그려짐(그리드 배치 좌표 자체는 변경 없음).
+- 테두리 오버레이 좌측 상단에 라벨 텍스트가 `textColor`로 표시됨(칩 스트립 텍스트와 별개로 추가 표시).
+- 라벨 생성/수정 팝업에 "테두리 없음" 체크박스가 있고, 체크하면 그 라벨을 참조하는 컴포넌트가 몇 개든 캔버스 테두리가 전혀 안 그려짐. 체크 해제(또는 애초에 체크 안 함, 기본값)면 1개 이상일 때 정상 표시.
+- `showBorder=false`여도 팝업 상단 칩 스트립의 테두리·틴트 배경 스타일은 그대로 유지됨(칩이 사라지거나 스타일이 흐려지지 않음).
+- 컴포넌트 이동·리사이즈·라벨 재지정·`showBorder` 토글 시 테두리(및 텍스트 위치)가 즉시 재계산·반영됨.
+- 이 테두리 오버레이는 여전히 Content 설정 개별 미리보기·A1 축소 미리보기·요청 제출 폼에는 나타나지 않음(캔버스 전용, 변경 없음).
+- 기존 SRM 회귀 없음(라벨 생성/수정/삭제+labelId 해제, 팔레트 9종, DnD 배치, 높이 상한, regex text 전용, 9방향 정렬 등 4차까지의 항목 재확인).
+- tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → Standards/Spec 코드 리뷰 → 완료 시 커밋(main).

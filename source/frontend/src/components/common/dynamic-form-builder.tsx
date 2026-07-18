@@ -94,7 +94,7 @@ const DRAG_THRESHOLD_PX = 4;
  */
 const JUST_DRAGGED_RESET_MS = 0;
 const NO_LABEL_VALUE = "__NONE__";
-const DEFAULT_LABEL_FORM = { text: "", textColor: "#1d4ed8", borderColor: "#1d4ed8" };
+const DEFAULT_LABEL_FORM = { text: "", textColor: "#1d4ed8", borderColor: "#1d4ed8", showBorder: true };
 
 const PALETTE_LABELS: Record<GridComponentType, string> = {
   text: "텍스트",
@@ -259,7 +259,12 @@ export function DynamicFormBuilder({ initialSchema, onApply, onCancel, className
 
   const openEditLabel = (label: GridLabel) => {
     setEditingLabelId(label.id);
-    setLabelForm({ text: label.text, textColor: label.textColor, borderColor: label.borderColor });
+    setLabelForm({
+      text: label.text,
+      textColor: label.textColor,
+      borderColor: label.borderColor,
+      showBorder: label.showBorder ?? true,
+    });
     setLabelPopupOpen(true);
   };
 
@@ -520,7 +525,7 @@ export function DynamicFormBuilder({ initialSchema, onApply, onCancel, className
 
             {labels.map((label) => {
               const refs = components.filter((c) => c.labelId === label.id);
-              if (refs.length < 2) return null;
+              if (refs.length < 1 || label.showBorder === false) return null;
               const minCol = Math.min(...refs.map((c) => effectivePosition(c).col));
               const minRow = Math.min(...refs.map((c) => effectivePosition(c).row));
               const maxCol = Math.max(...refs.map((c) => effectivePosition(c).col + effectiveSize(c).w));
@@ -533,8 +538,15 @@ export function DynamicFormBuilder({ initialSchema, onApply, onCancel, className
                     gridRow: `${minRow + 1} / ${maxRowBound + 1}`,
                     borderColor: label.borderColor,
                   }}
-                  className="pointer-events-none rounded-md border-2"
-                />
+                  className="pointer-events-none relative -m-[2px] rounded-md border-2"
+                >
+                  <span
+                    className="absolute left-0 top-0 truncate rounded-sm bg-background/80 px-1 text-[10px] font-medium"
+                    style={{ color: label.textColor }}
+                  >
+                    {label.text}
+                  </span>
+                </div>
               );
             })}
           </div>
@@ -590,6 +602,13 @@ export function DynamicFormBuilder({ initialSchema, onApply, onCancel, className
               />
             </div>
           </div>
+          <label className="flex items-center gap-1.5 text-xs">
+            <Checkbox
+              checked={!labelForm.showBorder}
+              onCheckedChange={(v) => setLabelForm((f) => ({ ...f, showBorder: !v }))}
+            />
+            테두리 없음
+          </label>
           <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="outline" onClick={() => setLabelPopupOpen(false)}>
               취소

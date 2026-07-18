@@ -153,6 +153,10 @@ export interface GridLabel {
   text: string;
   textColor: string;
   borderColor: string;
+  /** 캔버스 경계 테두리 표시 여부(2026-07-18 유지보수 요청 5차 신규). 기본값 true, 미지정 시
+   * 소비하는 쪽에서 `?? true`로 취급. false여도 borderColor 값 자체는 보존되며 칩 스트립 배지
+   * 스타일에는 계속 사용된다(칩 스타일은 이 값과 무관). */
+  showBorder?: boolean;
 }
 
 export interface GridFormSchema {
