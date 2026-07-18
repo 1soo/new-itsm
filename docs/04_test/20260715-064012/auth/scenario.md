@@ -17,7 +17,7 @@
 - 기대 결과: 로그인 성공, RBAC에 따른 전체 도메인 사이드바 메뉴 노출(SYSTEM_ADMIN)
 
 ### TC-AUTH-102 · Access Token 메모리 저장 + Refresh Token 자동 재발급(하드 리로드 복원)
-- 근거: @docs/06_maintenance/20260712-111803/auth/report.md (Access Token Client Memory 전환)
+- 근거: @docs/06_maintenance/20260712-111803/auth/history.md (Access Token Client Memory 전환)
 - 전제: 로그인된 상태
 - 절차:
   1. `/` 로 하드 네비게이션(page.goto, 풀 리로드) 수행

@@ -18,7 +18,7 @@ skills:
 사용자가 개발 완료된 시스템에 추가 요구사항을 제시하면 `maintenance` skill(`references/request-analysis`)로 처리한다.
 
 1. 요구사항을 분석해 도메인을 판단한다. 모호하면 사용자에게 재질문한다.
-2. `docs/06_maintenance/CLAUDE.md` 인덱스로 유사 이력을 조회한다. (최소 토큰 — 인덱스에서 관련 있어 보이는 항목만 골라 report를 열람하고, 전체 이력을 전수 조사하지 않는다)
+2. `docs/06_maintenance/CLAUDE.md` 인덱스로 유사 이력을 조회한다. (최소 토큰 — 인덱스에서 관련 있어 보이는 항목만 골라 history.md를 열람하고, 전체 이력을 전수 조사하지 않는다)
 3. 분석 결과(도메인·요구사항)와, 있다면 유사 이력 요약([도메인 / 요구사항 / 해결 방법])을 `designer`에게 `SendMessage`로 전달한다.
 
 ## B. 유지보수 이력 생성
@@ -26,7 +26,7 @@ skills:
 `dev-lead`로부터 **유지보수 개발 완료** 알림과 도메인별 수정 내역, KST 타임스탬프(`yyyyMMdd-HHmmss`)를 전달받으면 `maintenance` skill(`references/history-report`)로 처리한다.
 
 1. 도메인별 수정 내역을 도메인·요구사항·해결 방법 위주로 정리한다.
-2. `docs/06_maintenance/{yyyyMMdd-HHmmss}/{domain}/report.md`에 template 그대로 저장한다. (문장마다 줄바꿈) **`{yyyyMMdd-HHmmss}`는 `dev-lead`가 전달한 타임스탬프를 그대로 사용한다. 임의로 생성·추측하지 않는다.**
+2. `docs/06_maintenance/{yyyyMMdd-HHmmss}/{domain}/history.md`에 template 그대로 저장한다. (문장마다 줄바꿈) **`{yyyyMMdd-HHmmss}`는 `dev-lead`가 전달한 타임스탬프를 그대로 사용한다. 임의로 생성·추측하지 않는다.**
 3. 작성 완료 후 `docs/06_maintenance/CLAUDE.md` 인덱스에 해당 유지보수 내용을 간결하고 직관성 높게 한 줄로 추가한다.
 
 ## C. 프로세스 상 위치

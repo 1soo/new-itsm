@@ -23,4 +23,4 @@ keywords: [로그인, 토큰 재발급, 감사 로그, 알림]
 - 없음 (실패 0건)
 
 ## 참고 사항 (실패는 아니나 발견한 사항)
-- 세션 중 관찰된 `/api/v1/auth/me`, `/api/v1/notifications/dismissals` 401은 Access Token이 Client Memory에만 저장되는 기존 보안 설계(`docs/06_maintenance/20260712-111803/auth/report.md`)에 따라 하드 리로드·토큰 만료 시점에 발생하는 정상적인 1차 실패이며, httpOnly Refresh Token 쿠키 기반 자동 재인증으로 즉시 해소됨(감사 로그의 "토큰 재발급" 이벤트로 교차 확인). 런타임 업그레이드로 인한 회귀 아님.
+- 세션 중 관찰된 `/api/v1/auth/me`, `/api/v1/notifications/dismissals` 401은 Access Token이 Client Memory에만 저장되는 기존 보안 설계(`docs/06_maintenance/20260712-111803/auth/history.md`)에 따라 하드 리로드·토큰 만료 시점에 발생하는 정상적인 1차 실패이며, httpOnly Refresh Token 쿠키 기반 자동 재인증으로 즉시 해소됨(감사 로그의 "토큰 재발급" 이벤트로 교차 확인). 런타임 업그레이드로 인한 회귀 아님.

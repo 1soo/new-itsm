@@ -2,12 +2,12 @@
 
 ## 사전 조건
 - auth 도메인 로그인 성공 전제. 신규 기능 검증 아님(기존 동작 회귀 확인).
-- change 도메인은 공용 승인 엔진(`docs/06_maintenance/20260712-014911/change/report.md`)으로 CAB 승인이 이관된 상태.
+- change 도메인은 공용 승인 엔진(`docs/06_maintenance/20260712-014911/change/history.md`)으로 CAB 승인이 이관된 상태.
 
 ## 시나리오
 
 ### TC-CHG-101 · 변경 요청(RFC) 생성 및 승인 현황 표시
-- 근거: @docs/01_analyze/feature/change.md (SCR-CHG-002, 6단계 상태), @docs/06_maintenance/20260712-014911/change/report.md (공용 승인 엔진 이관)
+- 근거: @docs/01_analyze/feature/change.md (SCR-CHG-002, 6단계 상태), @docs/06_maintenance/20260712-014911/change/history.md (공용 승인 엔진 이관)
 - 전제: `/changes` 목록이 빈 상태(트랜잭션 데이터 미시딩, 설계상 정상)
 - 절차:
   1. "변경 요청 생성" → 요약/설명/변경 유형(일반)/위험도(보통) 입력 → 생성

@@ -49,7 +49,7 @@
 - 기대 결과: 위반 항목마다 400 응답(정상 값으로는 201 성공, 대조군으로 1회 확인)
 
 ### TC-SRM-007 · 기존 SRM 회귀 — 카테고리 CRUD
-- 근거: @docs/02_plan/screen/service-request.md SCR-SRM-009, @docs/06_maintenance/20260716-125723/srm/report.md
+- 근거: @docs/02_plan/screen/service-request.md SCR-SRM-009, @docs/06_maintenance/20260716-125723/srm/history.md
 - 전제: po@itsm.local, `/admin/service-catalog` "카테고리 관리" 탭
 - 절차: 새 카테고리 생성 → 목록 노출 확인 → 이름 수정 → 사용 중인 카테고리 삭제 시도(409 확인) → 미사용 카테고리 삭제(성공)
 - 기대 결과: 생성/수정/조회 정상, 사용 중 카테고리 삭제는 409(CATEGORY_IN_USE), 미사용 카테고리 삭제 성공
