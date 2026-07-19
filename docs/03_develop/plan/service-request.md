@@ -825,3 +825,20 @@
 - SCR-SRM-007 "Form 설정" 팝업·SCR-SRM-002 요청 제출 폼의 내부 텍스트가 언어 전환(ko/en) 시 정상적으로 바뀐다.
 - 기존 SRM 회귀 없음(캔버스=실제 렌더링, DnD 배치, 팔레트 9종, 높이 상한, regex text 전용, 9방향 정렬, 라벨 legend 스타일·showBorder, 팝업 위치 통일 등 이전 차수 항목 재확인).
 - tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → Standards/Spec 코드 리뷰 → 완료 시 커밋(main).
+
+## 버그 수정 — 2026-07-19: labels 없는 구 스키마 로드 시 크래시(설계 변경 없음)
+
+- 배경: 4차 유지보수(20260718-214053)에서 `GridFormSchema.labels` 필드가 신규 도입됐으나, 그 이전에 저장된 카탈로그 항목의 `form_schema`(JSONB)에는 `labels` 키 자체가 없다(BE는 opaque라 기본값 보정 안 함). 8차 유지보수(20260719-082912)에서 `dynamic-form-renderer.tsx`에 `GridLabelOverlays`를 게이팅 없이 추가하면서 `labels={schema.labels}`(폴백 없음)로 호출해, `labels`가 `undefined`인 구 스키마를 열면 `GridLabelOverlays` 내부 `labels.map(...)`이 `TypeError`로 크래시한다(요청 제출 폼·A1 미리보기 양쪽 모두 재현). maintainer가 원인 분석 완료(카탈로그 항목 "GF2 인터랙티브 테스트" id=12, 2차 테스트 라운드 20260718-172626에 생성된 데이터로 재현 확인). 4차 이전 저장 후 한 번도 재저장(Form 설정 팝업 "적용") 안 된 모든 카탈로그 항목에 동일 재현되는 일반적 회귀다.
+- 수정: `dynamic-form-renderer.tsx`의 `<GridLabelOverlays components={schema.components} labels={schema.labels} />` 호출부를 `labels={schema.labels ?? []}`로 변경(`dynamic-form-builder.tsx`의 `useState(() => initialSchema?.labels ?? [])`와 동일한 방어 패턴). 설계 변경 없음, 순수 버그 수정.
+- **이번 범위 아님(참고만)**: 같은 카탈로그 항목의 필드가 3차 유지보수 이전 구 `type:"guide"`(guideText+file 통합) 그대로 남아있어 FE가 인식 못 하고 빈 텍스트 input으로 잘못 표시되는 결함이 있으나, 이는 크래시가 아니라 시각적 오표시이고 이번 크래시 원인과 무관하므로 이번 건에서는 건드리지 않는다(필요 시 별도 건).
+
+#### FE (dev-ui) — `source/frontend/src/components/common/dynamic-form-renderer.tsx`
+
+- `labels={schema.labels}` → `labels={schema.labels ?? []}`로 1줄 수정.
+- 회귀 테스트 커버: `labels` 키가 없는(또는 `undefined`인) 구 스키마를 렌더링해도 크래시하지 않는지 확인(가능하면 이런 케이스를 검증하는 테스트/시나리오 추가 — 단위 테스트가 있다면 거기에, 없다면 tester 시나리오에 위임해도 됨).
+
+### 완료(테스트 통과) 기준
+
+- "GF2 인터랙티브 테스트"(id=12) 또는 동일하게 `labels` 필드가 없는 기존 카탈로그 항목을 요청 제출 폼(SCR-SRM-002)과 SCR-SRM-007 A1 미리보기 양쪽에서 열어도 크래시하지 않고 정상 렌더링된다.
+- `labels` 필드가 있는(4차 이후 저장된) 카탈로그 항목은 기존처럼 라벨 경계 오버레이가 정상 표시된다(회귀 없음).
+- tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → Standards/Spec 코드 리뷰 → 완료 시 커밋(main).

@@ -238,7 +238,7 @@ export function DynamicFormRenderer({
           );
         })}
 
-        <GridLabelOverlays components={schema.components} labels={schema.labels} />
+        <GridLabelOverlays components={schema.components} labels={schema.labels ?? []} />
       </div>
 
       {formError ? (
