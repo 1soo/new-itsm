@@ -109,7 +109,12 @@
     "checklistTypeLabel": "체크리스트 유형",
     "checklistTemplateLabel": "체크리스트 템플릿(하위 작업)",
     "checklistEmptyWarning": "하위 작업이 비어 있습니다. 저장은 가능하지만, 이 유형으로 실제 요청 제출 시 거부됩니다.",
-    "formFieldsLabel": "양식 필드",
+    "formSchema": "양식 필드",
+    "formBuilder": {
+      "openButton": "Form 설정",
+      "modalTitle": "Form 설정",
+      "previewEmpty": "설정된 양식이 없습니다. 클릭하여 Form을 설정하세요."
+    },
     "saveButton": "저장",
     "nameRequiredError": "이름은 필수입니다.",
     "departmentRequiredError": "담당 부서는 필수입니다.",

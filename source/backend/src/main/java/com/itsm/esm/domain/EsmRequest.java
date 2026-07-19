@@ -13,9 +13,12 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
- * 부서 요청 티켓.
+ * 부서 요청 티켓. 양식 제출 데이터는 formValues(컴포넌트 key 기준 key-value 맵, JSONB)에 통째로 저장한다
+ * (2026-07-19 유지보수 요청, 레거시 EAV 폐기, SRM ServiceRequest.formValues와 동일 패턴).
  */
 @Getter
 @Entity
@@ -53,8 +56,12 @@ public class EsmRequest extends BaseEntity {
     @Column(nullable = false, length = 15)
     private EsmRequestStatus status;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "form_values", nullable = false, columnDefinition = "jsonb")
+    private String formValues;
+
     public EsmRequest(String ticketKey, Long catalogItemId, Long requesterId, Department department,
-                      String targetUserName, Long checklistId) {
+                      String targetUserName, Long checklistId, String formValues) {
         this.ticketKey = ticketKey;
         this.catalogItemId = catalogItemId;
         this.requesterId = requesterId;
@@ -62,6 +69,7 @@ public class EsmRequest extends BaseEntity {
         this.targetUserName = targetUserName;
         this.checklistId = checklistId;
         this.status = EsmRequestStatus.SUBMITTED;
+        this.formValues = formValues;
     }
 
     public void changeStatus(EsmRequestStatus status) {

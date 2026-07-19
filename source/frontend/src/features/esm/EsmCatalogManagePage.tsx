@@ -14,7 +14,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { EmptyState, FieldBuilder, type FormFieldSchema, toast } from "@/components/common";
+import {
+  DynamicFormBuilder,
+  DynamicFormRenderer,
+  EmptyState,
+  EMPTY_GRID_SCHEMA,
+  type GridFormSchema,
+  Modal,
+  toast,
+} from "@/components/common";
 import { esmApi } from "@/features/esm/api";
 import { DEPARTMENTS, TASK_DEPARTMENTS, checklistTemplateTypeLabel, departmentLabel } from "@/features/esm/status";
 import type {
@@ -29,10 +37,15 @@ import { cn } from "@/lib/utils";
 
 /*
  * 부서별 카탈로그 관리(SCR-ESM-006) — 프로세스 오너가 담당 부서 지정 요청 유형(양식·체크리스트 템플릿)을 정의.
- * 좌: 카탈로그 목록 / 우: 편집·생성 폼(FieldBuilder 재사용 + 체크리스트 템플릿 빌더 신규 반복 입력).
+ * 좌: 카탈로그 목록 / 우: 편집·생성 폼("Form 설정" 버튼으로 SRM과 공용인 그리드 폼 빌더 팝업 오픈
+ * + 축소 미리보기, 2026-07-19 유지보수 요청으로 레거시 EAV FieldBuilder에서 전환 + 체크리스트 템플릿
+ * 빌더 반복 입력).
  * 담당 부서 미지정 400, 온보딩/오프보딩인데 템플릿 비어있으면 저장은 허용하되 경고만 표시(실제 거부는 제출 시점).
  */
 const CHECKLIST_TEMPLATE_TYPES: ChecklistTemplateType[] = ["NONE", "ONBOARDING", "OFFBOARDING"];
+
+/** Form 설정 축소 미리보기 비율(SRM CatalogManagePage A1과 동일 패턴). */
+const PREVIEW_SCALE = 0.45;
 
 interface FormState {
   name: string;
@@ -40,7 +53,7 @@ interface FormState {
   department: Department | "";
   checklistTemplateType: ChecklistTemplateType;
   checklistTemplate: ChecklistTemplateTask[];
-  formSchema: FormFieldSchema[];
+  formSchema: GridFormSchema;
 }
 
 const EMPTY_FORM: FormState = {
@@ -49,7 +62,7 @@ const EMPTY_FORM: FormState = {
   department: "",
   checklistTemplateType: "NONE",
   checklistTemplate: [],
-  formSchema: [],
+  formSchema: EMPTY_GRID_SCHEMA,
 };
 
 export function EsmCatalogManagePage() {
@@ -59,6 +72,7 @@ export function EsmCatalogManagePage() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [builderOpen, setBuilderOpen] = useState(false);
 
   const loadList = () => {
     esmApi
@@ -80,7 +94,7 @@ export function EsmCatalogManagePage() {
         department: detail.department,
         checklistTemplateType: detail.checklistTemplateType,
         checklistTemplate: detail.checklistTemplate,
-        formSchema: detail.formSchema as FormFieldSchema[],
+        formSchema: detail.formSchema,
       });
     } catch (err) {
       toast.error(extractErrorMessage(err));
@@ -256,11 +270,39 @@ export function EsmCatalogManagePage() {
               ) : null}
 
               <div className="space-y-1.5">
-                <Label>{t("esmCatalogManage.formFieldsLabel", { defaultValue: "양식 필드" })}</Label>
-                <FieldBuilder
-                  value={form.formSchema}
-                  onChange={(fields) => setForm((f) => ({ ...f, formSchema: fields }))}
-                />
+                <Label className="block">{t("esmCatalogManage.formSchema", { defaultValue: "양식 필드" })}</Label>
+                <Button type="button" variant="outline" className="mt-4" onClick={() => setBuilderOpen(true)}>
+                  {t("esmCatalogManage.formBuilder.openButton", { defaultValue: "Form 설정" })}
+                </Button>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setBuilderOpen(true)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") setBuilderOpen(true);
+                  }}
+                  className="relative block w-full cursor-pointer overflow-hidden rounded-md border border-border bg-muted/20 text-left"
+                  style={{ height: 160 }}
+                >
+                  {form.formSchema.components.length === 0 ? (
+                    <p className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                      {t("esmCatalogManage.formBuilder.previewEmpty", {
+                        defaultValue: "설정된 양식이 없습니다. 클릭하여 Form을 설정하세요.",
+                      })}
+                    </p>
+                  ) : (
+                    <div
+                      className="pointer-events-none absolute left-0 top-0"
+                      style={{
+                        transform: `scale(${PREVIEW_SCALE})`,
+                        transformOrigin: "top left",
+                        width: `${100 / PREVIEW_SCALE}%`,
+                      }}
+                    >
+                      <DynamicFormRenderer schema={form.formSchema} onSubmit={() => {}} disabled hideFooter />
+                    </div>
+                  )}
+                </div>
               </div>
 
               {error ? (
@@ -278,6 +320,23 @@ export function EsmCatalogManagePage() {
           </CardContent>
         </Card>
       </div>
+
+      <Modal
+        open={builderOpen}
+        onOpenChange={setBuilderOpen}
+        title={t("esmCatalogManage.formBuilder.modalTitle", { defaultValue: "Form 설정" })}
+        className="flex h-[85vh] w-[90vw] max-w-[1600px] flex-col"
+      >
+        <DynamicFormBuilder
+          initialSchema={form.formSchema}
+          onApply={(schema) => {
+            setForm((f) => ({ ...f, formSchema: schema }));
+            setBuilderOpen(false);
+          }}
+          onCancel={() => setBuilderOpen(false)}
+          className="flex-1"
+        />
+      </Modal>
     </div>
   );
 }

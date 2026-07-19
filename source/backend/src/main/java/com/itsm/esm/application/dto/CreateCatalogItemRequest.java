@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
+import java.util.Map;
 
 @Schema(description = "카탈로그 항목 생성 요청")
 public record CreateCatalogItemRequest(
@@ -17,6 +18,7 @@ public record CreateCatalogItemRequest(
         @NotNull Department department,
         ChecklistTemplateType checklistTemplateType,
         List<ChecklistTemplateTaskDto> checklistTemplate,
-        List<FormFieldDto> formSchema
+        @Schema(description = "동적 양식(SRM과 완전히 동일한 자체 8×n 그리드 스키마, {components,labels})")
+        Map<String, Object> formSchema
 ) {
 }

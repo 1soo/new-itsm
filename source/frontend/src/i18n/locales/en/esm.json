@@ -109,7 +109,12 @@
     "checklistTypeLabel": "Checklist Type",
     "checklistTemplateLabel": "Checklist Template (Subtasks)",
     "checklistEmptyWarning": "No subtasks defined. Saving is allowed, but submitting an actual request of this type will be rejected.",
-    "formFieldsLabel": "Form Fields",
+    "formSchema": "Form Fields",
+    "formBuilder": {
+      "openButton": "Form Settings",
+      "modalTitle": "Form Settings",
+      "previewEmpty": "No form configured yet. Click to set up the form."
+    },
     "saveButton": "Save",
     "nameRequiredError": "Name is required.",
     "departmentRequiredError": "Department is required.",

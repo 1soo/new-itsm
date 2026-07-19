@@ -122,7 +122,9 @@ class AuthAdminIntegrationTest {
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/35_catalog_form_field_textarea_type.sql").toAbsolutePath()),
                     "/docker-entrypoint-initdb.d/35_catalog_form_field_textarea_type.sql")
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/36_srm_form_schema_jsonb.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/36_srm_form_schema_jsonb.sql");
+                    "/docker-entrypoint-initdb.d/36_srm_form_schema_jsonb.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/40_esm_form_schema_jsonb.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/40_esm_form_schema_jsonb.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {

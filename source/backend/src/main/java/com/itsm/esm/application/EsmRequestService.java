@@ -1,5 +1,6 @@
 package com.itsm.esm.application;
 
+import tools.jackson.databind.ObjectMapper;
 import com.itsm.asset.domain.Asset;
 import com.itsm.asset.domain.AssetStatus;
 import com.itsm.asset.domain.repository.AssetRepository;
@@ -12,6 +13,8 @@ import com.itsm.common.approval.domain.ApprovalRequest;
 import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
+import com.itsm.common.form.FormJsonMapper;
+import com.itsm.common.form.FormSubmissionValidator;
 import com.itsm.common.security.AuthPrincipal;
 import com.itsm.common.security.SecurityUtils;
 import com.itsm.common.ticket.Comment;
@@ -34,14 +37,11 @@ import com.itsm.esm.domain.EsmChecklist;
 import com.itsm.esm.domain.EsmChecklistTask;
 import com.itsm.esm.domain.EsmChecklistTemplateTask;
 import com.itsm.esm.domain.EsmRequest;
-import com.itsm.esm.domain.EsmRequestFormValue;
 import com.itsm.esm.domain.EsmRequestStatus;
-import com.itsm.esm.domain.repository.EsmCatalogFormFieldRepository;
 import com.itsm.esm.domain.repository.EsmCatalogItemRepository;
 import com.itsm.esm.domain.repository.EsmChecklistRepository;
 import com.itsm.esm.domain.repository.EsmChecklistTaskRepository;
 import com.itsm.esm.domain.repository.EsmChecklistTemplateTaskRepository;
-import com.itsm.esm.domain.repository.EsmRequestFormValueRepository;
 import com.itsm.esm.domain.repository.EsmRequestRepository;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -51,13 +51,14 @@ import org.springframework.util.StringUtils;
 import java.time.OffsetDateTime;
 import java.time.Year;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
  * 부서 요청 유스케이스(API-ESM-005~009). 제출은 인증 사용자 전반, 처리(상태전이)는 DEPT_COORDINATOR
  * 소속 부서 일치 시에만 허용. 온보딩/오프보딩 유형은 제출 시 체크리스트를 자동 생성한다.
+ * 양식 제출 데이터(formValues)는 컴포넌트 key 기준 key-value 맵을 통째로 JSONB에 저장하고,
+ * 제출 시 공용 FormSubmissionValidator(common.form)로 재검증한다(2026-07-19 유지보수 요청, 레거시 EAV 폐기).
  */
 @Service
 public class EsmRequestService {
@@ -66,11 +67,10 @@ public class EsmRequestService {
     private static final TicketType TT = TicketType.ESM_REQUEST;
     private static final String DOMAIN = "ESM";
     private static final OffsetDateTime EPOCH = OffsetDateTime.parse("1970-01-01T00:00:00Z");
+    private static final String EMPTY_FORM_VALUES = "{}";
 
     private final EsmRequestRepository requestRepository;
-    private final EsmRequestFormValueRepository formValueRepository;
     private final EsmCatalogItemRepository catalogItemRepository;
-    private final EsmCatalogFormFieldRepository formFieldRepository;
     private final EsmChecklistTemplateTaskRepository templateTaskRepository;
     private final EsmChecklistRepository checklistRepository;
     private final EsmChecklistTaskRepository checklistTaskRepository;
@@ -80,11 +80,10 @@ public class EsmRequestService {
     private final TimelineEventRepository timelineRepository;
     private final ApprovalGateService approvalGateService;
     private final ApprovalRequestRepository approvalRequestRepository;
+    private final ObjectMapper objectMapper;
 
     public EsmRequestService(EsmRequestRepository requestRepository,
-                             EsmRequestFormValueRepository formValueRepository,
                              EsmCatalogItemRepository catalogItemRepository,
-                             EsmCatalogFormFieldRepository formFieldRepository,
                              EsmChecklistTemplateTaskRepository templateTaskRepository,
                              EsmChecklistRepository checklistRepository,
                              EsmChecklistTaskRepository checklistTaskRepository,
@@ -93,11 +92,10 @@ public class EsmRequestService {
                              CommentRepository commentRepository,
                              TimelineEventRepository timelineRepository,
                              ApprovalGateService approvalGateService,
-                             ApprovalRequestRepository approvalRequestRepository) {
+                             ApprovalRequestRepository approvalRequestRepository,
+                             ObjectMapper objectMapper) {
         this.requestRepository = requestRepository;
-        this.formValueRepository = formValueRepository;
         this.catalogItemRepository = catalogItemRepository;
-        this.formFieldRepository = formFieldRepository;
         this.templateTaskRepository = templateTaskRepository;
         this.checklistRepository = checklistRepository;
         this.checklistTaskRepository = checklistTaskRepository;
@@ -107,6 +105,7 @@ public class EsmRequestService {
         this.timelineRepository = timelineRepository;
         this.approvalGateService = approvalGateService;
         this.approvalRequestRepository = approvalRequestRepository;
+        this.objectMapper = objectMapper;
     }
 
     // ---------- create (API-ESM-005) ----------
@@ -118,7 +117,7 @@ public class EsmRequestService {
                 .filter(i -> !i.isDeleted())
                 .orElseThrow(() -> new BusinessException(ErrorCode.VALIDATION_ERROR, "유효하지 않은 카탈로그 항목입니다."));
 
-        validateRequiredFields(item.getId(), request.formValues());
+        FormSubmissionValidator.validate(readSchema(item.getFormSchema()), request.formValues());
 
         Long checklistId = null;
         if (item.getChecklistTemplateType() != ChecklistTemplateType.NONE) {
@@ -130,12 +129,8 @@ public class EsmRequestService {
 
         EsmRequest saved = requestRepository.save(new EsmRequest(
                 nextTicketKey(), item.getId(), principal.userId(), item.getDepartment(),
-                request.targetUserName(), checklistId));
+                request.targetUserName(), checklistId, writeValues(request.formValues())));
 
-        if (request.formValues() != null) {
-            request.formValues().forEach((key, value) -> formValueRepository.save(
-                    new EsmRequestFormValue(saved.getId(), key, value == null ? null : String.valueOf(value))));
-        }
         timelineRepository.save(TimelineEvent.of(TT, saved.getId(), "SUBMIT", "부서 요청이 제출되었습니다."));
         return new RequestCreatedResponse(saved.getId(), saved.getTicketKey(), saved.getStatus().name(), checklistId);
     }
@@ -167,18 +162,6 @@ public class EsmRequestService {
             String description = "자산 회수: " + asset.getName() + "(" + asset.getAssetKey() + ")";
             checklistTaskRepository.save(new EsmChecklistTask(checklistId, Department.IT, description, asset.getId()));
         }
-    }
-
-    private void validateRequiredFields(Long catalogItemId, Map<String, Object> formValues) {
-        formFieldRepository.findByCatalogItemIdOrderBySortOrderAsc(catalogItemId).stream()
-                .filter(com.itsm.esm.domain.EsmCatalogFormField::isRequired)
-                .forEach(f -> {
-                    Object v = formValues == null ? null : formValues.get(f.getFieldKey());
-                    if (v == null || !StringUtils.hasText(String.valueOf(v))) {
-                        throw new BusinessException(ErrorCode.REQUIRED_FIELD_MISSING,
-                                "필수 항목 누락: " + f.getLabel());
-                    }
-                });
     }
 
     private String nextTicketKey() {
@@ -224,8 +207,7 @@ public class EsmRequestService {
         assertCanViewDetail(principal, request);
 
         EsmCatalogItem item = catalogItemRepository.findById(request.getCatalogItemId()).orElse(null);
-        Map<String, Object> formValues = new LinkedHashMap<>();
-        formValueRepository.findByEsmRequestId(id).forEach(v -> formValues.put(v.getFieldKey(), v.getFieldValue()));
+        Map<String, Object> formValues = readValues(request.getFormValues());
 
         List<CommentResponse> comments = commentRepository.findByTicketTypeAndTicketIdOrderByCreatedAtAsc(TT, id).stream()
                 .map(c -> new CommentResponse(c.getId(), userName(c.getAuthorId()), c.getBody(), c.getCreatedAt()))
@@ -363,5 +345,17 @@ public class EsmRequestService {
 
     private String userName(Long id) {
         return id == null ? null : appUserRepository.findById(id).map(AppUser::getName).orElse(null);
+    }
+
+    private Map<String, Object> readSchema(String json) {
+        return FormJsonMapper.readJsonMap(objectMapper, json);
+    }
+
+    private String writeValues(Map<String, Object> formValues) {
+        return FormJsonMapper.writeJson(objectMapper, formValues, EMPTY_FORM_VALUES, "formValues 직렬화 실패");
+    }
+
+    private Map<String, Object> readValues(String json) {
+        return FormJsonMapper.readJsonMap(objectMapper, json);
     }
 }

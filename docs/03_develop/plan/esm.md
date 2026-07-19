@@ -149,3 +149,44 @@
 - FE: SCR-ESM-006에서 자유배치 폼 설계·저장, SCR-ESM-002에서 렌더링·제출 정상 동작.
 - tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → 완료 시 커밋(이 커밋에 SRM+ESM phase가 공유한 `field-builder.tsx`/`dynamic-form.tsx` 삭제도 포함).
 - HR 케이스 상세(SCR-ESM-008)의 전이 버튼에 동작 동사형 라벨이 표시된다(타임라인은 기존과 동일, actor 추가 없음).
+
+## 개발 계획 — 2026-07-19 유지보수: ESM 동적 양식을 SRM 그리드 폼 빌더로 전면 전환
+
+- 요구사항: ESM의 레거시 EAV 기반 동적 양식(`esm_catalog_form_field`/`esm_request_form_value`, 반복 입력 필드 빌더 `field-builder.tsx`+렌더러 `dynamic-form.tsx`)을 폐기하고, SRM이 사용 중인 자체 8×n 그리드 드래그앤드롭 폼 빌더(공용 컴포넌트 `dynamic-form-builder.tsx`/`dynamic-form-renderer.tsx`/`form-schema.ts`, BE 공용 `com.itsm.common.form.FormSubmissionValidator`/`FormJsonMapper`)로 전면 전환한다. SCR-ESM-002(동적 필드 목록→그리드 렌더러), SCR-ESM-006(양식 필드 빌더→"Form 설정" 팝업)이 대상. ESM에는 없던 `number` 타입은 팔레트에 추가하지 않고 `text`+정규식으로 흡수. 기존 카탈로그 항목의 `form_schema`는 빈 그리드로 리셋(백필 불가, 사용자 결정), 기존 제출 데이터(`esm_request_form_value`)는 `form_values`로 백필.
+- 설계 근거: `docs/02_plan/screen/esm.md`(변경이력 2026-07-19, SCR-ESM-002/006), `docs/02_plan/api_spec/esm.md`(변경이력 2026-07-19, API-ESM-002~005), `docs/02_plan/database/esm.md`(변경이력 2026-07-19, 4/6절), `docs/00_context/glossary.md`(동적 양식 스키마·폼 제출 데이터 항목이 "SRM 전용"에서 "SRM/ESM 공용"으로 갱신됨). maintainer 분석·designer 설계 완료(추가 질문 없음).
+- 참고 기존 코드(SRM 이식 대상 패턴): `source/backend/.../srm/application/ServiceCatalogService.java`(`writeSchema`/`readSchema`, `FormJsonMapper` 사용)·`ServiceRequestService.java`(`FormSubmissionValidator.validate`, `writeValues`/`readValues`)·`domain/ServiceCatalogItem.java`(`formSchema` 필드), `source/frontend/.../service-request/CatalogManagePage.tsx`(Form 설정 팝업+A1 축소 미리보기)·`RequestSubmitPage.tsx`(`DynamicFormRenderer` 사용), `source/db/sql/36_srm_form_schema_jsonb.sql`·`38_srm_form_schema_reset.sql`(패턴 선례).
+
+### 담당 범위
+
+#### DB (dev-db) — `source/db/sql/` — **완료**
+
+- `40_esm_form_schema_jsonb.sql`: `esm_catalog_item.form_schema`/`esm_request.form_values`(JSONB) 신규(SRM과 동일 기본값 `{"components":[],"labels":[]}`/`{}`), `esm_request_form_value` 백필 후 `esm_catalog_form_field`/`esm_request_form_value` DROP. `source/db/sql/CLAUDE.md` 반영 완료.
+
+#### BE (dev-be) — `source/backend/src/main/java/com/itsm/esm/`
+
+- **엔티티**: `domain/EsmCatalogItem.java`에 `formSchema`(String, `@JdbcTypeCode(SqlTypes.JSON)` + `columnDefinition = "jsonb"`, SRM `ServiceCatalogItem.formSchema`와 동일 패턴) 필드 추가(생성자·`update()`에도 반영). `domain/EsmRequest.java`에 `formValues`(동일 패턴) 필드 추가.
+- **삭제 대상**: `domain/EsmCatalogFormField.java`, `domain/EsmRequestFormValue.java`, `domain/repository/EsmCatalogFormFieldRepository.java`, `domain/repository/EsmRequestFormValueRepository.java`, `infrastructure/persistence/EsmCatalogFormFieldJpaRepository.java`, `infrastructure/persistence/EsmRequestFormValueJpaRepository.java`, `application/dto/FormFieldDto.java`.
+- **`application/EsmCatalogService.java`**: `EsmCatalogFormFieldRepository` 의존성 제거. `DEFAULT_FORM_SCHEMA = "{\"components\":[],\"labels\":[]}"` 상수 추가, `common.form.FormJsonMapper`로 `writeSchema`/`readSchema` 헬퍼 신설(SRM `ServiceCatalogService` 그대로). `create()`/`update()`의 `saveFields(...)` 호출 제거, `formSchema` 원본 JSON을 엔티티에 그대로 저장. `toDetail()`에서 `formFieldRepository` 조립 로직 제거하고 `readSchema(item.getFormSchema())` 그대로 반환.
+- **`application/dto/CreateCatalogItemRequest.java`·`UpdateCatalogItemRequest.java`·`CatalogItemDetailResponse.java`**: `List<FormFieldDto> formSchema` → `Map<String, Object> formSchema`(opaque JSON 트리)로 변경.
+- **`application/EsmRequestService.java`**: `EsmRequestFormValueRepository`/`EsmCatalogFormFieldRepository` 의존성 제거. 제출 시 `EsmRequestFormValue` 저장 루프 제거, `formValues` 맵을 엔티티에 그대로 저장(`common.form.FormJsonMapper`로 `writeValues`/`readValues` 헬퍼, SRM `ServiceRequestService` 패턴). 기존 `validateRequiredFields(...)`(EsmCatalogFormField 기반) 호출을 `common.form.FormSubmissionValidator.validate(readSchema(item.getFormSchema()), request.formValues())`로 교체(카탈로그 항목의 `formSchema` 조회 필요 — `EsmCatalogItemRepository` 또는 이미 주입돼 있으면 재사용). 상세 조회의 `formValues` 조립 로직(`formValueRepository.findByEsmRequestId` 순회)도 `readValues(request.getFormValues())` 그대로 반환으로 교체. `RequestDetailResponse`/`CreateRequestRequest`의 `formValues: Map<String, Object>` 타입 자체는 변경 없음(API 계약 그대로).
+- **테스트**: `EsmCatalogServiceTest`/`EsmRequestServiceTest`(존재 시) 등 EAV 관련 mock·픽스처를 `formSchema`/`formValues` Map 기반으로 갱신. 그리드 컴포넌트 객체 픽스처는 SRM `FormSubmissionValidatorTest` 패턴 참고(`{key,type,validation:{required,regex}}`).
+- `common/exception/ErrorCode.java`: ESM 전용 폼 관련 오류코드가 있었다면 확인 후 정리(현재 파악으로는 공용 `REQUIRED_FIELD_MISSING`/`FORM_FIELD_INVALID` 재사용이라 신규 불필요).
+
+#### FE (dev-fe) — `source/frontend/src/features/esm/`
+
+- **`EsmCatalogManagePage.tsx`(SCR-ESM-006)**: `FieldBuilder`(`field-builder.tsx`) 사용부를 SRM `CatalogManagePage.tsx`와 동일하게 `DynamicFormBuilder`(공용, `@/components/common`)를 `Modal`로 감싼 "Form 설정" 팝업 + 그 아래 축소 미리보기(`disabled`+`hideFooter` `DynamicFormRenderer` 재사용, `PREVIEW_SCALE` 로컬 상수)로 교체. 상세 조회 응답 `formSchema`를 `initialSchema`로 주입, 팝업 적용 시 로컬 상태 축적, 기존 "저장" 버튼 클릭 시 카탈로그 항목 생성/수정 API 페이로드(`formSchema`)로 전달.
+- **`DeptRequestSubmitPage.tsx`(SCR-ESM-002)**: `DynamicForm`(`dynamic-form.tsx`) 사용부를 공용 `DynamicFormRenderer`로 교체. 카탈로그 상세 조회 `formSchema`를 `schema`로 주입, `onSubmit`으로 받은 데이터를 그대로 요청 생성 API(`formValues`)로 전달. 지식 추천 패널은 없음(설계상 SRM과 차이, 기존 그대로 유지).
+- **`api.ts`/`types.ts`**: `formFields`/`FormFieldSchema` 관련 타입을 `GridFormSchema`(공용 `@/components/common` re-export)로 교체. 기존 필드 배열 전용 클라이언트 검증 로직이 있으면 제거(공용 렌더러 내장 검증 + 서버 재검증으로 이관).
+- **레거시 정리**: ESM이 더는 `field-builder.tsx`/`dynamic-form.tsx`를 쓰지 않게 되면 이 두 파일과 `form-schema.ts` 하단 레거시 구획(`FormFieldSchema`/`FormFieldType`/`FormValues`/`FormErrors`/`validateForm`/`hasOptions`), `index.ts`의 해당 export가 전부 죽은 코드가 된다 — **완전 삭제 대상**(다른 소비처 없음, `dev-fe`가 자기 작업 완료 확인 후 `dev-ui`에게 삭제 요청하거나, 공통 파일이라 `dev-ui`가 직접 정리해도 됨 — 파일 소유 경계상 `components/common/`은 UI 역할이므로 dev-ui가 삭제 수행, dev-fe는 자신의 `features/esm/` 파일만 담당).
+
+### 진행 순서
+
+1. DB(완료) → BE(엔티티+서비스+DTO 전환) → FE(화면 전환, BE formSchema 계약 확정 후 착수) — FE는 BE의 `formSchema`가 `Map<String,Object>`로 나오는지 확인 후 연동. BE/FE 병행 가능(계약은 이미 api_spec에 확정돼 있으므로).
+2. FE 작업 완료 후, 레거시 `field-builder.tsx`/`dynamic-form.tsx`/`form-schema.ts` 레거시 구획/`index.ts` export 삭제는 dev-ui에게 요청.
+
+### 완료(테스트 통과) 기준
+
+- BE: 카탈로그 생성/수정 시 그리드 스키마 그대로 저장·조회(`formSchema` Map), 부서 요청 제출 시 `FormSubmissionValidator`가 `required`/`text` 정규식 위반을 첫 번째 것만 400으로 거부, 정상 제출은 `form_values`에 그대로 저장. 온보딩/오프보딩 체크리스트 자동 생성(REQ-ESM-005/006) 등 기존 기능 회귀 없음.
+- FE: SCR-ESM-006에서 그리드 폼 빌더(팔레트 9종, DnD 배치, 라벨 태그, 9방향 정렬 등 SRM과 동일 기능)로 양식 설계·저장, SCR-ESM-002에서 그 폼이 그대로 렌더링되고 제출 가능. 기존 온보딩/오프보딩 대상자명 필수 입력·체크리스트 자동 생성 안내 토스트 등 기존 로직 회귀 없음.
+- 레거시 `field-builder.tsx`/`dynamic-form.tsx`와 `form-schema.ts`의 레거시 타입 구획이 완전히 삭제되고, 코드베이스 어디에서도 참조되지 않음(빌드 통과로 확인).
+- tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → Standards/Spec 코드 리뷰 → 완료 시 커밋(main).

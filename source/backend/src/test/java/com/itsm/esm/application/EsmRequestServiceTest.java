@@ -1,5 +1,6 @@
 package com.itsm.esm.application;
 
+import tools.jackson.databind.ObjectMapper;
 import com.itsm.asset.domain.Asset;
 import com.itsm.asset.domain.AssetType;
 import com.itsm.asset.domain.repository.AssetRepository;
@@ -18,18 +19,15 @@ import com.itsm.esm.application.dto.CommentCreateRequest;
 import com.itsm.esm.application.dto.CreateRequestRequest;
 import com.itsm.esm.application.dto.StatusTransitionRequest;
 import com.itsm.esm.domain.ChecklistTemplateType;
-import com.itsm.esm.domain.EsmCatalogFormField;
 import com.itsm.esm.domain.EsmCatalogItem;
 import com.itsm.esm.domain.EsmChecklist;
 import com.itsm.esm.domain.EsmChecklistTemplateTask;
 import com.itsm.esm.domain.EsmRequest;
 import com.itsm.esm.domain.EsmRequestStatus;
-import com.itsm.esm.domain.repository.EsmCatalogFormFieldRepository;
 import com.itsm.esm.domain.repository.EsmCatalogItemRepository;
 import com.itsm.esm.domain.repository.EsmChecklistRepository;
 import com.itsm.esm.domain.repository.EsmChecklistTaskRepository;
 import com.itsm.esm.domain.repository.EsmChecklistTemplateTaskRepository;
-import com.itsm.esm.domain.repository.EsmRequestFormValueRepository;
 import com.itsm.esm.domain.repository.EsmRequestRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -66,9 +64,7 @@ import static org.mockito.Mockito.when;
 class EsmRequestServiceTest {
 
     @Mock EsmRequestRepository requestRepository;
-    @Mock EsmRequestFormValueRepository formValueRepository;
     @Mock EsmCatalogItemRepository catalogItemRepository;
-    @Mock EsmCatalogFormFieldRepository formFieldRepository;
     @Mock EsmChecklistTemplateTaskRepository templateTaskRepository;
     @Mock EsmChecklistRepository checklistRepository;
     @Mock EsmChecklistTaskRepository checklistTaskRepository;
@@ -83,10 +79,10 @@ class EsmRequestServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new EsmRequestService(requestRepository, formValueRepository, catalogItemRepository,
-                formFieldRepository, templateTaskRepository, checklistRepository, checklistTaskRepository,
+        service = new EsmRequestService(requestRepository, catalogItemRepository,
+                templateTaskRepository, checklistRepository, checklistTaskRepository,
                 assetRepository, appUserRepository, commentRepository, timelineRepository,
-                approvalGateService, approvalRequestRepository);
+                approvalGateService, approvalRequestRepository, new ObjectMapper());
         when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(requestRepository.countByTicketKeyStartingWith(any())).thenReturn(0L);
         when(checklistRepository.save(any())).thenAnswer(inv -> {
@@ -95,7 +91,6 @@ class EsmRequestServiceTest {
             return c;
         });
         when(checklistTaskRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(formFieldRepository.findByCatalogItemIdOrderBySortOrderAsc(any())).thenReturn(List.of());
         when(approvalRequestRepository.findTopByTicketTypeAndTicketIdOrderByIdDesc(any(), any()))
                 .thenReturn(Optional.empty());
     }
@@ -116,13 +111,17 @@ class EsmRequestServiceTest {
     }
 
     private EsmCatalogItem catalogItem(Department department, ChecklistTemplateType type) {
-        EsmCatalogItem item = new EsmCatalogItem("항목", null, department, type);
+        return catalogItem(department, type, "{\"components\":[],\"labels\":[]}");
+    }
+
+    private EsmCatalogItem catalogItem(Department department, ChecklistTemplateType type, String formSchema) {
+        EsmCatalogItem item = new EsmCatalogItem("항목", null, department, type, formSchema);
         ReflectionTestUtils.setField(item, "id", 10L);
         return item;
     }
 
     private EsmRequest esmRequest(Long requesterId, Department department, EsmRequestStatus status) {
-        EsmRequest r = new EsmRequest("ESM-2026-0001", 10L, requesterId, department, null, null);
+        EsmRequest r = new EsmRequest("ESM-2026-0001", 10L, requesterId, department, null, null, "{}");
         if (status != EsmRequestStatus.SUBMITTED) {
             r.changeStatus(status);
         }
@@ -150,9 +149,10 @@ class EsmRequestServiceTest {
     @Test
     void createRequiredFieldMissingThrows() {
         login(1L, "END_USER");
-        when(catalogItemRepository.findById(10L)).thenReturn(Optional.of(catalogItem(Department.LEGAL, ChecklistTemplateType.NONE)));
-        when(formFieldRepository.findByCatalogItemIdOrderBySortOrderAsc(10L))
-                .thenReturn(List.of(new EsmCatalogFormField(10L, "title", "제목", "text", true, null, 0)));
+        String formSchema = "{\"components\":[{\"key\":\"title\",\"label\":\"제목\",\"type\":\"text\","
+                + "\"validation\":{\"required\":true}}],\"labels\":[]}";
+        when(catalogItemRepository.findById(10L))
+                .thenReturn(Optional.of(catalogItem(Department.LEGAL, ChecklistTemplateType.NONE, formSchema)));
 
         assertThatThrownBy(() -> service.create(new CreateRequestRequest(10L, Map.of(), null)))
                 .isInstanceOf(BusinessException.class)

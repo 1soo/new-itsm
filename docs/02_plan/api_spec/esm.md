@@ -1,6 +1,6 @@
 # API 명세서 — 엔터프라이즈 서비스 관리 (ESM)
 
-> 도메인: esm · 버전: 0.4
+> 도메인: esm · 버전: 0.5
 
 ## 변경 이력
 
@@ -10,6 +10,7 @@
 | 2026-07-12 | 부서 요청 IN_PROGRESS → COMPLETED 전이에 공통 승인 게이트([common.md](common.md) API-COM-003~005) 추가(관리자가 규칙을 설정하지 않으면 게이트 없이 진행). HR 케이스·체크리스트 하위 작업은 게이트 대상에서 제외 |
 | 2026-07-16 | API-ESM-007 응답 timeline 항목에 actor 필드 추가, STATUS_* 타임라인 기본 메시지의 상태 코드를 라벨로 정리, formFields.fieldType에 textarea 추가(API-ESM-002/003) |
 | 2026-07-18 | 문서 정정 — 이전 버전이 실제 구현되지 않은 SRM 스타일 form.io 전환(API-ESM-002/003/004의 formSchema를 Form.io Form JSON으로 정의)을 반영하고 있었음을 확인(코드 조사). 실제 구현(필드 배열 `formFields`, 레거시 EAV 기반)에 맞게 되돌림 |
+| 2026-07-19 | 유지보수 요청 — 레거시 EAV(`formFields` 배열)를 폐기하고 [service-request.md](../api_spec/service-request.md) API-SRM-002와 동일한 자체 8×n 그리드 `formSchema`(`components`+`labels`)로 전환(API-ESM-002/003/004). `number` 타입은 팔레트에 추가하지 않고 기존 number 필드를 `text`+정규식으로 흡수. API-ESM-005/007의 `formValues`는 기존과 동일한 key-value(JSON) 구조를 유지하되 key 기준이 `fieldKey`(EAV)에서 그리드 컴포넌트 `key`로 의미만 전환(구조 변경 없음). 서버 재검증은 공용 `FormSubmissionValidator`/`FormJsonMapper`(SRM과 공유, [database/esm.md](../database/esm.md) 참조) 재사용 |
 
 ## 공통 규약
 
@@ -68,9 +69,10 @@
     "id": "number", "name": "string", "description": "string", "department": "string",
     "checklistTemplateType": "NONE|ONBOARDING|OFFBOARDING",
     "checklistTemplate": [ { "department": "string", "taskDescription": "string" } ],
-    "formFields": [ { "fieldKey": "string", "label": "string", "fieldType": "text|select|number|date|file|textarea", "required": "boolean", "options": "string[]|null · select 전용", "sortOrder": "number" } ]
+    "formSchema": { "components": [ "object" ], "labels": [ "object" ] }
   }
   ```
+  > `formSchema`는 [service-request.md](service-request.md) API-SRM-002의 `formSchema`와 **완전히 동일한 구조**다(자체 8×n 그리드 스키마 — `components` 배열 + 최상위 `labels` 배열, 팔레트 9종 text/textarea/select/radio/checkbox/date/file/guide-text/guide-file, 라벨(태그) 경계 그룹 포함). ESM 공용 컴포넌트(`dynamic-form-builder.tsx`/`dynamic-form-renderer.tsx`/`form-schema.ts`)를 그대로 소비하므로 컴포넌트별 필드 상세는 API-SRM-002를 참조하고 이 문서에서 중복 기술하지 않는다. ESM에는 `number` 타입이 없었으므로 팔레트에 신규 추가하지 않고, 기존 number 필드는 `text`+`validation.regex`(숫자 정규식)로 표현한다.
 - **Response Code**: 200 / 401 / 404
 
 ### API-ESM-003 · 카탈로그 항목 생성
@@ -84,7 +86,7 @@
     "name": "string · 필수", "description": "string", "department": "HR|LEGAL|FACILITIES|FINANCE|IT · 필수",
     "checklistTemplateType": "NONE|ONBOARDING|OFFBOARDING",
     "checklistTemplate": [ { "department": "string", "taskDescription": "string" } ],
-    "formFields": [ { "fieldKey": "string · 필수", "label": "string · 필수", "fieldType": "text|select|number|date|file|textarea · 필수", "required": "boolean", "options": "string[]|null · select 전용", "sortOrder": "number" } ]
+    "formSchema": { "components": [ "object · API-ESM-002 응답과 동일한 그리드 컴포넌트 객체" ], "labels": [ "object" ] }
   }
   ```
 - **Response Body** (201): `{ "id": "number" }`
@@ -104,13 +106,14 @@
 - **Header**: `Content-Type: application/json`
 - **Request Body**:
   ```json
-  { "catalogItemId": "number · 필수", "formValues": { "key": "value · fieldKey 기준 제출 값" }, "targetUserName": "string · 온보딩/오프보딩 대상자명(해당 유형일 때 필수)" }
+  { "catalogItemId": "number · 필수", "formValues": { "key": "value · 그리드 컴포넌트 key 기준 제출 값" }, "targetUserName": "string · 온보딩/오프보딩 대상자명(해당 유형일 때 필수)" }
   ```
+  > `formValues`는 기존과 동일한 key-value(JSON) 구조를 유지한다(레이아웃 엔진과 무관). key가 EAV `fieldKey`에서 그리드 컴포넌트 `key`로 바뀌었을 뿐 요청 바디 형태 자체는 변경되지 않는다. 필수·정규식 서버 재검증은 공용 `FormSubmissionValidator`(SRM과 공유, [database/esm.md](../database/esm.md) 참조)가 `formSchema.components` 배열 순서대로 검사해 첫 번째 위반 1건만 400으로 반환한다(SRM과 동일 계약, [api_spec/common.md](common.md) 0-2절).
 - **Response Body** (201):
   ```json
   { "id": "number", "ticketKey": "string · ESM-YYYY-####", "status": "SUBMITTED", "checklistId": "number|null" }
   ```
-- **Response Code**: 201 / 400 필수 필드 누락(카탈로그 항목의 `required=true` 필드 값 없음) / 400 체크리스트 템플릿 미정의(ONBOARDING/OFFBOARDING 유형인데 템플릿 없음) / 401
+- **Response Code**: 201 / 400 필수·형식 검증 실패(카탈로그 항목 `formSchema`의 첫 번째 위반 컴포넌트 1건, 공용 `FormSubmissionValidator`) / 400 체크리스트 템플릿 미정의(ONBOARDING/OFFBOARDING 유형인데 템플릿 없음) / 401
 
 ### API-ESM-006 · 부서 요청 목록 조회
 

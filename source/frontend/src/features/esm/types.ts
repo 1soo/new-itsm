@@ -1,8 +1,9 @@
 /* esm(엔터프라이즈 서비스 관리) 도메인 타입 — api_spec/esm.md 계약 기준. */
 
-// 동적 폼 스키마는 dev-ui 공통 컴포넌트(DynamicForm/FieldBuilder)와 계약을 공유한다.
-export type { FormFieldSchema } from "@/components/common";
-import type { FormFieldSchema } from "@/components/common";
+// 동적 폼 스키마는 공통 컴포넌트(DynamicFormBuilder/DynamicFormRenderer)와 계약을 공유한다
+// (2026-07-19 유지보수 요청, 레거시 EAV → SRM과 공용인 자체 8×n 그리드 스키마로 전환).
+export type { GridFormSchema } from "@/components/common";
+import type { GridFormSchema } from "@/components/common";
 
 export type Department = "HR" | "LEGAL" | "FACILITIES" | "FINANCE" | "IT";
 
@@ -28,7 +29,7 @@ export interface CatalogItemDetail {
   department: Department;
   checklistTemplateType: ChecklistTemplateType;
   checklistTemplate: ChecklistTemplateTask[];
-  formSchema: FormFieldSchema[];
+  formSchema: GridFormSchema;
 }
 
 export interface CatalogItemInput {
@@ -37,7 +38,7 @@ export interface CatalogItemInput {
   department: Department;
   checklistTemplateType: ChecklistTemplateType;
   checklistTemplate: ChecklistTemplateTask[];
-  formSchema: FormFieldSchema[];
+  formSchema: GridFormSchema;
 }
 
 export type EsmRequestStatus = "SUBMITTED" | "IN_PROGRESS" | "COMPLETED" | "REJECTED";

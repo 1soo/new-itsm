@@ -3,12 +3,11 @@
 esm 도메인 애플리케이션 계층의 요청·응답 DTO(record).
 
 ## 파일
-- `FormFieldDto.java` — 동적 양식 필드 정의(key, label, type, required, options)
 - `ChecklistTemplateTaskDto.java` — 체크리스트 하위 작업 템플릿(department, taskDescription)
-- `CreateCatalogItemRequest.java` — 카탈로그 항목 생성 요청(담당 부서·체크리스트 템플릿·동적 양식)
-- `UpdateCatalogItemRequest.java` — 카탈로그 항목 수정 요청(부분 갱신, 템플릿/양식 전체 교체 가능)
+- `CreateCatalogItemRequest.java` — 카탈로그 항목 생성 요청(담당 부서·체크리스트 템플릿·`formSchema`(SRM과 완전히 동일한 자체 8×n 그리드 스키마 `Map<String,Object>`, `{components,labels}`, 2026-07-19 유지보수 요청 — 레거시 EAV `FormFieldDto` 폐기))
+- `UpdateCatalogItemRequest.java` — 카탈로그 항목 수정 요청(부분 갱신, 제공 시 `formSchema`/템플릿 전체 교체)
 - `CatalogItemSummaryResponse.java` — 카탈로그 목록 요약 응답
-- `CatalogItemDetailResponse.java` — 카탈로그 상세 응답(체크리스트 템플릿·양식 스키마 포함)
+- `CatalogItemDetailResponse.java` — 카탈로그 상세 응답(체크리스트 템플릿·`formSchema`(자체 8×n 그리드 스키마) 포함)
 - `CreateRequestRequest.java` — 부서 요청 제출(catalogItemId, formValues, targetUserName)
 - `RequestCreatedResponse.java` — 요청 생성 응답(checklistId 포함)
 - `RequestSummaryResponse.java` — 요청 목록 요약 응답

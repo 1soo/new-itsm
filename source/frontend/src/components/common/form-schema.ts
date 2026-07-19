@@ -1,5 +1,3 @@
-import type { TFunction } from "i18next";
-
 /**
  * 동적 폼 그리드 스키마 계약 — SRM 전용 자체 8×n 그리드 빌더(2026-07-18 유지보수 요청,
  * form.io 완전 제거 → 자체 구현). DynamicFormBuilder가 편집(SCR-SRM-007 "Form 설정" 팝업),
@@ -168,47 +166,3 @@ export interface GridFormSchema {
 export type GridFormValues = Record<string, unknown>;
 
 export const EMPTY_GRID_SCHEMA: GridFormSchema = { components: [], labels: [] };
-
-/* ----------------------------------------------------------------------
- * 레거시(ESM field-builder.tsx/dynamic-form.tsx 전용) — ESM은 레거시 EAV 그대로
- * 사용하므로(screen/service-request.md 5절 참고) SRM의 form.io 제거와 무관하게 유지한다.
- * -------------------------------------------------------------------- */
-export type FormFieldType = "text" | "textarea" | "select" | "number" | "date" | "file";
-
-export interface FormFieldSchema {
-  key: string;
-  label: string;
-  type: FormFieldType;
-  required?: boolean;
-  options?: string[];
-}
-
-export type FormValues = Record<string, unknown>;
-export type FormErrors = Record<string, string>;
-
-export function hasOptions(type: FormFieldType): boolean {
-  return type === "select";
-}
-
-export function validateForm(
-  schema: FormFieldSchema[],
-  values: FormValues,
-  t?: TFunction,
-): FormErrors {
-  const errors: FormErrors = {};
-  for (const field of schema) {
-    if (!field.required) continue;
-    const v = values[field.key];
-    const empty = v == null || v === "" || (Array.isArray(v) && v.length === 0);
-    if (empty) {
-      errors[field.key] = t
-        ? t("validation.required", {
-            ns: "common",
-            label: field.label,
-            defaultValue: `${field.label}은(는) 필수 항목입니다.`,
-          })
-        : `${field.label}은(는) 필수 항목입니다.`;
-    }
-  }
-  return errors;
-}

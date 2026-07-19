@@ -14,7 +14,6 @@ import com.itsm.esm.application.dto.ChecklistTaskStatusRequest;
 import com.itsm.esm.application.dto.CreateCatalogItemRequest;
 import com.itsm.esm.application.dto.CreateHrCaseRequest;
 import com.itsm.esm.application.dto.CreateRequestRequest;
-import com.itsm.esm.application.dto.FormFieldDto;
 import com.itsm.esm.application.dto.HrCaseStatusTransitionRequest;
 import com.itsm.esm.application.dto.StatusTransitionRequest;
 import com.itsm.esm.application.dto.UpdateCatalogItemRequest;
@@ -106,7 +105,9 @@ class EsmIntegrationTest {
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/35_catalog_form_field_textarea_type.sql").toAbsolutePath()),
                     "/docker-entrypoint-initdb.d/35_catalog_form_field_textarea_type.sql")
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/36_srm_form_schema_jsonb.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/36_srm_form_schema_jsonb.sql");
+                    "/docker-entrypoint-initdb.d/36_srm_form_schema_jsonb.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/40_esm_form_schema_jsonb.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/40_esm_form_schema_jsonb.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {
@@ -253,19 +254,33 @@ class EsmIntegrationTest {
     }
 
     @Test
-    void updateCatalogItemKeepingSameFormFieldKeyDoesNotViolateUniqueConstraint() {
-        // srm 도메인과 동일한 회귀 시나리오(uq_catalog_form_field 대응 esm_catalog_form_field 제약)를 검증.
+    void updateCatalogItemReplacesFormSchema() {
+        // SRM과 동일한 자체 8×n 그리드 스키마(JSONB)로 저장·교체되는지 회귀 검증(2026-07-19 유지보수 요청, EAV 폐기).
         long ts = System.nanoTime();
 
         as(1L, "PROCESS_OWNER");
+        Map<String, Object> formSchema = Map.of(
+                "components", List.of(Map.of("key", "contractType", "label", "계약 유형", "type", "text",
+                        "validation", Map.of("required", true))),
+                "labels", List.of());
         CatalogItemDetailResponse created = catalogService.create(new CreateCatalogItemRequest(
-                "계약서 검토" + ts, "d", Department.LEGAL, ChecklistTemplateType.NONE, null,
-                List.of(new FormFieldDto("contractType", "계약 유형", "text", true, null))));
+                "계약서 검토" + ts, "d", Department.LEGAL, ChecklistTemplateType.NONE, null, formSchema));
+        assertThat(created.formSchema().get("components")).asList()
+                .extracting(c -> ((Map<String, Object>) c).get("key")).containsExactly("contractType");
 
+        Map<String, Object> updatedSchema = Map.of(
+                "components", List.of(Map.of("key", "contractType", "label", "계약 유형(수정)", "type", "text",
+                        "validation", Map.of("required", true))),
+                "labels", List.of());
         CatalogItemDetailResponse updated = catalogService.update(created.id(), new UpdateCatalogItemRequest(
-                "계약서 검토" + ts, "updated", Department.LEGAL, ChecklistTemplateType.NONE, null,
-                List.of(new FormFieldDto("contractType", "계약 유형", "text", true, null))));
+                "계약서 검토" + ts, "updated", Department.LEGAL, ChecklistTemplateType.NONE, null, updatedSchema));
 
-        assertThat(updated.formSchema()).extracting("key").containsExactly("contractType");
+        assertThat(updated.formSchema().get("components")).asList()
+                .extracting(c -> ((Map<String, Object>) c).get("label")).containsExactly("계약 유형(수정)");
+
+        as(1L, "END_USER");
+        assertThatThrownBy(() -> requestService.create(new CreateRequestRequest(created.id(), Map.of(), null)))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode()).isEqualTo(ErrorCode.REQUIRED_FIELD_MISSING));
     }
 }

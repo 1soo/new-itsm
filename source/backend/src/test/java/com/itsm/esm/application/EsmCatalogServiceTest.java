@@ -5,11 +5,11 @@ import com.itsm.auth.domain.Department;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
 import com.itsm.common.security.AuthPrincipal;
+import com.itsm.esm.application.dto.CatalogItemDetailResponse;
 import com.itsm.esm.application.dto.CreateCatalogItemRequest;
 import com.itsm.esm.application.dto.UpdateCatalogItemRequest;
 import com.itsm.esm.domain.ChecklistTemplateType;
 import com.itsm.esm.domain.EsmCatalogItem;
-import com.itsm.esm.domain.repository.EsmCatalogFormFieldRepository;
 import com.itsm.esm.domain.repository.EsmCatalogItemRepository;
 import com.itsm.esm.domain.repository.EsmChecklistTemplateTaskRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -24,6 +24,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -37,17 +38,14 @@ import static org.mockito.Mockito.when;
 class EsmCatalogServiceTest {
 
     @Mock EsmCatalogItemRepository catalogItemRepository;
-    @Mock EsmCatalogFormFieldRepository formFieldRepository;
     @Mock EsmChecklistTemplateTaskRepository templateTaskRepository;
 
     EsmCatalogService service;
 
     @BeforeEach
     void setUp() {
-        service = new EsmCatalogService(catalogItemRepository, formFieldRepository, templateTaskRepository,
-                new ObjectMapper());
+        service = new EsmCatalogService(catalogItemRepository, templateTaskRepository, new ObjectMapper());
         when(catalogItemRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(formFieldRepository.findByCatalogItemIdOrderBySortOrderAsc(any())).thenReturn(List.of());
         when(templateTaskRepository.findByCatalogItemIdOrderBySortOrderAsc(any())).thenReturn(List.of());
     }
 
@@ -98,6 +96,19 @@ class EsmCatalogServiceTest {
     }
 
     @Test
+    void createPersistsFormSchema() {
+        login(1L, "PROCESS_OWNER");
+        Map<String, Object> formSchema = Map.of(
+                "components", List.of(Map.of("key", "reason", "label", "사유", "type", "text")),
+                "labels", List.of());
+
+        CatalogItemDetailResponse response = service.create(new CreateCatalogItemRequest(
+                "계약서 검토", "설명", Department.LEGAL, ChecklistTemplateType.NONE, null, formSchema));
+
+        assertThat(response.formSchema()).containsKey("components");
+    }
+
+    @Test
     void updateForbiddenForNonProcessOwner() {
         login(1L, "END_USER");
 
@@ -120,7 +131,8 @@ class EsmCatalogServiceTest {
     @Test
     void listReturnsSummaries() {
         login(1L, "END_USER");
-        EsmCatalogItem item = new EsmCatalogItem("계약서 검토", null, Department.LEGAL, ChecklistTemplateType.NONE);
+        EsmCatalogItem item = new EsmCatalogItem("계약서 검토", null, Department.LEGAL, ChecklistTemplateType.NONE,
+                "{\"components\":[],\"labels\":[]}");
         when(catalogItemRepository.search(null, null)).thenReturn(List.of(item));
 
         var response = service.list(null, null);

@@ -173,26 +173,6 @@
     "deselectAria": "Clear selection",
     "noOptions": "No options"
   },
-  "fieldBuilder": {
-    "emptyTitle": "No fields defined",
-    "emptyDescription": "Use the button below to add a form field.",
-    "labelLabel": "Label",
-    "labelPlaceholder": "Field label",
-    "typeLabel": "Type",
-    "removeFieldAria": "Remove field",
-    "optionsLabel": "Options (comma-separated)",
-    "optionsPlaceholder": "e.g. Low, Medium, High",
-    "requiredLabel": "Required",
-    "addField": "Add Field",
-    "fieldType": {
-      "text": "Single-line Text",
-      "textarea": "Multi-line Text",
-      "number": "Number",
-      "select": "Single Select",
-      "date": "Date",
-      "file": "Attachment"
-    }
-  },
   "rating": {
     "overallAria": "Rating {{value}} / {{max}}",
     "starAria": "{{value}} star"

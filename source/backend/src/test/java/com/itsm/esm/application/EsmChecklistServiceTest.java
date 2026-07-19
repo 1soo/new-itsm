@@ -113,7 +113,7 @@ class EsmChecklistServiceTest {
         login(1L, "END_USER");
         when(checklistRepository.findById(1L)).thenReturn(Optional.of(checklist(1L)));
         when(checklistTaskRepository.findByChecklistId(1L)).thenReturn(List.of(task(1L, 1L, Department.IT, ChecklistTaskStatus.PENDING)));
-        EsmRequest linkedRequest = new EsmRequest("ESM-2026-0001", 10L, 1L, Department.HR, "김철수", 1L);
+        EsmRequest linkedRequest = new EsmRequest("ESM-2026-0001", 10L, 1L, Department.HR, "김철수", 1L, "{}");
         when(requestRepository.findByChecklistId(1L)).thenReturn(Optional.of(linkedRequest));
 
         var response = service.detail(1L);
@@ -126,7 +126,7 @@ class EsmChecklistServiceTest {
         login(2L, "END_USER");
         when(checklistRepository.findById(1L)).thenReturn(Optional.of(checklist(1L)));
         when(checklistTaskRepository.findByChecklistId(1L)).thenReturn(List.of(task(1L, 1L, Department.IT, ChecklistTaskStatus.PENDING)));
-        EsmRequest linkedRequest = new EsmRequest("ESM-2026-0001", 10L, 1L, Department.HR, "김철수", 1L);
+        EsmRequest linkedRequest = new EsmRequest("ESM-2026-0001", 10L, 1L, Department.HR, "김철수", 1L, "{}");
         when(requestRepository.findByChecklistId(1L)).thenReturn(Optional.of(linkedRequest));
         when(appUserRepository.findById(2L)).thenReturn(Optional.of(userWithDepartment(null)));
 

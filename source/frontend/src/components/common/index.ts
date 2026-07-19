@@ -48,17 +48,6 @@ export {
   type GridFormSchema,
   type GridFormValues,
 } from "./form-schema";
-/** ESM은 레거시 EAV 그대로 사용(screen/service-request.md 5절, SRM 전용 그리드 전환 대상 아님) */
-export { DynamicForm } from "./dynamic-form";
-export { FieldBuilder } from "./field-builder";
-export {
-  validateForm,
-  hasOptions,
-  type FormFieldType,
-  type FormFieldSchema,
-  type FormValues,
-  type FormErrors,
-} from "./form-schema";
 export {
   type ApprovalMatchType,
   type ApprovalStepDecisionMode,

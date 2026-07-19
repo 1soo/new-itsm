@@ -52,10 +52,10 @@ class EsmMetricsServiceTest {
 
     @Test
     void computeFiltersRequestCountByDepartment() {
-        EsmRequest hrRequest = new EsmRequest("ESM-2026-0001", 1L, 1L, Department.HR, null, null);
+        EsmRequest hrRequest = new EsmRequest("ESM-2026-0001", 1L, 1L, Department.HR, null, null, "{}");
         org.springframework.test.util.ReflectionTestUtils.setField(hrRequest, "id", 1L);
         org.springframework.test.util.ReflectionTestUtils.setField(hrRequest, "createdAt", java.time.OffsetDateTime.now());
-        EsmRequest legalRequest = new EsmRequest("ESM-2026-0002", 2L, 1L, Department.LEGAL, null, null);
+        EsmRequest legalRequest = new EsmRequest("ESM-2026-0002", 2L, 1L, Department.LEGAL, null, null, "{}");
         org.springframework.test.util.ReflectionTestUtils.setField(legalRequest, "id", 2L);
         org.springframework.test.util.ReflectionTestUtils.setField(legalRequest, "createdAt", java.time.OffsetDateTime.now());
         when(requestRepository.findByCreatedAtBetween(any(), any())).thenReturn(List.of(hrRequest, legalRequest));
