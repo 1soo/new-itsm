@@ -83,7 +83,7 @@ export interface GridSize {
 export interface GridComponentInput {
   widthPercent?: number; // 기본값 90
   align?: GridAlign; // 가로 정렬, 기본값 center
-  verticalAlign?: GridAlignVertical | null; // 세로 정렬(2026-07-18 유지보수 요청 4차 신규), 기본값 top
+  verticalAlign?: GridAlignVertical | null; // 세로 정렬(2026-07-18 유지보수 요청 4차 신규), 기본값 middle(2026-07-19 유지보수 요청으로 top에서 변경)
   placeholder?: string | null; // 선택, Content 설정 UI는 hasPlaceholderUi(type)인 유형에만 노출
   /** checkbox만 배열(다중 선택), 나머지 유형은 단일 문자열(2026-07-18 유지보수 요청 8차로 확장). */
   defaultValue?: string | string[] | null;
@@ -128,8 +128,8 @@ export interface GridGuideTextComponent {
   position: GridPosition;
   size: GridSize;
   text: string;
-  textAlign?: GridAlign; // 가로 정렬, 기본값 left
-  textVerticalAlign?: GridAlignVertical; // 세로 정렬(2026-07-18 유지보수 요청 4차 신규), 기본값 top
+  textAlign?: GridAlign; // 가로 정렬, 기본값 center(2026-07-19 유지보수 요청으로 left에서 변경)
+  textVerticalAlign?: GridAlignVertical; // 세로 정렬(2026-07-18 유지보수 요청 4차 신규), 기본값 middle(2026-07-19 유지보수 요청으로 top에서 변경)
   /** 선택, formSchema.labels 항목 하나를 참조(5.8절). */
   labelId?: string | null;
 }

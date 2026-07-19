@@ -842,3 +842,22 @@
 - "GF2 인터랙티브 테스트"(id=12) 또는 동일하게 `labels` 필드가 없는 기존 카탈로그 항목을 요청 제출 폼(SCR-SRM-002)과 SCR-SRM-007 A1 미리보기 양쪽에서 열어도 크래시하지 않고 정상 렌더링된다.
 - `labels` 필드가 있는(4차 이후 저장된) 카탈로그 항목은 기존처럼 라벨 경계 오버레이가 정상 표시된다(회귀 없음).
 - tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → Standards/Spec 코드 리뷰 → 완료 시 커밋(main).
+
+## 유지보수 요청 — 2026-07-19: 신규 컴포넌트 default align을 center-center로 변경(설계 불필요)
+
+- 배경: maintainer가 사용자 확답까지 받아 범위를 확정한 순수 기본값 변경 요청 — 신규 화면 설계 없음(design doc 갱신 불필요, 도메인 설계서에 반영할 만한 화면/API/DB 변경이 아님).
+- 범위: 입력 7종(text/textarea/select/radio/checkbox/date/file) + `guide-text`. 입력 7종은 가로 `align` 기존 유지(center), 세로 `verticalAlign` 기본값만 `top` → `middle`. `guide-text`는 가로 `textAlign` 기본값 `left` → `center`, 세로 `textVerticalAlign` 기본값 `top` → `middle`.
+- **소급 적용 없음**: 신규 생성 컴포넌트에만 적용(`gridMaxHeight` 세분화 선례와 동일 원칙). 기존에 이미 저장된 컴포넌트의 정렬값은 그대로 유지 — 렌더러·Content 설정 팝업의 `?? "top"`/`?? "left"` 폴백은 그대로 둔다(값이 아예 없는 구 데이터에만 적용되는 폴백이라 변경 불필요).
+- API/DB 변경 없음(그리드 스키마 JSONB opaque) — dev-be/dev-db 소집 불필요.
+
+### FE (dev-ui) — `source/frontend/src/components/common/`
+
+- `dynamic-form-builder.tsx`의 `buildNewComponent()`: `guide-text` 분기 `textAlign: "left", textVerticalAlign: "top"` → `textAlign: "center", textVerticalAlign: "middle"`. 입력 컴포넌트 분기의 `input: { ..., align: "center", verticalAlign: "top", ... }`에서 `verticalAlign`만 `"middle"`로 변경(`align`은 이미 center라 그대로).
+- `form-schema.ts`: `GridComponentInput.verticalAlign`/`GridGuideTextComponent.textAlign`/`textVerticalAlign`의 JSDoc 주석에 적힌 "기본값 top"/"기본값 left" 문구를 실제 기본값(middle/center)에 맞게 갱신(문서 정합성, 로직 변경 아님).
+- 렌더러(`dynamic-form-renderer.tsx`)의 `?? "top"` 폴백, Content 설정 팝업의 `?? "top"`/`?? "left"` 표시 기본값은 변경하지 않는다(구 데이터 폴백 유지).
+
+### 완료(테스트 통과) 기준
+
+- 새로 팔레트에서 추가한 입력 컴포넌트·`guide-text`가 캔버스·Content 설정 팝업·요청 제출 폼에서 가로/세로 모두 중앙 정렬로 보인다.
+- 기존에 저장돼 있던 카탈로그 항목의 컴포넌트 정렬은 그대로 유지된다(회귀 없음, 재편집 없이 열어봤을 때 이전과 동일한 위치).
+- tester 통합 테스트 후 dev-lead에 결과 보고 → 실패 0까지 수정 루프 → Standards/Spec 코드 리뷰 → 완료 시 커밋(main).

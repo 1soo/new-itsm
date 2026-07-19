@@ -167,7 +167,7 @@ function buildNewComponent(
   size: GridSize,
 ): GridComponent {
   if (type === "guide-text") {
-    return { key, type, position, size, text: "텍스트", textAlign: "left", textVerticalAlign: "top" };
+    return { key, type, position, size, text: "텍스트", textAlign: "center", textVerticalAlign: "middle" };
   }
   if (type === "guide-file") {
     return { key, type, position, size, file: null };
@@ -177,7 +177,7 @@ function buildNewComponent(
     type,
     position,
     size,
-    input: { widthPercent: 90, align: "center", verticalAlign: "top", readOnly: false, defaultValue: "" },
+    input: { widthPercent: 90, align: "center", verticalAlign: "middle", readOnly: false, defaultValue: "" },
     validation: { required: false, regex: "" },
     options: hasGridOptions(type) ? "옵션1,옵션2" : undefined,
     ciLinked: false,
