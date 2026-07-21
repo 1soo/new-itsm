@@ -64,6 +64,17 @@ export interface DynamicFormRendererProps {
 }
 
 const OPTIONS_GAP_CLASS: Record<1 | 2 | 3, string> = { 1: "gap-1", 2: "gap-2", 3: "gap-3" };
+/** radio/checkbox 옵션 묶음 정렬 — row는 주축(justify-content), column은 교차축(align-items)에 반영. */
+const OPTIONS_JUSTIFY_CLASS: Record<GridAlign, string> = {
+  left: "justify-start",
+  center: "justify-center",
+  right: "justify-end",
+};
+const OPTIONS_ITEMS_CLASS: Record<GridAlign, string> = {
+  left: "items-start",
+  center: "items-center",
+  right: "items-end",
+};
 
 function isEmptyValue(value: unknown): boolean {
   return value == null || value === "" || (Array.isArray(value) && value.length === 0);
@@ -416,11 +427,14 @@ function renderControl(
       const selected = (value as string) ?? "";
       const direction = component.optionsDirection ?? "row";
       const gapClass = OPTIONS_GAP_CLASS[component.optionsGap ?? 1];
+      const align = component.input?.align ?? "center";
       return (
         <div
           className={cn(
             "overflow-y-auto",
-            direction === "row" ? "flex flex-row flex-wrap" : "flex flex-col",
+            direction === "row"
+              ? cn("flex flex-row flex-wrap", OPTIONS_JUSTIFY_CLASS[align])
+              : cn("flex flex-col", OPTIONS_ITEMS_CLASS[align]),
             gapClass,
           )}
         >
@@ -444,11 +458,14 @@ function renderControl(
       const selected = Array.isArray(value) ? (value as string[]) : [];
       const direction = component.optionsDirection ?? "row";
       const gapClass = OPTIONS_GAP_CLASS[component.optionsGap ?? 1];
+      const align = component.input?.align ?? "center";
       return (
         <div
           className={cn(
             "overflow-y-auto",
-            direction === "row" ? "flex flex-row flex-wrap" : "flex flex-col",
+            direction === "row"
+              ? cn("flex flex-row flex-wrap", OPTIONS_JUSTIFY_CLASS[align])
+              : cn("flex flex-col", OPTIONS_ITEMS_CLASS[align]),
             gapClass,
           )}
         >

@@ -72,3 +72,4 @@
 | 20260719-101551 | srm | 버그 수정: 8차에서 추가된 GridLabelOverlays가 labels 폴백 없이 호출돼, 4차(labels 필드 도입) 이전 저장 후 재저장 안 한 카탈로그 항목(labels 키 없음, 예 GF2 id=12) 클릭 시 크래시하던 결함을 `schema.labels ?? []` 1줄로 수정 | docs/06_maintenance/20260719-101551/srm/history.md |
 | 20260719-113616 | srm | 신규 생성 컴포넌트 default align을 center-center로 변경(입력 7종 verticalAlign top→middle, guide-text textAlign left→center·textVerticalAlign top→middle), 기존 저장 컴포넌트는 소급 적용 없이 그대로 유지 | docs/06_maintenance/20260719-113616/srm/history.md |
 | 20260719-131049 | esm | ESM 카탈로그/부서 요청 동적 양식을 레거시 EAV(FieldBuilder/DynamicForm)에서 SRM과 공용인 그리드 폼 빌더(DynamicFormBuilder/DynamicFormRenderer, JSONB)로 전면 전환, 레거시 컴포넌트·엔티티·테이블 완전 삭제 | docs/06_maintenance/20260719-131049/esm/history.md |
+| 20260721-163612 | common | 그리드 폼 빌더 radio/checkbox 옵션 목록에 justify-content/align-items 정렬 누락 결함 수정(폭을 넓혀도 옵션 묶음이 wrapper 안에서 항상 왼쪽/위쪽에 붙던 문제, SRM·ESM 공용 렌더러 1곳 수정으로 양쪽 반영) | docs/06_maintenance/20260721-163612/common/history.md |
