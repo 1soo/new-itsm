@@ -55,6 +55,9 @@ export {
   type ApprovalRoleDecisionValue,
   type ApprovalStepRole,
   type ApprovalStep,
+  type ApprovalRequestStatus,
+  type ApprovalStatusDisplay,
+  deriveApprovalStatusDisplay,
 } from "./approval-schema";
 export { ApprovalProcessFlow, type ApprovalRoleOption, type ApprovalStepBoxValue } from "./approval-process-flow";
 export { ApprovalStepProgress } from "./approval-step-progress";

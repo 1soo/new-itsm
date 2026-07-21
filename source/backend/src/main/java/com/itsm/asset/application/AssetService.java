@@ -32,11 +32,10 @@ import com.itsm.asset.domain.repository.AssetRepository;
 import com.itsm.asset.domain.repository.CiRelationRepository;
 import com.itsm.asset.domain.repository.ConfigurationItemRepository;
 import com.itsm.auth.application.dto.PageResponse;
-import com.itsm.auth.domain.AppUser;
-import com.itsm.auth.domain.repository.AppUserRepository;
 import com.itsm.change.domain.ChangeRequest;
 import com.itsm.change.domain.repository.ChangeRequestRepository;
 import com.itsm.common.approval.application.ApprovalGateService;
+import com.itsm.common.approval.application.TicketCreationGateSupport;
 import com.itsm.common.approval.domain.ApprovalRequest;
 import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
@@ -93,7 +92,7 @@ public class AssetService {
     private final ChangeRequestRepository changeRequestRepository;
     private final ApprovalGateService approvalGateService;
     private final ApprovalRequestRepository approvalRequestRepository;
-    private final AppUserRepository appUserRepository;
+    private final TicketCreationGateSupport ticketCreationGateSupport;
 
     public AssetService(AssetRepository assetRepository,
                         AssetAttributeRepository attributeRepository,
@@ -107,7 +106,7 @@ public class AssetService {
                         ChangeRequestRepository changeRequestRepository,
                         ApprovalGateService approvalGateService,
                         ApprovalRequestRepository approvalRequestRepository,
-                        AppUserRepository appUserRepository) {
+                        TicketCreationGateSupport ticketCreationGateSupport) {
         this.assetRepository = assetRepository;
         this.attributeRepository = attributeRepository;
         this.lifecycleHistoryRepository = lifecycleHistoryRepository;
@@ -120,7 +119,7 @@ public class AssetService {
         this.changeRequestRepository = changeRequestRepository;
         this.approvalGateService = approvalGateService;
         this.approvalRequestRepository = approvalRequestRepository;
-        this.appUserRepository = appUserRepository;
+        this.ticketCreationGateSupport = ticketCreationGateSupport;
     }
 
     // ---------- list (API-ITAM-001) ----------
@@ -133,8 +132,10 @@ public class AssetService {
         LocalDate threshold = filterExpiring ? LocalDate.now().plusDays(expiringWithinDays) : LocalDate.now();
         String ownerV = StringUtils.hasText(owner) ? owner : null;
         String kw = StringUtils.hasText(keyword) ? keyword : null;
-        return PageResponse.from(
-                assetRepository.search(type, status, ownerV, kw, filterExpiring, threshold, pageable), this::toSummary);
+        Page<Asset> page = assetRepository.search(type, status, ownerV, kw, filterExpiring, threshold, pageable);
+        Map<Long, String> pendingTargetStates = approvalGateService.pendingApprovalTargetStatesOf(
+                TT, page.getContent().stream().map(Asset::getId).toList());
+        return PageResponse.from(page, a -> toSummary(a, pendingTargetStates.get(a.getId())));
     }
 
     // ---------- create (API-ITAM-002) ----------
@@ -142,10 +143,17 @@ public class AssetService {
     @Transactional
     public AssetCreatedResponse create(CreateAssetRequest request) {
         requireRole(AM);
-        Asset saved = assetRepository.save(new Asset(nextAssetKey(), request.name(), request.type(),
-                request.owner(), request.location(), request.purchaseDate(), request.cost(),
-                request.licenseExpiry(), request.warrantyExpiry(), request.contractExpiry()));
-        applyAttributes(saved.getId(), request.attributes());
+        Long requesterId = SecurityUtils.currentPrincipal().userId();
+        Asset saved = ticketCreationGateSupport.createThenGate(
+                () -> {
+                    Asset asset = assetRepository.save(new Asset(nextAssetKey(), request.name(), request.type(),
+                            request.owner(), request.location(), request.purchaseDate(), request.cost(),
+                            request.licenseExpiry(), request.warrantyExpiry(), request.contractExpiry()));
+                    applyAttributes(asset.getId(), request.attributes());
+                    return asset;
+                },
+                Asset::getId,
+                DOMAIN, null, requesterId, TT, AssetStatus.PLANNING.name());
         return new AssetCreatedResponse(saved.getId(), saved.getAssetKey(), saved.getStatus().name());
     }
 
@@ -180,9 +188,8 @@ public class AssetService {
     public StatusResponse transition(Long id, LifecycleTransitionRequest request) {
         requireRole(AM);
         Asset asset = findAsset(id);
-        if (request.targetStage() == AssetStatus.RETIREMENT) {
-            approvalGateService.checkGate(DOMAIN, null, requesterIdOf(asset), TT, id);
-        }
+        approvalGateService.checkGate(DOMAIN, null, SecurityUtils.currentPrincipal().userId(), TT, id,
+                request.targetStage().name());
         asset.changeStatus(request.targetStage());
         assetRepository.save(asset);
         lifecycleHistoryRepository.save(new AssetLifecycleHistory(id, request.targetStage()));
@@ -195,7 +202,8 @@ public class AssetService {
     public StatusResponse retire(Long id) {
         requireRole(AM);
         Asset asset = findAsset(id);
-        approvalGateService.checkGate(DOMAIN, null, requesterIdOf(asset), TT, id);
+        approvalGateService.checkGate(DOMAIN, null, SecurityUtils.currentPrincipal().userId(), TT, id,
+                AssetStatus.RETIREMENT.name());
         asset.changeStatus(AssetStatus.RETIREMENT);
         assetRepository.save(asset);
         lifecycleHistoryRepository.save(new AssetLifecycleHistory(id, AssetStatus.RETIREMENT));
@@ -350,11 +358,6 @@ public class AssetService {
         return assetRepository.findById(assetId).map(Asset::getAssetKey).orElse(null);
     }
 
-    /** 승인 게이트의 "요청자"는 자산을 등록한 사용자(created_by, 이메일)로 판정한다. */
-    private Long requesterIdOf(Asset asset) {
-        return appUserRepository.findByEmail(asset.getCreatedBy()).map(AppUser::getId).orElse(null);
-    }
-
     private Asset findAsset(Long id) {
         return assetRepository.findById(id)
                 .filter(a -> !a.isDeleted())
@@ -425,9 +428,10 @@ public class AssetService {
         return prefix + String.format("%04d", seq);
     }
 
-    private AssetSummaryResponse toSummary(Asset a) {
+    private AssetSummaryResponse toSummary(Asset a, String pendingApprovalTargetState) {
         return new AssetSummaryResponse(a.getId(), a.getAssetKey(), a.getName(), a.getType().name(),
-                a.getStatus().name(), a.getOwner(), a.earliestExpiry(), expiryStatusOf(a).name());
+                a.getStatus().name(), a.getOwner(), a.earliestExpiry(), expiryStatusOf(a).name(),
+                pendingApprovalTargetState);
     }
 
     private AssetDetailResponse toDetail(Asset a) {
@@ -451,7 +455,8 @@ public class AssetService {
                 .findTopByTicketTypeAndTicketIdOrderByIdDesc(TT, a.getId()).orElse(null);
         AssetDetailResponse.ApprovalInfo approvalInfo = new AssetDetailResponse.ApprovalInfo(
                 latestApproval != null ? latestApproval.getId() : null,
-                latestApproval != null ? latestApproval.getStatus().name() : null);
+                latestApproval != null ? latestApproval.getStatus().name() : null,
+                latestApproval != null ? latestApproval.getTargetState() : null);
 
         return new AssetDetailResponse(a.getId(), a.getAssetKey(), a.getName(), a.getType().name(),
                 a.getStatus().name(), a.getOwner(), a.getLocation(), attrs,

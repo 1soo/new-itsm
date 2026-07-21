@@ -16,6 +16,7 @@ import type {
   Role,
   Screen,
   ScreenListQuery,
+  TargetStateOption,
   UpdateApprovalProcessRequest,
   UpdateMenuRequest,
   UserDetail,
@@ -173,6 +174,14 @@ export const adminApi = {
   async listRequestSubtypes(domain: string): Promise<RequestSubtypeOption[]> {
     const res = await apiClient.get<RequestSubtypeOption[]>(
       `/admin/approval-processes/domains/${domain}/request-subtypes`,
+    );
+    return res.data;
+  },
+
+  // API-AUTH-031 도메인별 유효 상태값(적용 상태) 후보 목록
+  async listApprovalStates(domain: string): Promise<TargetStateOption[]> {
+    const res = await apiClient.get<TargetStateOption[]>(
+      `/admin/approval-processes/domains/${domain}/states`,
     );
     return res.data;
   },

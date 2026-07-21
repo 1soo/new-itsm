@@ -7,11 +7,13 @@ import com.itsm.auth.application.dto.ApprovalProcessStepInput;
 import com.itsm.auth.application.dto.ApprovalProcessSummaryResponse;
 import com.itsm.auth.application.dto.CreateApprovalProcessRequest;
 import com.itsm.auth.application.dto.PageResponse;
+import com.itsm.auth.application.dto.TargetStateOption;
 import com.itsm.auth.application.dto.UpdateApprovalProcessRequest;
 import com.itsm.auth.domain.Role;
 import com.itsm.auth.domain.repository.RoleRepository;
 import com.itsm.common.approval.application.ApprovalRequestSubtypeProvider;
 import com.itsm.common.approval.application.RequestSubtypeOption;
+import com.itsm.common.approval.application.TargetStateLabelResolver;
 import com.itsm.common.approval.domain.ApprovalProcess;
 import com.itsm.common.approval.domain.ApprovalProcessRequesterRole;
 import com.itsm.common.approval.domain.ApprovalProcessStep;
@@ -34,10 +36,13 @@ import java.util.stream.Collectors;
 
 /**
  * 승인 프로세스 정의 관리자 CRUD 유스케이스(API-AUTH-023~029, SYSTEM_ADMIN 전용).
- * 규칙 우선순위(priorityTier, 2026-07-15 3축 재설계): domain/requestSubtypeKey/requesterRoleIds 3축을
- * 각각 독립 지정 가능(축 비우면 해당 축 전체 매칭). 산정식 = (지정 축 개수×10) + (역할 지정 시 4) +
- * (요청유형 지정 시 2) + (도메인 지정 시 1). 실제 발생 가능 값: 0(전체 미지정)/11(도메인만)/14(역할만)/
- * 23(도메인+요청유형)/25(도메인+역할)/37(도메인+요청유형+역할) (docs/02_plan/database/common.md approval_process 상세).
+ * 규칙 우선순위(priorityTier, 2026-07-22 4축 재설계): domain/targetState/requestSubtypeKey/requesterRoleIds
+ * 4축을 각각 독립 지정 가능(축 비우면 해당 축 전체 매칭). 산정식 = (지정 축 개수×10) + (역할 지정 시 4) +
+ * (요청유형 지정 시 2) + (적용 상태 지정 시 8) + (도메인 지정 시 1). 실제 발생 가능 값: 0(전체 미지정)/11(도메인만)/
+ * 14(역할만)/23(도메인+요청유형)/25(도메인+역할)/37(도메인+요청유형+역할)/43(도메인+적용상태+역할)/
+ * 55(도메인+적용상태+요청유형+역할) (docs/02_plan/database/common.md approval_process 상세). targetState를
+ * 지정하면 requesterRoleIds가 최소 1개 이상이어야 하므로(validateTargetStateRequiresRole) role 없이
+ * targetState만 지정하는 조합(tier 29/41)은 발생하지 않는다.
  */
 @Service
 public class ApprovalProcessAdminService {
@@ -50,6 +55,8 @@ public class ApprovalProcessAdminService {
     private static final short TIER_DOMAIN_SUBTYPE = 23;
     private static final short TIER_DOMAIN_ROLE = 25;
     private static final short TIER_DOMAIN_SUBTYPE_ROLE = 37;
+    private static final short TIER_DOMAIN_TARGETSTATE_ROLE = 43;
+    private static final short TIER_DOMAIN_TARGETSTATE_SUBTYPE_ROLE = 55;
     private static final int MAX_STEPS = 10;
 
     static {
@@ -74,6 +81,7 @@ public class ApprovalProcessAdminService {
     private final ApprovalProcessStepRepository processStepRepository;
     private final ApprovalProcessStepRoleRepository processStepRoleRepository;
     private final RoleRepository roleRepository;
+    private final TargetStateLabelResolver targetStateLabelResolver;
     private final Map<String, ApprovalRequestSubtypeProvider> subtypeProviders;
 
     public ApprovalProcessAdminService(ApprovalProcessRepository approvalProcessRepository,
@@ -81,12 +89,14 @@ public class ApprovalProcessAdminService {
                                        ApprovalProcessStepRepository processStepRepository,
                                        ApprovalProcessStepRoleRepository processStepRoleRepository,
                                        RoleRepository roleRepository,
+                                       TargetStateLabelResolver targetStateLabelResolver,
                                        List<ApprovalRequestSubtypeProvider> subtypeProviders) {
         this.approvalProcessRepository = approvalProcessRepository;
         this.requesterRoleRepository = requesterRoleRepository;
         this.processStepRepository = processStepRepository;
         this.processStepRoleRepository = processStepRoleRepository;
         this.roleRepository = roleRepository;
+        this.targetStateLabelResolver = targetStateLabelResolver;
         this.subtypeProviders = subtypeProviders.stream()
                 .collect(Collectors.toMap(ApprovalRequestSubtypeProvider::supportedDomain, p -> p));
     }
@@ -115,6 +125,17 @@ public class ApprovalProcessAdminService {
         return provider != null ? provider.subtypes() : List.of();
     }
 
+    // ---------- API-AUTH-031 ----------
+
+    public List<TargetStateOption> states(String domain) {
+        if (!DOMAINS.containsKey(domain)) {
+            throw new BusinessException(ErrorCode.INVALID_APPROVAL_DOMAIN);
+        }
+        return targetStateLabelResolver.statesOf(domain).entrySet().stream()
+                .map(e -> new TargetStateOption(e.getKey(), e.getValue()))
+                .toList();
+    }
+
     // ---------- API-AUTH-025 ----------
 
     @Transactional(readOnly = true)
@@ -135,13 +156,16 @@ public class ApprovalProcessAdminService {
     public ApprovalProcessDetailResponse create(CreateApprovalProcessRequest request) {
         validateDomain(request.domain());
         validateSubtypeRequiresDomain(request.domain(), request.requestSubtypeKey());
+        validateTargetStateRequiresDomain(request.domain(), request.targetState());
+        validateTargetStateIsValidOption(request.domain(), request.targetState());
         validateSteps(request.steps());
         List<Long> requesterRoleIds = request.requesterRoleIds() == null ? List.of() : request.requesterRoleIds();
-        short tier = computeTier(request.domain(), request.requestSubtypeKey(), requesterRoleIds);
-        assertNoPriorityConflict(request.domain(), request.requestSubtypeKey(), tier, requesterRoleIds, null);
+        validateTargetStateRequiresRole(request.targetState(), requesterRoleIds);
+        short tier = computeTier(request.domain(), request.targetState(), request.requestSubtypeKey(), requesterRoleIds);
+        assertNoPriorityConflict(request.domain(), request.targetState(), request.requestSubtypeKey(), tier, requesterRoleIds, null);
 
         ApprovalProcess process = approvalProcessRepository.save(new ApprovalProcess(
-                request.domain(), request.requestSubtypeKey(), tier, request.name(), request.description()));
+                request.domain(), request.targetState(), request.requestSubtypeKey(), tier, request.name(), request.description()));
         saveRequesterRoles(process.getId(), requesterRoleIds);
         saveSteps(process.getId(), request.steps());
         return toDetail(process);
@@ -158,8 +182,9 @@ public class ApprovalProcessAdminService {
         if (request.steps() != null) {
             validateSteps(request.steps());
         }
-        short tier = computeTier(process.getDomain(), process.getRequestSubtypeKey(), requesterRoleIds);
-        assertNoPriorityConflict(process.getDomain(), process.getRequestSubtypeKey(), tier, requesterRoleIds, id);
+        validateTargetStateRequiresRole(process.getTargetState(), requesterRoleIds);
+        short tier = computeTier(process.getDomain(), process.getTargetState(), process.getRequestSubtypeKey(), requesterRoleIds);
+        assertNoPriorityConflict(process.getDomain(), process.getTargetState(), process.getRequestSubtypeKey(), tier, requesterRoleIds, id);
 
         process.update(request.name(), request.description(), tier);
         approvalProcessRepository.save(process);
@@ -204,6 +229,27 @@ public class ApprovalProcessAdminService {
         }
     }
 
+    /** targetState도 requestSubtypeKey와 동일하게 domain에 종속된 어휘라, domain이 null이면 반드시 null이어야 한다. */
+    private void validateTargetStateRequiresDomain(String domain, String targetState) {
+        if (domain == null && targetState != null) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "domain이 없으면 targetState도 지정할 수 없습니다.");
+        }
+    }
+
+    /** targetState를 지정하면 API-AUTH-031(states)이 반환하는 그 도메인의 후보값 중 하나여야 한다. */
+    private void validateTargetStateIsValidOption(String domain, String targetState) {
+        if (targetState != null && !targetStateLabelResolver.statesOf(domain).containsKey(targetState)) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "정의되지 않은 targetState입니다.");
+        }
+    }
+
+    /** targetState 지정 시 요청자 역할 무관을 허용하지 않는다(확정 방침 6 — request_subtype_key→domain 강제와 동일 형태). */
+    private void validateTargetStateRequiresRole(String targetState, List<Long> requesterRoleIds) {
+        if (targetState != null && requesterRoleIds.isEmpty()) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "targetState를 지정하려면 requesterRoleIds가 최소 1개 이상이어야 합니다.");
+        }
+    }
+
     private void validateSteps(List<ApprovalProcessStepInput> steps) {
         if (steps == null) {
             return;
@@ -218,16 +264,18 @@ public class ApprovalProcessAdminService {
         }
     }
 
-    /** (지정 축 개수×10) + (역할 지정 시 4) + (요청유형 지정 시 2) + (도메인 지정 시 1). */
-    private short computeTier(String domain, String requestSubtypeKey, List<Long> requesterRoleIds) {
+    /** (지정 축 개수×10) + (역할 지정 시 4) + (요청유형 지정 시 2) + (적용 상태 지정 시 8) + (도메인 지정 시 1). */
+    private short computeTier(String domain, String targetState, String requestSubtypeKey, List<Long> requesterRoleIds) {
         boolean hasDomain = domain != null;
+        boolean hasTargetState = targetState != null;
         boolean hasSubtype = requestSubtypeKey != null;
         boolean hasRole = !requesterRoleIds.isEmpty();
-        int axisCount = (hasDomain ? 1 : 0) + (hasSubtype ? 1 : 0) + (hasRole ? 1 : 0);
-        return (short) (axisCount * 10 + (hasRole ? 4 : 0) + (hasSubtype ? 2 : 0) + (hasDomain ? 1 : 0));
+        int axisCount = (hasDomain ? 1 : 0) + (hasTargetState ? 1 : 0) + (hasSubtype ? 1 : 0) + (hasRole ? 1 : 0);
+        return (short) (axisCount * 10 + (hasRole ? 4 : 0) + (hasSubtype ? 2 : 0)
+                + (hasTargetState ? 8 : 0) + (hasDomain ? 1 : 0));
     }
 
-    private void assertNoPriorityConflict(String domain, String requestSubtypeKey, short tier,
+    private void assertNoPriorityConflict(String domain, String targetState, String requestSubtypeKey, short tier,
                                           List<Long> requesterRoleIds, Long excludeId) {
         boolean conflict = switch (tier) {
             case TIER_NONE -> excludeId == null
@@ -243,8 +291,15 @@ public class ApprovalProcessAdminService {
                     approvalProcessRepository.findByPriorityTier(TIER_ROLE_ONLY), requesterRoleIds, excludeId);
             case TIER_DOMAIN_ROLE -> hasOverlappingRequesterRoles(
                     approvalProcessRepository.findByDomainAndPriorityTier(domain, TIER_DOMAIN_ROLE), requesterRoleIds, excludeId);
-            default -> hasOverlappingRequesterRoles(
+            case TIER_DOMAIN_SUBTYPE_ROLE -> hasOverlappingRequesterRoles(
                     approvalProcessRepository.findByDomainAndRequestSubtypeKeyAndPriorityTier(domain, requestSubtypeKey, TIER_DOMAIN_SUBTYPE_ROLE),
+                    requesterRoleIds, excludeId);
+            case TIER_DOMAIN_TARGETSTATE_ROLE -> hasOverlappingRequesterRoles(
+                    approvalProcessRepository.findByDomainAndTargetStateAndPriorityTier(domain, targetState, TIER_DOMAIN_TARGETSTATE_ROLE),
+                    requesterRoleIds, excludeId);
+            default -> hasOverlappingRequesterRoles(
+                    approvalProcessRepository.findByDomainAndTargetStateAndRequestSubtypeKeyAndPriorityTier(
+                            domain, targetState, requestSubtypeKey, TIER_DOMAIN_TARGETSTATE_SUBTYPE_ROLE),
                     requesterRoleIds, excludeId);
         };
         if (conflict) {
@@ -300,7 +355,8 @@ public class ApprovalProcessAdminService {
                 .map(r -> roleRepository.findById(r.getRoleId()).map(Role::getRoleCode).orElse(null))
                 .toList();
         int stepCount = processStepRepository.findByApprovalProcessIdOrderByStepNoAsc(p.getId()).size();
-        return new ApprovalProcessSummaryResponse(p.getId(), p.getDomain(), p.getRequestSubtypeKey(),
+        return new ApprovalProcessSummaryResponse(p.getId(), p.getDomain(), p.getTargetState(),
+                targetStateLabelResolver.label(p.getDomain(), p.getTargetState()), p.getRequestSubtypeKey(),
                 resolveSubtypeLabel(p.getDomain(), p.getRequestSubtypeKey()), p.getPriorityTier(), p.getName(),
                 requesterRoles, stepCount);
     }
@@ -314,8 +370,8 @@ public class ApprovalProcessAdminService {
                         processStepRoleRepository.findByStepId(step.getId()).stream()
                                 .map(ApprovalProcessStepRole::getRoleId).toList()))
                 .toList();
-        return new ApprovalProcessDetailResponse(p.getId(), p.getDomain(), p.getRequestSubtypeKey(), p.getName(),
-                p.getDescription(), requesterRoleIds, steps);
+        return new ApprovalProcessDetailResponse(p.getId(), p.getDomain(), p.getTargetState(), p.getRequestSubtypeKey(),
+                p.getName(), p.getDescription(), requesterRoleIds, steps);
     }
 
     private String resolveSubtypeLabel(String domain, String requestSubtypeKey) {

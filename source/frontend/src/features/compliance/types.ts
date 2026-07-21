@@ -26,6 +26,8 @@ export interface RequirementSummary {
 export interface ComplianceApproval {
   approvalRequestId: number | null;
   status: "IN_PROGRESS" | "APPROVED" | "REJECTED" | null;
+  /** 원본 코드값(도착 상태, 생성 시점 스냅샷). 2026-07-22 유지보수 요청 신규. */
+  targetState: CorrectiveActionStatus | null;
 }
 
 export interface CorrectiveAction {

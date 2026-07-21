@@ -163,6 +163,13 @@ export interface RequestSubtypeOption {
   label: string;
 }
 
+/** 도메인별 유효 상태값(적용 상태) 후보(API-AUTH-031, 2026-07-22 유지보수 요청). */
+export interface TargetStateOption {
+  /** target_state로 저장될 상태 코드. */
+  value: string;
+  label: string;
+}
+
 export type DecisionMode = "AND" | "OR";
 
 export interface ApprovalProcessStep {
@@ -175,6 +182,9 @@ export interface ApprovalProcessSummary {
   id: number;
   /** null이면 전체 도메인 적용(2026-07-15 우선순위 재설계). */
   domain: ApprovalDomain | null;
+  /** null이면 전체 상태 공통(2026-07-22 유지보수 요청, 4번째 매칭 축). */
+  targetState: string | null;
+  targetStateLabel: string | null;
   requestSubtypeKey: string | null;
   requestSubtypeLabel: string | null;
   priorityTier: number;
@@ -187,6 +197,8 @@ export interface ApprovalProcessDetail {
   id: number;
   /** null이면 전체 도메인 적용(2026-07-15 우선순위 재설계). */
   domain: ApprovalDomain | null;
+  /** null이면 전체 상태 공통(2026-07-22 유지보수 요청, 4번째 매칭 축). */
+  targetState: string | null;
   requestSubtypeKey: string | null;
   name: string;
   description: string | null;
@@ -203,6 +215,8 @@ export interface ApprovalProcessListQuery {
 export interface CreateApprovalProcessRequest {
   /** null이면 전체 도메인 적용(2026-07-15 우선순위 재설계로 필수→선택 변경). */
   domain: ApprovalDomain | null;
+  /** null이면 전체 상태 공통. domain이 null이면 반드시 null(2026-07-22 유지보수 요청). */
+  targetState: string | null;
   requestSubtypeKey: string | null;
   name: string;
   description?: string;

@@ -26,7 +26,8 @@ public record ChangeDetailResponse(
     }
 
     @Schema(description = "승인 정보")
-    public record ApprovalInfo(Long approvalRequestId, String status) {
+    public record ApprovalInfo(Long approvalRequestId, String status,
+                                @Schema(description = "원본 코드값(도착 상태, 생성 시점 스냅샷)") String targetState) {
     }
 
     @Schema(description = "연계 티켓 참조")

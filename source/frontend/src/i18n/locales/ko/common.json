@@ -94,7 +94,11 @@
     },
     "roleDecisionTitle": "{{step}}차 역할별 결정 현황 ({{mode}})",
     "rejectedNotice": "{{step}}차 반려",
-    "rejectedNoticeWithReason": "{{step}}차 반려 사유: {{reason}}"
+    "rejectedNoticeWithReason": "{{step}}차 반려 사유: {{reason}}",
+    "targetStateLabel": "대상 상태: {{targetState}}",
+    "pendingStatusLabel": "{{targetState}}(승인대기)",
+    "rejectedStatusLabel": "{{targetState}}(반려됨)",
+    "resubmitButton": "재승인요청"
   },
   "approvalInbox": {
     "title": "승인 대기함",
@@ -102,6 +106,7 @@
     "domainLabel": "도메인",
     "domainAll": "전체",
     "columnTicketType": "티켓 유형",
+    "columnTargetState": "대상 상태",
     "columnTicket": "티켓",
     "columnStep": "차수",
     "stepValue": "{{step}}차",

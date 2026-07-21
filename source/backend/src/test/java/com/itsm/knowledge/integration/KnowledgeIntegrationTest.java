@@ -99,7 +99,9 @@ class KnowledgeIntegrationTest {
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/36_srm_form_schema_jsonb.sql").toAbsolutePath()),
                     "/docker-entrypoint-initdb.d/36_srm_form_schema_jsonb.sql")
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/40_esm_form_schema_jsonb.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/40_esm_form_schema_jsonb.sql");
+                    "/docker-entrypoint-initdb.d/40_esm_form_schema_jsonb.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/41_approval_process_target_state.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/41_approval_process_target_state.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {
@@ -148,17 +150,20 @@ class KnowledgeIntegrationTest {
     }
 
     /**
-     * 도메인+승인요청자 역할(tier=25) 규칙 1건 + 1차 OR 승인(주어진 역할)을 KNOWLEDGE에 시딩한다.
+     * 도메인+적용상태+승인요청자 역할(tier=43) 규칙 1건 + 1차 OR 승인(주어진 역할)을 KNOWLEDGE에 시딩한다.
      * KNOWLEDGE는 요청유형 스코프가 없어(request_subtype_key 항상 null) 도메인만으로는(tier=11) 테스트 간
-     * 격리가 안 되므로, 이 테스트만의 전용 요청자 스코프 역할(requesterRoleCode)로 tier=25 매칭시켜 격리한다
-     * (같은 컨테이너를 공유하는 다른 테스트의 기사 작성자는 이 역할을 보유하지 않아 매칭되지 않음).
+     * 격리가 안 되므로, 이 테스트만의 전용 요청자 스코프 역할(requesterRoleCode)로 매칭시켜 격리한다
+     * (같은 컨테이너를 공유하는 다른 테스트의 기사 작성자는 이 역할을 보유하지 않아 매칭되지 않음). targetState를
+     * 지정해 생성(DRAFT) 게이트가 아니라 검토요청(IN_REVIEW) 게이트에만 적용되도록 좁힌다(2026-07-22 targetState
+     * 축 도입 — 지정하지 않으면 전체 상태 공통 규칙이 되어 생성 시점 게이트까지 막아버림).
      */
-    private Long seedRequesterScopedProcess(String requesterRoleCode, Long requesterId, String decisionRoleCode) {
+    private Long seedRequesterScopedProcess(String requesterRoleCode, Long requesterId, String decisionRoleCode,
+                                             String targetState) {
         Long requesterRoleId = roleIdOf(requesterRoleCode);
         jdbc.update("insert into user_role(user_id, role_id, created_by) values (?,?,?)",
                 requesterId, requesterRoleId, "test");
-        jdbc.update("insert into approval_process(domain, priority_tier, name, created_by) values ('KNOWLEDGE',25,?,?)",
-                "게이트키퍼 규칙-" + requesterRoleCode, "test");
+        jdbc.update("insert into approval_process(domain, target_state, priority_tier, name, created_by) values ('KNOWLEDGE',?,43,?,?)",
+                targetState, "게이트키퍼 규칙-" + requesterRoleCode, "test");
         Long processId = jdbc.queryForObject(
                 "select id from approval_process where domain = 'KNOWLEDGE' and name = ?",
                 Long.class, "게이트키퍼 규칙-" + requesterRoleCode);
@@ -244,7 +249,7 @@ class KnowledgeIntegrationTest {
         long ts = System.nanoTime();
         Long contributorId = insertUser("kc2" + ts + "@itsm.local");
         Long gatekeeperId = insertUser("kg2" + ts + "@itsm.local");
-        seedRequesterScopedProcess("KM_REVIEW_SCOPE_" + ts, contributorId, "KNOWLEDGE_GATEKEEPER");
+        seedRequesterScopedProcess("KM_REVIEW_SCOPE_" + ts, contributorId, "KNOWLEDGE_GATEKEEPER", "IN_REVIEW");
 
         as(contributorId, "KNOWLEDGE_CONTRIBUTOR");
         var created = knowledgeService.create(new CreateArticleRequest("결제 오류 대응", "본문", null, null));

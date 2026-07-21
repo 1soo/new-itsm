@@ -119,3 +119,5 @@
 | 20260719-100812 | srm | pass | 버그 수정 재테스트 — labels 없는 구 스키마(GF2, id=12) 크래시 수정 확인(요청 제출 폼·A1 미리보기 양쪽), labels 있는 항목 라벨 경계 오버레이 회귀 없음 | `docs/04_test/20260719-100812/srm/result/srm.md` |
 | 20260719-112730 | srm | pass | 신규 컴포넌트 default align center-middle(입력7종+guide-text), 소급 적용 없음(GF8 기존 항목 top 정렬 유지), DnD·라벨 오버레이 회귀 없음 | `docs/04_test/20260719-112730/srm/result/srm.md` |
 | 20260719-125019 | esm | pass | ESM 동적 양식 SRM 그리드 폼 빌더 전면 전환, 팔레트 9종, 공용 FormSubmissionValidator(클라이언트 첫위반+서버 400), 온보딩 대상자명·체크리스트 자동생성 회귀, 기존 항목 빈 그리드 리셋·구 제출건 백필 표시, 레거시 EAV 완전 삭제 | `docs/04_test/20260719-125019/esm/result/esm.md` |
+| 20260722-040618 | approval-engine | partial | targetState 4번째 매칭 축, 생성시점 게이트, 반려 후 재승인요청, 담당자별 역할매칭 PASS / 기존 게이트 요청자스코프 회귀(CRITICAL)·SRM 전이버튼 disable 미일반화 FAIL | `docs/04_test/20260722-040618/approval-engine/result/approval-engine.md` |
+| 20260722-042424 | approval-engine | pass | 재테스트 — 기존게이트(id=1) 요청자스코프 SERVICE_DESK_AGENT 보정 확인, SRM 전이버튼 targetState 일반화(미노출) 확인, 회귀 스팟체크 | `docs/04_test/20260722-042424/approval-engine/result/approval-engine.md` |

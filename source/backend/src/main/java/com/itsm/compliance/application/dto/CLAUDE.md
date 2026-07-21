@@ -7,7 +7,7 @@ compliance 도메인 애플리케이션 계층 요청·응답 DTO(record).
 - `RequirementCreatedResponse.java` — 등록 응답(id, requirementKey)
 - `UpdateRequirementRequest.java` — 요구사항 수정 요청(name·basis 필수, scope 선택)
 - `RequirementSummaryResponse.java` — 목록 요약 응답(complianceStatus 계산값 포함)
-- `RequirementDetailResponse.java` — 상세 응답(시정조치·연계 변경 요청 포함)
+- `RequirementDetailResponse.java` — 상세 응답(시정조치·연계 변경 요청 포함, 시정조치별 `ApprovalInfo`에 targetState 포함(2026-07-22 신규))
 - `LinkRequest.java` — 변경 요청 연계 요청(changeId)
 - `OwnerRequest.java` — 책임자 지정 요청(ownerId)
 - `OwnerResponse.java` — 책임자 지정 응답(id, owner)

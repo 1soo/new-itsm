@@ -1,5 +1,6 @@
 package com.itsm.common.approval.application;
 
+import com.itsm.common.approval.application.dto.ApprovalResubmitResponse;
 import com.itsm.common.approval.domain.ApprovalProcess;
 import com.itsm.common.approval.domain.ApprovalProcessRequesterRole;
 import com.itsm.common.approval.domain.ApprovalProcessStep;
@@ -25,7 +26,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -69,12 +72,15 @@ public class ApprovalGateService {
 
     /**
      * 게이트 체크. 매칭 규칙이 없거나 0차 승인이면 조용히 통과한다.
-     * 매칭 규칙이 있으면 티켓의 가장 최근 인스턴스 상태에 따라 통과(APPROVED)하거나 409(그 외)를 던진다.
+     * 매칭 규칙이 있으면 티켓의 이 targetState로의 가장 최근 인스턴스 상태에 따라 통과(APPROVED)하거나
+     * 409(IN_PROGRESS→APPROVAL_PENDING, REJECTED→APPROVAL_REJECTED)를 던진다(common.md 0절, 2026-07-22
+     * 상태별 승인자 지정 확장 — REJECTED는 자동으로 새 인스턴스를 만들지 않고 {@link #resubmit}로만 재개된다).
      * 인스턴스 생성은 별도 트랜잭션(REQUIRES_NEW)으로 커밋한다 — 호출측(도메인 상태 전이 서비스)이 이 메서드의
      * 예외로 자신의 트랜잭션을 롤백하더라도, 방금 생성된 승인 인스턴스는 그대로 남아야 하기 때문이다.
      */
-    public void checkGate(String domain, String requestSubtypeKey, Long requesterId, TicketType ticketType, Long ticketId) {
-        ApprovalProcess matched = matchProcess(domain, requestSubtypeKey, requesterId);
+    public void checkGate(String domain, String requestSubtypeKey, Long requesterId, TicketType ticketType,
+                           Long ticketId, String targetState) {
+        ApprovalProcess matched = matchProcess(domain, requestSubtypeKey, requesterId, targetState);
         if (matched == null) {
             return;
         }
@@ -83,34 +89,29 @@ public class ApprovalGateService {
             return;
         }
         ApprovalRequest latest = approvalRequestRepository
-                .findTopByTicketTypeAndTicketIdOrderByIdDesc(ticketType, ticketId).orElse(null);
+                .findTopByTicketTypeAndTicketIdAndTargetStateOrderByIdDesc(ticketType, ticketId, targetState).orElse(null);
         if (latest == null) {
             ApprovalRequest created = requiresNewTransactionTemplate.execute(
-                    status -> createInstance(matched, steps, ticketType, ticketId));
+                    status -> createInstance(matched, steps, ticketType, ticketId, targetState));
             throw new BusinessException(ErrorCode.APPROVAL_PENDING, ErrorCode.APPROVAL_PENDING.getDefaultMessage(), created.getId());
         }
         if (latest.getStatus() == ApprovalRequestStatus.APPROVED) {
             return;
         }
+        if (latest.getStatus() == ApprovalRequestStatus.REJECTED) {
+            throw new BusinessException(ErrorCode.APPROVAL_REJECTED, ErrorCode.APPROVAL_REJECTED.getDefaultMessage(), latest.getId());
+        }
         throw new BusinessException(ErrorCode.APPROVAL_PENDING, ErrorCode.APPROVAL_PENDING.getDefaultMessage(), latest.getId());
     }
 
     /**
-     * 승인 대상자 역할 기반 동적 상세조회 권한(common.md 0-1절). 티켓의 (도메인, 요청유형, 요청자 역할)로 매칭되는
-     * 규칙의 전체 차수(현재 차수만이 아님 — 인스턴스 생성 전에도 조회 가능해야 하므로)에 지정된 승인자 역할 중
-     * 로그인 사용자(조회 요청자)가 하나라도 보유하면 true.
+     * 승인 대상자 역할 기반 동적 상세조회 권한(common.md 0-1절, 2026-07-22 집계 로직 변경). 티켓의
+     * (도메인, 요청유형, 요청자 역할)로 매칭되는 **targetState 무관 전체 후보 규칙**(전체 상태 공통 1건 +
+     * 상태별 N건) 각각의 전체 차수(현재 차수만이 아님 — 인스턴스 생성 전에도 조회 가능해야 하므로)에 지정된
+     * 승인자 역할을 합집합해, 로그인 사용자(조회 요청자)가 하나라도 보유하면 true.
      */
     public boolean canApproverView(String domain, String requestSubtypeKey, Long requesterId) {
-        ApprovalProcess matched = matchProcess(domain, requestSubtypeKey, requesterId);
-        if (matched == null) {
-            return false;
-        }
-        List<ApprovalProcessStep> steps = processStepRepository.findByApprovalProcessIdOrderByStepNoAsc(matched.getId());
-        Set<Long> approverRoleIds = new HashSet<>();
-        for (ApprovalProcessStep step : steps) {
-            processStepRoleRepository.findByStepId(step.getId())
-                    .forEach(role -> approverRoleIds.add(role.getRoleId()));
-        }
+        Set<Long> approverRoleIds = collectApproverRoleCandidates(domain, requestSubtypeKey, requesterId);
         if (approverRoleIds.isEmpty()) {
             return false;
         }
@@ -119,7 +120,37 @@ public class ApprovalGateService {
         return !Collections.disjoint(approverRoleIds, viewerRoleIds);
     }
 
-    private ApprovalProcess matchProcess(String domain, String requestSubtypeKey, Long requesterId) {
+    /**
+     * 반려(REJECTED) 후 재승인요청(API-COM-006, common.md 2절). targetState 무관 "티켓 전체의 최신 인스턴스"
+     * 기준으로 반려 여부를 판정하고, 그 인스턴스의 도메인/요청유형/targetState + 지금 호출한 사용자의
+     * requesterId로 현재 시점 규칙을 재매칭해 새 인스턴스를 REQUIRES_NEW로 생성한다. 매칭 규칙이 사라졌다면
+     * 인스턴스를 생성하지 않고 상태 "NO_RULE_MATCHED"로 응답한다. 이 메서드는 던지지 않는다(명시적 사용자
+     * 액션이므로 정상 응답으로 결과를 전달) — 단, 최신 인스턴스가 없거나(404) REJECTED가 아니면(400) 예외.
+     */
+    public ApprovalResubmitResponse resubmit(TicketType ticketType, Long ticketId, Long requesterId) {
+        ApprovalRequest latest = approvalRequestRepository
+                .findTopByTicketTypeAndTicketIdOrderByIdDesc(ticketType, ticketId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.APPROVAL_NOT_FOUND));
+        if (latest.getStatus() != ApprovalRequestStatus.REJECTED) {
+            throw new BusinessException(ErrorCode.APPROVAL_RESUBMIT_NOT_ALLOWED);
+        }
+        ApprovalProcess previous = approvalProcessRepository.findById(latest.getApprovalProcessId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.APPROVAL_PROCESS_NOT_FOUND));
+        String targetState = latest.getTargetState();
+        ApprovalProcess matched = matchProcess(previous.getDomain(), previous.getRequestSubtypeKey(), requesterId, targetState);
+        List<ApprovalProcessStep> steps = matched == null ? List.of()
+                : processStepRepository.findByApprovalProcessIdOrderByStepNoAsc(matched.getId());
+        if (matched == null || steps.isEmpty()) {
+            return new ApprovalResubmitResponse(null, ticketType.name(), ticketId, targetState, "NO_RULE_MATCHED", null);
+        }
+        ApprovalProcess finalMatched = matched;
+        ApprovalRequest created = requiresNewTransactionTemplate.execute(
+                status -> createInstance(finalMatched, steps, ticketType, ticketId, targetState));
+        return new ApprovalResubmitResponse(created.getId(), ticketType.name(), ticketId, targetState,
+                created.getStatus().name(), created.getCurrentStepNo());
+    }
+
+    private ApprovalProcess matchProcess(String domain, String requestSubtypeKey, Long requesterId, String targetState) {
         List<ApprovalProcess> candidates = approvalProcessRepository.findByDomain(domain);
         if (candidates.isEmpty()) {
             return null;
@@ -128,6 +159,9 @@ public class ApprovalGateService {
                 roleResolver.roleIdsOf(roleResolver.roleCodesOfUser(requesterId)));
         ApprovalProcess best = null;
         for (ApprovalProcess candidate : candidates) {
+            if (candidate.getTargetState() != null && !candidate.getTargetState().equals(targetState)) {
+                continue;
+            }
             if (candidate.getRequestSubtypeKey() != null && !candidate.getRequestSubtypeKey().equals(requestSubtypeKey)) {
                 continue;
             }
@@ -147,10 +181,41 @@ public class ApprovalGateService {
         return best;
     }
 
+    /**
+     * {@link #canApproverView}용 헬퍼(common.md 0-1절). {@link #matchProcess}("tier 최고 1건 선택")와 달리
+     * targetState 축을 필터링하지 않고, (도메인, 요청유형, 요청자 역할)에 매칭되는 모든 후보 규칙 각각의
+     * 전체 차수 승인자 역할을 합집합으로 모은다.
+     */
+    private Set<Long> collectApproverRoleCandidates(String domain, String requestSubtypeKey, Long requesterId) {
+        List<ApprovalProcess> candidates = approvalProcessRepository.findByDomain(domain);
+        Set<Long> requesterRoleIds = new HashSet<>(
+                roleResolver.roleIdsOf(roleResolver.roleCodesOfUser(requesterId)));
+        Set<Long> approverRoleIds = new HashSet<>();
+        for (ApprovalProcess candidate : candidates) {
+            if (candidate.getRequestSubtypeKey() != null && !candidate.getRequestSubtypeKey().equals(requestSubtypeKey)) {
+                continue;
+            }
+            List<ApprovalProcessRequesterRole> scopeRoles = requesterRoleRepository.findByApprovalProcessId(candidate.getId());
+            if (!scopeRoles.isEmpty()) {
+                boolean anyMatch = scopeRoles.stream()
+                        .map(ApprovalProcessRequesterRole::getRoleId)
+                        .anyMatch(requesterRoleIds::contains);
+                if (!anyMatch) {
+                    continue;
+                }
+            }
+            for (ApprovalProcessStep step : processStepRepository.findByApprovalProcessIdOrderByStepNoAsc(candidate.getId())) {
+                processStepRoleRepository.findByStepId(step.getId())
+                        .forEach(role -> approverRoleIds.add(role.getRoleId()));
+            }
+        }
+        return approverRoleIds;
+    }
+
     private ApprovalRequest createInstance(ApprovalProcess process, List<ApprovalProcessStep> steps,
-                                            TicketType ticketType, Long ticketId) {
+                                            TicketType ticketType, Long ticketId, String targetState) {
         ApprovalRequest request = approvalRequestRepository.save(
-                new ApprovalRequest(ticketType, ticketId, process.getId(), steps.get(0).getStepNo()));
+                new ApprovalRequest(ticketType, ticketId, process.getId(), targetState, steps.get(0).getStepNo()));
         for (ApprovalProcessStep step : steps) {
             ApprovalRequestStep requestStep = requestStepRepository.save(
                     new ApprovalRequestStep(request.getId(), step.getStepNo(), step.getDecisionMode()));
@@ -168,8 +233,8 @@ public class ApprovalGateService {
      * 별도 트랜잭션이 필요 없다 — 호출측 전이 자체가 이 결과와 함께 정상 커밋되는 구조이기 때문이다.
      */
     public GateDecision evaluateAndCreateIfNeeded(String domain, String requestSubtypeKey, Long requesterId,
-                                                  TicketType ticketType, Long ticketId) {
-        ApprovalProcess matched = matchProcess(domain, requestSubtypeKey, requesterId);
+                                                  TicketType ticketType, Long ticketId, String targetState) {
+        ApprovalProcess matched = matchProcess(domain, requestSubtypeKey, requesterId, targetState);
         if (matched == null) {
             return new GateDecision(true, null);
         }
@@ -177,8 +242,25 @@ public class ApprovalGateService {
         if (steps.isEmpty()) {
             return new GateDecision(true, null);
         }
-        ApprovalRequest created = createInstance(matched, steps, ticketType, ticketId);
+        ApprovalRequest created = createInstance(matched, steps, ticketType, ticketId, targetState);
         return new GateDecision(false, created.getId());
+    }
+
+    /**
+     * 도메인 목록 API의 pendingApprovalTargetState 배치 조회(N+1 방지, 2026-07-22 신규 — 8개 도메인
+     * 서비스에 동일 코드가 중복돼 있던 것을 공용화, code review 지적 반영). ticketId → 최신 IN_PROGRESS
+     * 인스턴스의 targetState. COMPLIANCE는 게이트가 요구사항이 아니라 시정조치 단위라 이 헬퍼 대상이 아니다.
+     */
+    public Map<Long, String> pendingApprovalTargetStatesOf(TicketType ticketType, List<Long> ticketIds) {
+        if (ticketIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, String> result = new LinkedHashMap<>();
+        for (ApprovalRequest ar : approvalRequestRepository.findByTicketTypeAndTicketIdInAndStatusOrderByIdDesc(
+                ticketType, ticketIds, ApprovalRequestStatus.IN_PROGRESS)) {
+            result.putIfAbsent(ar.getTicketId(), ar.getTargetState());
+        }
+        return result;
     }
 
     /** {@link #evaluateAndCreateIfNeeded} 판정 결과(통과 여부 + 생성된 인스턴스 id, 통과 시 null). */

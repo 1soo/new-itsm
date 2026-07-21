@@ -99,7 +99,9 @@
     "linkedCisTitle": "Linked CIs",
     "retireConfirmTitle": "Retire this asset?",
     "retireConfirmDescription": "This cannot be undone after retirement.",
-    "retireSuccess": "Asset retired"
+    "retireSuccess": "Asset retired",
+    "resubmitSuccess": "Resubmit request received",
+    "resubmitNoRuleMatched": "No matching approval rule — this can proceed without approval"
   },
   "ciRelation": {
     "title": "CI / CMDB Relations",

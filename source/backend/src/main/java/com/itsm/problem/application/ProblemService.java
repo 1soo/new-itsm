@@ -6,6 +6,7 @@ import com.itsm.auth.domain.AppUser;
 import com.itsm.auth.domain.repository.AppUserRepository;
 import com.itsm.change.application.ChangeService;
 import com.itsm.common.approval.application.ApprovalGateService;
+import com.itsm.common.approval.application.TicketCreationGateSupport;
 import com.itsm.common.approval.domain.ApprovalRequest;
 import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
@@ -62,6 +63,7 @@ import org.springframework.util.StringUtils;
 import java.time.OffsetDateTime;
 import java.time.Year;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 문제 유스케이스: 등록·조회·상태전이(6단계)·RCA·워크어라운드·알려진오류(KEDB)·연계·후속조치·종료.
@@ -88,6 +90,7 @@ public class ProblemService {
     private final ApprovalGateService approvalGateService;
     private final ApprovalRequestRepository approvalRequestRepository;
     private final AppUserRepository appUserRepository;
+    private final TicketCreationGateSupport ticketCreationGateSupport;
 
     public ProblemService(ProblemRepository problemRepository,
                           ProblemFiveWhyRepository fiveWhyRepository,
@@ -101,7 +104,8 @@ public class ProblemService {
                           AssetService assetService,
                           ApprovalGateService approvalGateService,
                           ApprovalRequestRepository approvalRequestRepository,
-                          AppUserRepository appUserRepository) {
+                          AppUserRepository appUserRepository,
+                          TicketCreationGateSupport ticketCreationGateSupport) {
         this.problemRepository = problemRepository;
         this.fiveWhyRepository = fiveWhyRepository;
         this.knownErrorRepository = knownErrorRepository;
@@ -115,6 +119,7 @@ public class ProblemService {
         this.approvalGateService = approvalGateService;
         this.approvalRequestRepository = approvalRequestRepository;
         this.appUserRepository = appUserRepository;
+        this.ticketCreationGateSupport = ticketCreationGateSupport;
     }
 
     // ---------- create (API-PRB-002) ----------
@@ -122,10 +127,17 @@ public class ProblemService {
     @Transactional
     public ProblemCreatedResponse create(CreateProblemRequest request) {
         requireRole(PM);
-        Problem saved = problemRepository.save(new Problem(
-                nextTicketKey(), request.summary(), request.description(), request.origin(),
-                request.investigationReason(), request.impact(), request.urgency(), request.component()));
-        timelineRepository.save(TimelineEvent.of(TT, saved.getId(), "CREATE", "문제가 등록되었습니다."));
+        Long requesterId = SecurityUtils.currentPrincipal().userId();
+        Problem saved = ticketCreationGateSupport.createThenGate(
+                () -> {
+                    Problem problem = problemRepository.save(new Problem(
+                            nextTicketKey(), request.summary(), request.description(), request.origin(),
+                            request.investigationReason(), request.impact(), request.urgency(), request.component()));
+                    timelineRepository.save(TimelineEvent.of(TT, problem.getId(), "CREATE", "문제가 등록되었습니다."));
+                    return problem;
+                },
+                Problem::getId,
+                DOMAIN, null, requesterId, TT, ProblemStatus.DETECTION.name());
         return new ProblemCreatedResponse(saved.getId(), saved.getTicketKey(), saved.getStatus().name(),
                 saved.getPriority() != null ? saved.getPriority().name() : null);
     }
@@ -140,9 +152,10 @@ public class ProblemService {
         OffsetDateTime fromV = from != null ? from : OffsetDateTime.parse("1970-01-01T00:00:00Z");
         OffsetDateTime toV = to != null ? to : OffsetDateTime.now().plusYears(100);
         String assigneeV = StringUtils.hasText(assignee) ? assignee : null;
-        return PageResponse.from(
-                problemRepository.search(status, priority, origin, assigneeV, fromV, toV, pageable),
-                this::toSummary);
+        var page = problemRepository.search(status, priority, origin, assigneeV, fromV, toV, pageable);
+        Map<Long, String> pendingTargetStates = approvalGateService.pendingApprovalTargetStatesOf(
+                TT, page.getContent().stream().map(Problem::getId).toList());
+        return PageResponse.from(page, p -> toSummary(p, pendingTargetStates.get(p.getId())));
     }
 
     // ---------- detail (API-PRB-003) ----------
@@ -167,9 +180,7 @@ public class ProblemService {
         if (!ProblemStateMachine.isAllowed(problem.getStatus(), target)) {
             throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION);
         }
-        if (target == ProblemStatus.RESOLVED_CLOSED) {
-            approvalGateService.checkGate(DOMAIN, null, requesterIdOf(problem), TT, id);
-        }
+        approvalGateService.checkGate(DOMAIN, null, SecurityUtils.currentPrincipal().userId(), TT, id, target.name());
         problem.changeStatus(target);
         problemRepository.save(problem);
         timelineRepository.save(TimelineEvent.of(TT, id, "STATUS_" + target.name(),
@@ -338,11 +349,18 @@ public class ProblemService {
     /** 인시던트에서 신규 문제(REACTIVE)를 생성한다. 역할 검사는 호출측(IncidentService)에서 수행. */
     @Transactional
     public Long createReactiveProblem(String summary, String description) {
-        Problem saved = problemRepository.save(new Problem(
-                nextTicketKey(), summary, description, ProblemOrigin.REACTIVE,
-                null, null, null, null));
-        timelineRepository.save(TimelineEvent.of(TT, saved.getId(), "CREATE",
-                "인시던트 연계로 문제가 생성되었습니다."));
+        Long requesterId = SecurityUtils.currentPrincipal().userId();
+        Problem saved = ticketCreationGateSupport.createThenGate(
+                () -> {
+                    Problem problem = problemRepository.save(new Problem(
+                            nextTicketKey(), summary, description, ProblemOrigin.REACTIVE,
+                            null, null, null, null));
+                    timelineRepository.save(TimelineEvent.of(TT, problem.getId(), "CREATE",
+                            "인시던트 연계로 문제가 생성되었습니다."));
+                    return problem;
+                },
+                Problem::getId,
+                DOMAIN, null, requesterId, TT, ProblemStatus.DETECTION.name());
         return saved.getId();
     }
 
@@ -361,11 +379,11 @@ public class ProblemService {
 
     // ---------- helpers ----------
 
-    private ProblemSummaryResponse toSummary(Problem p) {
+    private ProblemSummaryResponse toSummary(Problem p, String pendingApprovalTargetState) {
         return new ProblemSummaryResponse(p.getId(), p.getTicketKey(), p.getSummary(), p.getStatus().name(),
                 p.getPriority() != null ? p.getPriority().name() : null,
                 p.getOrigin() != null ? p.getOrigin().name() : null,
-                p.getCreatedBy(), p.getUpdatedAt());
+                p.getCreatedBy(), p.getUpdatedAt(), pendingApprovalTargetState);
     }
 
     private ProblemDetailResponse toDetail(Problem p) {
@@ -398,7 +416,8 @@ public class ProblemService {
                 .findTopByTicketTypeAndTicketIdOrderByIdDesc(TT, id).orElse(null);
         ProblemDetailResponse.ApprovalInfo approvalInfo = new ProblemDetailResponse.ApprovalInfo(
                 latestApproval != null ? latestApproval.getId() : null,
-                latestApproval != null ? latestApproval.getStatus().name() : null);
+                latestApproval != null ? latestApproval.getStatus().name() : null,
+                latestApproval != null ? latestApproval.getTargetState() : null);
 
         return new ProblemDetailResponse(id, p.getTicketKey(), p.getSummary(), p.getDescription(),
                 p.getStatus().name(), p.getPriority() != null ? p.getPriority().name() : null,

@@ -9,6 +9,7 @@ public record ArticleSummaryResponse(
         String summary,
         String status,
         String category,
-        double helpfulRate
+        double helpfulRate,
+        @Schema(description = "진행 중인 승인 인스턴스의 targetState(원본 코드값, 없으면 null)") String pendingApprovalTargetState
 ) {
 }

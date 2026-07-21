@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ApprovalPanel, ConfirmDialog, StatusBadge, toast } from "@/components/common";
+import { ApprovalPanel, ConfirmDialog, deriveApprovalStatusDisplay, StatusBadge, toast } from "@/components/common";
 import type { ApprovalStep } from "@/components/common";
 import { FullscreenLoader } from "@/routes/FullscreenLoader";
 import { knowledgeApi } from "@/features/knowledge/api";
@@ -49,6 +49,7 @@ export function ArticleEditPage() {
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [resubmitting, setResubmitting] = useState(false);
 
   const [approvalSteps, setApprovalSteps] = useState<ApprovalStep[]>([]);
   const [approvalCurrentStepNo, setApprovalCurrentStepNo] = useState<number | null>(null);
@@ -158,6 +159,26 @@ export function ArticleEditPage() {
     }
   };
 
+  const handleResubmit = async () => {
+    if (!id) return;
+    setResubmitting(true);
+    try {
+      const result = await commonApi.resubmitApproval({ ticketType: "KNOWLEDGE", ticketId: id });
+      toast.success(
+        result.status === "NO_RULE_MATCHED"
+          ? t("articleEdit.resubmitNoRuleMatched", {
+              defaultValue: "매칭되는 승인 규칙이 없어 승인 없이 진행할 수 있습니다",
+            })
+          : t("articleEdit.resubmitSuccess", { defaultValue: "재승인요청이 접수되었습니다" }),
+      );
+      load();
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
+    } finally {
+      setResubmitting(false);
+    }
+  };
+
   if (loading) return <FullscreenLoader />;
   if (id && (notFound || !detail)) {
     return (
@@ -168,6 +189,15 @@ export function ArticleEditPage() {
     );
   }
 
+  const approvalTargetStateLabel = detail?.approval.targetState ? statusLabel(t, detail.approval.targetState) : null;
+  const statusDisplay = detail
+    ? deriveApprovalStatusDisplay(
+        t,
+        { tone: statusTone(detail.status), label: statusLabel(t, detail.status) },
+        { status: detail.approval.status, targetStateLabel: approvalTargetStateLabel },
+      )
+    : null;
+
   return (
     <>
       <div className="space-y-4">
@@ -177,7 +207,7 @@ export function ArticleEditPage() {
               ? t("articleEdit.titleEdit", { defaultValue: "기사 편집" })
               : t("articleEdit.titleCreate", { defaultValue: "기사 작성" })}
           </h1>
-          {detail ? <StatusBadge tone={statusTone(detail.status)} label={statusLabel(t, detail.status)} /> : null}
+          {statusDisplay ? <StatusBadge tone={statusDisplay.tone} label={statusDisplay.label} /> : null}
         </div>
 
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
@@ -259,6 +289,10 @@ export function ArticleEditPage() {
                 matched={detail.approval.approvalRequestId != null}
                 steps={approvalSteps}
                 currentStepNo={approvalCurrentStepNo}
+                targetStateLabel={approvalTargetStateLabel}
+                status={detail.approval.status}
+                onResubmit={detail.approval.status === "REJECTED" ? handleResubmit : undefined}
+                resubmitting={resubmitting}
               />
             ) : null}
           </div>

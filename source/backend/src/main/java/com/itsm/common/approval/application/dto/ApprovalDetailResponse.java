@@ -11,6 +11,8 @@ public record ApprovalDetailResponse(
         String ticketType,
         Long ticketId,
         String ticketKey,
+        @Schema(description = "원본 코드값(도착 상태, 생성 시점 스냅샷)") String targetState,
+        @Schema(description = "표시명(백엔드 resolve)") String targetStateLabel,
         String status,
         Short currentStepNo,
         List<StepDto> steps

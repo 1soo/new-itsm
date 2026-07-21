@@ -36,8 +36,9 @@
 - `MenuItemResponse.java` — 메뉴 항목(screenCode/screenName/screenNameEn/path/iconName)
 - `ApprovalDomainResponse.java` — 승인 프로세스 대상 도메인 응답(domain, label, hasRequestSubtype)
 - `ApprovalProcessStepInput.java` — 승인 프로세스 차수 입력(decisionMode, roleIds) — 생성/수정 요청이 공유
-- `CreateApprovalProcessRequest.java` — 승인 프로세스 생성 요청(domain 선택(null=전체 도메인)·requestSubtypeKey(domain null이면 반드시 null)·requesterRoleIds·steps, 2026-07-15 domain 필수→선택 변경)
-- `UpdateApprovalProcessRequest.java` — 승인 프로세스 수정 요청(전달된 필드만 갱신, requesterRoleIds·steps는 전달 시 전체 교체. domain·requestSubtypeKey는 식별 스코프라 수정 대상 제외)
-- `ApprovalProcessSummaryResponse.java` — 승인 프로세스 목록 항목(domain nullable, 우선순위·요청자 역할·차수 수 포함)
-- `ApprovalProcessDetailResponse.java` — 승인 프로세스 상세(domain nullable, 요청자 역할 id·차수별 역할 id)
+- `CreateApprovalProcessRequest.java` — 승인 프로세스 생성 요청(domain 선택(null=전체 도메인)·targetState(domain null이면 반드시 null, 2026-07-22 4번째 매칭 축 신규)·requestSubtypeKey(domain null이면 반드시 null)·requesterRoleIds·steps, 2026-07-15 domain 필수→선택 변경)
+- `UpdateApprovalProcessRequest.java` — 승인 프로세스 수정 요청(전달된 필드만 갱신, requesterRoleIds·steps는 전달 시 전체 교체. domain·targetState·requestSubtypeKey는 식별 스코프라 수정 대상 제외)
+- `ApprovalProcessSummaryResponse.java` — 승인 프로세스 목록 항목(domain/targetState/targetStateLabel nullable, 우선순위·요청자 역할·차수 수 포함)
+- `ApprovalProcessDetailResponse.java` — 승인 프로세스 상세(domain/targetState nullable, 요청자 역할 id·차수별 역할 id)
+- `TargetStateOption.java` — 승인 프로세스 적용 상태(targetState) 후보 응답(value, label — API-AUTH-031, 2026-07-22 신규)
 - `ApprovalProcessDeletedResponse.java` — 승인 프로세스 삭제 응답(id, deleted)

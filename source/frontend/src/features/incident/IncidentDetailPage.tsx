@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import {
   ApprovalPanel,
+  deriveApprovalStatusDisplay,
   StatusBadge,
   TicketDetailLayout,
   Timeline,
@@ -82,6 +83,7 @@ export function IncidentDetailPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [resubmitting, setResubmitting] = useState(false);
 
   // 편집 상태
   const [sev, setSev] = useState<Severity>("SEV3");
@@ -154,6 +156,25 @@ export function IncidentDetailPage() {
     }
   };
 
+  const handleResubmit = async () => {
+    setResubmitting(true);
+    try {
+      const result = await commonApi.resubmitApproval({ ticketType: "INCIDENT", ticketId: id });
+      toast.success(
+        result.status === "NO_RULE_MATCHED"
+          ? t("incidentDetail.resubmitNoRuleMatched", {
+              defaultValue: "매칭되는 승인 규칙이 없어 승인 없이 진행할 수 있습니다",
+            })
+          : t("incidentDetail.resubmitSuccess", { defaultValue: "재승인요청이 접수되었습니다" }),
+      );
+      refreshDetail(true);
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
+    } finally {
+      setResubmitting(false);
+    }
+  };
+
   if (loading) return <FullscreenLoader />;
   if (notFound || !detail) {
     return (
@@ -172,6 +193,12 @@ export function IncidentDetailPage() {
   const isSev12 = detail.severity === "SEV1" || detail.severity === "SEV2";
   const showPmBanner = detail.postmortemRequired ?? (isSev12 && detail.status === "RESOLVED");
   const approved = detail.approval.approvalRequestId == null || detail.approval.status === "APPROVED";
+  const approvalTargetStateLabel = detail.approval.targetState ? statusLabel(t, detail.approval.targetState) : null;
+  const statusDisplay = deriveApprovalStatusDisplay(
+    t,
+    { tone: statusTone(detail.status), label: statusLabel(t, detail.status) },
+    { status: detail.approval.status, targetStateLabel: approvalTargetStateLabel },
+  );
 
   const timelineItems: TimelineItem[] = detail.timeline.map((entry, i) => ({
     id: String(i),
@@ -203,7 +230,7 @@ export function IncidentDetailPage() {
       badges={
         <>
           <StatusBadge tone={severityTone(detail.severity)} label={detail.severity} />
-          <StatusBadge tone={statusTone(detail.status)} label={statusLabel(t, detail.status)} />
+          <StatusBadge tone={statusDisplay.tone} label={statusDisplay.label} />
         </>
       }
       actions={transitions.map((target) => {
@@ -294,6 +321,10 @@ export function IncidentDetailPage() {
             matched={detail.approval.approvalRequestId != null}
             steps={approvalSteps}
             currentStepNo={approvalCurrentStepNo}
+            targetStateLabel={approvalTargetStateLabel}
+            status={detail.approval.status}
+            onResubmit={detail.approval.status === "REJECTED" ? handleResubmit : undefined}
+            resubmitting={resubmitting}
           />
 
           <Card>

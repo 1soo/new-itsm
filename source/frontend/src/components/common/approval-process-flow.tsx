@@ -51,6 +51,11 @@ export interface ApprovalProcessFlowProps {
   /** 항상 1개(1단계) */
   requester: ApprovalStepBoxValue;
   onRequesterChange: (value: ApprovalStepBoxValue) => void;
+  /**
+   * true면 요청자 박스 역할이 최소 1개 이상이어야 저장 가능(적용 상태를 구체적으로 지정한 경우,
+   * 2026-07-22 유지보수 요청). 미충족 시 인라인 에러 표시 + 저장 버튼 비활성화.
+   */
+  requesterRoleRequired?: boolean;
 
   /** 배열 순서 = 차수(1차부터, 2단계) */
   approvers: ApprovalStepBoxValue[];
@@ -76,6 +81,7 @@ export function ApprovalProcessFlow({
   roleOptions,
   requester,
   onRequesterChange,
+  requesterRoleRequired = false,
   approvers,
   onApproversChange,
   submitLabel,
@@ -180,12 +186,14 @@ export function ApprovalProcessFlow({
   };
 
   // 요청자 축은 0개(전체 요청자, 우선순위 미지정 축)를 허용한다(2026-07-15 우선순위 재설계 —
-  // 승인자 박스(steps)만 roleIds 1개 이상이 API-AUTH-027 계약상 필수, 요청자는 아님).
+  // 승인자 박스(steps)만 roleIds 1개 이상이 API-AUTH-027 계약상 필수, 요청자는 아님). 단, 적용
+  // 상태를 구체적으로 지정한 경우(requesterRoleRequired)에는 요청자 박스도 1개 이상 필수(2026-07-22 유지보수 요청).
   const hasEmptyApproverBox = approvers.some((a) => a.roleIds.length === 0);
+  const requesterRoleMissing = requesterRoleRequired && requester.roleIds.length === 0;
 
   const handleSubmitClick = () => {
     setAttemptedSubmit(true);
-    if (hasEmptyApproverBox) return;
+    if (hasEmptyApproverBox || requesterRoleMissing) return;
     if (approvers.length === 0) {
       setConfirmOpen(true);
       return;
@@ -199,7 +207,7 @@ export function ApprovalProcessFlow({
         <h1 className="text-heading-large font-bold text-foreground">
           {t("admin.approvalProcessForm.flow.title", { defaultValue: "승인 프로세스" })}
         </h1>
-        <Button type="button" loading={submitting} onClick={handleSubmitClick}>
+        <Button type="button" loading={submitting} disabled={requesterRoleMissing} onClick={handleSubmitClick}>
           {resolvedSubmitLabel}
         </Button>
       </div>
@@ -228,7 +236,10 @@ export function ApprovalProcessFlow({
                 roleIds={requester.roleIds}
                 onOpenPicker={() => setRolePanelTarget({ kind: "requester", id: requester.id })}
                 onRemoveRole={(roleId) => removeRole("requester", requester.id, roleId)}
-                showError={false}
+                showError={requesterRoleMissing}
+                errorMessage={t("admin.approvalProcessForm.flow.requesterRoleRequiredError", {
+                  defaultValue: "이 상태에서 요청할 역할을 지정하세요",
+                })}
                 t={t}
               />
               {requester.roleIds.length >= 2 ? (
@@ -390,6 +401,7 @@ function RoleChipArea({
   onOpenPicker,
   onRemoveRole,
   showError,
+  errorMessage,
   t,
 }: {
   roleOptions: ApprovalRoleOption[];
@@ -397,6 +409,7 @@ function RoleChipArea({
   onOpenPicker: () => void;
   onRemoveRole: (roleId: string) => void;
   showError: boolean;
+  errorMessage?: string;
   t: TFunction;
 }) {
   const labelOf = (id: string) => roleOptions.find((r) => r.id === id)?.label ?? id;
@@ -425,7 +438,8 @@ function RoleChipArea({
       </div>
       {showError ? (
         <p className="text-xs text-destructive">
-          {t("admin.approvalProcessForm.flow.roleRequiredError", { defaultValue: "역할을 1개 이상 선택하세요" })}
+          {errorMessage ??
+            t("admin.approvalProcessForm.flow.roleRequiredError", { defaultValue: "역할을 1개 이상 선택하세요" })}
         </p>
       ) : null}
     </div>

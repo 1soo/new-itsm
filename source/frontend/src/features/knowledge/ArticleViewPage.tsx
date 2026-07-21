@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { StatusBadge, toast } from "@/components/common";
+import { deriveApprovalStatusDisplay, StatusBadge, toast } from "@/components/common";
 import { FullscreenLoader } from "@/routes/FullscreenLoader";
 import { hasAnyRole, ROLE_KNOWLEDGE_CONTRIBUTOR } from "@/features/auth/roles";
 import { knowledgeApi } from "@/features/knowledge/api";
@@ -74,11 +74,20 @@ export function ArticleViewPage() {
     );
   }
 
+  const statusDisplay = deriveApprovalStatusDisplay(
+    t,
+    { tone: statusTone(detail.status), label: statusLabel(t, detail.status) },
+    {
+      status: detail.approval.status,
+      targetStateLabel: detail.approval.targetState ? statusLabel(t, detail.approval.targetState) : null,
+    },
+  );
+
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge tone={statusTone(detail.status)} label={statusLabel(t, detail.status)} />
+          <StatusBadge tone={statusDisplay.tone} label={statusDisplay.label} />
           <span className="text-sm text-muted-foreground">{detail.category}</span>
           {canEdit ? (
             <Button size="sm" variant="outline" className="ml-auto" onClick={() => navigate(`/knowledge/${id}/edit`)}>

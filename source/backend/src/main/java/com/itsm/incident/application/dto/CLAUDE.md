@@ -5,8 +5,8 @@
 ## 파일
 - `CreateIncidentRequest.java` — 인시던트 생성 요청(summary, severity, 영향 서비스/제품)
 - `IncidentCreatedResponse.java` — 생성 응답(id, ticketKey, status)
-- `IncidentSummaryResponse.java` — 목록 요약 응답
-- `IncidentDetailResponse.java` — 상세 응답(대응자·메트릭·연계·타임라인·허용 상태전이 포함)
+- `IncidentSummaryResponse.java` — 목록 요약 응답(pendingApprovalTargetState(진행 중 승인 인스턴스 targetState, 2026-07-22 신규) 포함)
+- `IncidentDetailResponse.java` — 상세 응답(대응자·메트릭·연계·타임라인·허용 상태전이 포함, `approval`(ApprovalInfo)에 targetState 포함(2026-07-22 신규))
 - `StatusTransitionRequest.java` — 상태 전이 요청(targetStatus, note)
 - `StatusResponse.java` — 상태 응답(id, status)
 - `SeverityChangeRequest.java` — 심각도/우선순위 변경 요청

@@ -75,12 +75,16 @@ export function ApprovalProcessListPage() {
 
   const allLabel = t("admin.approvalProcessList.all", { defaultValue: "전체" });
   const domainLabel = (d: string | null) => (d == null ? allLabel : domains.find((o) => o.domain === d)?.label ?? d);
+  const allStatesLabel = t("admin.approvalProcessList.allStates", { defaultValue: "전체 상태 공통" });
 
   // 2026-07-15 우선순위 재설계: tier 3종 라벨을 폐기하고, 행 데이터(도메인·요청유형·요청자 역할)에서
   // 지정된 축을 직접 조합해 라벨링한다(priorityTier는 서버 매칭·정렬용으로만 사용, 화면 비노출).
+  // 2026-07-22 유지보수 요청: 적용 상태(targetState) 축을 조합에 추가.
   const priorityLabel = (p: ApprovalProcessSummary): string => {
     const axes = [
       p.domain != null && t("admin.approvalProcessList.priorityAxisDomain", { defaultValue: "도메인" }),
+      p.targetState != null &&
+        t("admin.approvalProcessList.priorityAxisTargetState", { defaultValue: "적용상태" }),
       p.requestSubtypeKey != null &&
         t("admin.approvalProcessList.priorityAxisSubtype", { defaultValue: "요청유형" }),
       p.requesterRoles.length > 0 &&
@@ -107,6 +111,10 @@ export function ApprovalProcessListPage() {
   const columns: Column<ApprovalProcessSummary>[] = [
     { header: t("admin.approvalProcessList.columnName", { defaultValue: "규칙명" }), cell: (p) => p.name },
     { header: t("admin.approvalProcessList.columnDomain", { defaultValue: "도메인" }), cell: (p) => domainLabel(p.domain) },
+    {
+      header: t("admin.approvalProcessList.columnTargetState", { defaultValue: "적용 상태" }),
+      cell: (p) => p.targetStateLabel ?? allStatesLabel,
+    },
     {
       header: t("admin.approvalProcessList.columnRequestSubtype", { defaultValue: "요청유형" }),
       cell: (p) => p.requestSubtypeLabel ?? t("admin.approvalProcessList.all", { defaultValue: "전체" }),

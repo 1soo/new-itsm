@@ -4,11 +4,11 @@
 
 ## 파일
 - `api.ts` — INC API 호출(`incidentApi`: 목록/등록/상세, 심각도·상태 전이, 대응 역할 배정, 에스컬레이션, 타임라인 업데이트, 해결, 포스트모템, 문제 연계, 지표).
-- `types.ts` — INC 도메인 타입(`Severity`/`Priority`/`IncidentStatus`, `IncidentSummary`/`IncidentDetail`/`Postmortem`/`IncidentMetrics`, 입력·쿼리 타입 등). `IncidentDetail.approval`(`IncidentApproval`)은 `approvalRequestId`/`status`만 보유(진행 상태 조회는 공용 API-COM-004).
+- `types.ts` — INC 도메인 타입(`Severity`/`Priority`/`IncidentStatus`, `IncidentSummary`(`pendingApprovalTargetState` 포함, 2026-07-22 신규)/`IncidentDetail`/`Postmortem`/`IncidentMetrics`, 입력·쿼리 타입 등). `IncidentDetail.approval`(`IncidentApproval`)은 `approvalRequestId`/`status`/`targetState`(2026-07-22 신규)를 보유(진행 상태 조회는 공용 API-COM-004).
 - `status.ts` — 상태·심각도 라벨/tone 매핑과 상수 목록(`SEVERITIES`/`PRIORITIES`/`INCIDENT_STATUSES`).
 - `format.ts` — 날짜·일시·분 단위 지표 표시 포맷터.
-- `IncidentListPage.tsx` — 인시던트 목록(SCR-INC-001).
+- `IncidentListPage.tsx` — 인시던트 목록(SCR-INC-001). 상태 배지는 `pendingApprovalTargetState` 존재 시 공용 `deriveApprovalStatusDisplay`로 파생 표시(2026-07-22 신규).
 - `IncidentCreatePage.tsx` — 인시던트 등록(SCR-INC-002).
-- `IncidentDetailPage.tsx` — 인시던트 상세·상태 전이(RESOLVED 전이 승인 게이트로 버튼 disable+tooltip)·해결 처리(`ResolveForm` 제출도 동일 게이트로 disable+tooltip, 409 시 조용히 재조회)·대응(SCR-INC-003). 승인 패널은 공용 `ApprovalPanel`(`components/common`)에 API-COM-004 조회 결과 주입해 진행 상태만 표시(매칭 없으면 패널 미노출).
+- `IncidentDetailPage.tsx` — 인시던트 상세·상태 전이(RESOLVED 전이 승인 게이트로 버튼 disable+tooltip)·해결 처리(`ResolveForm` 제출도 동일 게이트로 disable+tooltip, 409 시 조용히 재조회)·대응(SCR-INC-003). 승인 패널은 공용 `ApprovalPanel`(`components/common`)에 API-COM-004 조회 결과 주입해 진행 상태만 표시(매칭 없으면 패널 미노출). 상단 상태 배지는 `deriveApprovalStatusDisplay`로 파생 표시, `ApprovalPanel`에 `targetStateLabel`/`status`/`onResubmit`(반려 시 API-COM-006 재승인요청) 배선(2026-07-22 신규).
 - `PostmortemPage.tsx` — 포스트모템 작성/수정(SCR-INC-004).
 - `IncidentMetricsPage.tsx` — 인시던트 지표(심각도 분포·MTTR 등)(SCR-INC-005).

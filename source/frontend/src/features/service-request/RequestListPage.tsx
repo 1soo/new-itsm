@@ -15,6 +15,7 @@ import {
 import {
   type Column,
   DataTable,
+  deriveApprovalStatusDisplay,
   Pagination,
   StatusBadge,
   TicketListLayout,
@@ -48,11 +49,9 @@ const STATUS_OPTIONS: SrStatus[] = [
   "SUBMITTED",
   "VALIDATED",
   "ROUTED",
-  "APPROVAL_PENDING",
   "IN_FULFILLMENT",
   "FULFILLED",
   "CLOSED",
-  "REJECTED",
 ];
 
 interface Filters {
@@ -112,7 +111,17 @@ export function RequestListPage() {
       {
         header: t("requestList.columnStatus", { defaultValue: "상태" }),
         width: 110,
-        cell: (r) => <StatusBadge tone={statusTone(r.status)} label={statusLabel(t, r.status)} />,
+        cell: (r) => {
+          const display = deriveApprovalStatusDisplay(
+            t,
+            { tone: statusTone(r.status), label: statusLabel(t, r.status) },
+            {
+              status: r.pendingApprovalTargetState ? "IN_PROGRESS" : null,
+              targetStateLabel: r.pendingApprovalTargetState ? statusLabel(t, r.pendingApprovalTargetState) : null,
+            },
+          );
+          return <StatusBadge tone={display.tone} label={display.label} />;
+        },
       },
       {
         header: "SLA",

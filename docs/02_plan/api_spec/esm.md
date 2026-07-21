@@ -1,6 +1,6 @@
 # API 명세서 — 엔터프라이즈 서비스 관리 (ESM)
 
-> 도메인: esm · 버전: 0.5
+> 도메인: esm · 버전: 0.6
 
 ## 변경 이력
 
@@ -11,6 +11,7 @@
 | 2026-07-16 | API-ESM-007 응답 timeline 항목에 actor 필드 추가, STATUS_* 타임라인 기본 메시지의 상태 코드를 라벨로 정리, formFields.fieldType에 textarea 추가(API-ESM-002/003) |
 | 2026-07-18 | 문서 정정 — 이전 버전이 실제 구현되지 않은 SRM 스타일 form.io 전환(API-ESM-002/003/004의 formSchema를 Form.io Form JSON으로 정의)을 반영하고 있었음을 확인(코드 조사). 실제 구현(필드 배열 `formFields`, 레거시 EAV 기반)에 맞게 되돌림 |
 | 2026-07-19 | 유지보수 요청 — 레거시 EAV(`formFields` 배열)를 폐기하고 [service-request.md](../api_spec/service-request.md) API-SRM-002와 동일한 자체 8×n 그리드 `formSchema`(`components`+`labels`)로 전환(API-ESM-002/003/004). `number` 타입은 팔레트에 추가하지 않고 기존 number 필드를 `text`+정규식으로 흡수. API-ESM-005/007의 `formValues`는 기존과 동일한 key-value(JSON) 구조를 유지하되 key 기준이 `fieldKey`(EAV)에서 그리드 컴포넌트 `key`로 의미만 전환(구조 변경 없음). 서버 재검증은 공용 `FormSubmissionValidator`/`FormJsonMapper`(SRM과 공유, [database/esm.md](../database/esm.md) 참조) 재사용 |
+| 2026-07-22 | 프랙티스별 상태(state)별 승인자 지정 확장(유지보수 요청) — 등록(SUBMITTED)을 포함한 모든 부서 요청 상태 전이 지점이 승인 게이트 대상으로 일반화(기존 COMPLETED 하드코딩 지점은 마이그레이션 백필로 동일하게 동작, HR 케이스·체크리스트 하위 작업은 게이트 대상에서 계속 제외). API-ESM-005(제출)에 생성 시점 게이트 409 추가, API-ESM-006 목록에 `pendingApprovalTargetState` 추가, API-ESM-007 상세에 `approval` 필드 신규 추가, API-ESM-008 409 응답에 반려(`APPROVAL_REJECTED`) 분기 추가(재승인요청은 [common.md](common.md) API-COM-006) |
 
 ## 공통 규약
 
@@ -113,7 +114,8 @@
   ```json
   { "id": "number", "ticketKey": "string · ESM-YYYY-####", "status": "SUBMITTED", "checklistId": "number|null" }
   ```
-- **Response Code**: 201 / 400 필수·형식 검증 실패(카탈로그 항목 `formSchema`의 첫 번째 위반 컴포넌트 1건, 공용 `FormSubmissionValidator`) / 400 체크리스트 템플릿 미정의(ONBOARDING/OFFBOARDING 유형인데 템플릿 없음) / 401
+  > 부서 요청 레코드는 이 API 호출로 즉시 생성·커밋된다(`TicketCreationGateSupport`가 REQUIRES_NEW로 먼저 커밋). 등록(SUBMITTED) 상태에 승인 게이트가 걸려 있으면 커밋 후 별도 트랜잭션에서 게이트를 평가해 409를 반환하지만 방금 커밋된 레코드는 롤백되지 않는다.
+- **Response Code**: 201(매칭되는 승인 프로세스 없거나 0차 승인) / 400 필수·형식 검증 실패(카탈로그 항목 `formSchema`의 첫 번째 위반 컴포넌트 1건, 공용 `FormSubmissionValidator`) / 400 체크리스트 템플릿 미정의(ONBOARDING/OFFBOARDING 유형인데 템플릿 없음) / 401 / 409 등록(SUBMITTED) 상태에 승인 게이트가 걸려 승인 대기(`APPROVAL_PENDING`) — [common.md](common.md) 0절 생성 시점 게이트
 
 ### API-ESM-006 · 부서 요청 목록 조회
 
@@ -122,7 +124,7 @@
 - **Response Body** (200):
   ```json
   {
-    "content": [ { "id": "number", "ticketKey": "string", "catalogItemName": "string", "department": "string", "status": "string", "updatedAt": "ISO-8601" } ],
+    "content": [ { "id": "number", "ticketKey": "string", "catalogItemName": "string", "department": "string", "status": "string", "pendingApprovalTargetState": "string|null · 열린(IN_PROGRESS) 또는 REJECTED 승인 인스턴스가 있으면 그 targetState 원본 코드, 없으면 null(N+1 방지)", "updatedAt": "ISO-8601" } ],
     "page": "number", "size": "number", "totalElements": "number"
   }
   ```
@@ -137,13 +139,14 @@
   {
     "id": "number", "ticketKey": "string", "catalogItemName": "string", "department": "string", "status": "string",
     "formValues": {}, "requester": "string", "assignee": "string",
+    "approval": { "approvalRequestId": "number|null", "status": "IN_PROGRESS|APPROVED|REJECTED|null · null=매칭되는 승인 프로세스 없음(게이트 없이 진행)", "targetState": "string|null · 원본 코드값(도착 상태, 생성 시점 스냅샷), 라벨은 FE가 기존 statusLabel()로 resolve" },
     "checklistId": "number|null",
     "comments": [ { "id": "number", "author": "string", "body": "string", "createdAt": "ISO-8601" } ],
     "timeline": [ { "type": "string", "message": "string", "actor": "string · 행위 수행 주체자 표시명(createdBy 이메일을 이름으로 resolve, 실패 시 이메일 그대로)", "at": "ISO-8601" } ]
   }
   ```
   > `STATUS_*` 타임라인 이벤트의 기본 메시지(사용자가 별도 note를 지정하지 않은 경우)는 상태 enum 코드(`target.name()`) 대신 상태 라벨을 사용한다(예: `"상태가 '처리중'으로 변경되었습니다"`).
-- **Response Code**: 200 / 401 / 403 / 404
+- **Response Code**: 200 / 401 / 403 / 404. `approval` 상세(차수별 진행 상태)는 [common.md](common.md) API-COM-004로 조회한다.
 
 ### API-ESM-008 · 부서 요청 상태 전이
 
@@ -151,7 +154,7 @@
 - **인증**: 필요(담당 부서 처리자)
 - **Request Body**: `{ "targetStatus": "IN_PROGRESS|COMPLETED|REJECTED", "note": "string" }`
 - **Response Body** (200): `{ "id": "number", "status": "string" }`
-- **Response Code**: 200 / 400 허용되지 않은 전이 / 403 담당 부서 아님 / 404 / 409 승인 완료 전 COMPLETED 전이 시도 — [common.md](common.md) 0절 공통 게이트 로직(domain=ESM, 요청유형 스코프 없음) 적용. 매칭되는 승인 프로세스가 없거나 0차 승인이면 게이트 없이 통과
+- **Response Code**: 200 / 400 허용되지 않은 전이 / 403 담당 부서 아님 / 404 / 409 승인 완료 전 전이 시도(`APPROVAL_PENDING`) — [common.md](common.md) 0절 공통 게이트 로직(domain=ESM, targetState=전이 대상 값, 요청유형 스코프 없음) 적용. **모든 targetStatus 전이 지점이 게이트 대상**이 될 수 있다(기존 COMPLETED 하드코딩 지점은 마이그레이션으로 동일하게 백필됨, HR 케이스·체크리스트 하위 작업은 계속 게이트 대상 제외). 매칭되는 승인 프로세스가 없거나 0차 승인이면 게이트 없이 통과 / 최신 승인 인스턴스가 반려(`REJECTED`)면 `APPROVAL_REJECTED` — 재승인요청은 [common.md](common.md) API-COM-006
 
 ### API-ESM-009 · 부서 요청 코멘트 등록
 

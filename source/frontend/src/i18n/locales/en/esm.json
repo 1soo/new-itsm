@@ -80,6 +80,8 @@
     "back": "Back",
     "transitionBlockedTooltip": "Cannot transition to completed before approval is complete",
     "transitionSuccess": "Status changed to '{{status}}'",
+    "resubmitSuccess": "Resubmit request received",
+    "resubmitNoRuleMatched": "No matching approval rule — this can proceed without approval",
     "infoTitle": "Information",
     "requesterLabel": "Requester",
     "assigneeLabel": "Assignee",

@@ -6,7 +6,8 @@ import java.util.List;
 
 @Schema(description = "승인 프로세스 목록 항목")
 public record ApprovalProcessSummaryResponse(
-        Long id, String domain, String requestSubtypeKey, String requestSubtypeLabel,
+        Long id, String domain, String targetState, String targetStateLabel,
+        String requestSubtypeKey, String requestSubtypeLabel,
         short priorityTier, String name, List<String> requesterRoles, int stepCount
 ) {
 }

@@ -105,7 +105,9 @@ class SrmApprovalIntegrationTest {
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/36_srm_form_schema_jsonb.sql").toAbsolutePath()),
                     "/docker-entrypoint-initdb.d/36_srm_form_schema_jsonb.sql")
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/40_esm_form_schema_jsonb.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/40_esm_form_schema_jsonb.sql");
+                    "/docker-entrypoint-initdb.d/40_esm_form_schema_jsonb.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/41_approval_process_target_state.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/41_approval_process_target_state.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {
@@ -154,13 +156,18 @@ class SrmApprovalIntegrationTest {
         return jdbc.queryForObject("select id from role where role_code = ?", Long.class, roleCode);
     }
 
-    /** 도메인+요청유형(tier=23) 규칙 1건 + 1차 OR 승인(주어진 역할)을 카탈로그 항목별로 시딩한다(테스트 간 격리). */
+    /**
+     * 도메인+요청유형+적용상태(tier=55) 규칙 1건 + 1차 OR 승인(주어진 역할)을 카탈로그 항목별로 시딩한다(테스트 간
+     * 격리). targetState를 지정해 IN_FULFILLMENT 전이 게이트에만 적용되도록 좁힌다(2026-07-22 targetState
+     * 축 도입 — 지정하지 않으면 전체 상태 공통 규칙이 되어 생성(SUBMITTED) 시점 게이트까지 막아버림).
+     */
     private void seedSubtypeProcess(String domain, String requestSubtypeKey, String roleCode) {
-        jdbc.update("insert into approval_process(domain, request_subtype_key, priority_tier, name, created_by) values (?,?,23,?,?)",
-                domain, requestSubtypeKey, "요청유형 규칙", "test");
+        String targetState = "IN_FULFILLMENT";
+        jdbc.update("insert into approval_process(domain, request_subtype_key, target_state, priority_tier, name, created_by) values (?,?,?,55,?,?)",
+                domain, requestSubtypeKey, targetState, "요청유형 규칙", "test");
         Long processId = jdbc.queryForObject(
-                "select id from approval_process where domain = ? and request_subtype_key = ?",
-                Long.class, domain, requestSubtypeKey);
+                "select id from approval_process where domain = ? and request_subtype_key = ? and target_state = ?",
+                Long.class, domain, requestSubtypeKey, targetState);
         jdbc.update("insert into approval_process_step(approval_process_id, step_no, decision_mode, created_by) values (?,1,'OR',?)",
                 processId, "test");
         Long stepId = jdbc.queryForObject(
@@ -169,13 +176,18 @@ class SrmApprovalIntegrationTest {
                 stepId, roleIdOf(roleCode), "test");
     }
 
-    /** 전체 도메인 캐치올(domain=NULL, tier=0) 규칙 1건 + 1차 OR 승인(주어진 역할)을 시딩한다. */
+    /**
+     * 전체 도메인 캐치올(domain=NULL) + 적용상태(targetState="IN_FULFILLMENT") 규칙 1건 + 1차 OR 승인
+     * (주어진 역할)을 시딩한다. targetState를 지정해 IN_FULFILLMENT 전이 게이트에만 적용되도록 좁힌다
+     * (2026-07-22 targetState 축 도입 — 지정하지 않으면 생성(SUBMITTED) 시점 게이트까지 막아버림).
+     */
     private Long seedCatchAllProcess(String roleCode, String name) {
-        jdbc.update("insert into approval_process(domain, priority_tier, name, created_by) values (null,0,?,?)",
-                name, "test");
+        String targetState = "IN_FULFILLMENT";
+        jdbc.update("insert into approval_process(domain, target_state, priority_tier, name, created_by) values (null,?,18,?,?)",
+                targetState, name, "test");
         Long processId = jdbc.queryForObject(
-                "select id from approval_process where domain is null and priority_tier = 0 and name = ?",
-                Long.class, name);
+                "select id from approval_process where domain is null and target_state = ? and name = ?",
+                Long.class, targetState, name);
         jdbc.update("insert into approval_process_step(approval_process_id, step_no, decision_mode, created_by) values (?,1,'OR',?)",
                 processId, "test");
         Long stepId = jdbc.queryForObject(

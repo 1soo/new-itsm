@@ -46,6 +46,7 @@ public enum ErrorCode {
     CSAT_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "종료된 요청에만 CSAT를 제출할 수 있습니다."),
     CSAT_ALREADY_SUBMITTED(HttpStatus.CONFLICT, "이미 CSAT가 제출되었습니다."),
     APPROVAL_PENDING(HttpStatus.CONFLICT, "승인 대기 중에는 이행할 수 없습니다."),
+    APPROVAL_REJECTED(HttpStatus.CONFLICT, "승인이 반려되어 이행할 수 없습니다. 재승인요청 후 다시 시도하세요."),
     APPROVAL_ALREADY_DECIDED(HttpStatus.CONFLICT, "이미 결정된 승인입니다."),
     CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "카테고리를 찾을 수 없습니다."),
     CATEGORY_NAME_DUPLICATE(HttpStatus.CONFLICT, "이미 존재하는 카테고리명입니다."),
@@ -101,6 +102,7 @@ public enum ErrorCode {
     APPROVAL_STEP_ROLES_REQUIRED(HttpStatus.BAD_REQUEST, "차수의 승인 역할(roleIds)은 1개 이상이어야 합니다."),
     APPROVAL_STEPS_TOO_MANY(HttpStatus.BAD_REQUEST, "승인자 차수는 최대 10개까지 설정할 수 있습니다."),
     APPROVAL_PROCESS_PRIORITY_CONFLICT(HttpStatus.CONFLICT, "동일 범위의 승인 프로세스가 이미 존재합니다."),
+    APPROVAL_RESUBMIT_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "반려된 건만 재승인요청 가능합니다."),
 
     // 409
     EMAIL_DUPLICATE(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),

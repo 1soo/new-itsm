@@ -1,11 +1,12 @@
 # API 명세서 — 서비스 요청 관리 (Service Request)
 
-> 도메인: service-request · 버전: 0.5
+> 도메인: service-request · 버전: 0.6
 
 ## 변경 이력
 
 | 날짜 | 요약 |
 |------|------|
+| 2026-07-22 | 프랙티스별 상태(state)별 승인자 지정 확장(유지보수 요청) — 등록(SUBMITTED)을 포함한 모든 상태 전이 지점이 승인 게이트 대상으로 일반화(기존 IN_FULFILLMENT 하드코딩 지점은 마이그레이션 백필로 동일하게 동작). API-SRM-006(요청 생성)에 생성 시점 게이트 409 추가, API-SRM-007 목록에 `pendingApprovalTargetState` 추가, API-SRM-008 상세 `approval`에 `targetState` 추가, API-SRM-010 409 응답에 반려(`APPROVAL_REJECTED`) 분기 추가(재승인요청은 [common.md](common.md) API-COM-006) |
 | 2026-07-09 | 최초 작성 |
 | 2026-07-12 | 카탈로그 항목별 approvalRequired/approverRole 필드 제거, 전용 승인 API(API-SRM-011/012) 삭제 후 공통 승인 API([common.md](common.md) API-COM-003~005)로 대체 |
 | 2026-07-15 | 카탈로그 CRUD(API-SRM-002/003/004)에 assigneeRoleId 필드 추가, 담당자 후보 목록 조회 API(API-SRM-017) 신규 |
@@ -180,7 +181,14 @@
   ```json
   { "id": "number", "ticketKey": "string · SRM-YYYY-####", "status": "SUBMITTED", "createdAt": "ISO-8601" }
   ```
-- **Response Code**: 201 / 400 필수·형식 검증 실패([common.md](common.md) 0-2절 공통 서버 재검증) / 401
+  > 요청 레코드는 이 API 호출로 즉시 생성·커밋된다(`TicketCreationGateSupport`가 REQUIRES_NEW로 먼저 커밋). 등록(SUBMITTED) 상태에 승인 게이트가 걸려 있으면 커밋 후 별도 트랜잭션에서 게이트를 평가해 **409를 반환하지만 방금 커밋된 레코드는 롤백되지 않는다** — 상세 조회(API-SRM-008)로 계속 조회 가능하며 `approval.status`가 `IN_PROGRESS`(승인대기)로 표시된다.
+- **Response Code**:
+  | Code | 의미 |
+  |------|------|
+  | 201 | 생성 성공(매칭되는 승인 프로세스 없거나 0차 승인) |
+  | 400 | 필수·형식 검증 실패([common.md](common.md) 0-2절 공통 서버 재검증) |
+  | 401 | 미인증 |
+  | 409 | 등록(SUBMITTED) 상태에 승인 게이트가 걸려 승인 대기(`APPROVAL_PENDING`) — [common.md](common.md) 0절 생성 시점 게이트. 레코드 자체는 생성되어 남아있음(응답의 `id`/`ticketKey`는 포함되지 않으므로 목록·대기함 조회로 확인) |
 
 ### API-SRM-007 · 요청 목록 조회
 
@@ -190,7 +198,7 @@
 - **Response Body** (200):
   ```json
   {
-    "content": [ { "id": "number", "ticketKey": "string", "catalogItemName": "string", "status": "string", "slaStatus": "OK|WARNING|BREACHED", "assignee": "string", "assigneeId": "number|null · 요청 처리함(SCR-SRM-004) 배정 버튼 노출 조건(본인 배정 여부) 판정용", "updatedAt": "ISO-8601" } ],
+    "content": [ { "id": "number", "ticketKey": "string", "catalogItemName": "string", "status": "string", "slaStatus": "OK|WARNING|BREACHED", "assignee": "string", "assigneeId": "number|null · 요청 처리함(SCR-SRM-004) 배정 버튼 노출 조건(본인 배정 여부) 판정용", "pendingApprovalTargetState": "string|null · 열린(IN_PROGRESS) 또는 REJECTED 승인 인스턴스가 있으면 그 targetState 원본 코드, 없으면 null(N+1 방지, FE가 상태 배지 파생 표시에 사용)", "updatedAt": "ISO-8601" } ],
     "page": "number", "size": "number", "totalElements": "number"
   }
   ```
@@ -205,7 +213,7 @@
   {
     "id": "number", "ticketKey": "string", "catalogItemName": "string", "status": "string",
     "formValues": {}, "requester": "string", "assignee": "string",
-    "approval": { "approvalRequestId": "number|null", "status": "IN_PROGRESS|APPROVED|REJECTED|null · null=매칭되는 승인 프로세스 없음(게이트 없이 진행)" },
+    "approval": { "approvalRequestId": "number|null", "status": "IN_PROGRESS|APPROVED|REJECTED|null · null=매칭되는 승인 프로세스 없음(게이트 없이 진행)", "targetState": "string|null · 원본 코드값(도착 상태, 생성 시점 스냅샷), 라벨은 FE가 기존 statusLabel()로 resolve" },
     "sla": { "responseStatus": "string", "resolveStatus": "string" },
     "linkedArticles": [ { "articleId": "number", "title": "string" } ],
     "linkedAssets": [ { "id": "number", "assetKey": "string" } ],
@@ -288,7 +296,7 @@
   | 200 | 전이 성공 |
   | 400 | 허용되지 않은 전이 / 이미 종료된 요청 재종료 |
   | 403 | 권한 부족(이행 등) |
-  | 409 | 담당자 미배정 상태로 라우팅(ROUTED) 전이 시도(VULNERABILITY 도메인의 담당자 미배정 상태 REMEDIATION 전이 가드와 동일 패턴 — `ASSIGNEE_REQUIRED_FOR_ROUTING`) / 승인 완료 전 이행(IN_FULFILLMENT) 전이 시도 — [common.md](common.md) 0절 공통 게이트 로직(domain=SERVICE_REQUEST, requestSubtypeKey=service_catalog_item.id) 적용. 매칭되는 승인 프로세스가 없거나 0차 승인이면 게이트 없이 통과 |
+  | 409 | 담당자 미배정 상태로 라우팅(ROUTED) 전이 시도(VULNERABILITY 도메인의 담당자 미배정 상태 REMEDIATION 전이 가드와 동일 패턴 — `ASSIGNEE_REQUIRED_FOR_ROUTING`) / 승인 완료 전 전이 시도(`APPROVAL_PENDING`) — [common.md](common.md) 0절 공통 게이트 로직(domain=SERVICE_REQUEST, targetState=전이 대상 값, requestSubtypeKey=service_catalog_item.id) 적용. **모든 targetStatus 전이 지점이 게이트 대상**이 될 수 있다(기존 IN_FULFILLMENT 하드코딩 지점은 마이그레이션으로 동일하게 백필됨). 매칭되는 승인 프로세스가 없거나 0차 승인이면 게이트 없이 통과 / 최신 승인 인스턴스가 반려(`REJECTED`)면 `APPROVAL_REJECTED` — 재승인요청은 [common.md](common.md) API-COM-006 |
 
 ### API-SRM-013 · 요청 코멘트 등록
 

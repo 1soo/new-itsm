@@ -94,4 +94,22 @@ public interface ApprovalProcessJpaRepository extends JpaRepository<ApprovalProc
             where p.isDeleted = false and p.domain = :domain and p.priorityTier = :tier
             """)
     List<ApprovalProcess> findByDomainAndPriorityTier(@Param("domain") String domain, @Param("tier") short priorityTier);
+
+    @Override
+    @Query("""
+            select p from ApprovalProcess p
+            where p.isDeleted = false and p.domain = :domain and p.targetState = :targetState and p.priorityTier = :tier
+            """)
+    List<ApprovalProcess> findByDomainAndTargetStateAndPriorityTier(
+            @Param("domain") String domain, @Param("targetState") String targetState, @Param("tier") short priorityTier);
+
+    @Override
+    @Query("""
+            select p from ApprovalProcess p
+            where p.isDeleted = false and p.domain = :domain and p.targetState = :targetState and p.priorityTier = :tier
+              and ((:key is null and p.requestSubtypeKey is null) or p.requestSubtypeKey = cast(:key as string))
+            """)
+    List<ApprovalProcess> findByDomainAndTargetStateAndRequestSubtypeKeyAndPriorityTier(
+            @Param("domain") String domain, @Param("targetState") String targetState,
+            @Param("key") String requestSubtypeKey, @Param("tier") short priorityTier);
 }

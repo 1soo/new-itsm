@@ -33,6 +33,8 @@ export interface ChangeSummary {
   risk: Risk | null;
   scheduledAt: string | null;
   updatedAt: string;
+  /** 진행 중인 승인 인스턴스의 targetState(원본 코드값, 없으면 null). 2026-07-22 유지보수 요청 신규. */
+  pendingApprovalTargetState: ChangeStatus | null;
 }
 
 export interface ChangeResult {
@@ -50,6 +52,8 @@ export interface ChangeLink {
 export interface ChangeApproval {
   approvalRequestId: number | null;
   status: "IN_PROGRESS" | "APPROVED" | "REJECTED" | null;
+  /** 원본 코드값(도착 상태, 생성 시점 스냅샷). 2026-07-22 유지보수 요청 신규. */
+  targetState: ChangeStatus | null;
 }
 
 export interface ChangeDetail {

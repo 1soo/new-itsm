@@ -8,6 +8,7 @@ import java.util.List;
 @Schema(description = "승인 프로세스 생성 요청")
 public record CreateApprovalProcessRequest(
         @Schema(description = "선택, null=전체 도메인 적용") String domain,
+        @Schema(description = "domain이 null이면 반드시 null. domain 지정 시 API-AUTH-031 후보 중 값 지정 가능, 전체 선택 시 null") String targetState,
         @Schema(description = "domain이 null이면 반드시 null. 하위유형 있는 도메인만, 전체 선택 시 null") String requestSubtypeKey,
         @NotBlank String name,
         String description,

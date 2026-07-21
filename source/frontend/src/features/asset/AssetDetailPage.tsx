@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ApprovalPanel, ConfirmDialog, StatusBadge, toast } from "@/components/common";
+import { ApprovalPanel, ConfirmDialog, deriveApprovalStatusDisplay, StatusBadge, toast } from "@/components/common";
 import type { ApprovalStep } from "@/components/common";
 import { FullscreenLoader } from "@/routes/FullscreenLoader";
 import { assetApi } from "@/features/asset/api";
@@ -51,6 +51,7 @@ export function AssetDetailPage() {
   const [notFound, setNotFound] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [confirmRetire, setConfirmRetire] = useState(false);
+  const [resubmitting, setResubmitting] = useState(false);
 
   const [ticketType, setTicketType] = useState<TicketType>("INCIDENT");
   const [ticketId, setTicketId] = useState("");
@@ -151,6 +152,31 @@ export function AssetDetailPage() {
   const isRetired = detail.status === "RETIREMENT";
   const transitions = NON_TERMINAL_STAGES.filter((s) => s !== detail.status);
   const approved = detail.approval.approvalRequestId == null || detail.approval.status === "APPROVED";
+  const approvalTargetStateLabel = detail.approval.targetState ? statusLabel(t, detail.approval.targetState) : null;
+  const statusDisplay = deriveApprovalStatusDisplay(
+    t,
+    { tone: statusTone(detail.status), label: statusLabel(t, detail.status) },
+    { status: detail.approval.status, targetStateLabel: approvalTargetStateLabel },
+  );
+
+  const handleResubmit = async () => {
+    setResubmitting(true);
+    try {
+      const result = await commonApi.resubmitApproval({ ticketType: "ASSET", ticketId: id });
+      toast.success(
+        result.status === "NO_RULE_MATCHED"
+          ? t("assetDetail.resubmitNoRuleMatched", {
+              defaultValue: "매칭되는 승인 규칙이 없어 승인 없이 진행할 수 있습니다",
+            })
+          : t("assetDetail.resubmitSuccess", { defaultValue: "재승인요청이 접수되었습니다" }),
+      );
+      refreshDetail(true);
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
+    } finally {
+      setResubmitting(false);
+    }
+  };
 
   return (
     <>
@@ -161,7 +187,7 @@ export function AssetDetailPage() {
             <h1 className="text-xl font-semibold text-foreground">{detail.name}</h1>
             <div className="flex flex-wrap gap-2">
               <StatusBadge tone={typeTone(detail.type)} label={typeLabel(t, detail.type)} />
-              <StatusBadge tone={statusTone(detail.status)} label={statusLabel(t, detail.status)} />
+              <StatusBadge tone={statusDisplay.tone} label={statusDisplay.label} />
             </div>
           </div>
           {!isRetired ? (
@@ -280,6 +306,10 @@ export function AssetDetailPage() {
               matched={detail.approval.approvalRequestId != null}
               steps={approvalSteps}
               currentStepNo={approvalCurrentStepNo}
+              targetStateLabel={approvalTargetStateLabel}
+              status={detail.approval.status}
+              onResubmit={detail.approval.status === "REJECTED" ? handleResubmit : undefined}
+              resubmitting={resubmitting}
             />
 
             <Card>

@@ -65,6 +65,8 @@
     "transitionSuccess": "Status changed to '{{status}}'",
     "close": "Close",
     "closeSuccess": "Problem closed successfully",
+    "resubmitSuccess": "Resubmit request received",
+    "resubmitNoRuleMatched": "No matching approval rule — this can proceed without approval",
     "classificationTitle": "Classification",
     "linkedIncidentsTitle": "Linked Incidents",
     "linkedChangesTitle": "Linked Changes",

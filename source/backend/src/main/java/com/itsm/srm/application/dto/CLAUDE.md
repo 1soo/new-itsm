@@ -5,8 +5,8 @@
 ## 파일
 - `CreateRequestRequest.java` — 서비스 요청 생성(catalogItemId, 동적 formValues)
 - `RequestCreatedResponse.java` — 요청 생성 응답
-- `RequestSummaryResponse.java` — 요청 목록 요약 응답(SLA 상태 포함). `assigneeId`(배정 담당자 id, 미배정 null) 포함 — 요청 큐(SCR-SRM-004) 배정 버튼 노출조건(본인배정 시 숨김) 판정용(2026-07-15, TC-SRM-009 결함 수정)
-- `RequestDetailResponse.java` — 요청 상세 응답(양식값·승인(approvalRequestId/status)·SLA·연계지식·연계자산(REQ-ITAM-006)·댓글·타임라인·허용 상태전이). `queue` 필드는 2026-07-18 유지보수 요청(요청 큐 폐지)으로 제거됨
+- `RequestSummaryResponse.java` — 요청 목록 요약 응답(SLA 상태 포함). `assigneeId`(배정 담당자 id, 미배정 null) 포함 — 요청 큐(SCR-SRM-004) 배정 버튼 노출조건(본인배정 시 숨김) 판정용(2026-07-15, TC-SRM-009 결함 수정). `pendingApprovalTargetState`(진행 중 승인 인스턴스 targetState, 2026-07-22 신규) 포함
+- `RequestDetailResponse.java` — 요청 상세 응답(양식값·승인(approvalRequestId/status/targetState, 2026-07-22 targetState 추가)·SLA·연계지식·연계자산(REQ-ITAM-006)·댓글·타임라인·허용 상태전이). `queue` 필드는 2026-07-18 유지보수 요청(요청 큐 폐지)으로 제거됨
 - `StatusTransitionRequest.java` — 상태 전이 요청(targetStatus, note)
 - `StatusResponse.java` — 상태 응답(id, status)
 - `AssignRequest.java` — 담당자 배정 요청(assigneeId, 미지정 시 본인)

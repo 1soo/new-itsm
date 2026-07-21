@@ -26,6 +26,7 @@ import type {
   DecisionMode,
   RequestSubtypeOption,
   Role,
+  TargetStateOption,
 } from "@/features/admin/types";
 import { extractErrorMessage } from "@/lib/apiClient";
 
@@ -37,10 +38,15 @@ import { extractErrorMessage } from "@/lib/apiClient";
  * domain·requestSubtypeKey는 식별 스코프라 수정 대상에서 제외한다(API-AUTH-028). 카드 스택
  * 레이아웃·드래그 재정렬·역할 선택 패널·박스별 필수역할 검증·승인자 0개 확인 다이얼로그는 공용
  * `ApprovalProcessFlow`(components/common)가 담당한다. 도메인 선택에는 클라이언트 전용 "전체 도메인"
- * 의사 옵션(2026-07-15 우선순위 재설계)이 추가되며, 선택 시 `domain: null`로 저장한다.
+ * 의사 옵션(2026-07-15 우선순위 재설계)이 추가되며, 선택 시 `domain: null`로 저장한다. "규칙 정보" 카드에는
+ * 도메인 다음에 적용 상태(targetState) 선택이 추가된다(2026-07-22 유지보수 요청, 4번째 매칭 축) — 도메인
+ * 확정 시 API-AUTH-031 후보를 조회하고, "전체 도메인" 선택 시에는 상태 개념이 없어 이 필드 자체를 숨긴다.
+ * 구체적인 상태를 선택하면 요청자 박스 역할이 최소 1개 이상이어야 저장 가능(`ApprovalProcessFlow`의
+ * `requesterRoleRequired`로 위임).
  */
 const NO_SUBTYPE = "__ALL__";
 const ALL_DOMAIN = "__ALL_DOMAIN__";
+const ALL_STATES = "__ALL_STATES__";
 
 function newRequesterBox(roleIds: string[] = []): ApprovalStepBoxValue {
   return { id: "requester", roleIds, matchType: "AND" };
@@ -60,8 +66,10 @@ export function ApprovalProcessFormPage() {
   const [domains, setDomains] = useState<ApprovalDomainOption[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [subtypes, setSubtypes] = useState<RequestSubtypeOption[]>([]);
+  const [states, setStates] = useState<TargetStateOption[]>([]);
 
   const [domain, setDomain] = useState<ApprovalDomain | typeof ALL_DOMAIN | "">("");
+  const [targetState, setTargetState] = useState<string>(ALL_STATES);
   const [requestSubtypeKey, setRequestSubtypeKey] = useState<string>(NO_SUBTYPE);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -85,6 +93,7 @@ export function ApprovalProcessFormPage() {
       .getApprovalProcess(id)
       .then((detail) => {
         setDomain(detail.domain ?? ALL_DOMAIN);
+        setTargetState(detail.targetState ?? ALL_STATES);
         setRequestSubtypeKey(detail.requestSubtypeKey ?? NO_SUBTYPE);
         setName(detail.name);
         setDescription(detail.description ?? "");
@@ -106,6 +115,8 @@ export function ApprovalProcessFormPage() {
 
   const selectedDomainOption = domains.find((d) => d.domain === domain) ?? null;
   const hasRequestSubtype = !!selectedDomainOption?.hasRequestSubtype;
+  // "전체 도메인" 선택 시에는 상태 개념이 없어 적용 상태 select 자체를 숨긴다(요청유형과 동일 종속 규칙).
+  const domainSpecific = !!domain && domain !== ALL_DOMAIN;
 
   // 도메인이 확정되고 해당 도메인이 요청유형을 가지면 후보를 조회한다(편집 모드도 포함 — 상세 조회로
   // domain이 채워진 뒤에도 select 옵션을 채워야 저장된 requestSubtypeKey가 표시된다, 2026-07-15 결함 수정).
@@ -119,6 +130,21 @@ export function ApprovalProcessFormPage() {
       .then(setSubtypes)
       .catch((err) => toast.error(extractErrorMessage(err)));
   }, [domain, hasRequestSubtype]);
+
+  // 도메인이 확정되면 적용 상태 후보(API-AUTH-031)를 조회한다(편집 모드 포함, 요청유형과 동일 패턴).
+  useEffect(() => {
+    if (!domainSpecific) {
+      setStates([]);
+      return;
+    }
+    adminApi
+      .listApprovalStates(domain as ApprovalDomain)
+      .then(setStates)
+      .catch((err) => toast.error(extractErrorMessage(err)));
+  }, [domain, domainSpecific]);
+
+  // 적용 상태를 "전체 상태 공통"이 아닌 구체적인 상태로 지정하면 요청자 박스 역할이 1개 이상 필수(확정 방침 6).
+  const requesterRoleRequired = domainSpecific && targetState !== ALL_STATES;
 
   const roleOptions: ApprovalRoleOption[] = roles.map((r) => ({ id: String(r.id), label: r.name }));
 
@@ -141,6 +167,7 @@ export function ApprovalProcessFormPage() {
       } else {
         await adminApi.createApprovalProcess({
           domain: domain === ALL_DOMAIN ? null : (domain as ApprovalDomain),
+          targetState: domainSpecific && targetState !== ALL_STATES ? targetState : null,
           requestSubtypeKey: hasRequestSubtype && requestSubtypeKey !== NO_SUBTYPE ? requestSubtypeKey : null,
           name: name.trim(),
           description: description.trim() || undefined,
@@ -206,6 +233,33 @@ export function ApprovalProcessFormPage() {
               </SelectContent>
             </Select>
           </div>
+          {domainSpecific ? (
+            <div className="space-y-1.5">
+              <Label htmlFor="ap-target-state">
+                {t("admin.approvalProcessForm.targetStateLabel", { defaultValue: "적용 상태" })}
+              </Label>
+              {/* 편집 시 targetState는 domain·requestSubtypeKey와 동일한 식별 스코프라 변경을 허용하지 않는다(API-AUTH-028). */}
+              <Select value={targetState} onValueChange={setTargetState} disabled={isEdit}>
+                <SelectTrigger id="ap-target-state" className="max-w-xs">
+                  <SelectValue
+                    placeholder={t("admin.approvalProcessForm.targetStatePlaceholder", {
+                      defaultValue: "적용 상태 선택",
+                    })}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_STATES}>
+                    {t("admin.approvalProcessForm.allStatesOption", { defaultValue: "전체 상태 공통" })}
+                  </SelectItem>
+                  {states.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
           {hasRequestSubtype ? (
             <div className="space-y-1.5">
               <Label htmlFor="ap-subtype">
@@ -251,6 +305,7 @@ export function ApprovalProcessFormPage() {
         roleOptions={roleOptions}
         requester={requester}
         onRequesterChange={setRequester}
+        requesterRoleRequired={requesterRoleRequired}
         approvers={approvers}
         onApproversChange={setApprovers}
         submitLabel={

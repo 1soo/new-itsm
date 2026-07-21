@@ -9,6 +9,7 @@
 | 2026-07-09 | 최초 작성 |
 | 2026-07-11 | 승인 프로세스 커스텀 기능 반영 — 기존 단일 승인 테이블 `approval`을 전 도메인 대상 커스텀 다차 승인 엔진(`approval_process*`/`approval_request*`/`approval_decision`)으로 대체 |
 | 2026-07-15 | 승인 프로세스 범위 우선순위 재설계 — `approval_process.domain`을 nullable로 변경(도메인 미지정=전체 도메인 적용), `priority_tier` 산정식을 3축(도메인/요청유형/요청자역할) 독립 스코프 기반으로 재정의, 부분 유니크 제약에 `is_deleted=false` 조건 명시 |
+| 2026-07-22 | 프랙티스별 상태(state)별 승인자 지정 확장(유지보수 요청) — 4번째 매칭 축 `approval_process.target_state`(nullable, domain 종속) 신규, 지정 시 승인요청자 역할 최소 1개 필수 검증 신규, `priority_tier` 산정식에 targetState weight=8 추가(신규 tier 43/55), `approval_request.target_state`(NOT NULL, 인스턴스 생성 시점 스냅샷) 신규 |
 
 여러 도메인이 공유하는 교차 관심사 테이블을 정의한다. 티켓 간 링크(인시던트↔문제↔변경, 자산/CI↔티켓, 지식↔티켓), 코멘트, 타임라인 이벤트, 승인 프로세스 커스텀 엔진(전 도메인 공용)을 다형(polymorphic) 구조로 관리한다.
 
@@ -91,23 +92,24 @@
 
 ### approval_process
 
-승인 프로세스 정의(관리자가 SCR-ADMIN-007에서 생성하는 규칙 헤더). **전 도메인 공용**이며, 도메인·요청유형·승인요청자 역할 3축을 각각 독립적으로 지정할 수 있고 각 축이 비어있으면(NULL 또는 역할 매핑 0개) 해당 축의 모든 값에 매칭되는 것으로 간주한다. 단, `request_subtype_key`는 도메인별 하위유형 어휘를 참조하므로 **`domain`이 NULL이면 `request_subtype_key`도 반드시 NULL**이어야 한다(도메인 없이 하위유형만 지정하는 조합은 허용하지 않음, 애플리케이션 검증). 런타임에는 대상 티켓의 (도메인, 요청유형값, 요청자 보유 역할)에 매칭되는 규칙 중 `priority_tier`가 가장 큰(가장 좁은 범위) 규칙 하나만 적용한다. 매칭되는 규칙이 없거나, 매칭된 규칙에 승인자 차수(`approval_process_step`)가 0개면 승인 없이 바로 진행한다(승인 인스턴스 미생성).
+승인 프로세스 정의(관리자가 SCR-ADMIN-007에서 생성하는 규칙 헤더). **전 도메인 공용**이며, 도메인·**적용 상태(target_state)**·요청유형·승인요청자 역할 4축을 각각 독립적으로 지정할 수 있고 각 축이 비어있으면(NULL 또는 역할 매핑 0개) 해당 축의 모든 값에 매칭되는 것으로 간주한다. 단, `request_subtype_key`·`target_state`는 도메인별 어휘를 참조하므로 **`domain`이 NULL이면 `request_subtype_key`·`target_state`도 반드시 NULL**이어야 한다(도메인 없이 하위유형·적용 상태만 지정하는 조합은 허용하지 않음, 애플리케이션 검증). **신규 검증 규칙**: `target_state`가 값을 가지면 승인요청자 역할(`approval_process_requester_role`)이 **최소 1개 이상** 있어야 한다(`target_state`가 NULL인 전체 상태 공통 규칙에는 기존처럼 요청자 역할 생략이 허용된다). 런타임에는 대상 티켓의 (도메인, 적용 상태, 요청유형값, 요청자 보유 역할)에 매칭되는 규칙 중 `priority_tier`가 가장 큰(가장 좁은 범위) 규칙 하나만 적용한다. 매칭되는 규칙이 없거나, 매칭된 규칙에 승인자 차수(`approval_process_step`)가 0개면 승인 없이 바로 진행한다(승인 인스턴스 미생성).
 
 | 컬럼 | 타입 | 제약 | 설명 |
 |------|------|------|------|
 | id | BIGINT | PK | |
 | domain | VARCHAR(30) | NULL | 대상 도메인 코드(SERVICE_REQUEST/INCIDENT/PROBLEM/CHANGE/KNOWLEDGE 등, `ticket_link.*_type`과 동일 코드 체계). NULL=도메인 무관(전체 도메인 적용) |
+| target_state | VARCHAR(30) | NULL | **(신규)** 적용 상태 스코프 값. 대상 도메인 상태 enum의 값 중 하나(예: SERVICE_REQUEST의 `SUBMITTED`/`VALIDATED`/`ROUTED`/`IN_FULFILLMENT`/`FULFILLED`/`CLOSED`). 최초 상태(생성 시점)도 지정 가능. NULL=적용 상태 무관(전체 상태 공통). `domain`이 NULL이면 반드시 NULL |
 | request_subtype_key | VARCHAR(50) | NULL | 요청 유형 스코프 값. 하위유형 개념이 있는 도메인만 사용(SRM=`service_catalog_item.id` 문자열화, CHANGE=`change_request.type` 코드값). NULL=하위유형 무관(전체). 하위유형 개념이 없는 도메인(INCIDENT/PROBLEM 등)과 `domain`이 NULL인 경우는 항상 NULL |
-| priority_tier | SMALLINT | NOT NULL | 우선순위 캐시(축별 지정 여부로 저장 시 산정, 조회 성능 목적의 재계산 가능한 비정규 캐시). **산정식**: `priority_tier = (지정된 축 개수 × 10) + (요청자역할 지정 시 4) + (요청유형 지정 시 2) + (도메인 지정 시 1)`. 축 개수를 최상위 자릿수로 둬 "지정 축이 많을수록 우선"을 보장하고, 동일 개수 내에서는 가중치(역할4 > 요청유형2 > 도메인1)로 "역할 > 요청유형 > 도메인" 동률 우선순위를 보장한다. 실제 발생 가능한 값(요청유형은 도메인 지정 시에만 존재): 전체 미지정=0, 도메인만=11, 역할만=14, 도메인+요청유형=23, 도메인+역할=25, 도메인+요청유형+역할=37 (값이 클수록 우선 적용) |
+| priority_tier | SMALLINT | NOT NULL | 우선순위 캐시(축별 지정 여부로 저장 시 산정, 조회 성능 목적의 재계산 가능한 비정규 캐시). **산정식**: `priority_tier = (지정된 축 개수 × 10) + (요청자역할 지정 시 4) + (요청유형 지정 시 2) + (도메인 지정 시 1) + (적용 상태 지정 시 8)`. 축 개수를 최상위 자릿수로 둬 "지정 축이 많을수록 우선"을 보장하고, 동일 개수 내에서는 가중치(적용상태8 > 역할4 > 요청유형2 > 도메인1)로 동률 우선순위를 보장한다. 기존 6개 tier값(요청유형은 도메인 지정 시에만 존재): 전체 미지정=0, 도메인만=11, 역할만=14, 도메인+요청유형=23, 도메인+역할=25, 도메인+요청유형+역할=37. **신규 검증 규칙(target_state 지정 시 role 필수)에 따라 target_state는 항상 role과 함께 지정되므로 신규로 발생 가능한 tier는 43(도메인+적용상태+역할)과 55(도메인+적용상태+요청유형+역할) 두 가지뿐**이다(role 없이 target_state만 지정하는 29/41 조합은 검증 단계에서 차단되어 발생하지 않음). (값이 클수록 우선 적용) |
 | name | VARCHAR(150) | NOT NULL | 프로세스명(관리자 식별용) |
 | description | VARCHAR(500) | NULL | 설명 |
 | ...공통 컬럼... | | | |
 
-> **부분 유니크 제약(PostgreSQL partial unique index, 모든 조건에 `is_deleted=false` 명시)**:
+> **부분 유니크 제약(PostgreSQL partial unique index, 모든 조건에 `is_deleted=false` 명시, 기존 3개 그대로 유지·신규 인덱스 추가 없음)**:
 > - `UNIQUE(priority_tier) WHERE priority_tier=0 AND is_deleted=false` (전체 미지정 캐치올 규칙은 전 시스템에 1개만)
 > - `UNIQUE(domain) WHERE priority_tier=11 AND is_deleted=false` (도메인만 지정 규칙은 도메인당 1개)
 > - `UNIQUE(domain, request_subtype_key) WHERE priority_tier=23 AND is_deleted=false` (도메인+요청유형 지정 규칙은 도메인+유형 조합당 1개)
-> - `priority_tier`가 14(역할만)/25(도메인+역할)/37(도메인+요청유형+역할)인 경우는 역할 "조합"의 교집합 여부를 판정해야 하므로 DB 제약만으로 표현 불가 — 생성/수정 시 애플리케이션이 **동일 `priority_tier` 버킷 + 동일 (domain, request_subtype_key) 매칭 조건**(tier=14는 domain도 request_subtype_key도 모두 NULL인 규칙 전체가 대상, tier=25는 동일 domain의 request_subtype_key NULL 규칙들이 대상, tier=37은 동일 (domain, request_subtype_key) 규칙들이 대상) 내 기존 규칙들의 `approval_process_requester_role.role_id` 집합과 겹치는지 조회해 검증하고, 겹치면 409로 저장을 막는다.
+> - `priority_tier`가 14(역할만)/25(도메인+역할)/37(도메인+요청유형+역할)/**43(도메인+적용상태+역할, 신규)**/**55(도메인+적용상태+요청유형+역할, 신규)**인 경우는 역할 "조합"의 교집합 여부를 판정해야 하므로 DB 제약만으로 표현 불가 — 생성/수정 시 애플리케이션이 **동일 `priority_tier` 버킷 + 동일 (domain, target_state, request_subtype_key) 매칭 조건**(tier=14는 domain·target_state·request_subtype_key 모두 NULL인 규칙 전체가 대상, tier=25는 동일 domain의 target_state·request_subtype_key NULL 규칙들이 대상, tier=37은 동일 (domain, request_subtype_key)의 target_state NULL 규칙들이 대상, tier=43은 동일 (domain, target_state)의 request_subtype_key NULL 규칙들이 대상, tier=55는 동일 (domain, target_state, request_subtype_key) 규칙들이 대상) 내 기존 규칙들의 `approval_process_requester_role.role_id` 집합과 겹치는지 조회해 검증하고, 겹치면 409로 저장을 막는다.
 
 ### approval_process_requester_role
 
@@ -155,12 +157,13 @@
 | id | BIGINT | PK | |
 | ticket_type | VARCHAR(20) | NOT NULL | 대상 티켓 유형(다형 참조, `ticket_link`과 동일 코드 체계) |
 | ticket_id | BIGINT | NOT NULL | 대상 티켓 id |
+| target_state | VARCHAR(30) | NOT NULL | **(신규)** 이 인스턴스가 게이트를 건 전이의 도착 상태(생성 시점 스냅샷, 이후 `approval_process.target_state`가 바뀌어도 이 값은 유지). 파생 표시(`{targetStateLabel}(승인대기/반려됨)`)의 기준값이자 조회 스코프 축(`findTopByTicketTypeAndTicketIdAndTargetStateOrderByIdDesc`) |
 | approval_process_id | BIGINT | FK → approval_process.id, NOT NULL | 매칭 적용된 규칙(조회용 참조. 규칙은 soft delete라 삭제 후에도 참조 무결성 유지) |
 | status | VARCHAR(15) | NOT NULL, DEFAULT 'IN_PROGRESS' | IN_PROGRESS/APPROVED/REJECTED |
 | current_step_no | SMALLINT | NULL | 현재 대기 중인 차수(전체 승인 완료 시 NULL) |
 | ...공통 컬럼... | | | |
 
-> `(ticket_type, ticket_id)`에 조회 인덱스 권장. 티켓당 동시에 진행 중(`status='IN_PROGRESS'`)인 인스턴스는 애플리케이션이 1건으로 유지(하드 UNIQUE 제약을 두지 않는 이유는 반려 후 재제출 시 새 인스턴스가 이력으로 함께 남아야 하기 때문 — 과거 인스턴스는 `IN_PROGRESS`가 아니므로 공존 가능).
+> `(ticket_type, ticket_id)`와 `(ticket_type, ticket_id, target_state)`에 조회 인덱스 권장(전자는 재승인요청의 "티켓 전체 최신 인스턴스" 조회, 후자는 게이트 체크의 "특정 target_state 최신 인스턴스" 조회). 티켓당 동일 `target_state`로 동시에 진행 중(`status='IN_PROGRESS'`)인 인스턴스는 애플리케이션이 1건으로 유지(하드 UNIQUE 제약을 두지 않는 이유는 반려 후 재제출 시 새 인스턴스가 이력으로 함께 남아야 하기 때문 — 과거 인스턴스는 `IN_PROGRESS`가 아니므로 공존 가능). 하나의 티켓이 여러 `target_state`(등록/이관/완료 등)에 걸쳐 각각 별도의 인스턴스를 가질 수 있다.
 
 ### approval_request_step
 
@@ -232,8 +235,8 @@ RBAC/화면 매핑 테이블(`screen`, `user_role`, `screen_role`)은 [auth.md](
 - approval_process_requester_role.approval_process_id → approval_process.id, role_id → role.id (FK), UNIQUE(approval_process_id, role_id)
 - approval_process_step.approval_process_id → approval_process.id (FK), UNIQUE(approval_process_id, step_no), CHECK(step_no BETWEEN 1 AND 10)
 - approval_process_step_role.step_id → approval_process_step.id, role_id → role.id (FK), UNIQUE(step_id, role_id)
-- approval_process: 부분 유니크(tier=0 전체 1개, tier=11 도메인당 1개, tier=23 도메인+요청유형당 1개, 모두 `is_deleted=false` 조건 포함), tier=14/25/37 역할 조합 중복은 애플리케이션 검증(4절 approval_process 상세 참조)
-- approval_request.approval_process_id → approval_process.id (FK), (ticket_type, ticket_id) 인덱스 권장
+- approval_process: 부분 유니크(tier=0 전체 1개, tier=11 도메인당 1개, tier=23 도메인+요청유형당 1개, 모두 `is_deleted=false` 조건 포함), tier=14/25/37/43/55 역할 조합 중복은 애플리케이션 검증(4절 approval_process 상세 참조). `target_state`는 `domain` NULL이면 반드시 NULL(애플리케이션 검증), 값이 있으면 `approval_process_requester_role` 최소 1개 필수(애플리케이션 검증)
+- approval_request.approval_process_id → approval_process.id (FK), (ticket_type, ticket_id) 및 (ticket_type, ticket_id, target_state) 인덱스 권장
 - approval_request_step.approval_request_id → approval_request.id (FK), UNIQUE(approval_request_id, step_no)
 - approval_request_step_role.step_id → approval_request_step.id, role_id → role.id (FK), UNIQUE(step_id, role_id)
 - approval_decision.step_id → approval_request_step.id, role_id → role.id, decided_by_id → app_user.id (FK), UNIQUE(step_id, role_id)

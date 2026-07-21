@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   ApprovalPanel,
+  deriveApprovalStatusDisplay,
   Rating,
   StatusBadge,
   TicketDetailLayout,
@@ -60,14 +61,12 @@ function slaBadgeProps(t: TFunction, value: string) {
 
 function fallbackTransitions(detail: RequestDetail, isAgent: boolean, isEndUser: boolean): TargetStatus[] {
   const s = detail.status;
-  if (s === "CLOSED" || s === "REJECTED") return [];
-  const approvalPending = detail.approval?.status === "IN_PROGRESS";
+  if (s === "CLOSED") return [];
   const out: TargetStatus[] = [];
   if (isAgent) {
     if (s === "SUBMITTED") out.push("VALIDATED");
     else if (s === "VALIDATED") out.push("ROUTED");
-    else if (s === "ROUTED" && !approvalPending) out.push("IN_FULFILLMENT");
-    else if (s === "APPROVAL_PENDING" && detail.approval?.status === "APPROVED") out.push("IN_FULFILLMENT");
+    else if (s === "ROUTED") out.push("IN_FULFILLMENT");
     else if (s === "IN_FULFILLMENT") out.push("FULFILLED");
     else if (s === "FULFILLED") out.push("CLOSED");
   }
@@ -100,6 +99,8 @@ export function RequestDetailPage() {
   const [csatComment, setCsatComment] = useState("");
   const [csatSubmitting, setCsatSubmitting] = useState(false);
   const [csatDone, setCsatDone] = useState(false);
+
+  const [resubmitting, setResubmitting] = useState(false);
 
   const refreshDetail = useCallback(
     (silent: boolean) => {
@@ -169,6 +170,25 @@ export function RequestDetailPage() {
     }
   };
 
+  const handleResubmit = async () => {
+    setResubmitting(true);
+    try {
+      const result = await commonApi.resubmitApproval({ ticketType: "SERVICE_REQUEST", ticketId: id });
+      toast.success(
+        result.status === "NO_RULE_MATCHED"
+          ? t("requestDetail.resubmitNoRuleMatched", {
+              defaultValue: "매칭되는 승인 규칙이 없어 승인 없이 진행할 수 있습니다",
+            })
+          : t("requestDetail.resubmitSuccess", { defaultValue: "재승인요청이 접수되었습니다" }),
+      );
+      refreshDetail(true);
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
+    } finally {
+      setResubmitting(false);
+    }
+  };
+
   const handleComment = async (e: FormEvent) => {
     e.preventDefault();
     if (!comment.trim()) return;
@@ -213,16 +233,22 @@ export function RequestDetailPage() {
     );
   }
 
-  // 승인 대기 중(매칭 규칙 있고 미승인)에는 이행 전이 버튼을 숨긴다(service-request.md, BE가 제공하는
-  // allowedTransitions에도 승인 게이트가 반영되지 않을 수 있어 FE에서 한 번 더 걸러낸다).
+  // 승인 대기 중(매칭 규칙 있고 미승인)에는 그 targetState로 가는 전이 버튼을 숨긴다(게이트 일반화로
+  // 어떤 상태든 게이트 대상이 될 수 있어 IN_FULFILLMENT로 고정하지 않고 실제 targetState와 비교,
+  // service-request.md, BE가 제공하는 allowedTransitions에도 승인 게이트가 반영되지 않을 수 있어 FE에서 한 번 더 걸러낸다).
   const approvalPending = detail.approval.status === "IN_PROGRESS";
   const transitions = (detail.allowedTransitions ?? fallbackTransitions(detail, isAgent, isEndUser)).filter(
-    (target) => !(target === "IN_FULFILLMENT" && approvalPending),
+    (target) => !(target === detail.approval.targetState && approvalPending),
   );
   const showCsat = detail.status === "CLOSED" && isEndUser;
-  // 승인 게이트는 ROUTED→IN_FULFILLMENT 전이 시점에만 평가되므로, 그 전(SUBMITTED/VALIDATED/ROUTED)
-  // 상태에서는 인스턴스 유무와 무관하게 "미확정" 문구를, 게이트 평가 후에는 기존 "없음" 문구를 노출한다.
-  const gateEvaluated = !["SUBMITTED", "VALIDATED", "ROUTED"].includes(detail.status);
+  // 2026-07-22 유지보수 요청(게이트 일반화): 모든 상태 전이(생성 포함)가 즉시 게이트 평가되므로,
+  // 현재 상태에 도달한 시점에 이미 그 상태의 게이트 평가가 끝나 있다(과거처럼 "미확정" 구간 없음).
+  const approvalTargetStateLabel = detail.approval.targetState ? statusLabel(t, detail.approval.targetState) : null;
+  const statusDisplay = deriveApprovalStatusDisplay(
+    t,
+    { tone: statusTone(detail.status), label: statusLabel(t, detail.status) },
+    { status: detail.approval.status, targetStateLabel: approvalTargetStateLabel },
+  );
 
   const timelineItems: TimelineItem[] = detail.timeline.map((entry, i) => ({
     id: String(i),
@@ -237,7 +263,7 @@ export function RequestDetailPage() {
     <TicketDetailLayout
       ticketKey={detail.ticketKey}
       title={detail.catalogItemName}
-      badges={<StatusBadge tone={statusTone(detail.status)} label={statusLabel(t, detail.status)} />}
+      badges={<StatusBadge tone={statusDisplay.tone} label={statusDisplay.label} />}
       actions={transitions.map((target) => {
         const routingBlocked = target === "ROUTED" && !detail.assignee;
         return (
@@ -272,13 +298,11 @@ export function RequestDetailPage() {
             matched={detail.approval.approvalRequestId != null}
             steps={approvalSteps}
             currentStepNo={approvalCurrentStepNo}
-            emptyMessage={
-              gateEvaluated
-                ? t("requestDetail.noApproval", { defaultValue: "이 요청에는 승인 절차가 없습니다" })
-                : t("requestDetail.approvalGatePending", {
-                    defaultValue: "이행 단계로 전환 시 승인 절차 적용 여부가 결정됩니다",
-                  })
-            }
+            targetStateLabel={approvalTargetStateLabel}
+            status={detail.approval.status}
+            onResubmit={detail.approval.status === "REJECTED" ? handleResubmit : undefined}
+            resubmitting={resubmitting}
+            emptyMessage={t("requestDetail.noApproval", { defaultValue: "이 요청에는 승인 절차가 없습니다" })}
           />
 
           <Card>

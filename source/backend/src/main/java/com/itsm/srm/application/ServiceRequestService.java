@@ -8,6 +8,7 @@ import com.itsm.auth.domain.UserStatus;
 import com.itsm.auth.domain.repository.AppUserRepository;
 import com.itsm.auth.domain.repository.RoleRepository;
 import com.itsm.common.approval.application.ApprovalGateService;
+import com.itsm.common.approval.application.TicketCreationGateSupport;
 import com.itsm.common.approval.domain.ApprovalRequest;
 import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
@@ -86,6 +87,7 @@ public class ServiceRequestService {
     private final ApprovalGateService approvalGateService;
     private final ApprovalRequestRepository approvalRequestRepository;
     private final ObjectMapper objectMapper;
+    private final TicketCreationGateSupport ticketCreationGateSupport;
 
     public ServiceRequestService(ServiceRequestRepository requestRepository,
                                  ServiceCatalogItemRepository catalogItemRepository,
@@ -99,7 +101,8 @@ public class ServiceRequestService {
                                  AssetService assetService,
                                  ApprovalGateService approvalGateService,
                                  ApprovalRequestRepository approvalRequestRepository,
-                                 ObjectMapper objectMapper) {
+                                 ObjectMapper objectMapper,
+                                 TicketCreationGateSupport ticketCreationGateSupport) {
         this.requestRepository = requestRepository;
         this.catalogItemRepository = catalogItemRepository;
         this.categoryRepository = categoryRepository;
@@ -113,6 +116,7 @@ public class ServiceRequestService {
         this.approvalGateService = approvalGateService;
         this.approvalRequestRepository = approvalRequestRepository;
         this.objectMapper = objectMapper;
+        this.ticketCreationGateSupport = ticketCreationGateSupport;
     }
 
     // ---------- create ----------
@@ -132,11 +136,16 @@ public class ServiceRequestService {
         OffsetDateTime resolveDue = item.getSlaResolveMinutes() != null
                 ? now.plusMinutes(item.getSlaResolveMinutes()) : null;
 
-        ServiceRequest saved = requestRepository.save(new ServiceRequest(
-                nextTicketKey(), item.getId(), principal.userId(), responseDue, resolveDue,
-                writeValues(request.formValues())));
-
-        timelineRepository.save(TimelineEvent.of(TT, saved.getId(), "SUBMIT", "요청이 제출되었습니다."));
+        ServiceRequest saved = ticketCreationGateSupport.createThenGate(
+                () -> {
+                    ServiceRequest sr = requestRepository.save(new ServiceRequest(
+                            nextTicketKey(), item.getId(), principal.userId(), responseDue, resolveDue,
+                            writeValues(request.formValues())));
+                    timelineRepository.save(TimelineEvent.of(TT, sr.getId(), "SUBMIT", "요청이 제출되었습니다."));
+                    return sr;
+                },
+                ServiceRequest::getId,
+                DOMAIN, String.valueOf(item.getId()), principal.userId(), TT, RequestStatus.SUBMITTED.name());
         return new RequestCreatedResponse(saved.getId(), saved.getTicketKey(), saved.getStatus().name(), saved.getCreatedAt());
     }
 
@@ -158,9 +167,10 @@ public class ServiceRequestService {
         }
         OffsetDateTime fromV = from != null ? from : OffsetDateTime.parse("1970-01-01T00:00:00Z");
         OffsetDateTime toV = to != null ? to : OffsetDateTime.now().plusYears(100);
-        return PageResponse.from(
-                requestRepository.search(requesterFilter, categoryId, uncategorized, status, fromV, toV, pageable),
-                this::toSummary);
+        var page = requestRepository.search(requesterFilter, categoryId, uncategorized, status, fromV, toV, pageable);
+        Map<Long, String> pendingTargetStates = approvalGateService.pendingApprovalTargetStatesOf(
+                TT, page.getContent().stream().map(ServiceRequest::getId).toList());
+        return PageResponse.from(page, r -> toSummary(r, pendingTargetStates.get(r.getId())));
     }
 
     // ---------- category counts ----------
@@ -191,7 +201,8 @@ public class ServiceRequestService {
                 .findTopByTicketTypeAndTicketIdOrderByIdDesc(TT, id).orElse(null);
         RequestDetailResponse.ApprovalInfo approvalInfo = new RequestDetailResponse.ApprovalInfo(
                 latestApproval != null ? latestApproval.getId() : null,
-                latestApproval != null ? latestApproval.getStatus().name() : null);
+                latestApproval != null ? latestApproval.getStatus().name() : null,
+                latestApproval != null ? latestApproval.getTargetState() : null);
 
         RequestDetailResponse.SlaInfo slaInfo = new RequestDetailResponse.SlaInfo(
                 SlaCalculator.status(request.getCreatedAt(), request.getSlaResponseDue(),
@@ -297,9 +308,8 @@ public class ServiceRequestService {
             throw new BusinessException(ErrorCode.ASSIGNEE_REQUIRED_FOR_ROUTING);
         }
 
-        if (target == RequestStatus.IN_FULFILLMENT) {
-            approvalGateService.checkGate(DOMAIN, String.valueOf(sr.getCatalogItemId()), sr.getRequesterId(), TT, id);
-        }
+        approvalGateService.checkGate(DOMAIN, String.valueOf(sr.getCatalogItemId()), principal.userId(), TT, id,
+                target.name());
 
         sr.changeStatus(target);
         requestRepository.save(sr);
@@ -374,10 +384,11 @@ public class ServiceRequestService {
         return status == RequestStatus.FULFILLED || status == RequestStatus.CLOSED;
     }
 
-    private RequestSummaryResponse toSummary(ServiceRequest r) {
+    private RequestSummaryResponse toSummary(ServiceRequest r, String pendingApprovalTargetState) {
         SlaStatus sla = SlaCalculator.status(r.getCreatedAt(), r.getSlaResolveDue(), isResolved(r.getStatus()));
         return new RequestSummaryResponse(r.getId(), r.getTicketKey(), catalogName(r.getCatalogItemId()),
-                r.getStatus().name(), sla.name(), userName(r.getAssigneeId()), r.getAssigneeId(), r.getUpdatedAt());
+                r.getStatus().name(), sla.name(), userName(r.getAssigneeId()), r.getAssigneeId(), r.getUpdatedAt(),
+                pendingApprovalTargetState);
     }
 
     private ServiceRequest findRequest(Long id) {

@@ -1,12 +1,13 @@
 # API 명세서 — 변경 관리 (Change)
 
-> 도메인: change · 버전: 0.2 · 작성일: 2026-07-11 · 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 위험도 기반 CAB 자동 라우팅 제거, 전용 승인 API(API-CHG-006/007) 삭제 후 공통 승인 API([common.md](common.md) API-COM-003~005)로 대체
+> 도메인: change · 버전: 0.3 · 작성일: 2026-07-11 · 승인 프로세스 커스텀 기능(유지보수 요청) 반영 — 위험도 기반 CAB 자동 라우팅 제거, 전용 승인 API(API-CHG-006/007) 삭제 후 공통 승인 API([common.md](common.md) API-COM-003~005)로 대체
 
 ## 변경 이력
 
 | 날짜 | 요약 |
 |------|------|
 | 2026-07-09 | 최초 작성 |
+| 2026-07-22 | 프랙티스별 상태(state)별 승인자 지정 확장(유지보수 요청) — 등록(REQUESTED)을 포함한 모든 상태 전이 지점이 승인 게이트 대상으로 일반화(기존 IMPLEMENTATION 하드코딩 지점은 마이그레이션 백필로 동일하게 동작). API-CHG-002(RFC 생성)에 생성 시점 게이트 409 추가, API-CHG-001 목록에 `pendingApprovalTargetState` 추가, API-CHG-003 상세 `approval`에 `targetState` 추가, API-CHG-004 409 응답에 반려(`APPROVAL_REJECTED`) 분기 추가(재승인요청은 [common.md](common.md) API-COM-006) |
 
 ## 공통 규약
 
@@ -37,7 +38,7 @@
 - **Response Body** (200):
   ```json
   {
-    "content": [ { "id": "number", "ticketKey": "string · CHG-YYYY-####", "summary": "string", "type": "STANDARD|NORMAL|EMERGENCY", "status": "string", "risk": "HIGH|MEDIUM|LOW", "scheduledAt": "ISO-8601", "updatedAt": "ISO-8601" } ],
+    "content": [ { "id": "number", "ticketKey": "string · CHG-YYYY-####", "summary": "string", "type": "STANDARD|NORMAL|EMERGENCY", "status": "string", "risk": "HIGH|MEDIUM|LOW", "scheduledAt": "ISO-8601", "pendingApprovalTargetState": "string|null · 열린(IN_PROGRESS) 또는 REJECTED 승인 인스턴스가 있으면 그 targetState 원본 코드, 없으면 null(N+1 방지)", "updatedAt": "ISO-8601" } ],
     "page": "number", "size": "number", "totalElements": "number"
   }
   ```
@@ -57,7 +58,8 @@
   }
   ```
 - **Response Body** (201): `{ "id": "number", "ticketKey": "string", "status": "REQUESTED", "type": "string" }`
-- **Response Code**: 201 / 400 요약·유형 누락 / 401
+  > 변경 요청 레코드는 이 API 호출로 즉시 생성·커밋된다(`TicketCreationGateSupport`가 REQUIRES_NEW로 먼저 커밋). 등록(REQUESTED) 상태에 승인 게이트가 걸려 있으면 커밋 후 별도 트랜잭션에서 게이트를 평가해 409를 반환하지만 방금 커밋된 레코드는 롤백되지 않는다.
+- **Response Code**: 201(매칭되는 승인 프로세스 없거나 0차 승인) / 400 요약·유형 누락 / 401 / 409 등록(REQUESTED) 상태에 승인 게이트가 걸려 승인 대기(`APPROVAL_PENDING`) — [common.md](common.md) 0절 생성 시점 게이트
 
 ### API-CHG-003 · 변경 상세 조회
 
@@ -70,7 +72,7 @@
     "type": "string", "risk": "string", "status": "string",
     "implementationPlan": "string", "rollbackPlan": "string",
     "result": { "outcome": "SUCCESS|FAILURE|null", "rolledBack": "boolean", "note": "string" },
-    "approval": { "approvalRequestId": "number|null", "status": "IN_PROGRESS|APPROVED|REJECTED|null · null=매칭되는 승인 프로세스 없음(게이트 없이 진행)" },
+    "approval": { "approvalRequestId": "number|null", "status": "IN_PROGRESS|APPROVED|REJECTED|null · null=매칭되는 승인 프로세스 없음(게이트 없이 진행)", "targetState": "string|null · 원본 코드값(도착 상태, 생성 시점 스냅샷), 라벨은 FE가 기존 statusLabel()로 resolve" },
     "links": [ { "type": "INCIDENT|PROBLEM|ASSET|COMPLIANCE_REQUIREMENT", "targetKey": "string" } ]
   }
   ```
@@ -86,7 +88,7 @@
   |------|------|
   | 200 | 전이 성공 |
   | 400 | 허용되지 않은 전이 |
-  | 409 | 승인 완료 전 구현(IMPLEMENTATION) 전이 시도 — [common.md](common.md) 0절 공통 게이트 로직(domain=CHANGE, requestSubtypeKey=change_request.type) 적용. 매칭되는 승인 프로세스가 없거나 0차 승인이면 게이트 없이 통과(표준 변경 등) |
+  | 409 | 승인 완료 전 전이 시도(`APPROVAL_PENDING`) — [common.md](common.md) 0절 공통 게이트 로직(domain=CHANGE, targetState=전이 대상 값, requestSubtypeKey=change_request.type) 적용. **모든 targetStatus 전이 지점이 게이트 대상**이 될 수 있다(기존 IMPLEMENTATION 하드코딩 지점은 마이그레이션으로 동일하게 백필됨). 매칭되는 승인 프로세스가 없거나 0차 승인이면 게이트 없이 통과(표준 변경 등) / 최신 승인 인스턴스가 반려(`REJECTED`)면 `APPROVAL_REJECTED` — 재승인요청은 [common.md](common.md) API-COM-006 |
   | 403 / 404 | 권한 부족 / 없음 |
 
 ### API-CHG-005 · 변경 유형·위험 변경

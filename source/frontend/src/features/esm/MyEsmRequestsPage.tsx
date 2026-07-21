@@ -15,6 +15,7 @@ import {
 import {
   type Column,
   DataTable,
+  deriveApprovalStatusDisplay,
   Pagination,
   StatusBadge,
   TicketListLayout,
@@ -92,7 +93,17 @@ export function MyEsmRequestsPage() {
     {
       header: t("myEsmRequests.columnStatus", { defaultValue: "상태" }),
       width: 110,
-      cell: (r) => <StatusBadge tone={requestStatusTone(r.status)} label={requestStatusLabel(t, r.status)} />,
+      cell: (r) => {
+        const display = deriveApprovalStatusDisplay(
+          t,
+          { tone: requestStatusTone(r.status), label: requestStatusLabel(t, r.status) },
+          {
+            status: r.pendingApprovalTargetState ? "IN_PROGRESS" : null,
+            targetStateLabel: r.pendingApprovalTargetState ? requestStatusLabel(t, r.pendingApprovalTargetState) : null,
+          },
+        );
+        return <StatusBadge tone={display.tone} label={display.label} />;
+      },
     },
     { header: t("myEsmRequests.columnUpdatedAt", { defaultValue: "갱신일" }), width: 110, cell: (r) => formatDate(r.updatedAt) },
   ];

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   ApprovalPanel,
+  deriveApprovalStatusDisplay,
   StatusBadge,
   TicketDetailLayout,
   Timeline,
@@ -59,6 +60,7 @@ export function EsmRequestDetailPage() {
   const [comment, setComment] = useState("");
   const [commenting, setCommenting] = useState(false);
   const [transitioning, setTransitioning] = useState<EsmRequestTargetStatus | null>(null);
+  const [resubmitting, setResubmitting] = useState(false);
 
   const refreshDetail = useCallback(
     (silent: boolean) => {
@@ -138,6 +140,25 @@ export function EsmRequestDetailPage() {
     }
   };
 
+  const handleResubmit = async () => {
+    setResubmitting(true);
+    try {
+      const result = await commonApi.resubmitApproval({ ticketType: "ESM_REQUEST", ticketId: id });
+      toast.success(
+        result.status === "NO_RULE_MATCHED"
+          ? t("esmRequestDetail.resubmitNoRuleMatched", {
+              defaultValue: "매칭되는 승인 규칙이 없어 승인 없이 진행할 수 있습니다",
+            })
+          : t("esmRequestDetail.resubmitSuccess", { defaultValue: "재승인요청이 접수되었습니다" }),
+      );
+      refreshDetail(true);
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
+    } finally {
+      setResubmitting(false);
+    }
+  };
+
   if (loading) return <FullscreenLoader />;
   if (notFound || !detail) {
     return (
@@ -150,6 +171,14 @@ export function EsmRequestDetailPage() {
 
   const transitions = isCoordinator ? fallbackTransitions(detail.status) : [];
   const approved = detail.approval.approvalRequestId == null || detail.approval.status === "APPROVED";
+  const approvalTargetStateLabel = detail.approval.targetState
+    ? requestStatusLabel(t, detail.approval.targetState)
+    : null;
+  const statusDisplay = deriveApprovalStatusDisplay(
+    t,
+    { tone: requestStatusTone(detail.status), label: requestStatusLabel(t, detail.status) },
+    { status: detail.approval.status, targetStateLabel: approvalTargetStateLabel },
+  );
   const formEntries = Object.entries(detail.formValues ?? {});
   const timelineItems: TimelineItem[] = detail.timeline.map((ev, i) => ({
     id: String(i),
@@ -165,7 +194,7 @@ export function EsmRequestDetailPage() {
       badges={
         <>
           <StatusBadge tone="info" label={departmentLabel(t, detail.department)} />
-          <StatusBadge tone={requestStatusTone(detail.status)} label={requestStatusLabel(t, detail.status)} />
+          <StatusBadge tone={statusDisplay.tone} label={statusDisplay.label} />
         </>
       }
       actions={transitions.map((target) => {
@@ -202,6 +231,10 @@ export function EsmRequestDetailPage() {
             matched={detail.approval.approvalRequestId != null}
             steps={approvalSteps}
             currentStepNo={approvalCurrentStepNo}
+            targetStateLabel={approvalTargetStateLabel}
+            status={detail.approval.status}
+            onResubmit={detail.approval.status === "REJECTED" ? handleResubmit : undefined}
+            resubmitting={resubmitting}
           />
 
           {checklist ? (

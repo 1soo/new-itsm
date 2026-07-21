@@ -10,6 +10,7 @@ import com.itsm.auth.domain.repository.AppUserRepository;
 import com.itsm.change.domain.ChangeRequest;
 import com.itsm.change.domain.repository.ChangeRequestRepository;
 import com.itsm.common.approval.application.ApprovalGateService;
+import com.itsm.common.approval.application.TicketCreationGateSupport;
 import com.itsm.common.approval.domain.ApprovalRequest;
 import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
@@ -74,6 +75,7 @@ public class ComplianceService {
     private final AuditLogService auditLogService;
     private final ApprovalGateService approvalGateService;
     private final ApprovalRequestRepository approvalRequestRepository;
+    private final TicketCreationGateSupport ticketCreationGateSupport;
 
     public ComplianceService(ComplianceRequirementRepository requirementRepository,
                               CorrectiveActionRepository correctiveActionRepository,
@@ -82,7 +84,8 @@ public class ComplianceService {
                               ChangeRequestRepository changeRequestRepository,
                               AuditLogService auditLogService,
                               ApprovalGateService approvalGateService,
-                              ApprovalRequestRepository approvalRequestRepository) {
+                              ApprovalRequestRepository approvalRequestRepository,
+                              TicketCreationGateSupport ticketCreationGateSupport) {
         this.requirementRepository = requirementRepository;
         this.correctiveActionRepository = correctiveActionRepository;
         this.ticketLinkRepository = ticketLinkRepository;
@@ -91,6 +94,7 @@ public class ComplianceService {
         this.auditLogService = auditLogService;
         this.approvalGateService = approvalGateService;
         this.approvalRequestRepository = approvalRequestRepository;
+        this.ticketCreationGateSupport = ticketCreationGateSupport;
     }
 
     // ---------- create (API-COMP-002) ----------
@@ -178,7 +182,11 @@ public class ComplianceService {
     public CorrectiveActionCreatedResponse addCorrectiveAction(Long id, CorrectiveActionCreateRequest request) {
         requireRole();
         findRequirement(id);
-        CorrectiveAction saved = correctiveActionRepository.save(new CorrectiveAction(id, request.description()));
+        Long requesterId = SecurityUtils.currentPrincipal().userId();
+        CorrectiveAction saved = ticketCreationGateSupport.createThenGate(
+                () -> correctiveActionRepository.save(new CorrectiveAction(id, request.description())),
+                CorrectiveAction::getId,
+                DOMAIN, null, requesterId, TT, CorrectiveActionStatus.DETECTED.name());
         return new CorrectiveActionCreatedResponse(saved.getId(), saved.getStatus().name());
     }
 
@@ -195,9 +203,7 @@ public class ComplianceService {
         if (!CorrectiveActionStateMachine.isAllowed(action.getStatus(), target)) {
             throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION);
         }
-        if (target == CorrectiveActionStatus.RESOLVED) {
-            approvalGateService.checkGate(DOMAIN, null, requesterIdOf(action), TT, actionId);
-        }
+        approvalGateService.checkGate(DOMAIN, null, SecurityUtils.currentPrincipal().userId(), TT, actionId, target.name());
         action.changeStatus(target);
         correctiveActionRepository.save(action);
         recordAudit(EventType.COMPLIANCE_ACTION_STATUS_CHANGE, correctiveActionTarget(actionId));
@@ -321,7 +327,8 @@ public class ComplianceService {
                 .findTopByTicketTypeAndTicketIdOrderByIdDesc(TT, actionId).orElse(null);
         return new RequirementDetailResponse.CorrectiveActionDto.ApprovalInfo(
                 latestApproval != null ? latestApproval.getId() : null,
-                latestApproval != null ? latestApproval.getStatus().name() : null);
+                latestApproval != null ? latestApproval.getStatus().name() : null,
+                latestApproval != null ? latestApproval.getTargetState() : null);
     }
 
     private String requirementTarget(Long id) {

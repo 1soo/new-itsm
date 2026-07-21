@@ -16,6 +16,7 @@ import {
 import {
   type Column,
   DataTable,
+  deriveApprovalStatusDisplay,
   Pagination,
   StatusBadge,
   TicketListLayout,
@@ -101,7 +102,17 @@ export function KnowledgeListPage() {
     },
     {
       header: t("knowledgeList.columnStatus", { defaultValue: "상태" }),
-      cell: (a) => <StatusBadge tone={statusTone(a.status)} label={statusLabel(t, a.status)} />,
+      cell: (a) => {
+        const display = deriveApprovalStatusDisplay(
+          t,
+          { tone: statusTone(a.status), label: statusLabel(t, a.status) },
+          {
+            status: a.pendingApprovalTargetState ? "IN_PROGRESS" : null,
+            targetStateLabel: a.pendingApprovalTargetState ? statusLabel(t, a.pendingApprovalTargetState) : null,
+          },
+        );
+        return <StatusBadge tone={display.tone} label={display.label} />;
+      },
       className: "whitespace-nowrap",
       width: 110,
     },

@@ -94,7 +94,11 @@
     },
     "roleDecisionTitle": "Step {{step}} Role Decisions ({{mode}})",
     "rejectedNotice": "Step {{step}} rejected",
-    "rejectedNoticeWithReason": "Step {{step}} rejected — Reason: {{reason}}"
+    "rejectedNoticeWithReason": "Step {{step}} rejected — Reason: {{reason}}",
+    "targetStateLabel": "Target state: {{targetState}}",
+    "pendingStatusLabel": "{{targetState}} (pending approval)",
+    "rejectedStatusLabel": "{{targetState}} (rejected)",
+    "resubmitButton": "Resubmit for Approval"
   },
   "approvalInbox": {
     "title": "Approval Inbox",
@@ -102,6 +106,7 @@
     "domainLabel": "Domain",
     "domainAll": "All",
     "columnTicketType": "Ticket Type",
+    "columnTargetState": "Target State",
     "columnTicket": "Ticket",
     "columnStep": "Step",
     "stepValue": "Step {{step}}",

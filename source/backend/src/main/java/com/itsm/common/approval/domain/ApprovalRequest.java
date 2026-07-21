@@ -37,6 +37,9 @@ public class ApprovalRequest extends BaseEntity {
     @Column(name = "approval_process_id", nullable = false)
     private Long approvalProcessId;
 
+    @Column(name = "target_state", nullable = false, length = 30)
+    private String targetState;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 15)
     private ApprovalRequestStatus status;
@@ -44,10 +47,12 @@ public class ApprovalRequest extends BaseEntity {
     @Column(name = "current_step_no")
     private Short currentStepNo;
 
-    public ApprovalRequest(TicketType ticketType, Long ticketId, Long approvalProcessId, short firstStepNo) {
+    public ApprovalRequest(TicketType ticketType, Long ticketId, Long approvalProcessId, String targetState,
+                            short firstStepNo) {
         this.ticketType = ticketType;
         this.ticketId = ticketId;
         this.approvalProcessId = approvalProcessId;
+        this.targetState = targetState;
         this.status = ApprovalRequestStatus.IN_PROGRESS;
         this.currentStepNo = firstStepNo;
     }

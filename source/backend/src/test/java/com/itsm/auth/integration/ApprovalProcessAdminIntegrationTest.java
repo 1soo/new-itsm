@@ -92,7 +92,9 @@ class ApprovalProcessAdminIntegrationTest {
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/36_srm_form_schema_jsonb.sql").toAbsolutePath()),
                     "/docker-entrypoint-initdb.d/36_srm_form_schema_jsonb.sql")
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/40_esm_form_schema_jsonb.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/40_esm_form_schema_jsonb.sql");
+                    "/docker-entrypoint-initdb.d/40_esm_form_schema_jsonb.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/41_approval_process_target_state.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/41_approval_process_target_state.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {
@@ -112,7 +114,7 @@ class ApprovalProcessAdminIntegrationTest {
         RoleCreatedResponse role = roleService.create(new CreateRoleRequest("APPROVER_" + System.nanoTime(), "승인자", null));
 
         ApprovalProcessDetailResponse created = approvalProcessAdminService.create(new CreateApprovalProcessRequest(
-                "INCIDENT", null, "flush test", null, List.of(),
+                "INCIDENT", null, null, "flush test", null, List.of(),
                 List.of(new ApprovalProcessStepInput(DecisionMode.OR, List.of(role.id())))));
         assertThat(created.steps()).hasSize(1);
         assertThat(created.steps().get(0).decisionMode()).isEqualTo("OR");
@@ -133,7 +135,7 @@ class ApprovalProcessAdminIntegrationTest {
         RoleCreatedResponse role = roleService.create(new CreateRoleRequest("REQ_ROLE_" + System.nanoTime(), "요청역할", null));
 
         ApprovalProcessDetailResponse created = approvalProcessAdminService.create(new CreateApprovalProcessRequest(
-                "PROBLEM", null, "requester role test", null, List.of(), List.of()));
+                "PROBLEM", null, null, "requester role test", null, List.of(), List.of()));
 
         approvalProcessAdminService.update(created.id(),
                 new UpdateApprovalProcessRequest(null, null, List.of(role.id()), null));
@@ -152,7 +154,7 @@ class ApprovalProcessAdminIntegrationTest {
     @Test
     void createWithNullDomainYieldsTierZeroAndSecondCatchAllConflicts() {
         ApprovalProcessDetailResponse created = approvalProcessAdminService.create(new CreateApprovalProcessRequest(
-                null, null, "전체 도메인 캐치올 " + System.nanoTime(), null, List.of(), List.of()));
+                null, null, null, "전체 도메인 캐치올 " + System.nanoTime(), null, List.of(), List.of()));
 
         assertThat(created.domain()).isNull();
         Short tier = jdbc.queryForObject("select priority_tier from approval_process where id = ?", Short.class, created.id());
@@ -160,7 +162,7 @@ class ApprovalProcessAdminIntegrationTest {
 
         // tier=0(전체 미지정) 캐치올은 시스템 전체 1개만 허용된다.
         assertThatThrownBy(() -> approvalProcessAdminService.create(new CreateApprovalProcessRequest(
-                null, null, "캐치올 2 " + System.nanoTime(), null, List.of(), List.of())))
+                null, null, null, "캐치올 2 " + System.nanoTime(), null, List.of(), List.of())))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                         .isEqualTo(ErrorCode.APPROVAL_PROCESS_PRIORITY_CONFLICT));
@@ -169,7 +171,7 @@ class ApprovalProcessAdminIntegrationTest {
     @Test
     void createNullDomainWithRequestSubtypeKeyThrowsValidationError() {
         assertThatThrownBy(() -> approvalProcessAdminService.create(new CreateApprovalProcessRequest(
-                null, "SOME_SUBTYPE", "잘못된 조합 " + System.nanoTime(), null, List.of(), List.of())))
+                null, null, "SOME_SUBTYPE", "잘못된 조합 " + System.nanoTime(), null, List.of(), List.of())))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(((BusinessException) e).getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR));
     }
@@ -177,10 +179,10 @@ class ApprovalProcessAdminIntegrationTest {
     @Test
     void createSecondDomainOnlyRuleConflictsAtTierEleven() {
         approvalProcessAdminService.create(new CreateApprovalProcessRequest(
-                "ASSET", null, "도메인만 1 " + System.nanoTime(), null, List.of(), List.of()));
+                "ASSET", null, null, "도메인만 1 " + System.nanoTime(), null, List.of(), List.of()));
 
         assertThatThrownBy(() -> approvalProcessAdminService.create(new CreateApprovalProcessRequest(
-                "ASSET", null, "도메인만 2 " + System.nanoTime(), null, List.of(), List.of())))
+                "ASSET", null, null, "도메인만 2 " + System.nanoTime(), null, List.of(), List.of())))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                         .isEqualTo(ErrorCode.APPROVAL_PROCESS_PRIORITY_CONFLICT));
@@ -189,10 +191,10 @@ class ApprovalProcessAdminIntegrationTest {
     @Test
     void createSecondDomainSubtypeRuleConflictsAtTierTwentyThree() {
         approvalProcessAdminService.create(new CreateApprovalProcessRequest(
-                "CHANGE", "STANDARD", "도메인+요청유형 1 " + System.nanoTime(), null, List.of(), List.of()));
+                "CHANGE", null, "STANDARD", "도메인+요청유형 1 " + System.nanoTime(), null, List.of(), List.of()));
 
         assertThatThrownBy(() -> approvalProcessAdminService.create(new CreateApprovalProcessRequest(
-                "CHANGE", "STANDARD", "도메인+요청유형 2 " + System.nanoTime(), null, List.of(), List.of())))
+                "CHANGE", null, "STANDARD", "도메인+요청유형 2 " + System.nanoTime(), null, List.of(), List.of())))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                         .isEqualTo(ErrorCode.APPROVAL_PROCESS_PRIORITY_CONFLICT));
@@ -205,18 +207,18 @@ class ApprovalProcessAdminIntegrationTest {
         RoleCreatedResponse roleC = roleService.create(new CreateRoleRequest("ROLE_C_" + System.nanoTime(), "역할C", null));
 
         approvalProcessAdminService.create(new CreateApprovalProcessRequest(
-                null, null, "역할만 1 " + System.nanoTime(), null, List.of(roleA.id(), roleB.id()), List.of()));
+                null, null, null, "역할만 1 " + System.nanoTime(), null, List.of(roleA.id(), roleB.id()), List.of()));
 
         // 역할 조합이 겹치면(roleB 공유) 409
         assertThatThrownBy(() -> approvalProcessAdminService.create(new CreateApprovalProcessRequest(
-                null, null, "역할만 2 " + System.nanoTime(), null, List.of(roleB.id(), roleC.id()), List.of())))
+                null, null, null, "역할만 2 " + System.nanoTime(), null, List.of(roleB.id(), roleC.id()), List.of())))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                         .isEqualTo(ErrorCode.APPROVAL_PROCESS_PRIORITY_CONFLICT));
 
         // 역할 조합이 완전히 겹치지 않으면 정상 생성
         ApprovalProcessDetailResponse disjoint = approvalProcessAdminService.create(new CreateApprovalProcessRequest(
-                null, null, "역할만 3 " + System.nanoTime(), null, List.of(roleC.id()), List.of()));
+                null, null, null, "역할만 3 " + System.nanoTime(), null, List.of(roleC.id()), List.of()));
         assertThat(disjoint.requesterRoleIds()).containsExactly(roleC.id());
     }
 }

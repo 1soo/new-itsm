@@ -68,6 +68,8 @@
     "implementationPlan": "구현 계획",
     "rollbackPlan": "롤백 계획",
     "noApproval": "이 변경에는 승인 절차가 없습니다",
+    "resubmitSuccess": "재승인요청이 접수되었습니다",
+    "resubmitNoRuleMatched": "매칭되는 승인 규칙이 없어 승인 없이 진행할 수 있습니다",
     "linksTitle": "연계 항목",
     "noLinks": "연결 없음",
     "descriptionTitle": "설명",

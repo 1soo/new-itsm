@@ -109,7 +109,9 @@ class ChangeIntegrationTest {
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/36_srm_form_schema_jsonb.sql").toAbsolutePath()),
                     "/docker-entrypoint-initdb.d/36_srm_form_schema_jsonb.sql")
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/40_esm_form_schema_jsonb.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/40_esm_form_schema_jsonb.sql");
+                    "/docker-entrypoint-initdb.d/40_esm_form_schema_jsonb.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/41_approval_process_target_state.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/41_approval_process_target_state.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {
@@ -165,12 +167,17 @@ class ChangeIntegrationTest {
         return jdbc.queryForObject("select id from role where role_code = ?", Long.class, roleCode);
     }
 
-    /** 도메인+요청유형(tier=23) 규칙 1건 + 1차 OR 승인(주어진 역할)을 CHANGE 유형별로 시딩한다(테스트 간 격리). */
-    private void seedSubtypeProcess(String requestSubtypeKey, String roleCode) {
-        jdbc.update("insert into approval_process(domain, request_subtype_key, priority_tier, name, created_by) values ('CHANGE',?,23,?,?)",
-                requestSubtypeKey, "요청유형 규칙", "test");
+    /**
+     * 도메인+요청유형+적용상태(tier=55) 규칙 1건 + 1차 OR 승인(주어진 역할)을 CHANGE 유형별로 시딩한다(테스트 간
+     * 격리). targetState를 지정해 IMPLEMENTATION 전이 게이트에만 적용되도록 좁힌다(2026-07-22 targetState
+     * 축 도입 — 지정하지 않으면 전체 상태 공통 규칙이 되어 생성(REQUESTED) 시점 게이트까지 막아버림).
+     */
+    private void seedSubtypeProcess(String requestSubtypeKey, String roleCode, String targetState) {
+        jdbc.update("insert into approval_process(domain, request_subtype_key, target_state, priority_tier, name, created_by) values ('CHANGE',?,?,55,?,?)",
+                requestSubtypeKey, targetState, "요청유형 규칙", "test");
         Long processId = jdbc.queryForObject(
-                "select id from approval_process where domain = 'CHANGE' and request_subtype_key = ?", Long.class, requestSubtypeKey);
+                "select id from approval_process where domain = 'CHANGE' and request_subtype_key = ? and target_state = ?",
+                Long.class, requestSubtypeKey, targetState);
         jdbc.update("insert into approval_process_step(approval_process_id, step_no, decision_mode, created_by) values (?,1,'OR',?)",
                 processId, "test");
         Long stepId = jdbc.queryForObject(
@@ -219,7 +226,7 @@ class ChangeIntegrationTest {
         long ts = System.nanoTime();
         Long cmId = insertUser("cm" + ts + "@itsm.local");
         Long approverId = insertUser("apr" + ts + "@itsm.local");
-        seedSubtypeProcess("EMERGENCY", "APPROVER");
+        seedSubtypeProcess("EMERGENCY", "APPROVER", "IMPLEMENTATION");
 
         as(cmId, "CHANGE_MANAGER");
         var created = changeService.create(new CreateChangeRequest("긴급 보안 패치", null,

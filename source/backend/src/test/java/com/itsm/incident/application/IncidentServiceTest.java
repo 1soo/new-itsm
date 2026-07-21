@@ -4,6 +4,7 @@ import com.itsm.asset.application.AssetService;
 import com.itsm.auth.domain.AppUser;
 import com.itsm.auth.domain.repository.AppUserRepository;
 import com.itsm.common.approval.application.ApprovalGateService;
+import com.itsm.common.approval.application.TicketCreationGateSupport;
 import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
@@ -72,6 +73,7 @@ class IncidentServiceTest {
     @Mock AssetService assetService;
     @Mock ApprovalGateService approvalGateService;
     @Mock ApprovalRequestRepository approvalRequestRepository;
+    @Mock TicketCreationGateSupport ticketCreationGateSupport;
 
     IncidentService service;
 
@@ -80,7 +82,9 @@ class IncidentServiceTest {
         service = new IncidentService(incidentRepository, responderRepository, severityHistoryRepository,
                 postmortemRepository, fiveWhyRepository, actionItemRepository, timelineRepository,
                 ticketLinkRepository, appUserRepository, problemService, changeService, assetService,
-                approvalGateService, approvalRequestRepository);
+                approvalGateService, approvalRequestRepository, ticketCreationGateSupport);
+        when(ticketCreationGateSupport.createThenGate(any(), any(), any(), any(), any(), any(), any()))
+                .thenAnswer(inv -> ((java.util.function.Supplier<?>) inv.getArgument(0)).get());
         when(incidentRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(responderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(severityHistoryRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -268,7 +272,7 @@ class IncidentServiceTest {
     void transitionToResolvedGatePassSucceeds() {
         login(1L, "SERVICE_DESK_AGENT");
         when(incidentRepository.findById(1L)).thenReturn(Optional.of(incident(Severity.SEV2, IncidentStatus.IN_PROGRESS)));
-        doNothing().when(approvalGateService).checkGate(any(), any(), any(), any(), any());
+        doNothing().when(approvalGateService).checkGate(any(), any(), any(), any(), any(), any());
 
         var response = service.transition(1L, new StatusTransitionRequest(IncidentStatus.RESOLVED, null));
 
@@ -280,7 +284,7 @@ class IncidentServiceTest {
         login(1L, "SERVICE_DESK_AGENT");
         when(incidentRepository.findById(1L)).thenReturn(Optional.of(incident(Severity.SEV2, IncidentStatus.IN_PROGRESS)));
         doThrow(new BusinessException(ErrorCode.APPROVAL_PENDING, ErrorCode.APPROVAL_PENDING.getDefaultMessage(), 77L))
-                .when(approvalGateService).checkGate(any(), any(), any(), any(), any());
+                .when(approvalGateService).checkGate(any(), any(), any(), any(), any(), any());
 
         assertThatThrownBy(() -> service.transition(1L, new StatusTransitionRequest(IncidentStatus.RESOLVED, null)))
                 .isInstanceOf(BusinessException.class)
@@ -463,7 +467,7 @@ class IncidentServiceTest {
     void resolveGatePassSucceeds() {
         login(1L, "INCIDENT_MANAGER");
         when(incidentRepository.findById(1L)).thenReturn(Optional.of(incident(Severity.SEV1, IncidentStatus.IN_PROGRESS)));
-        doNothing().when(approvalGateService).checkGate(any(), any(), any(), any(), any());
+        doNothing().when(approvalGateService).checkGate(any(), any(), any(), any(), any(), any());
 
         var response = service.resolve(1L, new ResolveRequest(null, null, null, "복구 완료"));
 
@@ -475,7 +479,7 @@ class IncidentServiceTest {
         login(1L, "INCIDENT_MANAGER");
         when(incidentRepository.findById(1L)).thenReturn(Optional.of(incident(Severity.SEV1, IncidentStatus.IN_PROGRESS)));
         doThrow(new BusinessException(ErrorCode.APPROVAL_PENDING, ErrorCode.APPROVAL_PENDING.getDefaultMessage(), 77L))
-                .when(approvalGateService).checkGate(any(), any(), any(), any(), any());
+                .when(approvalGateService).checkGate(any(), any(), any(), any(), any(), any());
 
         assertThatThrownBy(() -> service.resolve(1L, new ResolveRequest(null, null, null, "복구 완료")))
                 .isInstanceOf(BusinessException.class)

@@ -8,6 +8,7 @@ import com.itsm.common.approval.application.dto.ApprovalDecisionResultResponse;
 import com.itsm.common.approval.application.dto.ApprovalDetailResponse;
 import com.itsm.common.approval.application.dto.ApprovalInboxItemResponse;
 import com.itsm.common.approval.domain.ApprovalDecision;
+import com.itsm.common.approval.domain.ApprovalProcess;
 import com.itsm.common.approval.domain.ApprovalRequest;
 import com.itsm.common.approval.domain.ApprovalRequestStatus;
 import com.itsm.common.approval.domain.ApprovalRequestStep;
@@ -16,6 +17,7 @@ import com.itsm.common.approval.domain.ApprovalStepStatus;
 import com.itsm.common.approval.domain.DecisionMode;
 import com.itsm.common.approval.domain.DecisionType;
 import com.itsm.common.approval.domain.repository.ApprovalDecisionRepository;
+import com.itsm.common.approval.domain.repository.ApprovalProcessRepository;
 import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.approval.domain.repository.ApprovalRequestStepRepository;
 import com.itsm.common.approval.domain.repository.ApprovalRequestStepRoleRepository;
@@ -46,6 +48,8 @@ public class ApprovalInstanceService {
     private final ApprovalRequestStepRepository requestStepRepository;
     private final ApprovalRequestStepRoleRepository requestStepRoleRepository;
     private final ApprovalDecisionRepository decisionRepository;
+    private final ApprovalProcessRepository approvalProcessRepository;
+    private final TargetStateLabelResolver targetStateLabelResolver;
     private final ApprovalRoleResolver roleResolver;
     private final AppUserRepository appUserRepository;
     private final Map<TicketType, ApprovalTicketSummaryProvider> summaryProviders;
@@ -55,6 +59,8 @@ public class ApprovalInstanceService {
                                    ApprovalRequestStepRepository requestStepRepository,
                                    ApprovalRequestStepRoleRepository requestStepRoleRepository,
                                    ApprovalDecisionRepository decisionRepository,
+                                   ApprovalProcessRepository approvalProcessRepository,
+                                   TargetStateLabelResolver targetStateLabelResolver,
                                    ApprovalRoleResolver roleResolver,
                                    AppUserRepository appUserRepository,
                                    List<ApprovalTicketSummaryProvider> summaryProviders,
@@ -63,6 +69,8 @@ public class ApprovalInstanceService {
         this.requestStepRepository = requestStepRepository;
         this.requestStepRoleRepository = requestStepRoleRepository;
         this.decisionRepository = decisionRepository;
+        this.approvalProcessRepository = approvalProcessRepository;
+        this.targetStateLabelResolver = targetStateLabelResolver;
         this.roleResolver = roleResolver;
         this.appUserRepository = appUserRepository;
         this.summaryProviders = summaryProviders.stream()
@@ -113,7 +121,8 @@ public class ApprovalInstanceService {
                 .toList();
         TicketSummary summary = summaryOf(ar);
         return new ApprovalDetailResponse(ar.getId(), ar.getTicketType().name(), ar.getTicketId(),
-                summary != null ? summary.ticketKey() : null, ar.getStatus().name(), ar.getCurrentStepNo(), steps);
+                summary != null ? summary.ticketKey() : null, ar.getTargetState(), targetStateLabelOf(ar),
+                ar.getStatus().name(), ar.getCurrentStepNo(), steps);
     }
 
     // ---------- API-COM-005 ----------
@@ -243,8 +252,16 @@ public class ApprovalInstanceService {
         return new ApprovalInboxItemResponse(ar.getId(), ar.getTicketType().name(), ar.getTicketId(),
                 summary != null ? summary.ticketKey() : null,
                 summary != null ? summary.title() : null,
+                ar.getTargetState(), targetStateLabelOf(ar),
                 summary != null ? summary.requesterName() : null,
                 ar.getCurrentStepNo(), ar.getCreatedAt());
+    }
+
+    /** targetState 표시 라벨(도메인은 인스턴스가 참조하는 규칙(approvalProcessId)에서 역조회, 2026-07-22 신규). */
+    private String targetStateLabelOf(ApprovalRequest ar) {
+        String domain = approvalProcessRepository.findById(ar.getApprovalProcessId())
+                .map(ApprovalProcess::getDomain).orElse(null);
+        return targetStateLabelResolver.label(domain, ar.getTargetState());
     }
 
     private TicketSummary summaryOf(ApprovalRequest ar) {

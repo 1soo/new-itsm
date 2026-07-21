@@ -9,11 +9,9 @@ export type SrStatus =
   | "SUBMITTED"
   | "VALIDATED"
   | "ROUTED"
-  | "APPROVAL_PENDING"
   | "IN_FULFILLMENT"
   | "FULFILLED"
-  | "CLOSED"
-  | "REJECTED";
+  | "CLOSED";
 
 export type SlaStatus = "OK" | "WARNING" | "BREACHED";
 
@@ -94,6 +92,8 @@ export interface RequestSummary {
   /** 배정 버튼 노출 조건(본인 배정 여부) 판정용(2026-07-15 유지보수 요청). */
   assigneeId?: number | null;
   updatedAt: string;
+  /** 진행 중인 승인 인스턴스의 targetState(원본 코드값, 없으면 null). 2026-07-22 유지보수 요청 신규. */
+  pendingApprovalTargetState: SrStatus | null;
 }
 
 /** 요청 담당자 후보(API-SRM-017) — 카탈로그 항목에 지정된 담당자 역할 보유자. */
@@ -120,6 +120,8 @@ export interface RequestTimelineEvent {
 export interface RequestApproval {
   approvalRequestId: number | null;
   status: "IN_PROGRESS" | "APPROVED" | "REJECTED" | null;
+  /** 원본 코드값(도착 상태, 생성 시점 스냅샷). 2026-07-22 유지보수 요청 신규. */
+  targetState: SrStatus | null;
 }
 
 export interface RequestSla {

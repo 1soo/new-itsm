@@ -47,4 +47,12 @@ public interface ApprovalProcessRepository {
     /** tier=37(도메인+요청유형+역할) 역할 조합 중복 검증 대상 후보(동일 domain+requestSubtypeKey 스코프). */
     List<ApprovalProcess> findByDomainAndRequestSubtypeKeyAndPriorityTier(
             String domain, String requestSubtypeKey, short priorityTier);
+
+    /** tier=43(도메인+적용상태+역할) 역할 조합 중복 검증 대상 후보(동일 domain+targetState 스코프, requestSubtypeKey는 항상 null). */
+    List<ApprovalProcess> findByDomainAndTargetStateAndPriorityTier(
+            String domain, String targetState, short priorityTier);
+
+    /** tier=55(도메인+적용상태+요청유형+역할) 역할 조합 중복 검증 대상 후보(동일 domain+targetState+requestSubtypeKey 스코프). */
+    List<ApprovalProcess> findByDomainAndTargetStateAndRequestSubtypeKeyAndPriorityTier(
+            String domain, String targetState, String requestSubtypeKey, short priorityTier);
 }

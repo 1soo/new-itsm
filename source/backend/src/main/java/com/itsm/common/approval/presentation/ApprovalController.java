@@ -1,12 +1,16 @@
 package com.itsm.common.approval.presentation;
 
 import com.itsm.auth.application.dto.PageResponse;
+import com.itsm.common.approval.application.ApprovalGateService;
 import com.itsm.common.approval.application.ApprovalInstanceService;
 import com.itsm.common.approval.application.dto.ApprovalDecisionRequest;
 import com.itsm.common.approval.application.dto.ApprovalDecisionResultResponse;
 import com.itsm.common.approval.application.dto.ApprovalDetailResponse;
 import com.itsm.common.approval.application.dto.ApprovalInboxItemResponse;
+import com.itsm.common.approval.application.dto.ApprovalResubmitRequest;
+import com.itsm.common.approval.application.dto.ApprovalResubmitResponse;
 import com.itsm.common.exception.ErrorResponse;
+import com.itsm.common.security.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -31,9 +35,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class ApprovalController {
 
     private final ApprovalInstanceService approvalInstanceService;
+    private final ApprovalGateService approvalGateService;
 
-    public ApprovalController(ApprovalInstanceService approvalInstanceService) {
+    public ApprovalController(ApprovalInstanceService approvalInstanceService, ApprovalGateService approvalGateService) {
         this.approvalInstanceService = approvalInstanceService;
+        this.approvalGateService = approvalGateService;
     }
 
     @Operation(summary = "승인 대기함 목록 조회", description = "API-COM-003 · scope=mine 고정(역할 기반 공유 대기함), domain 선택")
@@ -68,5 +74,17 @@ public class ApprovalController {
     public ResponseEntity<ApprovalDecisionResultResponse> decide(@PathVariable Long approvalRequestId,
                                                                   @Valid @RequestBody ApprovalDecisionRequest request) {
         return ResponseEntity.ok(approvalInstanceService.decide(approvalRequestId, request.decision(), request.reason()));
+    }
+
+    @Operation(summary = "반려 후 재승인요청", description = "API-COM-006 · 최신 인스턴스가 REJECTED인 티켓에 대해 현재 호출자 기준으로 재매칭 후 새 인스턴스 생성")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "재승인요청 접수(새 인스턴스 생성 또는 매칭 규칙 소멸 안내)"),
+            @ApiResponse(responseCode = "400", description = "최신 인스턴스 상태가 REJECTED가 아님", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "대상 티켓의 승인 인스턴스 자체가 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PostMapping("/resubmit")
+    public ResponseEntity<ApprovalResubmitResponse> resubmit(@Valid @RequestBody ApprovalResubmitRequest request) {
+        Long requesterId = SecurityUtils.currentPrincipal().userId();
+        return ResponseEntity.ok(approvalGateService.resubmit(request.ticketType(), request.ticketId(), requesterId));
     }
 }

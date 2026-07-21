@@ -72,6 +72,8 @@
     "escalateSuccess": "에스컬레이션되었습니다",
     "resolveTitle": "해결 처리 (시간 지표)",
     "resolveSuccess": "해결 처리되었습니다",
+    "resubmitSuccess": "재승인요청이 접수되었습니다",
+    "resubmitNoRuleMatched": "매칭되는 승인 규칙이 없어 승인 없이 진행할 수 있습니다",
     "impactStart": "영향 시작",
     "detectedAt": "탐지",
     "impactEnd": "영향 종료",

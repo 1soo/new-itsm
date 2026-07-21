@@ -4,6 +4,7 @@ import com.itsm.asset.application.AssetService;
 import com.itsm.auth.domain.repository.AppUserRepository;
 import com.itsm.change.application.ChangeService;
 import com.itsm.common.approval.application.ApprovalGateService;
+import com.itsm.common.approval.application.TicketCreationGateSupport;
 import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
@@ -75,6 +76,7 @@ class ProblemServiceTest {
     @Mock ApprovalGateService approvalGateService;
     @Mock ApprovalRequestRepository approvalRequestRepository;
     @Mock AppUserRepository appUserRepository;
+    @Mock TicketCreationGateSupport ticketCreationGateSupport;
 
     ProblemService service;
 
@@ -83,7 +85,9 @@ class ProblemServiceTest {
         service = new ProblemService(problemRepository, fiveWhyRepository, knownErrorRepository,
                 actionRepository, timelineRepository, ticketLinkRepository, incidentRepository, changeService,
                 knowledgeArticleRepository, assetService, approvalGateService, approvalRequestRepository,
-                appUserRepository);
+                appUserRepository, ticketCreationGateSupport);
+        when(ticketCreationGateSupport.createThenGate(any(), any(), any(), any(), any(), any(), any()))
+                .thenAnswer(inv -> ((java.util.function.Supplier<?>) inv.getArgument(0)).get());
         when(problemRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(fiveWhyRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(knownErrorRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -187,7 +191,7 @@ class ProblemServiceTest {
     void transitionToResolvedClosedGatePassSucceeds() {
         login("PROBLEM_MANAGER");
         when(problemRepository.findById(1L)).thenReturn(Optional.of(problem(ProblemStatus.WORKAROUND)));
-        doNothing().when(approvalGateService).checkGate(any(), any(), any(), any(), any());
+        doNothing().when(approvalGateService).checkGate(any(), any(), any(), any(), any(), any());
 
         var response = service.transition(1L, new StatusTransitionRequest(ProblemStatus.RESOLVED_CLOSED, null));
 
@@ -199,7 +203,7 @@ class ProblemServiceTest {
         login("PROBLEM_MANAGER");
         when(problemRepository.findById(1L)).thenReturn(Optional.of(problem(ProblemStatus.WORKAROUND)));
         doThrow(new BusinessException(ErrorCode.APPROVAL_PENDING, ErrorCode.APPROVAL_PENDING.getDefaultMessage(), 77L))
-                .when(approvalGateService).checkGate(any(), any(), any(), any(), any());
+                .when(approvalGateService).checkGate(any(), any(), any(), any(), any(), any());
 
         assertThatThrownBy(() -> service.transition(1L,
                 new StatusTransitionRequest(ProblemStatus.RESOLVED_CLOSED, null)))

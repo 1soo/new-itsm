@@ -2,7 +2,7 @@
 
 // 차수·역할별 결정 구조(API-COM-004 steps)는 components/common의 공용 계약을 그대로 재사용한다
 // (ApprovalStepProgress/ApprovalPanel과 필드명이 어긋나지 않도록 단일 원천 유지).
-import type { ApprovalStep, ApprovalStepStatus } from "@/components/common";
+import type { ApprovalRequestStatus, ApprovalStep, ApprovalStepStatus } from "@/components/common";
 export type { ApprovalStep, ApprovalStepStatus };
 
 /** API-COM-001/002: 확인처리 대상 알림 유형. APPROVAL은 전 도메인 공용 승인 대기(승인 프로세스 커스텀 기능). */
@@ -54,18 +54,25 @@ export interface ApprovalListItem {
   ticketId: number;
   ticketKey: string;
   ticketSummary: string;
+  /** 원본 코드값(도착 상태). */
+  targetState: string;
+  /** 표시명(백엔드 resolve, 2026-07-22 유지보수 요청). */
+  targetStateLabel: string;
   requester: string;
   currentStepNo: number;
   requestedAt: string;
 }
 
-export type ApprovalRequestStatus = "IN_PROGRESS" | "APPROVED" | "REJECTED";
+export type { ApprovalRequestStatus };
 
 export interface ApprovalDetail {
   id: number;
   ticketType: TicketType;
   ticketId: number;
   ticketKey: string;
+  /** 원본 코드값(도착 상태, 생성 시점 스냅샷). */
+  targetState: string;
+  targetStateLabel: string;
   status: ApprovalRequestStatus;
   currentStepNo: number | null;
   steps: ApprovalStep[];
@@ -94,4 +101,21 @@ export interface ApprovalDecisionResult {
   stepNo: number;
   stepStatus: ApprovalStepStatus;
   requestStatus: ApprovalRequestStatus;
+}
+
+/** 반려 후 재승인요청(API-COM-006, 2026-07-22 유지보수 요청). */
+export interface ApprovalResubmitRequest {
+  ticketType: TicketType;
+  ticketId: number;
+}
+
+export interface ApprovalResubmitResult {
+  /** NO_RULE_MATCHED(매칭 규칙 소멸)면 인스턴스를 생성하지 않아 응답에서 생략(백엔드 `default-property-inclusion: non_null`). */
+  approvalRequestId?: number | null;
+  ticketType: TicketType;
+  ticketId: number;
+  targetState: string;
+  /** IN_PROGRESS(새 인스턴스 생성) 또는 NO_RULE_MATCHED(매칭 규칙 소멸, 승인 없이 통과 가능). */
+  status: "IN_PROGRESS" | "NO_RULE_MATCHED";
+  currentStepNo?: number | null;
 }

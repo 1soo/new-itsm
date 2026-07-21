@@ -51,6 +51,8 @@
     "actionsCardTitle": "Actions",
     "requestReviewButton": "Request Review",
     "publishedWithoutApproval": "Published without approval process",
+    "resubmitSuccess": "Resubmit request received",
+    "resubmitNoRuleMatched": "No matching approval rule — this can proceed without approval",
     "reviewRequested": "Review requested. Awaiting approval.",
     "deleteButton": "Delete",
     "deleteConfirmTitle": "Delete this article?",

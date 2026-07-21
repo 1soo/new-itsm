@@ -126,6 +126,10 @@ export function ApprovalInboxPage() {
     },
     { header: t("approvalInbox.columnTicket", { defaultValue: "티켓" }), cell: (a) => `${a.ticketKey} · ${a.ticketSummary}` },
     {
+      header: t("approvalInbox.columnTargetState", { defaultValue: "대상 상태" }),
+      cell: (a) => a.targetStateLabel,
+    },
+    {
       header: t("approvalInbox.columnStep", { defaultValue: "차수" }),
       cell: (a) => t("approvalInbox.stepValue", { step: a.currentStepNo, defaultValue: `${a.currentStepNo}차` }),
     },

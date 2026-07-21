@@ -20,6 +20,14 @@ public interface ApprovalRequestJpaRepository extends JpaRepository<ApprovalRequ
     Optional<ApprovalRequest> findTopByTicketTypeAndTicketIdOrderByIdDesc(TicketType ticketType, Long ticketId);
 
     @Override
+    Optional<ApprovalRequest> findTopByTicketTypeAndTicketIdAndTargetStateOrderByIdDesc(
+            TicketType ticketType, Long ticketId, String targetState);
+
+    @Override
+    List<ApprovalRequest> findByTicketTypeAndTicketIdInAndStatusOrderByIdDesc(
+            TicketType ticketType, List<Long> ticketIds, ApprovalRequestStatus status);
+
+    @Override
     @Query("""
             select ar from ApprovalRequest ar
             where ar.isDeleted = false and ar.status = :status

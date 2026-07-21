@@ -51,6 +51,8 @@
     "actionsCardTitle": "작업",
     "requestReviewButton": "검토 요청",
     "publishedWithoutApproval": "승인 절차 없이 게시되었습니다",
+    "resubmitSuccess": "재승인요청이 접수되었습니다",
+    "resubmitNoRuleMatched": "매칭되는 승인 규칙이 없어 승인 없이 진행할 수 있습니다",
     "reviewRequested": "검토가 요청되었습니다. 승인 대기 중입니다.",
     "deleteButton": "삭제",
     "deleteConfirmTitle": "기사를 삭제하시겠습니까?",

@@ -72,6 +72,8 @@
     "escalateSuccess": "Escalated successfully",
     "resolveTitle": "Resolution (Time Metrics)",
     "resolveSuccess": "Resolved successfully",
+    "resubmitSuccess": "Resubmit request received",
+    "resubmitNoRuleMatched": "No matching approval rule — this can proceed without approval",
     "impactStart": "Impact Start",
     "detectedAt": "Detected At",
     "impactEnd": "Impact End",

@@ -9,6 +9,7 @@ import com.itsm.auth.domain.AppUser;
 import com.itsm.auth.domain.Department;
 import com.itsm.auth.domain.repository.AppUserRepository;
 import com.itsm.common.approval.application.ApprovalGateService;
+import com.itsm.common.approval.application.TicketCreationGateSupport;
 import com.itsm.common.approval.domain.ApprovalRequest;
 import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
@@ -81,6 +82,7 @@ public class EsmRequestService {
     private final ApprovalGateService approvalGateService;
     private final ApprovalRequestRepository approvalRequestRepository;
     private final ObjectMapper objectMapper;
+    private final TicketCreationGateSupport ticketCreationGateSupport;
 
     public EsmRequestService(EsmRequestRepository requestRepository,
                              EsmCatalogItemRepository catalogItemRepository,
@@ -93,7 +95,8 @@ public class EsmRequestService {
                              TimelineEventRepository timelineRepository,
                              ApprovalGateService approvalGateService,
                              ApprovalRequestRepository approvalRequestRepository,
-                             ObjectMapper objectMapper) {
+                             ObjectMapper objectMapper,
+                             TicketCreationGateSupport ticketCreationGateSupport) {
         this.requestRepository = requestRepository;
         this.catalogItemRepository = catalogItemRepository;
         this.templateTaskRepository = templateTaskRepository;
@@ -106,6 +109,7 @@ public class EsmRequestService {
         this.approvalGateService = approvalGateService;
         this.approvalRequestRepository = approvalRequestRepository;
         this.objectMapper = objectMapper;
+        this.ticketCreationGateSupport = ticketCreationGateSupport;
     }
 
     // ---------- create (API-ESM-005) ----------
@@ -119,20 +123,23 @@ public class EsmRequestService {
 
         FormSubmissionValidator.validate(readSchema(item.getFormSchema()), request.formValues());
 
-        Long checklistId = null;
-        if (item.getChecklistTemplateType() != ChecklistTemplateType.NONE) {
-            if (!StringUtils.hasText(request.targetUserName())) {
-                throw new BusinessException(ErrorCode.TARGET_USER_NAME_REQUIRED);
-            }
-            checklistId = createChecklist(item, request.targetUserName());
+        if (item.getChecklistTemplateType() != ChecklistTemplateType.NONE && !StringUtils.hasText(request.targetUserName())) {
+            throw new BusinessException(ErrorCode.TARGET_USER_NAME_REQUIRED);
         }
 
-        EsmRequest saved = requestRepository.save(new EsmRequest(
-                nextTicketKey(), item.getId(), principal.userId(), item.getDepartment(),
-                request.targetUserName(), checklistId, writeValues(request.formValues())));
-
-        timelineRepository.save(TimelineEvent.of(TT, saved.getId(), "SUBMIT", "부서 요청이 제출되었습니다."));
-        return new RequestCreatedResponse(saved.getId(), saved.getTicketKey(), saved.getStatus().name(), checklistId);
+        EsmRequest saved = ticketCreationGateSupport.createThenGate(
+                () -> {
+                    Long checklistId = item.getChecklistTemplateType() != ChecklistTemplateType.NONE
+                            ? createChecklist(item, request.targetUserName()) : null;
+                    EsmRequest esmRequest = requestRepository.save(new EsmRequest(
+                            nextTicketKey(), item.getId(), principal.userId(), item.getDepartment(),
+                            request.targetUserName(), checklistId, writeValues(request.formValues())));
+                    timelineRepository.save(TimelineEvent.of(TT, esmRequest.getId(), "SUBMIT", "부서 요청이 제출되었습니다."));
+                    return esmRequest;
+                },
+                EsmRequest::getId,
+                DOMAIN, null, principal.userId(), TT, EsmRequestStatus.SUBMITTED.name());
+        return new RequestCreatedResponse(saved.getId(), saved.getTicketKey(), saved.getStatus().name(), saved.getChecklistId());
     }
 
     private Long createChecklist(EsmCatalogItem item, String targetUserName) {
@@ -193,9 +200,10 @@ public class EsmRequestService {
         }
         OffsetDateTime fromV = from != null ? from : EPOCH;
         OffsetDateTime toV = to != null ? to : OffsetDateTime.now().plusYears(100);
-        return PageResponse.from(
-                requestRepository.search(requesterFilter, departmentFilter, status, fromV, toV, pageable),
-                this::toSummary);
+        var page = requestRepository.search(requesterFilter, departmentFilter, status, fromV, toV, pageable);
+        Map<Long, String> pendingTargetStates = approvalGateService.pendingApprovalTargetStatesOf(
+                TT, page.getContent().stream().map(EsmRequest::getId).toList());
+        return PageResponse.from(page, r -> toSummary(r, pendingTargetStates.get(r.getId())));
     }
 
     // ---------- detail (API-ESM-007) ----------
@@ -224,7 +232,8 @@ public class EsmRequestService {
                 .findTopByTicketTypeAndTicketIdOrderByIdDesc(TT, id).orElse(null);
         RequestDetailResponse.ApprovalInfo approvalInfo = new RequestDetailResponse.ApprovalInfo(
                 latestApproval != null ? latestApproval.getId() : null,
-                latestApproval != null ? latestApproval.getStatus().name() : null);
+                latestApproval != null ? latestApproval.getStatus().name() : null,
+                latestApproval != null ? latestApproval.getTargetState() : null);
 
         return new RequestDetailResponse(
                 request.getId(), request.getTicketKey(), item != null ? item.getName() : null,
@@ -245,9 +254,7 @@ public class EsmRequestService {
         if (!allowedTargets(esmRequest.getStatus()).contains(target)) {
             throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION);
         }
-        if (target == EsmRequestStatus.COMPLETED) {
-            approvalGateService.checkGate(DOMAIN, null, esmRequest.getRequesterId(), TT, id);
-        }
+        approvalGateService.checkGate(DOMAIN, null, principal.userId(), TT, id, target.name());
         if (esmRequest.getAssigneeId() == null) {
             esmRequest.assignTo(principal.userId());
         }
@@ -334,9 +341,9 @@ public class EsmRequestService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.ESM_REQUEST_NOT_FOUND));
     }
 
-    private RequestSummaryResponse toSummary(EsmRequest r) {
+    private RequestSummaryResponse toSummary(EsmRequest r, String pendingApprovalTargetState) {
         return new RequestSummaryResponse(r.getId(), r.getTicketKey(), catalogName(r.getCatalogItemId()),
-                r.getDepartment(), r.getStatus().name(), r.getUpdatedAt());
+                r.getDepartment(), r.getStatus().name(), r.getUpdatedAt(), pendingApprovalTargetState);
     }
 
     private String catalogName(Long id) {

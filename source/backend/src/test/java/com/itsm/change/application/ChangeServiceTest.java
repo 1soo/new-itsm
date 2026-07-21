@@ -18,6 +18,7 @@ import com.itsm.change.domain.repository.ChangeAffectedSystemRepository;
 import com.itsm.change.domain.repository.ChangeRequestRepository;
 import com.itsm.change.domain.repository.ChangeTemplateRepository;
 import com.itsm.common.approval.application.ApprovalGateService;
+import com.itsm.common.approval.application.TicketCreationGateSupport;
 import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
@@ -71,6 +72,7 @@ class ChangeServiceTest {
     @Mock ComplianceRequirementRepository complianceRequirementRepository;
     @Mock ApprovalRequestRepository approvalRequestRepository;
     @Mock ApprovalGateService approvalGateService;
+    @Mock TicketCreationGateSupport ticketCreationGateSupport;
 
     ChangeService service;
 
@@ -79,7 +81,9 @@ class ChangeServiceTest {
         service = new ChangeService(changeRequestRepository, templateRepository, affectedSystemRepository,
                 ticketLinkRepository, timelineRepository, incidentRepository,
                 problemRepository, assetService, complianceRequirementRepository, approvalRequestRepository,
-                approvalGateService, appUserRepository);
+                approvalGateService, appUserRepository, ticketCreationGateSupport);
+        when(ticketCreationGateSupport.createThenGate(any(), any(), any(), any(), any(), any(), any()))
+                .thenAnswer(inv -> ((java.util.function.Supplier<?>) inv.getArgument(0)).get());
         when(changeRequestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(timelineRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(changeRequestRepository.countByTicketKeyStartingWith(any())).thenReturn(0L);
@@ -205,7 +209,7 @@ class ChangeServiceTest {
     void transitionToImplementationGatePassSucceeds() {
         login("CHANGE_MANAGER");
         when(changeRequestRepository.findById(1L)).thenReturn(Optional.of(change(ChangeStatus.APPROVAL)));
-        doNothing().when(approvalGateService).checkGate(any(), any(), any(), any(), any());
+        doNothing().when(approvalGateService).checkGate(any(), any(), any(), any(), any(), any());
         var response = service.transition(1L, new StatusTransitionRequest(ChangeStatus.IMPLEMENTATION, null));
         assertThat(response.status()).isEqualTo("IMPLEMENTATION");
     }
@@ -215,7 +219,7 @@ class ChangeServiceTest {
         login("CHANGE_MANAGER");
         when(changeRequestRepository.findById(1L)).thenReturn(Optional.of(change(ChangeStatus.APPROVAL)));
         doThrow(new BusinessException(ErrorCode.APPROVAL_PENDING, ErrorCode.APPROVAL_PENDING.getDefaultMessage(), 77L))
-                .when(approvalGateService).checkGate(any(), any(), any(), any(), any());
+                .when(approvalGateService).checkGate(any(), any(), any(), any(), any(), any());
 
         assertThatThrownBy(() -> service.transition(1L, new StatusTransitionRequest(ChangeStatus.IMPLEMENTATION, null)))
                 .isInstanceOf(BusinessException.class)
@@ -328,6 +332,7 @@ class ChangeServiceTest {
 
     @Test
     void createLinkedChangeCreatesRfc() {
+        login("PROBLEM_MANAGER");
         service.createLinkedChange("문제 해결 변경", "설명");
         var captor = org.mockito.ArgumentCaptor.forClass(ChangeRequest.class);
         verify(changeRequestRepository).save(captor.capture());

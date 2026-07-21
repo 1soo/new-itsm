@@ -8,6 +8,7 @@ import com.itsm.auth.domain.UserStatus;
 import com.itsm.auth.domain.repository.AppUserRepository;
 import com.itsm.auth.domain.repository.RoleRepository;
 import com.itsm.common.approval.application.ApprovalGateService;
+import com.itsm.common.approval.application.TicketCreationGateSupport;
 import com.itsm.common.approval.domain.ApprovalRequest;
 import com.itsm.common.approval.domain.ApprovalRequestStatus;
 import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
@@ -74,6 +75,7 @@ class ServiceRequestServiceTest {
     @Mock AssetService assetService;
     @Mock ApprovalGateService approvalGateService;
     @Mock ApprovalRequestRepository approvalRequestRepository;
+    @Mock TicketCreationGateSupport ticketCreationGateSupport;
 
     ServiceRequestService service;
 
@@ -82,7 +84,9 @@ class ServiceRequestServiceTest {
         service = new ServiceRequestService(requestRepository, catalogItemRepository,
                 categoryRepository, csatRepository, commentRepository,
                 timelineRepository, appUserRepository, roleRepository, ticketLinkRepository, assetService,
-                approvalGateService, approvalRequestRepository, new ObjectMapper());
+                approvalGateService, approvalRequestRepository, new ObjectMapper(), ticketCreationGateSupport);
+        when(ticketCreationGateSupport.createThenGate(any(), any(), any(), any(), any(), any(), any()))
+                .thenAnswer(inv -> ((java.util.function.Supplier<?>) inv.getArgument(0)).get());
         when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(csatRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     }
@@ -197,7 +201,7 @@ class ServiceRequestServiceTest {
     void detailExposesLatestApprovalRequest() {
         login(2L, "END_USER");
         when(requestRepository.findById(1L)).thenReturn(Optional.of(request(2L, RequestStatus.ROUTED)));
-        ApprovalRequest approvalRequest = new ApprovalRequest(TicketType.SERVICE_REQUEST, 1L, 100L, (short) 1);
+        ApprovalRequest approvalRequest = new ApprovalRequest(TicketType.SERVICE_REQUEST, 1L, 100L, "IN_FULFILLMENT", (short) 1);
         when(approvalRequestRepository.findTopByTicketTypeAndTicketIdOrderByIdDesc(TicketType.SERVICE_REQUEST, 1L))
                 .thenReturn(Optional.of(approvalRequest));
 
@@ -253,7 +257,7 @@ class ServiceRequestServiceTest {
         login(1L, "SERVICE_DESK_AGENT");
         when(requestRepository.findById(1L)).thenReturn(Optional.of(request(2L, RequestStatus.ROUTED)));
         doThrow(new BusinessException(ErrorCode.APPROVAL_PENDING, ErrorCode.APPROVAL_PENDING.getDefaultMessage(), 55L))
-                .when(approvalGateService).checkGate(eq("SERVICE_REQUEST"), any(), anyLong(), eq(TicketType.SERVICE_REQUEST), eq(1L));
+                .when(approvalGateService).checkGate(eq("SERVICE_REQUEST"), any(), anyLong(), eq(TicketType.SERVICE_REQUEST), eq(1L), any());
 
         assertThatThrownBy(() -> service.transition(1L, new StatusTransitionRequest(RequestStatus.IN_FULFILLMENT, null)))
                 .isInstanceOf(BusinessException.class)
@@ -267,7 +271,7 @@ class ServiceRequestServiceTest {
     void transitionInFulfillmentGatePassSuccess() {
         login(1L, "SERVICE_DESK_AGENT");
         when(requestRepository.findById(1L)).thenReturn(Optional.of(request(2L, RequestStatus.ROUTED)));
-        doNothing().when(approvalGateService).checkGate(any(), any(), anyLong(), any(), anyLong());
+        doNothing().when(approvalGateService).checkGate(any(), any(), anyLong(), any(), anyLong(), any());
 
         var response = service.transition(1L, new StatusTransitionRequest(RequestStatus.IN_FULFILLMENT, null));
 

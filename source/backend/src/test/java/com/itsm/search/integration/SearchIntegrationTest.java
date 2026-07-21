@@ -94,7 +94,9 @@ class SearchIntegrationTest {
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/36_srm_form_schema_jsonb.sql").toAbsolutePath()),
                     "/docker-entrypoint-initdb.d/36_srm_form_schema_jsonb.sql")
             .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/40_esm_form_schema_jsonb.sql").toAbsolutePath()),
-                    "/docker-entrypoint-initdb.d/40_esm_form_schema_jsonb.sql");
+                    "/docker-entrypoint-initdb.d/40_esm_form_schema_jsonb.sql")
+            .withCopyFileToContainer(MountableFile.forHostPath(Paths.get("../db/sql/41_approval_process_target_state.sql").toAbsolutePath()),
+                    "/docker-entrypoint-initdb.d/41_approval_process_target_state.sql");
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {

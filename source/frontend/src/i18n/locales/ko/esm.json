@@ -80,6 +80,8 @@
     "back": "이전으로",
     "transitionBlockedTooltip": "승인 완료 전에는 완료 상태로 전이할 수 없습니다",
     "transitionSuccess": "상태가 '{{status}}'로 변경되었습니다",
+    "resubmitSuccess": "재승인요청이 접수되었습니다",
+    "resubmitNoRuleMatched": "매칭되는 승인 규칙이 없어 승인 없이 진행할 수 있습니다",
     "infoTitle": "정보",
     "requesterLabel": "요청자",
     "assigneeLabel": "담당자",

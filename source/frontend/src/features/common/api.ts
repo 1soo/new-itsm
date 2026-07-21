@@ -5,6 +5,8 @@ import type {
   ApprovalDetail,
   ApprovalListItem,
   ApprovalListQuery,
+  ApprovalResubmitRequest,
+  ApprovalResubmitResult,
   DismissalItem,
   DismissResult,
   NotificationDismissalListResponse,
@@ -57,6 +59,12 @@ export const commonApi = {
       `/approvals/${approvalRequestId}/decisions`,
       body,
     );
+    return res.data;
+  },
+
+  // API-COM-006 반려 후 재승인요청
+  async resubmitApproval(body: ApprovalResubmitRequest): Promise<ApprovalResubmitResult> {
+    const res = await apiClient.post<ApprovalResubmitResult>("/approvals/resubmit", body);
     return res.data;
   },
 };

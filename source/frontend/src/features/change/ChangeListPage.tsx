@@ -16,6 +16,7 @@ import {
 import {
   type Column,
   DataTable,
+  deriveApprovalStatusDisplay,
   Pagination,
   StatusBadge,
   TicketListLayout,
@@ -110,7 +111,17 @@ export function ChangeListPage() {
     {
       header: t("changeList.columnStatus", { defaultValue: "상태" }),
       width: 110,
-      cell: (c) => <StatusBadge tone={statusTone(c.status)} label={statusLabel(t, c.status)} />,
+      cell: (c) => {
+        const display = deriveApprovalStatusDisplay(
+          t,
+          { tone: statusTone(c.status), label: statusLabel(t, c.status) },
+          {
+            status: c.pendingApprovalTargetState ? "IN_PROGRESS" : null,
+            targetStateLabel: c.pendingApprovalTargetState ? statusLabel(t, c.pendingApprovalTargetState) : null,
+          },
+        );
+        return <StatusBadge tone={display.tone} label={display.label} />;
+      },
     },
     {
       header: t("changeList.columnRisk", { defaultValue: "위험도" }),

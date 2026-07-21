@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   type Column,
   DataTable,
+  deriveApprovalStatusDisplay,
   Pagination,
   StatusBadge,
   TicketListLayout,
@@ -108,7 +109,17 @@ export function IncidentListPage() {
     {
       header: t("incidentList.columnStatus", { defaultValue: "상태" }),
       width: 110,
-      cell: (i) => <StatusBadge tone={statusTone(i.status)} label={statusLabel(t, i.status)} />,
+      cell: (i) => {
+        const display = deriveApprovalStatusDisplay(
+          t,
+          { tone: statusTone(i.status), label: statusLabel(t, i.status) },
+          {
+            status: i.pendingApprovalTargetState ? "IN_PROGRESS" : null,
+            targetStateLabel: i.pendingApprovalTargetState ? statusLabel(t, i.pendingApprovalTargetState) : null,
+          },
+        );
+        return <StatusBadge tone={display.tone} label={display.label} />;
+      },
     },
     {
       header: t("incidentList.columnAssignee", { defaultValue: "담당자" }),

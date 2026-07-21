@@ -1,6 +1,7 @@
 package com.itsm.knowledge.application;
 
 import com.itsm.common.approval.application.ApprovalGateService;
+import com.itsm.common.approval.application.TicketCreationGateSupport;
 import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
@@ -70,6 +71,7 @@ class KnowledgeServiceTest {
     @Mock ServiceRequestRepository serviceRequestRepository;
     @Mock ApprovalGateService approvalGateService;
     @Mock ApprovalRequestRepository approvalRequestRepository;
+    @Mock TicketCreationGateSupport ticketCreationGateSupport;
 
     KnowledgeService service;
 
@@ -78,9 +80,11 @@ class KnowledgeServiceTest {
         service = new KnowledgeService(articleRepository, categoryRepository, labelRepository, articleLabelRepository,
                 feedbackRepository, searchLogRepository, ticketLinkRepository,
                 incidentRepository, problemRepository, serviceRequestRepository,
-                approvalGateService, approvalRequestRepository);
+                approvalGateService, approvalRequestRepository, ticketCreationGateSupport);
         when(articleRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(articleLabelRepository.findByArticleId(any())).thenReturn(List.of());
+        when(ticketCreationGateSupport.createThenGate(any(), any(), any(), any(), any(), any(), any()))
+                .thenAnswer(inv -> ((java.util.function.Supplier<?>) inv.getArgument(0)).get());
     }
 
     @AfterEach
@@ -210,7 +214,7 @@ class KnowledgeServiceTest {
         login(99L, "END_USER");
         when(articleRepository.findById(1L)).thenReturn(Optional.of(article(ArticleStatus.PUBLISHED, 2L)));
         var approvalRequest = new com.itsm.common.approval.domain.ApprovalRequest(
-                TicketType.KNOWLEDGE, 1L, 100L, (short) 1);
+                TicketType.KNOWLEDGE, 1L, 100L, "IN_REVIEW", (short) 1);
         approvalRequest.approve();
         when(approvalRequestRepository.findTopByTicketTypeAndTicketIdOrderByIdDesc(eq(TicketType.KNOWLEDGE), any()))
                 .thenReturn(Optional.of(approvalRequest));
@@ -245,7 +249,7 @@ class KnowledgeServiceTest {
     void transitionWithoutMatchingRulePublishesImmediately() {
         login(1L, "KNOWLEDGE_CONTRIBUTOR");
         when(articleRepository.findById(1L)).thenReturn(Optional.of(article(ArticleStatus.DRAFT, 1L)));
-        when(approvalGateService.evaluateAndCreateIfNeeded(eq("KNOWLEDGE"), any(), any(), eq(TicketType.KNOWLEDGE), eq(1L)))
+        when(approvalGateService.evaluateAndCreateIfNeeded(eq("KNOWLEDGE"), any(), any(), eq(TicketType.KNOWLEDGE), eq(1L), any()))
                 .thenReturn(new ApprovalGateService.GateDecision(true, null));
 
         var response = service.transition(1L, new StatusTransitionRequest(ArticleStatus.IN_REVIEW));
@@ -258,7 +262,7 @@ class KnowledgeServiceTest {
     void transitionWithMatchingRuleStaysInReview() {
         login(1L, "KNOWLEDGE_CONTRIBUTOR");
         when(articleRepository.findById(1L)).thenReturn(Optional.of(article(ArticleStatus.DRAFT, 1L)));
-        when(approvalGateService.evaluateAndCreateIfNeeded(eq("KNOWLEDGE"), any(), any(), eq(TicketType.KNOWLEDGE), eq(1L)))
+        when(approvalGateService.evaluateAndCreateIfNeeded(eq("KNOWLEDGE"), any(), any(), eq(TicketType.KNOWLEDGE), eq(1L), any()))
                 .thenReturn(new ApprovalGateService.GateDecision(false, 55L));
 
         var response = service.transition(1L, new StatusTransitionRequest(ArticleStatus.IN_REVIEW));

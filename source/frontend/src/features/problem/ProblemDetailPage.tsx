@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   ApprovalPanel,
   ConfirmDialog,
+  deriveApprovalStatusDisplay,
   PriorityBadge,
   StatusBadge,
   TicketDetailLayout,
@@ -48,6 +49,7 @@ export function ProblemDetailPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [resubmitting, setResubmitting] = useState(false);
 
   const [closeWarning, setCloseWarning] = useState<string | null>(null);
 
@@ -126,6 +128,31 @@ export function ProblemDetailPage() {
   const transitions = detail.allowedTransitions ?? fallbackTransitions(detail.status);
   const isClosed = detail.status === "RESOLVED_CLOSED";
   const approved = detail.approval.approvalRequestId == null || detail.approval.status === "APPROVED";
+  const approvalTargetStateLabel = detail.approval.targetState ? statusLabel(t, detail.approval.targetState) : null;
+  const statusDisplay = deriveApprovalStatusDisplay(
+    t,
+    { tone: statusTone(detail.status), label: statusLabel(t, detail.status) },
+    { status: detail.approval.status, targetStateLabel: approvalTargetStateLabel },
+  );
+
+  const handleResubmit = async () => {
+    setResubmitting(true);
+    try {
+      const result = await commonApi.resubmitApproval({ ticketType: "PROBLEM", ticketId: id });
+      toast.success(
+        result.status === "NO_RULE_MATCHED"
+          ? t("problemDetail.resubmitNoRuleMatched", {
+              defaultValue: "매칭되는 승인 규칙이 없어 승인 없이 진행할 수 있습니다",
+            })
+          : t("problemDetail.resubmitSuccess", { defaultValue: "재승인요청이 접수되었습니다" }),
+      );
+      refreshDetail(true);
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
+    } finally {
+      setResubmitting(false);
+    }
+  };
 
   const handleClose = async (force: boolean) => {
     setBusy("close");
@@ -152,7 +179,7 @@ export function ProblemDetailPage() {
         title={detail.summary}
         badges={
           <>
-            <StatusBadge tone={statusTone(detail.status)} label={statusLabel(t, detail.status)} />
+            <StatusBadge tone={statusDisplay.tone} label={statusDisplay.label} />
             {detail.priority ? (
               <PriorityBadge priority={detail.priority} />
             ) : (
@@ -233,6 +260,10 @@ export function ProblemDetailPage() {
               matched={detail.approval.approvalRequestId != null}
               steps={approvalSteps}
               currentStepNo={approvalCurrentStepNo}
+              targetStateLabel={approvalTargetStateLabel}
+              status={detail.approval.status}
+              onResubmit={detail.approval.status === "REJECTED" ? handleResubmit : undefined}
+              resubmitting={resubmitting}
             />
 
             <Card>

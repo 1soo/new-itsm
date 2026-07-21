@@ -78,6 +78,8 @@
     "actionAddButton": "Register",
     "actionAddSuccess": "Corrective action registered",
     "actionTransitionSuccess": "Corrective action status changed",
+    "resubmitSuccess": "Resubmit request received",
+    "resubmitNoRuleMatched": "No matching approval rule — this can proceed without approval",
     "auditLogTitle": "Audit Log",
     "noAuditLogs": "No related audit logs."
   },

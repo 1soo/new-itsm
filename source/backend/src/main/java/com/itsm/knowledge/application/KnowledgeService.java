@@ -1,6 +1,7 @@
 package com.itsm.knowledge.application;
 
 import com.itsm.common.approval.application.ApprovalGateService;
+import com.itsm.common.approval.application.TicketCreationGateSupport;
 import com.itsm.common.approval.domain.ApprovalRequest;
 import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
@@ -84,6 +85,7 @@ public class KnowledgeService {
     private final ServiceRequestRepository serviceRequestRepository;
     private final ApprovalGateService approvalGateService;
     private final ApprovalRequestRepository approvalRequestRepository;
+    private final TicketCreationGateSupport ticketCreationGateSupport;
 
     public KnowledgeService(KnowledgeArticleRepository articleRepository,
                             KnowledgeCategoryRepository categoryRepository,
@@ -96,7 +98,8 @@ public class KnowledgeService {
                             ProblemRepository problemRepository,
                             ServiceRequestRepository serviceRequestRepository,
                             ApprovalGateService approvalGateService,
-                            ApprovalRequestRepository approvalRequestRepository) {
+                            ApprovalRequestRepository approvalRequestRepository,
+                            TicketCreationGateSupport ticketCreationGateSupport) {
         this.articleRepository = articleRepository;
         this.categoryRepository = categoryRepository;
         this.labelRepository = labelRepository;
@@ -109,6 +112,7 @@ public class KnowledgeService {
         this.serviceRequestRepository = serviceRequestRepository;
         this.approvalGateService = approvalGateService;
         this.approvalRequestRepository = approvalRequestRepository;
+        this.ticketCreationGateSupport = ticketCreationGateSupport;
     }
 
     // ---------- search/list (API-KM-001) ----------
@@ -128,7 +132,11 @@ public class KnowledgeService {
             searchLogRepository.save(new SearchLog(kw, (int) page.getTotalElements(), principal.userId()));
             noResult = page.getTotalElements() == 0;
         }
-        List<ArticleSummaryResponse> content = page.getContent().stream().map(this::toSummary).toList();
+        Map<Long, String> pendingTargetStates = approvalGateService.pendingApprovalTargetStatesOf(
+                TicketType.KNOWLEDGE, page.getContent().stream().map(KnowledgeArticle::getId).toList());
+        List<ArticleSummaryResponse> content = page.getContent().stream()
+                .map(a -> toSummary(a, pendingTargetStates.get(a.getId())))
+                .toList();
         return new ArticleListResponse(content, page.getNumber(), page.getSize(), page.getTotalElements(), noResult);
     }
 
@@ -155,9 +163,15 @@ public class KnowledgeService {
         AuthPrincipal principal = SecurityUtils.currentPrincipal();
         requireRole(KC);
         validCategoryOrThrow(request.categoryId());
-        KnowledgeArticle saved = articleRepository.save(
-                new KnowledgeArticle(request.title(), request.body(), request.categoryId(), principal.userId()));
-        applyLabels(saved.getId(), request.labels());
+        KnowledgeArticle saved = ticketCreationGateSupport.createThenGate(
+                () -> {
+                    KnowledgeArticle article = articleRepository.save(
+                            new KnowledgeArticle(request.title(), request.body(), request.categoryId(), principal.userId()));
+                    applyLabels(article.getId(), request.labels());
+                    return article;
+                },
+                KnowledgeArticle::getId,
+                DOMAIN, null, principal.userId(), TicketType.KNOWLEDGE, ArticleStatus.DRAFT.name());
         return new ArticleCreatedResponse(saved.getId(), saved.getStatus().name());
     }
 
@@ -208,7 +222,7 @@ public class KnowledgeService {
             throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION);
         }
         ApprovalGateService.GateDecision decision = approvalGateService.evaluateAndCreateIfNeeded(
-                DOMAIN, null, article.getAuthorId(), TicketType.KNOWLEDGE, id);
+                DOMAIN, null, SecurityUtils.currentPrincipal().userId(), TicketType.KNOWLEDGE, id, ArticleStatus.IN_REVIEW.name());
         if (decision.passed()) {
             article.publish();
         } else {
@@ -365,9 +379,9 @@ public class KnowledgeService {
         }
     }
 
-    private ArticleSummaryResponse toSummary(KnowledgeArticle a) {
+    private ArticleSummaryResponse toSummary(KnowledgeArticle a, String pendingApprovalTargetState) {
         return new ArticleSummaryResponse(a.getId(), a.getTitle(), summarize(a.getBody()), a.getStatus().name(),
-                categoryName(a.getCategoryId()), helpfulRateOf(a));
+                categoryName(a.getCategoryId()), helpfulRateOf(a), pendingApprovalTargetState);
     }
 
     private ArticleDetailResponse toDetail(KnowledgeArticle a) {
@@ -379,7 +393,8 @@ public class KnowledgeService {
                 .findTopByTicketTypeAndTicketIdOrderByIdDesc(TicketType.KNOWLEDGE, a.getId()).orElse(null);
         ArticleDetailResponse.ApprovalInfo approvalInfo = new ArticleDetailResponse.ApprovalInfo(
                 latestApproval != null ? latestApproval.getId() : null,
-                latestApproval != null ? latestApproval.getStatus().name() : null);
+                latestApproval != null ? latestApproval.getStatus().name() : null,
+                latestApproval != null ? latestApproval.getTargetState() : null);
         return new ArticleDetailResponse(a.getId(), a.getTitle(), a.getBody(), a.getStatus().name(),
                 categoryName(a.getCategoryId()), labels, a.getHelpfulCount(), a.getNotHelpfulCount(), approvalInfo);
     }

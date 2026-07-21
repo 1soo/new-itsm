@@ -68,6 +68,8 @@
     "implementationPlan": "Implementation Plan",
     "rollbackPlan": "Rollback Plan",
     "noApproval": "This change has no approval process",
+    "resubmitSuccess": "Resubmit request received",
+    "resubmitNoRuleMatched": "No matching approval rule — this can proceed without approval",
     "linksTitle": "Linked Items",
     "noLinks": "No links",
     "descriptionTitle": "Description",

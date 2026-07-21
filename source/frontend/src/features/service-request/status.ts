@@ -9,22 +9,18 @@ const STATUS_LABEL: Record<SrStatus, string> = {
   SUBMITTED: "제출됨",
   VALIDATED: "검증됨",
   ROUTED: "라우팅됨",
-  APPROVAL_PENDING: "승인 대기",
   IN_FULFILLMENT: "이행 중",
   FULFILLED: "이행 완료",
   CLOSED: "종료",
-  REJECTED: "반려",
 };
 
 const STATUS_TONE: Record<SrStatus, StatusTone> = {
   SUBMITTED: "info",
   VALIDATED: "info",
   ROUTED: "info",
-  APPROVAL_PENDING: "warning",
   IN_FULFILLMENT: "info",
   FULFILLED: "success",
   CLOSED: "muted",
-  REJECTED: "danger",
 };
 
 /** 요청 상태 라벨(`service-request:status.*`, 6.3절 전환 패턴). */

@@ -78,6 +78,8 @@
     "actionAddButton": "등록",
     "actionAddSuccess": "시정조치가 등록되었습니다",
     "actionTransitionSuccess": "시정조치 상태가 변경되었습니다",
+    "resubmitSuccess": "재승인요청이 접수되었습니다",
+    "resubmitNoRuleMatched": "매칭되는 승인 규칙이 없어 승인 없이 진행할 수 있습니다",
     "auditLogTitle": "감사 로그",
     "noAuditLogs": "관련 감사 로그가 없습니다."
   },

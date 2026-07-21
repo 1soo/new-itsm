@@ -10,8 +10,8 @@ esm 도메인 애플리케이션 계층의 요청·응답 DTO(record).
 - `CatalogItemDetailResponse.java` — 카탈로그 상세 응답(체크리스트 템플릿·`formSchema`(자체 8×n 그리드 스키마) 포함)
 - `CreateRequestRequest.java` — 부서 요청 제출(catalogItemId, formValues, targetUserName)
 - `RequestCreatedResponse.java` — 요청 생성 응답(checklistId 포함)
-- `RequestSummaryResponse.java` — 요청 목록 요약 응답
-- `RequestDetailResponse.java` — 요청 상세 응답(양식값·코멘트·타임라인)
+- `RequestSummaryResponse.java` — 요청 목록 요약 응답(pendingApprovalTargetState(진행 중 승인 인스턴스 targetState, 2026-07-22 신규) 포함)
+- `RequestDetailResponse.java` — 요청 상세 응답(양식값·코멘트·타임라인, `approval`(ApprovalInfo)에 targetState 포함(2026-07-22 신규))
 - `StatusTransitionRequest.java` — 부서 요청 상태 전이 요청(targetStatus, note)
 - `StatusResponse.java` — 상태 응답(id, status)
 - `CommentCreateRequest.java` — 코멘트 작성 요청(body)

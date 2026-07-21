@@ -6,6 +6,7 @@ import com.itsm.auth.domain.AppUser;
 import com.itsm.auth.domain.repository.AppUserRepository;
 import com.itsm.change.application.ChangeService;
 import com.itsm.common.approval.application.ApprovalGateService;
+import com.itsm.common.approval.application.TicketCreationGateSupport;
 import com.itsm.common.approval.domain.ApprovalRequest;
 import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
@@ -98,6 +99,7 @@ public class IncidentService {
     private final AssetService assetService;
     private final ApprovalGateService approvalGateService;
     private final ApprovalRequestRepository approvalRequestRepository;
+    private final TicketCreationGateSupport ticketCreationGateSupport;
 
     public IncidentService(IncidentRepository incidentRepository,
                            IncidentResponderRepository responderRepository,
@@ -112,7 +114,8 @@ public class IncidentService {
                            ChangeService changeService,
                            AssetService assetService,
                            ApprovalGateService approvalGateService,
-                           ApprovalRequestRepository approvalRequestRepository) {
+                           ApprovalRequestRepository approvalRequestRepository,
+                           TicketCreationGateSupport ticketCreationGateSupport) {
         this.incidentRepository = incidentRepository;
         this.responderRepository = responderRepository;
         this.severityHistoryRepository = severityHistoryRepository;
@@ -127,17 +130,24 @@ public class IncidentService {
         this.assetService = assetService;
         this.approvalGateService = approvalGateService;
         this.approvalRequestRepository = approvalRequestRepository;
+        this.ticketCreationGateSupport = ticketCreationGateSupport;
     }
 
     // ---------- create (API-INC-002) ----------
 
     @Transactional
     public IncidentCreatedResponse create(CreateIncidentRequest request) {
-        SecurityUtils.currentPrincipal();
-        Incident saved = incidentRepository.save(new Incident(
-                nextTicketKey(), request.summary(), request.description(), request.severity(),
-                request.affectedService(), request.affectedProduct()));
-        timelineRepository.save(TimelineEvent.of(TT, saved.getId(), "CREATE", "인시던트가 등록되었습니다."));
+        Long requesterId = SecurityUtils.currentPrincipal().userId();
+        Incident saved = ticketCreationGateSupport.createThenGate(
+                () -> {
+                    Incident incident = incidentRepository.save(new Incident(
+                            nextTicketKey(), request.summary(), request.description(), request.severity(),
+                            request.affectedService(), request.affectedProduct()));
+                    timelineRepository.save(TimelineEvent.of(TT, incident.getId(), "CREATE", "인시던트가 등록되었습니다."));
+                    return incident;
+                },
+                Incident::getId,
+                DOMAIN, null, requesterId, TT, IncidentStatus.NEW.name());
         return new IncidentCreatedResponse(saved.getId(), saved.getTicketKey(), saved.getStatus().name());
     }
 
@@ -151,9 +161,10 @@ public class IncidentService {
         OffsetDateTime fromV = from != null ? from : OffsetDateTime.parse("1970-01-01T00:00:00Z");
         OffsetDateTime toV = to != null ? to : OffsetDateTime.now().plusYears(100);
         String kw = StringUtils.hasText(keyword) ? keyword : null;
-        return PageResponse.from(
-                incidentRepository.search(status, severity, assignee, kw, fromV, toV, pageable),
-                this::toSummary);
+        var page = incidentRepository.search(status, severity, assignee, kw, fromV, toV, pageable);
+        Map<Long, String> pendingTargetStates = approvalGateService.pendingApprovalTargetStatesOf(
+                TT, page.getContent().stream().map(Incident::getId).toList());
+        return PageResponse.from(page, i -> toSummary(i, pendingTargetStates.get(i.getId())));
     }
 
     // ---------- detail (API-INC-003) ----------
@@ -185,7 +196,8 @@ public class IncidentService {
                 .findTopByTicketTypeAndTicketIdOrderByIdDesc(TT, id).orElse(null);
         IncidentDetailResponse.ApprovalInfo approvalInfo = new IncidentDetailResponse.ApprovalInfo(
                 latestApproval != null ? latestApproval.getId() : null,
-                latestApproval != null ? latestApproval.getStatus().name() : null);
+                latestApproval != null ? latestApproval.getStatus().name() : null,
+                latestApproval != null ? latestApproval.getTargetState() : null);
 
         return new IncidentDetailResponse(
                 inc.getId(), inc.getTicketKey(), inc.getSummary(), inc.getDescription(),
@@ -231,9 +243,7 @@ public class IncidentService {
         if (!IncidentStateMachine.isAllowed(inc.getStatus(), target)) {
             throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION);
         }
-        if (target == IncidentStatus.RESOLVED) {
-            approvalGateService.checkGate(DOMAIN, null, requesterIdOf(inc), TT, id);
-        }
+        approvalGateService.checkGate(DOMAIN, null, SecurityUtils.currentPrincipal().userId(), TT, id, target.name());
         inc.changeStatus(target);
         incidentRepository.save(inc);
         timelineRepository.save(TimelineEvent.of(TT, id, "STATUS_" + target.name(),
@@ -292,7 +302,7 @@ public class IncidentService {
     public ResolveResponse resolve(Long id, ResolveRequest request) {
         requireAnyRole(IM);
         Incident inc = findIncident(id);
-        approvalGateService.checkGate(DOMAIN, null, requesterIdOf(inc), TT, id);
+        approvalGateService.checkGate(DOMAIN, null, SecurityUtils.currentPrincipal().userId(), TT, id, IncidentStatus.RESOLVED.name());
         OffsetDateTime impactStart = request.impactStartAt() != null ? request.impactStartAt() : inc.getImpactStartAt();
         OffsetDateTime detected = request.detectedAt() != null ? request.detectedAt() : inc.getDetectedAt();
         OffsetDateTime impactEnd = request.impactEndAt() != null ? request.impactEndAt() : inc.getImpactEndAt();
@@ -404,11 +414,11 @@ public class IncidentService {
 
     // ---------- helpers ----------
 
-    private IncidentSummaryResponse toSummary(Incident inc) {
+    private IncidentSummaryResponse toSummary(Incident inc, String pendingApprovalTargetState) {
         boolean hasPostmortem = postmortemRepository.findByIncidentId(inc.getId()).isPresent();
         return new IncidentSummaryResponse(inc.getId(), inc.getTicketKey(), inc.getSummary(),
                 inc.getSeverity().name(), inc.getStatus().name(), primaryResponderName(inc.getId()),
-                postmortemRequired(inc, hasPostmortem), inc.getUpdatedAt());
+                postmortemRequired(inc, hasPostmortem), inc.getUpdatedAt(), pendingApprovalTargetState);
     }
 
     /** SEV1·SEV2 인시던트가 해결/종료되었으나 포스트모템이 아직 없으면 필요 표시(TC-INC-037). */

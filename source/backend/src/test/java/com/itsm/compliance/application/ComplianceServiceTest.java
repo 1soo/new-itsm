@@ -8,6 +8,7 @@ import com.itsm.change.domain.ChangeRequest;
 import com.itsm.change.domain.ChangeType;
 import com.itsm.change.domain.repository.ChangeRequestRepository;
 import com.itsm.common.approval.application.ApprovalGateService;
+import com.itsm.common.approval.application.TicketCreationGateSupport;
 import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
@@ -59,19 +60,23 @@ class ComplianceServiceTest {
     @Mock AuditLogService auditLogService;
     @Mock ApprovalGateService approvalGateService;
     @Mock ApprovalRequestRepository approvalRequestRepository;
+    @Mock TicketCreationGateSupport ticketCreationGateSupport;
 
     ComplianceService service;
 
     @BeforeEach
     void setUp() {
         service = new ComplianceService(requirementRepository, correctiveActionRepository, ticketLinkRepository,
-                appUserRepository, changeRequestRepository, auditLogService, approvalGateService, approvalRequestRepository);
+                appUserRepository, changeRequestRepository, auditLogService, approvalGateService, approvalRequestRepository,
+                ticketCreationGateSupport);
         when(requirementRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(requirementRepository.countByRequirementKeyStartingWith(any())).thenReturn(0L);
         when(correctiveActionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(correctiveActionRepository.findByRequirementId(any())).thenReturn(List.of());
         when(approvalRequestRepository.findTopByTicketTypeAndTicketIdOrderByIdDesc(any(), any()))
                 .thenReturn(Optional.empty());
+        when(ticketCreationGateSupport.createThenGate(any(), any(), any(), any(), any(), any(), any()))
+                .thenAnswer(inv -> ((java.util.function.Supplier<?>) inv.getArgument(0)).get());
     }
 
     @AfterEach
@@ -290,7 +295,7 @@ class ComplianceServiceTest {
         login(1L, "COMPLIANCE_OFFICER");
         CorrectiveAction action = correctiveAction(1L, CorrectiveActionStatus.IN_PROGRESS);
         when(correctiveActionRepository.findById(1L)).thenReturn(Optional.of(action));
-        doNothing().when(approvalGateService).checkGate(any(), any(), any(), any(), any());
+        doNothing().when(approvalGateService).checkGate(any(), any(), any(), any(), any(), any());
 
         var response = service.transitionCorrectiveAction(1L,
                 new CorrectiveActionStatusTransitionRequest(CorrectiveActionStatus.RESOLVED));
@@ -304,7 +309,7 @@ class ComplianceServiceTest {
         CorrectiveAction action = correctiveAction(1L, CorrectiveActionStatus.IN_PROGRESS);
         when(correctiveActionRepository.findById(1L)).thenReturn(Optional.of(action));
         doThrow(new BusinessException(ErrorCode.APPROVAL_PENDING, ErrorCode.APPROVAL_PENDING.getDefaultMessage(), 77L))
-                .when(approvalGateService).checkGate(any(), any(), any(), any(), any());
+                .when(approvalGateService).checkGate(any(), any(), any(), any(), any(), any());
 
         assertThatThrownBy(() -> service.transitionCorrectiveAction(1L,
                 new CorrectiveActionStatusTransitionRequest(CorrectiveActionStatus.RESOLVED)))

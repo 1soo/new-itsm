@@ -18,12 +18,16 @@ export interface ArticleSummary {
   status: ArticleStatus;
   category: string;
   helpfulRate: number;
+  /** 진행 중인 승인 인스턴스의 targetState(원본 코드값, 없으면 null). 2026-07-22 유지보수 요청 신규. */
+  pendingApprovalTargetState: ArticleStatus | null;
 }
 
 /** 승인 프로세스 커스텀 기능(유지보수 요청) — approvalRequestId=null이면 매칭되는 승인 프로세스가 없어 게이트 없이 진행. */
 export interface ArticleApproval {
   approvalRequestId: number | null;
   status: "IN_PROGRESS" | "APPROVED" | "REJECTED" | null;
+  /** 원본 코드값(도착 상태, 생성 시점 스냅샷). 2026-07-22 유지보수 요청 신규. */
+  targetState: ArticleStatus | null;
 }
 
 export interface ArticleDetail {

@@ -9,6 +9,7 @@ import com.itsm.auth.domain.Department;
 import com.itsm.auth.domain.UserStatus;
 import com.itsm.auth.domain.repository.AppUserRepository;
 import com.itsm.common.approval.application.ApprovalGateService;
+import com.itsm.common.approval.application.TicketCreationGateSupport;
 import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
 import com.itsm.common.exception.ErrorCode;
@@ -74,6 +75,7 @@ class EsmRequestServiceTest {
     @Mock TimelineEventRepository timelineRepository;
     @Mock ApprovalGateService approvalGateService;
     @Mock ApprovalRequestRepository approvalRequestRepository;
+    @Mock TicketCreationGateSupport ticketCreationGateSupport;
 
     EsmRequestService service;
 
@@ -82,7 +84,7 @@ class EsmRequestServiceTest {
         service = new EsmRequestService(requestRepository, catalogItemRepository,
                 templateTaskRepository, checklistRepository, checklistTaskRepository,
                 assetRepository, appUserRepository, commentRepository, timelineRepository,
-                approvalGateService, approvalRequestRepository, new ObjectMapper());
+                approvalGateService, approvalRequestRepository, new ObjectMapper(), ticketCreationGateSupport);
         when(requestRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(requestRepository.countByTicketKeyStartingWith(any())).thenReturn(0L);
         when(checklistRepository.save(any())).thenAnswer(inv -> {
@@ -93,6 +95,8 @@ class EsmRequestServiceTest {
         when(checklistTaskRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(approvalRequestRepository.findTopByTicketTypeAndTicketIdOrderByIdDesc(any(), any()))
                 .thenReturn(Optional.empty());
+        when(ticketCreationGateSupport.createThenGate(any(), any(), any(), any(), any(), any(), any()))
+                .thenAnswer(inv -> ((java.util.function.Supplier<?>) inv.getArgument(0)).get());
     }
 
     @AfterEach
@@ -367,7 +371,7 @@ class EsmRequestServiceTest {
         login(3L, "DEPT_COORDINATOR");
         when(requestRepository.findById(1L)).thenReturn(Optional.of(esmRequest(2L, Department.LEGAL, EsmRequestStatus.IN_PROGRESS)));
         when(appUserRepository.findById(3L)).thenReturn(Optional.of(userWithDepartment(Department.LEGAL)));
-        doNothing().when(approvalGateService).checkGate(any(), any(), any(), any(), any());
+        doNothing().when(approvalGateService).checkGate(any(), any(), any(), any(), any(), any());
 
         var response = service.transition(1L, new StatusTransitionRequest(EsmRequestStatus.COMPLETED, null));
 
@@ -380,7 +384,7 @@ class EsmRequestServiceTest {
         when(requestRepository.findById(1L)).thenReturn(Optional.of(esmRequest(2L, Department.LEGAL, EsmRequestStatus.IN_PROGRESS)));
         when(appUserRepository.findById(3L)).thenReturn(Optional.of(userWithDepartment(Department.LEGAL)));
         doThrow(new BusinessException(ErrorCode.APPROVAL_PENDING, ErrorCode.APPROVAL_PENDING.getDefaultMessage(), 77L))
-                .when(approvalGateService).checkGate(any(), any(), any(), any(), any());
+                .when(approvalGateService).checkGate(any(), any(), any(), any(), any(), any());
 
         assertThatThrownBy(() -> service.transition(1L, new StatusTransitionRequest(EsmRequestStatus.COMPLETED, null)))
                 .isInstanceOf(BusinessException.class)

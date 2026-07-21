@@ -16,6 +16,7 @@ import {
 import {
   type Column,
   DataTable,
+  deriveApprovalStatusDisplay,
   Pagination,
   PriorityBadge,
   StatusBadge,
@@ -105,7 +106,17 @@ export function ProblemListPage() {
     {
       header: t("problemList.columnStatus", { defaultValue: "상태" }),
       width: 110,
-      cell: (p) => <StatusBadge tone={statusTone(p.status)} label={statusLabel(t, p.status)} />,
+      cell: (p) => {
+        const display = deriveApprovalStatusDisplay(
+          t,
+          { tone: statusTone(p.status), label: statusLabel(t, p.status) },
+          {
+            status: p.pendingApprovalTargetState ? "IN_PROGRESS" : null,
+            targetStateLabel: p.pendingApprovalTargetState ? statusLabel(t, p.pendingApprovalTargetState) : null,
+          },
+        );
+        return <StatusBadge tone={display.tone} label={display.label} />;
+      },
     },
     {
       header: t("problemList.columnPriority", { defaultValue: "우선순위" }),

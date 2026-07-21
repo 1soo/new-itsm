@@ -30,6 +30,7 @@ import com.itsm.change.domain.repository.ChangeAffectedSystemRepository;
 import com.itsm.change.domain.repository.ChangeRequestRepository;
 import com.itsm.change.domain.repository.ChangeTemplateRepository;
 import com.itsm.common.approval.application.ApprovalGateService;
+import com.itsm.common.approval.application.TicketCreationGateSupport;
 import com.itsm.common.approval.domain.ApprovalRequest;
 import com.itsm.common.approval.domain.repository.ApprovalRequestRepository;
 import com.itsm.common.exception.BusinessException;
@@ -55,6 +56,7 @@ import java.time.OffsetDateTime;
 import java.time.Year;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 변경(change) 유스케이스: RFC 등록·조회·6단계 전이·분류·구현결과·
@@ -84,6 +86,7 @@ public class ChangeService {
     private final ApprovalRequestRepository approvalRequestRepository;
     private final ApprovalGateService approvalGateService;
     private final AppUserRepository appUserRepository;
+    private final TicketCreationGateSupport ticketCreationGateSupport;
 
     public ChangeService(ChangeRequestRepository changeRequestRepository,
                          ChangeTemplateRepository templateRepository,
@@ -96,7 +99,8 @@ public class ChangeService {
                          ComplianceRequirementRepository complianceRequirementRepository,
                          ApprovalRequestRepository approvalRequestRepository,
                          ApprovalGateService approvalGateService,
-                         AppUserRepository appUserRepository) {
+                         AppUserRepository appUserRepository,
+                         TicketCreationGateSupport ticketCreationGateSupport) {
         this.changeRequestRepository = changeRequestRepository;
         this.templateRepository = templateRepository;
         this.affectedSystemRepository = affectedSystemRepository;
@@ -109,6 +113,7 @@ public class ChangeService {
         this.approvalRequestRepository = approvalRequestRepository;
         this.approvalGateService = approvalGateService;
         this.appUserRepository = appUserRepository;
+        this.ticketCreationGateSupport = ticketCreationGateSupport;
     }
 
     // ---------- create (API-CHG-002) ----------
@@ -121,18 +126,25 @@ public class ChangeService {
                     .filter(t -> !t.isDeleted())
                     .orElseThrow(() -> new BusinessException(ErrorCode.VALIDATION_ERROR, "유효하지 않은 템플릿입니다."));
         }
-        ChangeRequest saved = changeRequestRepository.save(new ChangeRequest(
-                nextTicketKey(), request.summary(), request.description(), request.type(), request.risk(),
-                request.implementationPlan(), request.rollbackPlan(), request.scheduledAt(),
-                request.templateId()));
-        if (request.affectedSystems() != null) {
-            for (String systemName : request.affectedSystems()) {
-                if (StringUtils.hasText(systemName)) {
-                    affectedSystemRepository.save(new ChangeAffectedSystem(saved.getId(), systemName));
-                }
-            }
-        }
-        timelineRepository.save(TimelineEvent.of(TT, saved.getId(), "CREATE", "변경 요청(RFC)이 등록되었습니다."));
+        Long requesterId = SecurityUtils.currentPrincipal().userId();
+        ChangeRequest saved = ticketCreationGateSupport.createThenGate(
+                () -> {
+                    ChangeRequest change = changeRequestRepository.save(new ChangeRequest(
+                            nextTicketKey(), request.summary(), request.description(), request.type(), request.risk(),
+                            request.implementationPlan(), request.rollbackPlan(), request.scheduledAt(),
+                            request.templateId()));
+                    if (request.affectedSystems() != null) {
+                        for (String systemName : request.affectedSystems()) {
+                            if (StringUtils.hasText(systemName)) {
+                                affectedSystemRepository.save(new ChangeAffectedSystem(change.getId(), systemName));
+                            }
+                        }
+                    }
+                    timelineRepository.save(TimelineEvent.of(TT, change.getId(), "CREATE", "변경 요청(RFC)이 등록되었습니다."));
+                    return change;
+                },
+                ChangeRequest::getId,
+                DOMAIN, request.type().name(), requesterId, TT, ChangeStatus.REQUESTED.name());
         return new ChangeCreatedResponse(saved.getId(), saved.getTicketKey(), saved.getStatus().name(),
                 saved.getType().name());
     }
@@ -145,8 +157,10 @@ public class ChangeService {
         requireRole(CM);
         OffsetDateTime fromV = from != null ? from : OffsetDateTime.parse("1970-01-01T00:00:00Z");
         OffsetDateTime toV = to != null ? to : OffsetDateTime.now().plusYears(100);
-        return PageResponse.from(
-                changeRequestRepository.search(type, status, risk, fromV, toV, pageable), this::toSummary);
+        var page = changeRequestRepository.search(type, status, risk, fromV, toV, pageable);
+        Map<Long, String> pendingTargetStates = approvalGateService.pendingApprovalTargetStatesOf(
+                TT, page.getContent().stream().map(ChangeRequest::getId).toList());
+        return PageResponse.from(page, c -> toSummary(c, pendingTargetStates.get(c.getId())));
     }
 
     // ---------- detail (API-CHG-003) ----------
@@ -171,9 +185,8 @@ public class ChangeService {
         if (!ChangeStateMachine.isAllowed(change.getStatus(), target)) {
             throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION);
         }
-        if (target == ChangeStatus.IMPLEMENTATION) {
-            approvalGateService.checkGate(DOMAIN, change.getType().name(), requesterIdOf(change), TT, id);
-        }
+        approvalGateService.checkGate(DOMAIN, change.getType().name(), SecurityUtils.currentPrincipal().userId(), TT, id,
+                target.name());
         change.changeStatus(target);
         changeRequestRepository.save(change);
         timelineRepository.save(TimelineEvent.of(TT, id, "STATUS_" + target.name(),
@@ -278,10 +291,17 @@ public class ChangeService {
     /** 문제에서 신규 변경(RFC)을 생성한다. 역할 검사는 호출측(ProblemService)에서 수행. */
     @Transactional
     public Long createLinkedChange(String summary, String description) {
-        ChangeRequest saved = changeRequestRepository.save(new ChangeRequest(
-                nextTicketKey(), summary, description, ChangeType.NORMAL, null,
-                null, null, null, null));
-        timelineRepository.save(TimelineEvent.of(TT, saved.getId(), "CREATE", "문제 연계로 변경 요청이 생성되었습니다."));
+        Long requesterId = SecurityUtils.currentPrincipal().userId();
+        ChangeRequest saved = ticketCreationGateSupport.createThenGate(
+                () -> {
+                    ChangeRequest change = changeRequestRepository.save(new ChangeRequest(
+                            nextTicketKey(), summary, description, ChangeType.NORMAL, null,
+                            null, null, null, null));
+                    timelineRepository.save(TimelineEvent.of(TT, change.getId(), "CREATE", "문제 연계로 변경 요청이 생성되었습니다."));
+                    return change;
+                },
+                ChangeRequest::getId,
+                DOMAIN, ChangeType.NORMAL.name(), requesterId, TT, ChangeStatus.REQUESTED.name());
         return saved.getId();
     }
 
@@ -330,10 +350,10 @@ public class ChangeService {
         return prefix + String.format("%04d", seq);
     }
 
-    private ChangeSummaryResponse toSummary(ChangeRequest c) {
+    private ChangeSummaryResponse toSummary(ChangeRequest c, String pendingApprovalTargetState) {
         return new ChangeSummaryResponse(c.getId(), c.getTicketKey(), c.getSummary(), c.getType().name(),
                 c.getStatus().name(), c.getRisk() != null ? c.getRisk().name() : null,
-                c.getScheduledAt(), c.getUpdatedAt());
+                c.getScheduledAt(), c.getUpdatedAt(), pendingApprovalTargetState);
     }
 
     private ChangeDetailResponse toDetail(ChangeRequest c) {
@@ -359,7 +379,8 @@ public class ChangeService {
                 .findTopByTicketTypeAndTicketIdOrderByIdDesc(TT, id).orElse(null);
         ChangeDetailResponse.ApprovalInfo approvalInfo = new ChangeDetailResponse.ApprovalInfo(
                 latestApproval != null ? latestApproval.getId() : null,
-                latestApproval != null ? latestApproval.getStatus().name() : null);
+                latestApproval != null ? latestApproval.getStatus().name() : null,
+                latestApproval != null ? latestApproval.getTargetState() : null);
 
         return new ChangeDetailResponse(id, c.getTicketKey(), c.getSummary(), c.getDescription(),
                 c.getType().name(), c.getRisk() != null ? c.getRisk().name() : null, c.getStatus().name(),

@@ -7,6 +7,7 @@ import com.itsm.auth.application.dto.ApprovalProcessDetailResponse;
 import com.itsm.auth.application.dto.ApprovalProcessSummaryResponse;
 import com.itsm.auth.application.dto.CreateApprovalProcessRequest;
 import com.itsm.auth.application.dto.PageResponse;
+import com.itsm.auth.application.dto.TargetStateOption;
 import com.itsm.auth.application.dto.UpdateApprovalProcessRequest;
 import com.itsm.common.approval.application.RequestSubtypeOption;
 import com.itsm.common.exception.ErrorResponse;
@@ -63,6 +64,16 @@ public class AdminApprovalProcessController {
         return ResponseEntity.ok(approvalProcessAdminService.requestSubtypes(domain));
     }
 
+    @Operation(summary = "도메인별 유효 상태값(적용 상태) 후보 목록 조회", description = "API-AUTH-031")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "정상"),
+            @ApiResponse(responseCode = "400", description = "정의되지 않은 domain", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @GetMapping("/domains/{domain}/states")
+    public ResponseEntity<List<TargetStateOption>> states(@PathVariable String domain) {
+        return ResponseEntity.ok(approvalProcessAdminService.states(domain));
+    }
+
     @Operation(summary = "승인 프로세스 목록 조회", description = "API-AUTH-025")
     @GetMapping
     public ResponseEntity<PageResponse<ApprovalProcessSummaryResponse>> list(
@@ -86,7 +97,7 @@ public class AdminApprovalProcessController {
     @Operation(summary = "승인 프로세스 생성", description = "API-AUTH-027 · steps가 빈 배열이면 승인자 없이 요청자만 설정된 프로세스로 저장")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "생성 성공"),
-            @ApiResponse(responseCode = "400", description = "domain 지정 시 9개 후보 외 값 · domain이 null인데 requestSubtypeKey 지정 · step roleIds 비어있음 · steps 10개 초과", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "400", description = "domain 지정 시 9개 후보 외 값 · domain이 null인데 requestSubtypeKey·targetState 지정 · targetState 지정 시 requesterRoleIds가 빈 배열 · targetState가 해당 domain의 API-AUTH-031 후보 외 값 · step roleIds 비어있음 · steps 10개 초과", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "409", description = "우선순위 충돌", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping
@@ -94,9 +105,10 @@ public class AdminApprovalProcessController {
         return ResponseEntity.status(HttpStatus.CREATED).body(approvalProcessAdminService.create(request));
     }
 
-    @Operation(summary = "승인 프로세스 수정", description = "API-AUTH-028 · requesterRoleIds·steps 전달 시 전체 교체")
+    @Operation(summary = "승인 프로세스 수정", description = "API-AUTH-028 · requesterRoleIds·steps 전달 시 전체 교체. domain·targetState·requestSubtypeKey는 식별 스코프라 수정 대상 제외")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "정상"),
+            @ApiResponse(responseCode = "400", description = "targetState가 지정된 규칙인데 requesterRoleIds를 빈 배열로 전달", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "404", description = "프로세스 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "409", description = "우선순위 충돌", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })

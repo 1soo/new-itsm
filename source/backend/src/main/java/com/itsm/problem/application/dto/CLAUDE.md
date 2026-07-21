@@ -5,8 +5,8 @@
 ## 파일
 - `CreateProblemRequest.java` — 문제 생성 요청(요약·출처·영향도·긴급도·구성요소)
 - `ProblemCreatedResponse.java` — 생성 응답(id, ticketKey, status, priority)
-- `ProblemSummaryResponse.java` — 목록 요약 응답
-- `ProblemDetailResponse.java` — 상세 응답(RCA·워크어라운드·연계(인시던트/변경/자산, REQ-ITAM-006)·후속조치·허용 상태전이 포함)
+- `ProblemSummaryResponse.java` — 목록 요약 응답(pendingApprovalTargetState(진행 중 승인 인스턴스 targetState, 2026-07-22 신규) 포함)
+- `ProblemDetailResponse.java` — 상세 응답(RCA·워크어라운드·연계(인시던트/변경/자산, REQ-ITAM-006)·후속조치·허용 상태전이 포함, `approval`(ApprovalInfo)에 targetState 포함(2026-07-22 신규))
 - `StatusTransitionRequest.java` — 상태 전이 요청(targetStatus, note)
 - `StatusResponse.java` — 상태 응답(id, status)
 - `RcaRequest.java` — 근본원인 분석 요청(rootCause, fiveWhys, category)

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ApprovalPanel, StatusBadge, TicketDetailLayout, toast } from "@/components/common";
+import { ApprovalPanel, deriveApprovalStatusDisplay, StatusBadge, TicketDetailLayout, toast } from "@/components/common";
 import type { ApprovalStep } from "@/components/common";
 import { FullscreenLoader } from "@/routes/FullscreenLoader";
 import { complianceApi } from "@/features/compliance/api";
@@ -44,6 +44,7 @@ export function ComplianceDetailPage() {
   const [notFound, setNotFound] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
+  const [resubmittingActionId, setResubmittingActionId] = useState<number | null>(null);
 
   const refreshDetail = useCallback(
     (silent: boolean) => {
@@ -117,6 +118,25 @@ export function ComplianceDetailPage() {
     }
   };
 
+  const handleResubmitAction = async (actionId: number) => {
+    setResubmittingActionId(actionId);
+    try {
+      const result = await commonApi.resubmitApproval({ ticketType: "CORRECTIVE_ACTION", ticketId: actionId });
+      toast.success(
+        result.status === "NO_RULE_MATCHED"
+          ? t("complianceDetail.resubmitNoRuleMatched", {
+              defaultValue: "매칭되는 승인 규칙이 없어 승인 없이 진행할 수 있습니다",
+            })
+          : t("complianceDetail.resubmitSuccess", { defaultValue: "재승인요청이 접수되었습니다" }),
+      );
+      refreshDetail(true);
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
+    } finally {
+      setResubmittingActionId(null);
+    }
+  };
+
   const handleSaveEdit = async (body: UpdateRequirementInput) => {
     setBusy("edit");
     try {
@@ -184,6 +204,8 @@ export function ComplianceDetailPage() {
         detail={detail}
         actionApprovals={actionApprovals}
         busy={busy}
+        resubmittingActionId={resubmittingActionId}
+        onResubmit={handleResubmitAction}
         onAdd={(description) =>
           run("add-action", () => complianceApi.addCorrectiveAction(id, { description }), t("complianceDetail.actionAddSuccess", { defaultValue: "시정조치가 등록되었습니다" }))
         }
@@ -377,6 +399,8 @@ function CorrectiveActionCard({
   detail,
   actionApprovals,
   busy,
+  resubmittingActionId,
+  onResubmit,
   onAdd,
   onTransition,
 }: {
@@ -384,6 +408,8 @@ function CorrectiveActionCard({
   detail: RequirementDetail;
   actionApprovals: Record<number, { steps: ApprovalStep[]; currentStepNo: number | null }>;
   busy: string | null;
+  resubmittingActionId: number | null;
+  onResubmit: (actionId: number) => void;
   onAdd: (description: string) => void;
   onTransition: (actionId: number, targetStatus: "IN_PROGRESS" | "RESOLVED") => void;
 }) {
@@ -409,11 +435,17 @@ function CorrectiveActionCard({
               const approved = a.approval.approvalRequestId == null || a.approval.status === "APPROVED";
               const blocked = next === "RESOLVED" && !approved;
               const matched = a.approval.approvalRequestId != null;
+              const targetStateLabel = a.approval.targetState ? actionStatusLabel(t, a.approval.targetState) : null;
+              const statusDisplay = deriveApprovalStatusDisplay(
+                t,
+                { tone: actionStatusTone(a.status), label: actionStatusLabel(t, a.status) },
+                { status: a.approval.status, targetStateLabel },
+              );
               return (
                 <li key={a.id} className="space-y-2 rounded-md border border-border p-3 text-sm">
                   <div className="flex items-center justify-between gap-2">
                     <span className="min-w-0 flex-1">{a.description}</span>
-                    <StatusBadge tone={actionStatusTone(a.status)} label={actionStatusLabel(t, a.status)} />
+                    <StatusBadge tone={statusDisplay.tone} label={statusDisplay.label} />
                     {next ? (
                       <Button
                         size="sm"
@@ -435,6 +467,10 @@ function CorrectiveActionCard({
                       matched
                       steps={actionApprovals[a.id]?.steps ?? []}
                       currentStepNo={actionApprovals[a.id]?.currentStepNo ?? null}
+                      targetStateLabel={targetStateLabel}
+                      status={a.approval.status}
+                      onResubmit={a.approval.status === "REJECTED" ? () => onResubmit(a.id) : undefined}
+                      resubmitting={resubmittingActionId === a.id}
                     />
                   ) : null}
                 </li>

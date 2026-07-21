@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ApprovalPanel, StatusBadge, TicketDetailLayout, toast } from "@/components/common";
+import { ApprovalPanel, deriveApprovalStatusDisplay, StatusBadge, TicketDetailLayout, toast } from "@/components/common";
 import type { ApprovalStep } from "@/components/common";
 import { FullscreenLoader } from "@/routes/FullscreenLoader";
 import { changeApi } from "@/features/change/api";
@@ -50,6 +50,7 @@ export function ChangeDetailPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [resubmitting, setResubmitting] = useState(false);
 
   const refreshDetail = useCallback(
     (silent: boolean) => {
@@ -109,6 +110,26 @@ export function ChangeDetailPage() {
     }
   };
 
+  const handleResubmit = async () => {
+    if (!detail) return;
+    setResubmitting(true);
+    try {
+      const result = await commonApi.resubmitApproval({ ticketType: "CHANGE", ticketId: id });
+      toast.success(
+        result.status === "NO_RULE_MATCHED"
+          ? t("changeDetail.resubmitNoRuleMatched", {
+              defaultValue: "매칭되는 승인 규칙이 없어 승인 없이 진행할 수 있습니다",
+            })
+          : t("changeDetail.resubmitSuccess", { defaultValue: "재승인요청이 접수되었습니다" }),
+      );
+      refreshDetail(true);
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
+    } finally {
+      setResubmitting(false);
+    }
+  };
+
   if (loading) return <FullscreenLoader />;
   if (notFound || !detail) {
     return (
@@ -123,6 +144,12 @@ export function ChangeDetailPage() {
 
   const transitions = detail.allowedTransitions ?? fallbackTransitions(detail.status);
   const approved = detail.approval.approvalRequestId == null || detail.approval.status === "APPROVED";
+  const approvalTargetStateLabel = detail.approval.targetState ? statusLabel(t, detail.approval.targetState) : null;
+  const statusDisplay = deriveApprovalStatusDisplay(
+    t,
+    { tone: statusTone(detail.status), label: statusLabel(t, detail.status) },
+    { status: detail.approval.status, targetStateLabel: approvalTargetStateLabel },
+  );
 
   return (
     <TicketDetailLayout
@@ -131,7 +158,7 @@ export function ChangeDetailPage() {
       badges={
         <>
           <StatusBadge tone={typeTone(detail.type)} label={typeLabel(t, detail.type)} />
-          <StatusBadge tone={statusTone(detail.status)} label={statusLabel(t, detail.status)} />
+          <StatusBadge tone={statusDisplay.tone} label={statusDisplay.label} />
           {detail.risk ? (
             <StatusBadge tone={riskTone(detail.risk)} label={riskLabel(t, detail.risk)} />
           ) : (
@@ -183,6 +210,10 @@ export function ChangeDetailPage() {
             matched={detail.approval.approvalRequestId != null}
             steps={approvalSteps}
             currentStepNo={approvalCurrentStepNo}
+            targetStateLabel={approvalTargetStateLabel}
+            status={detail.approval.status}
+            onResubmit={detail.approval.status === "REJECTED" ? handleResubmit : undefined}
+            resubmitting={resubmitting}
             emptyMessage={t("changeDetail.noApproval", { defaultValue: "이 변경에는 승인 절차가 없습니다" })}
           />
 
