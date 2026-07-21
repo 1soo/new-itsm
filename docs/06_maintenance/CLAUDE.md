@@ -73,3 +73,14 @@
 | 20260719-113616 | srm | 신규 생성 컴포넌트 default align을 center-center로 변경(입력 7종 verticalAlign top→middle, guide-text textAlign left→center·textVerticalAlign top→middle), 기존 저장 컴포넌트는 소급 적용 없이 그대로 유지 | docs/06_maintenance/20260719-113616/srm/history.md |
 | 20260719-131049 | esm | ESM 카탈로그/부서 요청 동적 양식을 레거시 EAV(FieldBuilder/DynamicForm)에서 SRM과 공용인 그리드 폼 빌더(DynamicFormBuilder/DynamicFormRenderer, JSONB)로 전면 전환, 레거시 컴포넌트·엔티티·테이블 완전 삭제 | docs/06_maintenance/20260719-131049/esm/history.md |
 | 20260721-163612 | common | 그리드 폼 빌더 radio/checkbox 옵션 목록에 justify-content/align-items 정렬 누락 결함 수정(폭을 넓혀도 옵션 묶음이 wrapper 안에서 항상 왼쪽/위쪽에 붙던 문제, SRM·ESM 공용 렌더러 1곳 수정으로 양쪽 반영) | docs/06_maintenance/20260721-163612/common/history.md |
+| 20260722-044035 | common | 승인 엔진에 4번째 매칭 축 targetState 추가(도메인당 게이트 1곳→모든 상태 전이 지점으로 확장), 반려 시 재승인요청(API-COM-006), canApproverView 합집합 방식 전환, 생성시점 게이트(TicketCreationGateSupport) 신규 | docs/06_maintenance/20260722-044035/common/history.md |
+| 20260722-044035 | auth | 승인 프로세스 관리 화면·API에 적용 상태(targetState) 축 반영, API-AUTH-031(도메인별 상태 후보 조회) 신규 | docs/06_maintenance/20260722-044035/auth/history.md |
+| 20260722-044035 | srm | 서비스 요청 전 상태 전이 지점 승인 게이트 일반화, 요청자 스코프 회귀(id=1) 수정, APPROVAL_PENDING pseudo-status 죽은 코드 제거 | docs/06_maintenance/20260722-044035/srm/history.md |
+| 20260722-044035 | change | 변경 요청 전 상태 전이 지점 승인 게이트 일반화 | docs/06_maintenance/20260722-044035/change/history.md |
+| 20260722-044035 | incident | 인시던트 전 상태 전이 지점 승인 게이트 일반화 | docs/06_maintenance/20260722-044035/incident/history.md |
+| 20260722-044035 | problem | 문제 전 상태 전이 지점 승인 게이트 일반화 | docs/06_maintenance/20260722-044035/problem/history.md |
+| 20260722-044035 | asset | 자산 생애주기 전 상태 전이 지점 승인 게이트 일반화 | docs/06_maintenance/20260722-044035/asset/history.md |
+| 20260722-044035 | vulnerability | 취약점 전 상태 전이 지점 승인 게이트 일반화 | docs/06_maintenance/20260722-044035/vulnerability/history.md |
+| 20260722-044035 | compliance | 시정조치 전 상태 전이 지점 승인 게이트 일반화(항목 단위 유지) | docs/06_maintenance/20260722-044035/compliance/history.md |
+| 20260722-044035 | esm | 부서요청 전 상태 전이 지점 승인 게이트 일반화 | docs/06_maintenance/20260722-044035/esm/history.md |
+| 20260722-044035 | knowledge | 지식 문서 전 상태 전이 지점 승인 게이트 일반화(초안 생성 신규 throwing 게이트 추가) | docs/06_maintenance/20260722-044035/knowledge/history.md |

@@ -1,0 +1,36 @@
+---
+date: 20260722-044035
+domain: incident
+change_type: [new, modified]
+keywords: [targetState, 상태별승인게이트, 재승인요청]
+---
+
+# 유지보수 이력 — incident
+
+> 유지보수 일시: 20260722-044035 · 도메인: incident
+
+## 1. 요구사항
+
+인시던트의 "신규-처리중-해결-종료" 각 상태 전이마다 독립적으로 승인자를 지정할 수 있어야 한다.
+최초 상태(신규)에도 승인 게이트를 걸 수 있어야 하며, 마스터 레코드는 제출 즉시 생성하고 승인 전까지는 임시/승인대기로 표시해야 한다.
+승인 반려 시 재승인요청이 가능해야 한다.
+
+## 2. 해결 방법
+
+`IncidentService.transition()`/`resolve()`의 `if (target == RESOLVED)` 하드코딩 가드를 제거하고, target이 무엇이든 무조건 게이트를 호출하도록 일반화했다.
+`create()`를 `TicketCreationGateSupport`로 리팩터링해 `NEW`(최초 상태) 게이트를 REQUIRES_NEW 트랜잭션으로 분리 적용했다.
+게이트 호출 시 requesterId를 티켓의 원 요청자 필드가 아니라 그 전이를 지금 호출하는 현재 사용자로 통일했다.
+상세 응답 DTO에 `targetState`를 추가하고, 프론트엔드 상세/목록 화면에 공용 `deriveApprovalStatusDisplay` 기반 파생 승인대기/반려 배지를 적용했다.
+
+## 3. 변경 파일
+
+- `source/backend/src/main/java/com/itsm/incident/application/{IncidentService,dto/IncidentDetailResponse}.java`
+- `source/frontend/src/features/incident/{types.ts,status.ts,IncidentDetailPage.tsx,IncidentListPage.tsx}`
+- `docs/02_plan/api_spec/incident.md`
+
+## 4. 테스트 결과
+
+공용 승인엔진 통합 테스트 라운드에 포함되어 검증됐다(`docs/04_test/20260722-040618`, `docs/04_test/20260722-042424`).
+INCIDENT 도메인 고유 결함은 발견되지 않았다.
+코드 리뷰 발견 사항 없었다.
+커밋 `c8f9386`으로 반영했다.
